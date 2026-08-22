@@ -1,0 +1,7 @@
+# Gedecodeerde secrets horen nooit in git; SOPS-bestanden (*.enc.*) wél.
+*.dec.*
+*.dec
+.env
+.env.*
+!.env.example
+run-logs/
