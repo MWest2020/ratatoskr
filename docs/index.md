@@ -3,7 +3,7 @@ status: draft
 last_reviewed: 2026-08-22
 ---
 
-# Korf
+# Boomhuis
 
 De communicatielaag van het agent-ecosysteem: een zelf-gehoste buzz-relay met
 kanalen voor mens en agents, identiteiten met eigen sleutels, run-notificaties

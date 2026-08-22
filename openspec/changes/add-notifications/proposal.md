@@ -36,7 +36,8 @@ bereikt Mark op desktop én telefoon — zonder één byte wijziging aan de kooi
 
 - De tmux-escalatie blijft bestaan; buzz spiegelt hem. Pas als dit maanden
   betrouwbaar loopt is "buzz als primair escalatiekanaal" een eigen change.
-- Mobiel bereik hangt af van de open beslissing intern/VPN vs publiek+TLS
-  (project.md); een eventuele push-gateway is een aparte, latere change.
+- Mobiel bereik loopt via de Tailscale-app (besloten: tailnet-only); een
+  eventuele push-gateway is pas aan de orde als dat in de praktijk tekortschiet,
+  en dan als aparte change.
 - Nieuw klein aanvalsoppervlak: de orchestrator-host houdt een Nostr-privésleutel
   (SOPS+age, zoals alle secrets).

@@ -14,7 +14,7 @@ git-push-credentials; hun deliverable is tekst in kanalen.
 
 ### Requirement: Mandaat buiten bereik van de agent
 
-Het mandaat van elke chat-native agent SHALL in de korf-repo leven en voor de
+Het mandaat van elke chat-native agent SHALL in de boomhuis-repo leven en voor de
 agent zelf niet wijzigbaar zijn; een agent die zijn mandaat, sleutels of
 relay-configuratie kan aanpassen is een harde fout.
 

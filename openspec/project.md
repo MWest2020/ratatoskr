@@ -1,11 +1,11 @@
-# Project: Korf
+# Project: Boomhuis
 
 ## Scope
 
 De communicatielaag van Marks agent-ecosysteem: een zelf-gehoste buzz-relay
 (Nostr) waarop mens en agents in kanalen samenwerken, plus de specs voor
 identiteiten, kanaaltopologie, run-notificaties en een tweede klasse langlopende
-chat-native agents. Korf weet níets van domeinlogica en voert zelf geen
+chat-native agents. Boomhuis weet níets van domeinlogica en voert zelf geen
 repo-werk uit — dat blijft habitat.
 
 Single-user platform voor Mark Westerweel. Persoonlijke infrastructuur.
@@ -41,8 +41,9 @@ MENS (Mark: desktop/mobiel)        CHAT-NATIVE AGENTS (fase 2: buzz-acp,
         └── git: branches, verdicts, audit-JSONL (de waarheid) ◀──┘
 ```
 
-- **Relay**: upstream compose-bundle (relay, Postgres, Redis, MinIO, Caddy/TLS)
-  op een homelab-host, `RELAY_OWNER_PUBKEY` gezet (closed mode), image gepind.
+- **Relay**: upstream compose-bundle (relay, Postgres, Redis, MinIO) op een
+  homelab-host via de homelab-blueprints, uitsluitend aan het tailnet,
+  `RELAY_OWNER_PUBKEY` gezet (closed mode), image gepind.
 - **Identiteiten**: één Nostr-keypair per identiteit; publieke registry
   (`identities.yml`) in deze repo; privésleutels SOPS+age.
 - **Notificaties**: dispatch/orchestrator posten run-start, verdict en
@@ -71,19 +72,23 @@ MENS (Mark: desktop/mobiel)        CHAT-NATIVE AGENTS (fase 2: buzz-acp,
 - Immutable images, gepind per SHA/semver, nooit `:main`/`:latest`.
 - Licentie: EUPL-1.2.
 
-## Open beslissingen (voor Mark, niet gokken)
+## Besloten (2026-08-22, door Mark)
 
-1. **Host**: welke homelab-VM/LXC draagt de compose-stack (Postgres+Redis+MinIO
-   erbij)? Korf kiest geen host en tast geen infra af zonder Marks aanwijzing.
-2. **Mobiel bereik**: relay alleen op het interne net/VPN, of publiek achter
-   Caddy met TLS? Bepaalt of de push-gateway (fase 1+) nodig is.
-3. **Naam**: `korf` is het voorstel (bijenkorf, past bij buzz); alternatieven
-   `zwerm`, `raat`.
+1. **Bereik**: de relay hangt uitsluitend aan het Tailscale-net (tailnet); geen
+   publieke voordeur. Of het ooit verder open moet is een latere, aparte
+   beslissing. Mobiel bereik loopt via de Tailscale-app op de telefoon.
+2. **Naam**: `boomhuis` (runner-up: `wolkenkrabber`) — een plek waar mensen, en
+   dus ook agents, samenkomen.
+3. **Host**: op homelab-infra, hergebruik van de terraform/ansible-blueprints
+   uit de homelab-repo; de concrete host/VM-keuze is taak 1.1 van `add-relay`.
+   Geen deploy op het habitat-K8s-cluster: de communicatielaag en de kooi delen
+   bewust geen failure-domain (zie `add-relay/design.md`).
 
 ## Definition of done (v0 = fase 0 + 1)
 
-De relay draait gepind en closed op een homelab-host met TLS; Mark is
-aangemeld op desktop én telefoon; een echte habitat-run post zijn start en
+De relay draait gepind en closed op een homelab-host, alleen via het tailnet
+bereikbaar; Mark is aangemeld op desktop én telefoon (Tailscale-app); een echte
+habitat-run post zijn start en
 verdict (met link naar het HTML-run-rapport) in `#runs`; één escalatie landt in
 `#escalatie` en bereikt Mark zonder dat hij aan tmux zit; de kooi-diff van
 habitat is aantoonbaar leeg. Eén volledige loop, één keer.

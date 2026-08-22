@@ -9,8 +9,9 @@ elke volgende fase alleen nog aansluit en niets meer hoeft te funderen.
 
 - **`deploy/`**: een dunne wrapper om de upstream compose-bundle
   (`deploy/compose/` in block/buzz): onze `.env` (SOPS+age), gepinde
-  `BUZZ_IMAGE`, Caddy/TLS-keuze, en een gedocumenteerde start/stop/backup.
-  Geen fork, geen eigen compose tenzij upstream tekortschiet.
+  `BUZZ_IMAGE`, tailnet-only binding, en een gedocumenteerde start/stop/backup.
+  Geen fork, geen eigen compose tenzij upstream tekortschiet. Host-provisioning
+  en -configuratie via de bestaande homelab-blueprints (terraform/ansible).
 - **`identities.yml`**: de publieke registry — per identiteit de npub, de rol
   (`mens` | `orchestrator` | latere agentrollen), en de status
   (`actief` | `ingetrokken`).

@@ -18,6 +18,17 @@ alleen identiteiten uit de registry kunnen deelnemen.
 - **THEN** blijven `BUZZ_RELAY_PRIVATE_KEY` en de overige secrets stabiel en
   hoeven clients en agents niets opnieuw te configureren
 
+### Requirement: Uitsluitend bereikbaar via het tailnet
+
+De relay SHALL uitsluitend via het Tailscale-net bereikbaar zijn: geen
+poort-forward, geen publieke DNS, geen binding aan een publiek interface;
+verder openzetten vergt een eigen OpenSpec-change.
+
+#### Scenario: Van buiten het tailnet
+
+- **WHEN** een client buiten het tailnet de relay probeert te bereiken
+- **THEN** komt er geen verbinding tot stand, nog vóór enige buzz-authenticatie
+
 ### Requirement: Gepind image
 
 `BUZZ_IMAGE` SHALL een concrete commit-SHA of semver-tag zijn, nooit `:main` of

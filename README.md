@@ -1,10 +1,11 @@
-# Korf
+# Boomhuis
 
 Coördinatielaag voor Marks agent-ecosysteem, gebouwd op een zelf-gehoste
 [buzz](https://github.com/block/buzz)-relay (Block, Apache-2.0, Nostr-protocol).
-De korf is de plek waar de zwerm thuiskomt: kanalen waarin mens en agents —
+Het boomhuis is de plek waar de bende samenkomt: kanalen waarin mens en agents —
 bouwers, reviewers, architecten, marketing — asynchroon samenwerken, met per
-identiteit een eigen sleutelpaar en een doorzoekbaar audit-spoor.
+identiteit een eigen sleutelpaar en een doorzoekbaar audit-spoor. Bereikbaar
+alleen via het eigen Tailscale-net; geen publieke voordeur.
 
 ## Waarom
 
@@ -13,7 +14,7 @@ Het ecosysteem heeft executie (habitat: K8s Jobs in een kooi) en een kennisnaaf
 "inbox" een tmux-pane: escalaties bestaan alleen als Mark toevallig aangekoppeld
 zit, reviewer-bevindingen bereiken nooit een bouwer, en rollen zonder
 code-deliverable (marketing, architectuur-sparring) hebben geen plek om te
-bestaan. Korf vult precies dat gat — zonder aan de kooi of aan git-als-waarheid
+bestaan. Boomhuis vult precies dat gat — zonder aan de kooi of aan git-als-waarheid
 te tornen.
 
 ## Kernprincipes
@@ -43,10 +44,12 @@ gebouwd; dit loopt over maanden en elke fase is los waardevol.
 
 ## Relatie tot andere repo's
 
-- **habitat** — voert uit; korf raakt de kooi niet aan. Notificaties haken in op
+- **habitat** — voert uit; boomhuis raakt de kooi niet aan. Notificaties haken in op
   `dispatch.sh`-uitkomsten, orchestrator-zijde.
-- **handbook** — kennisnaaf; korf wordt via een OpenSpec-change in het handbook
-  aangemeld in `inventory/repos.json`.
+- **handbook** — kennisnaaf; boomhuis wordt via een OpenSpec-change in het
+  handbook aangemeld in `inventory/repos.json`.
+- **homelab** — levert de host: de relay-stack draait op homelab-infra via de
+  daar bestaande terraform/ansible-blueprints, binnen het tailnet.
 - **buzz (upstream)** — wij pinnen op image-SHA en gebruiken alleen stabiele
   features (relay, kanalen, threads, DM, buzz-cli); workflow-triggers zijn
   upstream nog in aanbouw en dragen hier geen verantwoordelijkheid.

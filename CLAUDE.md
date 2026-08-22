@@ -1,13 +1,13 @@
-# Werken in de Korf-repo
+# Werken in de Boomhuis-repo
 
-Dit is het conventie-bestand voor wie in *deze* repo (`MWest2020/korf`) werkt.
+Dit is het conventie-bestand voor wie in *deze* repo (`MWest2020/boomhuis`) werkt.
 Mandaten voor chat-native agents zijn iets anders en landen per agent onder
 `agents/` (change `add-chat-native-agents`).
 
-## Wat Korf is
+## Wat Boomhuis is
 
 De communicatielaag van het ecosysteem: een zelf-gehoste buzz-relay plus de
-specs voor kanalen, identiteiten, notificaties en chat-native agents. Korf voert
+specs voor kanalen, identiteiten, notificaties en chat-native agents. Boomhuis voert
 zelf niets uit — executie is habitat, kennis is handbook.
 
 ## Werkwijze

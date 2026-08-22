@@ -34,14 +34,28 @@ Workflow-triggers en git-hosting zijn upstream nog in aanbouw. Mitigatie:
 Een open relay op het thuisnetwerk is een aanvalsoppervlak zonder enige
 opbrengst voor een single-user platform.
 
+## Tailnet-only (besloten door Mark)
+
+De relay hangt uitsluitend aan het Tailscale-net: geen poort naar het publieke
+internet, geen publieke DNS. Gevolgen: (a) transport is al versleuteld
+(WireGuard), dus Caddy/Let's Encrypt is geen vereiste — hooguit een
+`tailscale serve`/cert als een client per se `wss://` met geldig certificaat
+wil, uit te zoeken bij apply; (b) mobiel bereik loopt via de Tailscale-app,
+zodat escalaties de telefoon halen zonder iets open te zetten; (c) verdediging
+in twee lagen: het tailnet bepaalt wie de relay überhaupt kan bereiken, closed
+mode bepaalt wie er mag spreken. Verder openzetten is een latere, aparte
+change.
+
 ## Compose, niet Kubernetes
 
 De relay draait via de upstream compose-bundle op een VM/LXC, níet op het
-K8s-cluster van habitat. Redenen: (a) de kooi en de communicatielaag delen dan
-geen failure-domain en geen namespace; (b) upstream onderhoudt de compose-route
-als eersteklas pad inclusief TLS; (c) saai en herstelbaar wint van "alles op
-k8s". Een latere verhuizing blijft mogelijk (het is Postgres+Redis+MinIO+één
-container). Buzz' eigen `buzz-backend-kubernetes` komt pas in beeld bij fase 2+
+K8s-cluster van habitat. Het kán technisch prima op k8s — het is
+Postgres+Redis+MinIO+één container — maar bewust niet: (a) de kooi en de
+communicatielaag delen dan geen failure-domain en geen namespace (valt het
+cluster, dan wil je juist kunnen praten over waarom); (b) upstream onderhoudt
+de compose-route als eersteklas pad; (c) saai en herstelbaar wint van "alles op
+k8s". Provisioning en configuratie hergebruiken de terraform/ansible-blueprints
+uit de homelab-repo. Een latere verhuizing naar k8s blijft mogelijk. Buzz' eigen `buzz-backend-kubernetes` komt pas in beeld bij fase 2+
 en dan alleen voor agents, niet voor de relay.
 
 ## Wat mag verloren gaan

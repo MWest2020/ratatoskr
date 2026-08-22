@@ -27,7 +27,7 @@ Geen K8s-kooi, wél dezelfde lat:
 1. **Geen git-push-credentials.** Het deliverable is tekst in kanalen; wil een
    uitkomst code worden, dan gaat die via de normale route (OpenSpec-change →
    habitat-run).
-2. **Mandaat buiten bereik.** Het mandaat leeft in korf; de agent-host heeft er
+2. **Mandaat buiten bereik.** Het mandaat leeft in boomhuis; de agent-host heeft er
    hooguit een read-only kopie van. Een agent die zijn eigen mandaat, sleutels
    of relay-config kan wijzigen is een hard-fail, net als de kooi-regel in
    habitat.
