@@ -7,16 +7,19 @@ elke volgende fase alleen nog aansluit en niets meer hoeft te funderen.
 
 ## What Changes
 
-- **`deploy/`**: een dunne wrapper om de upstream compose-bundle
-  (`deploy/compose/` in block/buzz): onze `.env` (SOPS+age), gepinde
-  `BUZZ_IMAGE`, tailnet-only binding, en een gedocumenteerde start/stop/backup.
-  Geen fork, geen eigen compose tenzij upstream tekortschiet. Host-provisioning
-  en -configuratie via de bestaande homelab-blueprints (terraform/ansible).
+- **Deploy-artefacten in de homelab-repo** (niet hier), conform het bestaande
+  vijflagenpatroon daar: `terraform/buzz-relay/` (vm 109, .60, template 9001),
+  `/32`-route, `inventory/buzz-relay-hosts.yml`, `docker/buzz-relay/`
+  (upstream compose-bundle, gepinde `BUZZ_IMAGE`, tailnet-only binding, geen
+  Caddy) en `playbooks/deploy-buzz-relay.yml`. Geen fork van upstream; geen
+  tweede deploy-conventie. Zie `design.md`.
 - **`identities.yml`**: de publieke registry — per identiteit de npub, de rol
   (`mens` | `orchestrator` | latere agentrollen), en de status
   (`actief` | `ingetrokken`).
-- **`secrets/`**: SOPS+age-versleutelde privésleutels en relay-secrets
-  (`BUZZ_RELAY_PRIVATE_KEY`, `BUZZ_GIT_HOOK_HMAC_SECRET`, db/S3-credentials).
+- **`secrets/`**: SOPS+age-versleutelde Nostr-privésleutels van de
+  identiteiten. Infra-secrets (`BUZZ_RELAY_PRIVATE_KEY`,
+  `BUZZ_GIT_HOOK_HMAC_SECRET`, db/S3-credentials) volgen het homelab-patroon:
+  `.env` 0600 op de host, nooit in git.
 - **`docs/how-to/relay-herstel.md`**: backup en restore, inclusief wat verloren
   mag gaan (berichten zijn spiegel) en wat nooit (relay-identiteit, sleutels).
 

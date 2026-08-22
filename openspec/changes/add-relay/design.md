@@ -58,6 +58,40 @@ k8s". Provisioning en configuratie hergebruiken de terraform/ansible-blueprints
 uit de homelab-repo. Een latere verhuizing naar k8s blijft mogelijk. Buzz' eigen `buzz-backend-kubernetes` komt pas in beeld bij fase 2+
 en dan alleen voor agents, niet voor de relay.
 
+## Deploy volgt het homelab-patroon (besloten na blueprint-verkenning)
+
+De homelab-repo heeft een bewezen vijflagenpatroon voor precies dit:
+`terraform/<stack>/` (kopie van `nginx-lab`, dé referentie) → `/32`-route in
+`inventory/group_vars/hypervisors.yml` → `inventory/<stack>-hosts.yml` →
+`docker/<stack>/` → `playbooks/deploy-<stack>.yml` (Docker-install + `/opt/<stack>`
++ `.env`-seeding zit al in `deploy-openwoo-acc.yml` om te kopiëren). Daarom
+leven de **deploy-artefacten in de homelab-repo** (stacknaam `buzz-relay`,
+vm 109, 192.168.178.60 — eerstvolgende vrije slots) en houdt boomhuis de spec,
+de kanaal-/identiteitsregistry en de buzz-eigen configuratie. Eén
+deploy-conventie per platform; geen tweede optuigen.
+
+Consequenties uit de verkenning:
+
+- **Template 9001 eerst.** Het standaard-template (9000) is 2c/2GB/20GB; de
+  stack (Postgres+Redis+MinIO+relay) wil ~4GB+/30GB+. Hardware-overrides in
+  terraform zijn in de homelab-repo verboden (bpg-provider hangt op qmset);
+  de sanctionele route is een groter template bouwen per
+  `docs/how-to/07-vm-provisioning-stack.md`.
+- **Tailnet-bereik via een `/32`-subnetroute** op de proxmox-laptop, zoals alle
+  .50-.59-VM's — géén Tailscale in de VM als eerste stap. Poorten binden op het
+  LAN-IP, UFW deny-in conform `configure-firewall.yml`. Terugvaloptie als
+  clients per se `wss://` met geldig certificaat willen: de repo-lokale
+  tailscale-role (`claude-lxc-iac/ansible/roles/tailscale/`) in de VM +
+  MagicDNS-naam; dat is een taak-beslissing, geen spec-wijziging.
+- **Secrets in twee regimes, elk native.** Infra-secrets (Postgres/MinIO/relay-
+  env) volgen het homelab-patroon: `env.example` in git, echte `.env` 0600 op
+  de host, desnoods on-host gegenereerd (`openssl rand`) — de homelab-repo
+  gebruikt geen SOPS. Identiteits-privésleutels (Nostr) zijn boomhuis-domein en
+  blijven SOPS+age in deze repo, zoals habitat dat al doet.
+- **K8s was een reëel alternatief** (het cluster heeft al CNPG-Postgres, MinIO
+  en de Tailscale-operator), maar de vertaling compose→manifests is het dure
+  deel en het failure-domain-argument blijft staan. Bewust VM.
+
 ## Wat mag verloren gaan
 
 Berichten zijn coördinatie, geen waarheid. Backup-doel: de relay-identiteit en

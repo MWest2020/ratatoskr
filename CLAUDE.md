@@ -24,8 +24,10 @@ zelf niets uit — executie is habitat, kennis is handbook.
 - **De kooi blijft dicht.** Geen relay-egress, geen buzz-sleutels en geen
   `.mcp.json` voor habitat-workers zonder een expliciet, door Mark goedgekeurd
   amendement op habitats `worker-execution`-spec.
-- **Privésleutels** (Nostr, relay, HMAC, db/S3) staan alleen SOPS+age-versleuteld
-  in git. Publieke sleutels horen in `identities.yml`.
+- **Geen secret leesbaar in git.** Nostr-privésleutels van identiteiten: alleen
+  SOPS+age-versleuteld in deze repo. Infra-secrets (relay, HMAC, db/S3): alleen
+  als `.env` op de host, conform het homelab-patroon. Publieke sleutels horen
+  in `identities.yml`.
 - Een agent wijzigt nooit zijn eigen mandaat, sleutels of de relay-configuratie.
 
 ## Conventies

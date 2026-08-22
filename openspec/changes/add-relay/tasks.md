@@ -1,20 +1,44 @@
 # Tasks: add-relay
 
-- [ ] 1.1 Hostkeuze op homelab-infra via de bestaande blueprints (hergebruik
-      docker-host of nieuwe VM/LXC via terraform); host joint het tailnet
-- [ ] 1.2 `deploy/`: upstream compose-bundle overnemen; `BUZZ_IMAGE` pinnen op een
-      concrete SHA/semver; `.env.example` invullen zonder secrets
-- [ ] 1.3 `secrets/`: age-key aanmaken/hergebruiken; relay-privésleutel,
-      HMAC-secret en db/S3-credentials SOPS-versleuteld vastleggen
-- [ ] 1.4 Relay starten in closed mode (`RELAY_OWNER_PUBKEY`), uitsluitend aan
-      het tailnet gebonden; `wss://`/cert-vraag uitzoeken (tailscale serve)
-- [ ] 1.5 `identities.yml`: keypairs voor Mark (mens) en orchestrator (agent);
-      npubs in de registry, privésleutels in `secrets/`
-- [ ] 1.6 Clients aanmelden: desktop en mobiel voor Mark (telefoon via de
+> Deploy-artefacten landen in de homelab-repo (eigen werkwijze dáár, incl.
+> CHANGELOG-entry en `terraform fmt`); boomhuis houdt spec, registry en
+> identiteitssleutels. Hostplan: stack `buzz-relay`, vm 109, 192.168.178.60.
+
+Benodigd van Mark (blokkerend, alleen hij kan dit leveren):
+
+- [ ] 0.1 Proxmox API-token (`TF_VAR_proxmox_api_token`, staat in `~/homelab/.env`
+      op jumpy) of Mark draait de `terraform apply` zelf
+- [ ] 0.2 Bevestiging vm-id/IP (109/.60) en go voor `terraform apply`
+      (homelab-CLAUDE.md eist expliciete bevestiging)
+- [ ] 0.3 Eénmalige route-goedkeuring `192.168.178.60/32` in de
+      Tailscale-adminconsole
+
+Uitvoering:
+
+- [ ] 1.1 Template 9001 bouwen (groter dan 9000: ≥2c/4GB/30GB) per
+      `docs/how-to/07-vm-provisioning-stack.md` in de homelab-repo
+- [ ] 1.2 `terraform/buzz-relay/` (kopie nginx-lab-stijl, clone van 9001,
+      vm 109, .60); `terraform fmt`; plan → apply na 0.2
+- [ ] 1.3 `/32`-route toevoegen aan `group_vars/hypervisors.yml` +
+      `configure-tailscale-routes.yml` draaien; goedkeuren (0.3)
+- [ ] 1.4 `docker/buzz-relay/` op basis van upstream `deploy/compose/`:
+      `BUZZ_IMAGE` gepind op concrete SHA/semver, poorten alleen op het LAN-IP,
+      geen Caddy; `env.example` zonder echte waarden
+- [ ] 1.5 `playbooks/deploy-buzz-relay.yml` (kopie deploy-openwoo-acc.yml
+      zonder certbot/cloudflare) + `inventory/buzz-relay-hosts.yml`; UFW
+      deny-in, alleen 22 + relay-poort vanaf beheer/tailnet-route
+- [ ] 1.6 `.env` op de host vullen (relay-sleutel, HMAC, db/S3); relay starten
+      in closed mode (`RELAY_OWNER_PUBKEY`)
+- [ ] 1.7 `identities.yml` in boomhuis: keypairs voor Mark (mens) en
+      orchestrator (agent); npubs in de registry, privésleutels SOPS+age in
+      `secrets/`
+- [ ] 1.8 Clients aanmelden: desktop en mobiel voor Mark (telefoon via de
       Tailscale-app); `buzz-cli` werkend als orchestrator-identiteit vanaf de
-      orchestrator-host
-- [ ] 1.7 Live smoke vóór afronding: bericht Mark↔orchestrator in beide
-      richtingen; vreemde pubkey aantoonbaar geweigerd; relay-herstart zonder
-      identiteitsverlies
-- [ ] 1.8 `docs/how-to/relay-herstel.md`: backup/restore beschreven en één keer
-      echt geoefend
+      orchestrator-host; als clients `wss://` afdwingen: tailscale-role in de
+      VM + MagicDNS als terugvaloptie (zie design.md)
+- [ ] 1.9 Live smoke vóór afronding: bericht Mark↔orchestrator in beide
+      richtingen; vreemde pubkey geweigerd; van buiten het tailnet geen
+      verbinding; relay-herstart zonder identiteitsverlies
+- [ ] 1.10 `docs/how-to/relay-herstel.md`: backup (Proxmox vzdump conform
+      homelab-runbook + Postgres-dump) en restore beschreven en één keer
+      geoefend

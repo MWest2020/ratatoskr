@@ -40,16 +40,26 @@ verder openzetten vergt een eigen OpenSpec-change.
 - **THEN** is dat zichtbaar als één gecommitte pin-wijziging, herleidbaar tot
   wie/wanneer/waarom
 
-### Requirement: Secrets alleen via SOPS+age
+### Requirement: Geen secret ooit leesbaar in git
 
-Relay-privésleutel, HMAC-secret en db/S3-credentials SHALL uitsluitend
-SOPS+age-versleuteld in de repo staan en pas bij deploy ontsleuteld worden; een
-kloon van de repo bevat geen bruikbaar secret.
+Secrets SHALL nooit leesbaar in enige repo staan: infra-secrets
+(relay-privésleutel, HMAC-secret, db/S3-credentials) leven als `.env` (0600)
+alleen op de host conform het homelab-patroon met een gecommitte
+`env.example`; identiteits-privésleutels (Nostr) staan uitsluitend
+SOPS+age-versleuteld in de boomhuis-repo.
 
 #### Scenario: Kloon zonder buit
 
-- **WHEN** iemand de repo kloont zonder de age-key
+- **WHEN** iemand de boomhuis- of homelab-repo kloont zonder host-toegang en
+  zonder de age-key
 - **THEN** is geen enkel secret bruikbaar en start de stack niet namens ons
+
+#### Scenario: Herbouw van de host
+
+- **WHEN** de VM opnieuw wordt uitgerold
+- **THEN** seedt het playbook `.env` vanaf `env.example` en vult Mark (of een
+  gedocumenteerd generatie-stap) de echte waarden; de relay-identiteit komt uit
+  backup, nooit vers
 
 ### Requirement: Herstelbaar, met expliciet toegestaan verlies
 
