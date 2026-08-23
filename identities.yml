@@ -1,0 +1,17 @@
+# Publieke identiteitsregistry van het boomhuis (spec: identity-registry).
+# Eén keypair per identiteit; toelating tot de relay is herleidbaar tot een
+# entry hier. Privésleutels: secrets/identities.yaml (SOPS+age, age-key op
+# agent-lxc: ~/.config/sops/age/keys.txt — backup vereist).
+identities:
+  mark:
+    rol: mens
+    status: actief
+    pubkey_hex: 821de7df04297a3a5e53c1ae423456b32826505a1caef5fe0979a4940720c2db
+    npub: npub1sgw70hcy99ar5hjncxhyydzkkv5zv5z6rjh0tlsf0xjfgpeqctdssvewu0
+    aangemaakt: 2026-08-23
+  orchestrator:
+    rol: orchestrator
+    status: actief
+    pubkey_hex: 27308f27bfdac7d051d6c79cbacffcf20eccc54abccb7495db68a58f25d083f0
+    npub: npub1yucg7falmtraq5wkc7wt4nlu7g8ve322hn9hf9wmdzjc7fwss0cq5gl3hs
+    aangemaakt: 2026-08-23
