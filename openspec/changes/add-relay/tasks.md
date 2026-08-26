@@ -10,7 +10,7 @@ Benodigd van Mark (blokkerend, alleen hij kan dit leveren):
       op jumpy) of Mark draait de `terraform apply` zelf
 - [x] 0.2 Bevestiging vm-id/IP (109/.60) en go voor `terraform apply`
       (homelab-CLAUDE.md eist expliciete bevestiging)
-- [ ] 0.3 Eénmalige route-goedkeuring `192.168.178.60/32` in de
+- [x] 0.3 Eénmalige route-goedkeuring `192.168.178.60/32` in de
       Tailscale-adminconsole
 
 Uitvoering:
@@ -19,7 +19,7 @@ Uitvoering:
       `docs/how-to/07-vm-provisioning-stack.md` in de homelab-repo
 - [x] 1.2 `terraform/buzz-relay/` (kopie nginx-lab-stijl, clone van 9002 + cpu:host,
       vm 109, .60); `terraform fmt`; plan → apply na 0.2
-- [ ] 1.3 `/32`-route toevoegen aan `group_vars/hypervisors.yml` +
+- [x] 1.3 `/32`-route toevoegen aan `group_vars/hypervisors.yml` +
       `configure-tailscale-routes.yml` draaien; goedkeuren (0.3)
 - [x] 1.4 `docker/buzz-relay/` op basis van upstream `deploy/compose/`:
       `BUZZ_IMAGE` gepind op concrete SHA/semver, poorten alleen op het LAN-IP,
@@ -32,7 +32,7 @@ Uitvoering:
 - [x] 1.7 `identities.yml` in boomhuis: keypairs voor Mark (mens) en
       orchestrator (agent); npubs in de registry, privésleutels SOPS+age in
       `secrets/`
-- [ ] 1.8 Clients aanmelden: desktop en mobiel voor Mark (telefoon via de
+- [ ] 1.8 Clients aanmelden — mobiel BEWEZEN (relay bereikbaar via tailnet op de telefoon, 2026-08-26); desktop-client en buzz-cli voor de orchestrator nog open (telefoon via de
       Tailscale-app); `buzz-cli` werkend als orchestrator-identiteit vanaf de
       orchestrator-host; als clients `wss://` afdwingen: tailscale-role in de
       VM + MagicDNS als terugvaloptie (zie design.md)
