@@ -5,3 +5,5 @@
 .env.*
 !.env.example
 run-logs/
+secrets/*plain*
+secrets/tmp*
