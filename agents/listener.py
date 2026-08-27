@@ -117,8 +117,11 @@ def get_messages(cid, nsec):
     return sorted(msgs, key=lambda m: m.get("created_at", 0))
 
 
-def send(cid, content, nsec):
-    subprocess.run([BUZZ, "messages", "send", "--channel", cid, "--content", "-"],
+def send(cid, content, nsec, self_npub):
+    # Eigen npub als --mention: dat staat willekeurige @woorden in het antwoord
+    # toe als presentation-only (buzz weigert anders onbekende @mentions).
+    subprocess.run([BUZZ, "messages", "send", "--channel", cid, "--content", "-",
+                    "--mention", self_npub],
                    env=buzz_env(nsec), input=content, capture_output=True, text=True, timeout=25)
 
 
@@ -175,7 +178,7 @@ def main():
                         ans = "(time-out — vraag te zwaar voor een chatbeurt)"
                     except Exception as e:
                         ans = f"(fout: {e})"
-                    send(cid, ans, cfg["nsec"])
+                    send(cid, ans, cfg["nsec"], cfg["npub"])
                     print(f"[listener] {handle} antwoordde in #{cname}", flush=True)
         time.sleep(POLL)
 
