@@ -29,8 +29,11 @@ CHANNEL_IDS = {cid for _, cid in CHANNELS}
 NAMES = {
     "821de7df04297a3a5e53c1ae423456b32826505a1caef5fe0979a4940720c2db": "mark",
     "27308f27bfdac7d051d6c79cbacffcf20eccc54abccb7495db68a58f25d083f0": "orchestrator",
+    "378aaf0fca61133c14bbd0e6a4ab26cea4cdffdeb7d2513fdc458b1b9d864255": "assistent",
 }
 ME = "821de7df04297a3a5e53c1ae423456b32826505a1caef5fe0979a4940720c2db"
+# handle -> pubkey, voor @mention-resolutie bij het posten
+HANDLES = {"assistent": "378aaf0fca61133c14bbd0e6a4ab26cea4cdffdeb7d2513fdc458b1b9d864255"}
 
 
 def buzz(args, stdin=None, timeout=25):
@@ -101,9 +104,13 @@ class H(BaseHTTPRequestHandler):
             return self._send(400, json.dumps({"error": "onbekend kanaal"}))
         if not content:
             return self._send(400, json.dumps({"error": "leeg bericht"}))
+        # @handle -> pubkey injecteren zodat buzz de mention accepteert
+        args = ["messages", "send", "--channel", cid, "--content", "-"]
+        for handle, pub in HANDLES.items():
+            if ("@" + handle).lower() in content.lower():
+                args += ["--mention", pub]
         # content via stdin (--content -) om shell/escaping-problemen te vermijden
-        rc, out, err = buzz(["messages", "send", "--channel", cid,
-                             "--content", "-"], stdin=content)
+        rc, out, err = buzz(args, stdin=content)
         if rc != 0:
             return self._send(502, json.dumps({"error": err.strip()[:200]}))
         return self._send(200, json.dumps({"ok": True}))
