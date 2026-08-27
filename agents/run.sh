@@ -11,7 +11,7 @@ export CLAUDE_BIN="${CLAUDE_BIN:-$(command -v claude)}"
 
 # nsecs exporteren: NSEC_<HANDLE> voor elke agent in agents.yml
 dec="$(sops -d secrets/identities.yaml)"
-for h in $(python3 -c "import yaml,sys; print(' '.join(yaml.safe_load(open('agents/agents.yml'))['agents']))"); do
+for h in $(python3 -c "import yaml; print(' '.join(yaml.safe_load(open('agents/agents.yml'))['run']))"); do
   nsec="$(printf '%s' "$dec" | awk "/  $h:/{f=1} f&&/nsec:/{print \$2; exit}")"
   export "NSEC_${h^^}=$nsec"
 done

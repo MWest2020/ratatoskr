@@ -1,18 +1,24 @@
 #!/usr/bin/env python3
 """Boomhuis chat-agents — multi-agent listener rond claude -p (sub-first).
 
-Config-gedreven: rollen/kanalen/systemprompts in agents.yml, pubkeys in
-identities.yml, privésleutels via env NSEC_<HANDLE> (de launcher haalt ze uit
-SOPS). Per @handle-mention in een gescoped kanaal draait claude -p met de
-systemprompt van die agent en post het antwoord terug, getekend met de
-sleutel van die agent.
+De agent-DEFINITIES (systemprompt/chat-facet, kanalen, npub) komen uit de
+HANDBOOK (single source of truth): docs/agents/<naam>.md, opgehaald via raw.
+`agents.yml` zegt alleen WELKE agents deze instantie draait; privésleutels
+komen via env NSEC_<HANDLE> (uit SOPS).
+
+Guardrail: een agent wordt alleen gedraaid als (a) z'n definitie uit de
+handbook geladen kan worden en (b) de npub daarin overeenkomt met de identiteit
+in identities.yml. Geen bron → geen spawn (fail-closed). De closed relay is de
+achtervang op identiteitsniveau.
 
 Invariant: conversatie-only. Geen shell/repo/dispatch vanuit hier.
 """
 import json
 import os
+import re
 import subprocess
 import time
+import urllib.request
 
 import yaml
 
@@ -26,28 +32,69 @@ MAX_CTX = 8
 MAX_TURN_S = 150
 
 
+def load_yaml(path):
+    return yaml.safe_load(open(path))
+
+
 def load_channels():
-    d = yaml.safe_load(open(os.path.join(ROOT, "channels.yml")))
-    return {n: c["id"] for n, c in d["channels"].items()}
+    return {n: c["id"] for n, c in load_yaml(os.path.join(ROOT, "channels.yml"))["channels"].items()}
 
 
-def load_identities():
-    d = yaml.safe_load(open(os.path.join(ROOT, "identities.yml")))
-    return {h: v["pubkey_hex"] for h, v in d["identities"].items()}
+def load_identity_npubs():
+    d = load_yaml(os.path.join(ROOT, "identities.yml"))["identities"]
+    return {h: v.get("npub") for h, v in d.items()}, {v["pubkey_hex"]: h for h, v in d.items()}
 
 
-def load_agents():
-    d = yaml.safe_load(open(os.path.join(HERE, "agents.yml")))
-    return d["agents"]
+def fetch_def(base, handle):
+    """Haal de canonieke definitie uit de handbook. Return {npub, channels,
+    system} of None bij falen (fail-closed)."""
+    url = f"{base}/{handle}.md"
+    try:
+        with urllib.request.urlopen(url, timeout=15) as r:
+            s = r.read().decode("utf-8")
+    except Exception as e:
+        print(f"[listener] def {handle} niet te laden: {e}", flush=True)
+        return None
+    m = re.match(r"^---\n(.*?)\n---", s, re.S)
+    if not m:
+        return None
+    fm = yaml.safe_load(m.group(1)).get("agent", {})
+    chat = fm.get("chat") or {}
+    channels = chat.get("channels", [])
+    # systemprompt = de blockquote onder '## Chat-facet'
+    body = s[m.end():]
+    cf = re.search(r"##\s*Chat-facet.*?\n(.*?)(?:\n##\s|\Z)", body, re.S)
+    system = ""
+    if cf:
+        system = "\n".join(
+            ln[2:] if ln.startswith("> ") else ln[1:] if ln.startswith(">") else ""
+            for ln in cf.group(1).splitlines() if ln.startswith(">")
+        ).strip()
+    return {"npub": fm.get("npub"), "channels": channels, "system": system}
 
 
-CHANNELS = load_channels()                 # name -> id
-PUBKEYS = load_identities()                # handle -> pubkey
-NAMES = {pub: h for h, pub in PUBKEYS.items()}  # pubkey -> naam
-AGENTS = load_agents()                     # handle -> {rol, channels, system}
-# handle -> nsec uit env (launcher exporteert NSEC_<HANDLE>)
-NSEC = {h: os.environ.get("NSEC_" + h.upper(), "") for h in AGENTS}
-AGENT_PUBS = {PUBKEYS.get(h) for h in AGENTS}
+CHANNELS = load_channels()
+NPUBS, PUB2NAME = load_identity_npubs()
+CFG = load_yaml(os.path.join(HERE, "agents.yml"))
+BASE = CFG["registry_base"]
+
+# Bouw de actieve agent-set: def uit handbook + nsec uit env + npub-match.
+AGENTS = {}
+for handle in CFG.get("run", []):
+    nsec = os.environ.get("NSEC_" + handle.upper(), "")
+    if not nsec:
+        print(f"[listener] {handle}: geen NSEC_ in env — overslaan", flush=True)
+        continue
+    d = fetch_def(BASE, handle)
+    if not d:
+        print(f"[listener] {handle}: geen handbook-definitie — NIET gespawnd", flush=True)
+        continue
+    if d["npub"] != NPUBS.get(handle):
+        print(f"[listener] {handle}: npub wijkt af van registry — NIET gespawnd", flush=True)
+        continue
+    AGENTS[handle] = {**d, "nsec": nsec}
+
+AGENT_PUBS = set()  # gevuld met pubkeys van agents (uit identities via naam)
 
 
 def buzz_env(nsec):
@@ -72,8 +119,7 @@ def get_messages(cid, nsec):
 
 def send(cid, content, nsec):
     subprocess.run([BUZZ, "messages", "send", "--channel", cid, "--content", "-"],
-                   env=buzz_env(nsec), input=content, capture_output=True,
-                   text=True, timeout=25)
+                   env=buzz_env(nsec), input=content, capture_output=True, text=True, timeout=25)
 
 
 def ask_claude(system, prompt):
@@ -85,25 +131,26 @@ def ask_claude(system, prompt):
 def build_prompt(handle, chan, recent, trigger):
     lines = [f"Kanaal #{chan}. Recente berichten:"]
     for m in recent:
-        who = NAMES.get(m.get("pubkey", ""), "iemand")
+        who = PUB2NAME.get(m.get("pubkey", ""), "iemand")
         lines.append(f"{who}: {m.get('content','')}")
     lines.append("")
-    lines.append(f"Je bent '{handle}', genoemd met @{handle}. Reageer op: "
-                 f"{trigger!r}")
+    lines.append(f"Je bent '{handle}', genoemd met @{handle}. Reageer op: {trigger!r}")
     return "\n".join(lines)
 
 
 def main():
-    # gebruik één agent-nsec om te lezen (lezen mag elk lid)
-    read_nsec = next((n for n in NSEC.values() if n), None)
-    if not read_nsec:
-        raise SystemExit("geen agent-nsec in env (NSEC_<HANDLE>)")
+    if not AGENTS:
+        raise SystemExit("geen agents gespawnd (geen bron/nsec/npub-match)")
+    read_nsec = next(iter(AGENTS.values()))["nsec"]
+    # pubkeys van agents, om niet op agents te reageren
+    name2pub = {h: p for p, h in PUB2NAME.items()}
+    for h in AGENTS:
+        AGENT_PUBS.add(name2pub.get(h))
     seen = set()
     for cid in CHANNELS.values():
         for m in get_messages(cid, read_nsec):
             seen.add(m.get("id"))
-    active = [h for h in AGENTS if NSEC.get(h)]
-    print(f"[listener] actief; agents: {', '.join(active)}", flush=True)
+    print(f"[listener] actief; agents uit handbook: {', '.join(AGENTS)}", flush=True)
     while True:
         for cname, cid in CHANNELS.items():
             msgs = get_messages(cid, read_nsec)
@@ -113,26 +160,22 @@ def main():
                     continue
                 seen.add(mid)
                 if m.get("pubkey") in AGENT_PUBS:
-                    continue  # niet op agents (incl. jezelf) reageren
+                    continue
                 content = m.get("content", "")
                 for handle, cfg in AGENTS.items():
-                    if not NSEC.get(handle):
-                        continue
-                    if cname not in cfg.get("channels", []):
+                    if cname not in cfg["channels"]:
                         continue
                     if ("@" + handle).lower() not in content.lower():
                         continue
-                    print(f"[listener] @{handle} in #{cname}: {content[:50]}",
-                          flush=True)
+                    print(f"[listener] @{handle} in #{cname}: {content[:50]}", flush=True)
                     recent = msgs[max(0, i - MAX_CTX):i + 1]
                     try:
-                        ans = ask_claude(cfg["system"],
-                                         build_prompt(handle, cname, recent, content))
+                        ans = ask_claude(cfg["system"], build_prompt(handle, cname, recent, content))
                     except subprocess.TimeoutExpired:
                         ans = "(time-out — vraag te zwaar voor een chatbeurt)"
                     except Exception as e:
                         ans = f"(fout: {e})"
-                    send(cid, ans, NSEC[handle])
+                    send(cid, ans, cfg["nsec"])
                     print(f"[listener] {handle} antwoordde in #{cname}", flush=True)
         time.sleep(POLL)
 
