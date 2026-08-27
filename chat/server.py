@@ -35,6 +35,13 @@ ME = "821de7df04297a3a5e53c1ae423456b32826505a1caef5fe0979a4940720c2db"
 # handle -> pubkey, voor @mention-resolutie bij het posten
 HANDLES = {"assistent": "378aaf0fca61133c14bbd0e6a4ab26cea4cdffdeb7d2513fdc458b1b9d864255"}
 
+# Bekende agents (uitbreidbaar: kopie met eigen identiteit + systemprompt).
+AGENTS = [
+    {"handle": "assistent",
+     "pubkey": "378aaf0fca61133c14bbd0e6a4ab26cea4cdffdeb7d2513fdc458b1b9d864255",
+     "rol": "algemene chat-agent"},
+]
+
 
 def buzz(args, stdin=None, timeout=25):
     p = subprocess.run([BUZZ, *args], capture_output=True, text=True,
@@ -44,6 +51,28 @@ def buzz(args, stdin=None, timeout=25):
 
 def author(pubkey):
     return NAMES.get(pubkey) or ("npub:" + pubkey[:8])
+
+
+def channel_member_pubkeys(cid):
+    rc, out, err = buzz(["channels", "members", "--channel", cid])
+    if rc != 0:
+        return {}
+    try:
+        d = json.loads(out)
+    except Exception:
+        return {}
+    m = d if isinstance(d, list) else d.get("members", [])
+    return {x.get("pubkey"): x.get("role") for x in m}
+
+
+def agent_roster():
+    """Per agent: in welke kanalen (naam) hij zit, met rol. Data uit buzz."""
+    membership = {name: channel_member_pubkeys(cid) for name, cid in CHANNELS}
+    roster = []
+    for a in AGENTS:
+        chans = [name for name, mem in membership.items() if a["pubkey"] in mem]
+        roster.append({"handle": a["handle"], "rol": a["rol"], "channels": chans})
+    return roster
 
 
 class H(BaseHTTPRequestHandler):
@@ -67,6 +96,8 @@ class H(BaseHTTPRequestHandler):
         if u.path == "/api/channels":
             return self._send(200, json.dumps(
                 [{"name": n, "id": i} for n, i in CHANNELS]))
+        if u.path == "/api/agents":
+            return self._send(200, json.dumps({"agents": agent_roster()}))
         if u.path == "/api/messages":
             cid = (parse_qs(u.query).get("channel") or [""])[0]
             if cid not in CHANNEL_IDS:

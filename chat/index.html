@@ -71,6 +71,26 @@
   .author-mark{color:var(--accent)}
   .author-orchestrator{color:var(--accent2)}
   .empty{color:var(--muted); text-align:center; margin:auto; font-size:.9rem}
+  /* agents-lade */
+  #agentsDrawer{position:absolute; inset:0; background:rgba(0,0,0,.55); z-index:20;
+    display:none; opacity:0; transition:opacity .15s}
+  #agentsDrawer.open{display:block; opacity:1}
+  #agentsDrawer .sheet{position:absolute; top:0; right:0; bottom:0; left:auto;
+    width:min(82vw,340px); background:var(--panel); border-left:1px solid var(--line);
+    border-right:none; transform:translateX(100%)}
+  #agentsDrawer.open .sheet{transform:none}
+  .agent{background:var(--panel2); border:1px solid var(--line); border-radius:12px;
+    padding:.6rem .7rem; margin:.35rem .3rem}
+  .agent .nm{font-weight:700; color:var(--accent2)}
+  .agent .nm::before{content:"@"}
+  .agent .rol{color:var(--muted); font-size:.8rem; margin:.1rem 0 .45rem}
+  .agent .chips{display:flex; flex-wrap:wrap; gap:.35rem}
+  .agent .chip{font-family:"IBM Plex Mono",monospace; font-size:.72rem; cursor:pointer;
+    background:var(--other); border:1px solid var(--line); color:var(--ink);
+    border-radius:999px; padding:.15rem .55rem}
+  .agent .chip::before{content:"#"; color:var(--accent)}
+  .agent .none{color:var(--muted); font-size:.78rem; font-style:italic}
+  .agenthint{color:var(--muted); font-size:.78rem; padding:.7rem; line-height:1.4}
   /* invoer */
   form{
     flex:0 0 auto; display:flex; gap:.5rem; padding:.6rem .7rem;
@@ -96,12 +116,20 @@
   <header>
     <span class="bee">🐝</span>
     <h1><span class="hash">#</span><span id="chanName">runs</span></h1>
+    <button id="agentsBtn">🤖 Agents</button>
     <button id="switch">Kanalen</button>
   </header>
 
   <div id="drawer"><div class="sheet">
     <div class="title">Boomhuis · kanalen</div>
     <div id="chanList"></div>
+  </div></div>
+
+  <div id="agentsDrawer"><div class="sheet">
+    <div class="title">Agents · wie zit waar</div>
+    <div id="agentList"></div>
+    <div class="agenthint">Noem een agent met <b>@naam</b> in een kanaal om te praten.
+      Meer agents (architect, marketing…) volgen — elk met eigen rol.</div>
   </div></div>
 
   <div id="msgs"><div class="empty">laden…</div></div>
@@ -172,8 +200,30 @@ async function send(text){
   return true;
 }
 
+async function loadAgents(){
+  let data;
+  try{ data=await (await fetch("/api/agents")).json(); }catch(e){ return; }
+  const wrap=$("#agentList"); wrap.innerHTML="";
+  for(const a of (data.agents||[])){
+    const el=document.createElement("div"); el.className="agent";
+    const chips=(a.channels||[]).length
+      ? `<div class="chips">${a.channels.map(c=>`<span class="chip" data-c="${c}">${c}</span>`).join("")}</div>`
+      : `<div class="none">in geen enkel kanaal</div>`;
+    el.innerHTML=`<div class="nm">${a.handle}</div><div class="rol">${a.rol||""}</div>${chips}`;
+    el.querySelectorAll(".chip").forEach(ch=>ch.onclick=()=>{
+      const c=channels.find(x=>x.name===ch.dataset.c);
+      if(c){ selectChannel(c); closeAgents();
+        input.value="@"+a.handle+" "; input.focus(); }
+    });
+    wrap.appendChild(el);
+  }
+}
+function closeAgents(){ $("#agentsDrawer").classList.remove("open"); }
+
 // UI-bindings
 $("#switch").onclick=()=>$("#drawer").classList.add("open");
+$("#agentsBtn").onclick=()=>{ loadAgents(); $("#agentsDrawer").classList.add("open"); };
+$("#agentsDrawer").onclick=e=>{ if(e.target.id==="agentsDrawer") closeAgents(); };
 $("#drawer").onclick=e=>{ if(e.target.id==="drawer") closeDrawer(); };
 function closeDrawer(){ $("#drawer").classList.remove("open"); }
 const input=$("#input");
