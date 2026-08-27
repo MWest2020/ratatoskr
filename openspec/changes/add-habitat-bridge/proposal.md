@@ -1,41 +1,50 @@
 ## Why
 
-Fase 1 maakt de relay een spiegel (habitat → buzz). De omgekeerde richting —
-een verzoek in `#bouw` dat tot een dispatch leidt, en reviewer-bevindingen die
-als thread-reply terugkomen zodat de herstelronde ("max 2 herstelrondes" uit het
-orchestrator-mandaat) eindelijk een mechanisme heeft — is de laatste stap naar
-de one-man army. Dit is bewust de láátste fase: hij raakt habitats hardste
-invariant en verdient maanden bewezen fase-0/1/2-betrouwbaarheid als fundament.
+Fase 0–2 maken de relay een spiegel (habitat → buzz) en zetten chat-agents in de
+kanalen. De omgekeerde richting is de laatste stap naar Marks eindbeeld — *"doel
+definiëren, de agents doen de rest"*: een doel in `#bouw` dat (na Marks
+bevestiging) tot een habitat-run leidt, en reviewer-/security-findings die als
+thread-reply terugkomen zodat de herstelronde ("max 2 herstelrondes" uit het
+orchestrator-mandaat) eindelijk een mechanisme heeft. Bewust de láátste fase: hij
+raakt habitats hardste invariant en steunt op bewezen fase-0/1/2-betrouwbaarheid.
 
-## What Changes (schets — vergt conversational design vóór propose-afronding)
+De kooi-kant is nu opgelost zónder de kooi te verzwakken: de habitat-change
+`amend-worker-task-ref` (proposal-first in habitat) staat een optionele
+git-pad-taakreferentie toe — de worker blijft doof voor alles buiten env + git.
+Deze boomhuis-change bouwt daarop voort.
 
-- **Kanaal → dispatch**: een verzoek of mention in `#bouw` leidt tot een
-  dispatch-voorstel dat Mark bevestigt; de orchestrator blijft de enige die
-  `dispatch.sh` aanroept. Geen autonome dispatch vanuit een bericht.
-- **Bevindingen terug**: reviewer-/security-findings (nu al gestructureerd in
-  `worker/schemas/*.json`, maar een doodlopende steeg) als thread-reply onder de
-  run-post, zodat een herstelronde een adres heeft.
-- **Eventueel** een taak-referentie de kooi in: niet via een socket maar als
-  git-ref (`HABITAT_TASK_REF` naar een taakbestand), zodat de worker doof
-  blijft voor alles buiten env + git.
+## What Changes
+
+Twee delen, oplopend in risico:
+
+- **Deel A — findings-terug (uitgaand, geen kooi-amendement nodig).** De
+  gestructureerde reviewer-/security-findings uit een run (`worker/schemas/*.json`)
+  worden orchestrator-zijde als thread-reply onder de run-post in `#runs`/`#review`
+  gepost. Nu een doodlopende steeg; hierna heeft een herstelronde een adres.
+- **Deel B — kanaal → dispatch (Mark poortwachter).** Een verzoek/mention in
+  `#bouw` leidt tot een **dispatch-voorstel** dat de orchestrator in de thread
+  zet; **niets dispatcht autonoom**. Ná Marks expliciete bevestiging schrijft de
+  orchestrator het taak/plan-bestand in de doelrepo (git, gecommit), en roept
+  `dispatch.sh` aan met `HABITAT_TASK_REF` naar dat pad. Vergt
+  `amend-worker-task-ref` (habitat) toegepast.
 
 ## Capabilities
 
 ### New Capabilities
 
 - `habitat-bridge`: de tweerichtingskoppeling kanaal ↔ dispatch, met Mark als
-  poortwachter.
+  poortwachter en git als transport.
 
 ### Modified Capabilities
 
-- Habitats `worker-execution`-spec ("geen andere invoerkanalen") vergt bij een
-  taak-referentie een amendement — dat amendement is een OpenSpec-change **in
-  habitat**, proposal-first aldaar, en hoort niet stiekem hier te gebeuren.
+<!-- Habitats worker-execution-amendement is een aparte change in habitat
+     (amend-worker-task-ref), proposal-first aldaar — niet hier. -->
 
 ## Impact
 
-- Raakt het orchestrator-mandaat (habitat) en mogelijk `entrypoint.sh`.
-- Verdicts en audit blijven onverkort git-native; de brug is gemak, geen
-  gezag.
-- Blokkerend: eerst conversational design met Mark; deze proposal is een
-  plaatshouder met richting, geen goedgekeurd ontwerp.
+- **Deel A** is orchestrator-zijde, buiten de kooi — te bouwen zodra fase 1 loopt.
+- **Deel B** hangt af van `amend-worker-task-ref` (habitat) én raakt het
+  orchestrator-mandaat (elke kanaal-dispatch is een merge-achtige actie → Mark
+  bevestigt). Verdicts en audit blijven git-native; de brug is gemak, geen gezag.
+- Chat-agents blijven conversatie-only: zij stéllen voor, de orchestrator (buiten
+  de kooi) dispatcht na Marks go. Geen agent roept `dispatch.sh` aan.
