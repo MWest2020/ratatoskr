@@ -30,17 +30,25 @@ NAMES = {
     "821de7df04297a3a5e53c1ae423456b32826505a1caef5fe0979a4940720c2db": "mark",
     "27308f27bfdac7d051d6c79cbacffcf20eccc54abccb7495db68a58f25d083f0": "orchestrator",
     "378aaf0fca61133c14bbd0e6a4ab26cea4cdffdeb7d2513fdc458b1b9d864255": "assistent",
+    "a18ce524d234433a0702f85f09325165d19aa6fe5e9c28d01e22ffcf55922d49": "architect",
+    "2827e3d844551b81f4193fd7e64b60141759a5a4848482f48b9ad2c2fd938b74": "bouwer",
 }
 ME = "821de7df04297a3a5e53c1ae423456b32826505a1caef5fe0979a4940720c2db"
-# handle -> pubkey, voor @mention-resolutie bij het posten
-HANDLES = {"assistent": "378aaf0fca61133c14bbd0e6a4ab26cea4cdffdeb7d2513fdc458b1b9d864255"}
 
 # Bekende agents (uitbreidbaar: kopie met eigen identiteit + systemprompt).
 AGENTS = [
     {"handle": "assistent",
      "pubkey": "378aaf0fca61133c14bbd0e6a4ab26cea4cdffdeb7d2513fdc458b1b9d864255",
      "rol": "algemene chat-agent"},
+    {"handle": "architect",
+     "pubkey": "a18ce524d234433a0702f85f09325165d19aa6fe5e9c28d01e22ffcf55922d49",
+     "rol": "architectuur-sparring"},
+    {"handle": "bouwer",
+     "pubkey": "2827e3d844551b81f4193fd7e64b60141759a5a4848482f48b9ad2c2fd938b74",
+     "rol": "bouw-agent (habitat)"},
 ]
+# handle -> pubkey, voor @mention-resolutie bij het posten
+HANDLES = {a["handle"]: a["pubkey"] for a in AGENTS}
 
 
 def buzz(args, stdin=None, timeout=25):
