@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#15130f">
+<title>Boomhuis</title>
+<style>
+  :root{
+    --bg:#15130f; --panel:#1e1b16; --panel2:#26221b; --line:#332d24;
+    --ink:#f0ead9; --muted:#a79a83; --accent:#d8a657; --accent2:#7daea3;
+    --mine:#3a3324; --other:#221f19; --danger:#e06c5b;
+    --radius:14px;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%}
+  body{
+    background:var(--bg); color:var(--ink);
+    font-family:"Public Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    display:flex; flex-direction:column; height:100dvh; overflow:hidden;
+  }
+  header{
+    display:flex; align-items:center; gap:.6rem; padding:.7rem .9rem;
+    padding-top:calc(.7rem + env(safe-area-inset-top));
+    background:var(--panel); border-bottom:1px solid var(--line); flex:0 0 auto;
+  }
+  header .bee{font-size:1.2rem}
+  header h1{font-size:1.02rem; margin:0; font-weight:700; letter-spacing:.01em}
+  header h1 .hash{color:var(--accent)}
+  header button{
+    margin-left:auto; background:var(--panel2); color:var(--ink);
+    border:1px solid var(--line); border-radius:10px; padding:.4rem .7rem;
+    font-size:.85rem; font-weight:600;
+  }
+  /* kanaallade */
+  #drawer{
+    position:absolute; inset:0; background:rgba(0,0,0,.55); z-index:20;
+    display:none; opacity:0; transition:opacity .15s;
+  }
+  #drawer.open{display:block; opacity:1}
+  #drawer .sheet{
+    position:absolute; top:0; left:0; bottom:0; width:min(78vw,320px);
+    background:var(--panel); border-right:1px solid var(--line);
+    padding:calc(.9rem + env(safe-area-inset-top)) .6rem .9rem; overflow-y:auto;
+    transform:translateX(-100%); transition:transform .18s;
+  }
+  #drawer.open .sheet{transform:none}
+  #drawer .title{color:var(--muted); font-size:.72rem; text-transform:uppercase;
+    letter-spacing:.1em; padding:.2rem .7rem .5rem}
+  .chan{
+    display:flex; align-items:center; gap:.5rem; width:100%; text-align:left;
+    background:none; border:none; color:var(--ink); font-size:1rem;
+    padding:.7rem .7rem; border-radius:10px; font-weight:600;
+  }
+  .chan:hover,.chan.active{background:var(--panel2)}
+  .chan .hash{color:var(--accent)}
+  .chan.active .hash{color:var(--accent)}
+  /* berichten */
+  #msgs{flex:1 1 auto; overflow-y:auto; padding:.8rem .8rem 1rem;
+    display:flex; flex-direction:column; gap:.55rem}
+  .row{display:flex; flex-direction:column; max-width:82%}
+  .row.mine{align-self:flex-end; align-items:flex-end}
+  .meta{font-size:.7rem; color:var(--muted); margin:0 .3rem .12rem;
+    font-family:"IBM Plex Mono",ui-monospace,monospace}
+  .bubble{
+    background:var(--other); border:1px solid var(--line);
+    padding:.5rem .7rem; border-radius:var(--radius); font-size:.96rem;
+    line-height:1.35; white-space:pre-wrap; word-break:break-word;
+  }
+  .row.mine .bubble{background:var(--mine); border-color:#463c29}
+  .author-mark{color:var(--accent)}
+  .author-orchestrator{color:var(--accent2)}
+  .empty{color:var(--muted); text-align:center; margin:auto; font-size:.9rem}
+  /* invoer */
+  form{
+    flex:0 0 auto; display:flex; gap:.5rem; padding:.6rem .7rem;
+    padding-bottom:calc(.6rem + env(safe-area-inset-bottom));
+    background:var(--panel); border-top:1px solid var(--line);
+  }
+  textarea{
+    flex:1; resize:none; background:var(--panel2); color:var(--ink);
+    border:1px solid var(--line); border-radius:12px; padding:.6rem .7rem;
+    font:inherit; font-size:1rem; max-height:120px; min-height:44px;
+  }
+  form button{
+    background:var(--accent); color:#1a1710; border:none; border-radius:12px;
+    padding:0 1rem; font-weight:800; font-size:.95rem;
+  }
+  form button:disabled{opacity:.5}
+  .toast{position:absolute; bottom:5rem; left:50%; transform:translateX(-50%);
+    background:var(--danger); color:#1a1710; padding:.4rem .8rem; border-radius:10px;
+    font-size:.85rem; font-weight:700; z-index:30; display:none}
+</style>
+</head>
+<body>
+  <header>
+    <span class="bee">🐝</span>
+    <h1><span class="hash">#</span><span id="chanName">runs</span></h1>
+    <button id="switch">Kanalen</button>
+  </header>
+
+  <div id="drawer"><div class="sheet">
+    <div class="title">Boomhuis · kanalen</div>
+    <div id="chanList"></div>
+  </div></div>
+
+  <div id="msgs"><div class="empty">laden…</div></div>
+
+  <form id="composer">
+    <textarea id="input" rows="1" placeholder="Bericht aan het kanaal…" autocomplete="off"></textarea>
+    <button type="submit" id="send">➤</button>
+  </form>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+let channels = [], current = null, lastCount = 0, pollTimer = null;
+
+function toast(t){ const e=$("#toast"); e.textContent=t; e.style.display="block";
+  setTimeout(()=>e.style.display="none", 2600); }
+
+async function loadChannels(){
+  channels = await (await fetch("/api/channels")).json();
+  const wrap = $("#chanList"); wrap.innerHTML="";
+  for(const c of channels){
+    const b=document.createElement("button");
+    b.className="chan"+(current&&c.id===current.id?" active":"");
+    b.innerHTML=`<span class="hash">#</span>${c.name}`;
+    b.onclick=()=>{ selectChannel(c); closeDrawer(); };
+    wrap.appendChild(b);
+  }
+}
+function selectChannel(c){
+  current=c; lastCount=0; $("#chanName").textContent=c.name;
+  $("#msgs").innerHTML='<div class="empty">laden…</div>';
+  refresh(true);
+}
+const fmtTime = ts => { const d=new Date(ts*1000);
+  return d.toLocaleString("nl-NL",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}); };
+
+async function refresh(force){
+  if(!current) return;
+  let data;
+  try{ data = await (await fetch("/api/messages?channel="+current.id)).json(); }
+  catch(e){ return; }
+  if(data.error){ return; }
+  const box=$("#msgs");
+  const near = box.scrollHeight - box.scrollTop - box.clientHeight < 120;
+  const msgs=data.messages||[];
+  if(!force && msgs.length===lastCount) return;
+  lastCount=msgs.length;
+  if(msgs.length===0){ box.innerHTML='<div class="empty">Nog geen berichten — begin het gesprek.</div>'; return; }
+  box.innerHTML="";
+  for(const m of msgs){
+    const row=document.createElement("div");
+    row.className="row"+(m.mine?" mine":"");
+    const cls = m.author==="mark"?"author-mark":(m.author==="orchestrator"?"author-orchestrator":"");
+    row.innerHTML=`<div class="meta"><span class="${cls}">${m.author}</span> · ${fmtTime(m.ts)}</div>`+
+      `<div class="bubble"></div>`;
+    row.querySelector(".bubble").textContent=m.content;
+    box.appendChild(row);
+  }
+  if(force||near) box.scrollTop=box.scrollHeight;
+}
+
+async function send(text){
+  const r = await fetch("/api/send",{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({channel:current.id, content:text})});
+  const j = await r.json().catch(()=>({}));
+  if(!r.ok||j.error){ toast(j.error||"versturen mislukt"); return false; }
+  return true;
+}
+
+// UI-bindings
+$("#switch").onclick=()=>$("#drawer").classList.add("open");
+$("#drawer").onclick=e=>{ if(e.target.id==="drawer") closeDrawer(); };
+function closeDrawer(){ $("#drawer").classList.remove("open"); }
+const input=$("#input");
+input.addEventListener("input",()=>{ input.style.height="auto";
+  input.style.height=Math.min(input.scrollHeight,120)+"px"; });
+$("#composer").addEventListener("submit", async e=>{
+  e.preventDefault();
+  const t=input.value.trim(); if(!t||!current) return;
+  $("#send").disabled=true;
+  const ok=await send(t);
+  $("#send").disabled=false;
+  if(ok){ input.value=""; input.style.height="auto"; await refresh(true); }
+});
+input.addEventListener("keydown",e=>{
+  if(e.key==="Enter"&&!e.shiftKey){ e.preventDefault(); $("#composer").requestSubmit(); }
+});
+
+(async function init(){
+  await loadChannels();
+  selectChannel(channels[0]);
+  await loadChannels();
+  pollTimer=setInterval(()=>refresh(false), 4000);
+  document.addEventListener("visibilitychange",()=>{ if(!document.hidden) refresh(false); });
+})();
+</script>
+</body>
+</html>
