@@ -1,0 +1,22 @@
+# Kanaalregistry van het boomhuis (spec: channel-topology). Vaste kanalen per
+# functie; channel-id's zijn de bron van waarheid voor notify/buzz-notify.sh.
+# Aangemaakt 2026-08-27 door de orchestrator-identiteit op de relay (.60).
+channels:
+  runs:
+    id: 74504227-8f82-42d5-b943-e0bc059778bc
+    doel: machinale feed — run-start en verdict per habitat-run, thread per run
+  escalatie:
+    id: c1a0db51-3c96-46f9-9afa-1f03acfd87a3
+    doel: het enige besluitkanaal — alles wat een menselijk besluit vergt, met rapportlink
+  bouw:
+    id: 69cf0949-f1ab-4383-9627-8ef0f51977e1
+    doel: bouw-overleg (later kanaal->dispatch, fase 3)
+  review:
+    id: b829eac4-a49b-4336-813e-90cdfa1a81c7
+    doel: reviewer-bevindingen (later terug-in-de-thread, fase 3)
+  architectuur:
+    id: 1ed0e697-7187-43ae-b0a1-faa667e1c93e
+    doel: architectuur-sparring (chat-native agent, fase 2)
+  marketing:
+    id: b3b40816-ed50-4983-977b-44a3f8e9271f
+    doel: marketing-concepten (chat-native agent, fase 2)
