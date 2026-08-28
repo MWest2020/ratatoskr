@@ -25,8 +25,10 @@ te tornen.
 2. **De relay staat buiten de kooi.** Worker-Jobs krijgen geen relay-toegang en
    geen buzz-sleutels; alleen de orchestrator/dispatch (buiten de kooi) post.
 3. **Twee agentklassen.** (a) Gekooid en eenmalig: habitat-Jobs voor
-   code-wijzigingen, ongewijzigd. (b) Chat-native en langlopend: buzz-acp-agents
-   voor conversatie-deliverables (marketing, sparring), met eigen kooi-principes.
+   code-wijzigingen, ongewijzigd. (b) Chat-native: langlopende `claude -p`-agents
+   (listener op de relay-host) voor conversatie-deliverables (marketing,
+   architectuur-sparring, bouw-scoping). Bewust géén buzz-acp — dat eist een
+   API-key; de `claude -p`-listener rijdt sub-first op het abonnement.
 4. **Closed relay, eigen sleutels.** Eén keypair per identiteit (mens én agent),
    publieke sleutels in een registry in git, privésleutels alleen via SOPS+age.
 
@@ -41,6 +43,31 @@ te tornen.
 
 Status: greenfield — alle changes staan op *propose*. Rome is niet in één dag
 gebouwd; dit loopt over maanden en elke fase is los waardevol.
+
+## Wat er nu leeft (2026-08)
+
+- **Relay** — self-hosted buzz op vm 109 / `192.168.178.60`, closed mode,
+  tailnet-only. Reboot-vaste systemd-services: `boomhuis-chat` (relay-VM) en
+  `boomhuis-agents` (agent-lxc, user-service).
+- **Web-chat** (`chat/`) — Slack/Telegram-achtige interface op
+  `http://192.168.178.60:8090/` (desktop-browser + telefoon). Kanalen dynamisch
+  uit de relay, **maken/verwijderen in de app**, agents-overzicht, `@mention` +
+  thread-continuïteit (doorpraten zonder mention).
+- **Kanalen** — `#general` (hub: roep hier elke agent aan), plus `#runs
+  #escalatie #bouw #review #architectuur #marketing`.
+- **Vier chat-agents** — `assistent` (overal), `architect` (#architectuur),
+  `bouwer` (#bouw), `marketing` (#marketing) — allemaal ook in #general. Ze
+  draaien via één multi-agent `claude -p`-listener (`agents/`).
+- **Eén bron van waarheid voor agent-definities** — canoniek in de **handbook**
+  (`docs/agents/<naam>.md`, MCP-leesbaar), met twee facetten (chat voor
+  boomhuis, executie voor habitat). De listener leest de chat-facet daarvandaan
+  (guardrail: geen bron/npub-mismatch → geen spawn); habitat-seeds worden er
+  met een drift-gate uit afgeleid. Een bouwer is overal dezelfde bouwer.
+- **Doel→dispatch-brug** (`orchestrator/bridge.py`, spec `add-habitat-bridge`) —
+  gebouwd t/m de rand van de kooi: Marks `!dispatch <rol> <change> <repo>` in
+  #bouw passeert de poort, de brug bereidt een habitat-run voor met
+  `HABITAT_TASK_REF` (git-pad, habitat-amendement `amend-worker-task-ref`
+  applied). De echte cluster-fire is gated (`BRIDGE_LIVE`) — gesuperviseerd.
 
 ## Relatie tot andere repo's
 

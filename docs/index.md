@@ -1,6 +1,6 @@
 ---
 status: draft
-last_reviewed: 2026-08-22
+last_reviewed: 2026-08-28
 ---
 
 # Boomhuis
