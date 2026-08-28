@@ -7,6 +7,7 @@ buzz-cli. Tailnet-only (bind op het VM-IP, bereikbaar via de .60-route).
 """
 import json
 import os
+import re
 import subprocess
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
@@ -14,17 +15,39 @@ from urllib.parse import urlparse, parse_qs
 BUZZ = os.environ.get("BUZZ_BIN", "/usr/local/bin/buzz")
 HERE = os.path.dirname(os.path.abspath(__file__))
 
-# Kanalen (naam -> id). Bron van waarheid: boomhuis/channels.yml.
-CHANNELS = [
-    ("general", "32ef5cd2-70d8-4b7e-9235-9692b8ab2a1c"),
-    ("runs", "74504227-8f82-42d5-b943-e0bc059778bc"),
-    ("escalatie", "c1a0db51-3c96-46f9-9afa-1f03acfd87a3"),
-    ("bouw", "69cf0949-f1ab-4383-9627-8ef0f51977e1"),
-    ("review", "b829eac4-a49b-4336-813e-90cdfa1a81c7"),
-    ("architectuur", "1ed0e697-7187-43ae-b0a1-faa667e1c93e"),
-    ("marketing", "b3b40816-ed50-4983-977b-44a3f8e9271f"),
-]
-CHANNEL_IDS = {cid for _, cid in CHANNELS}
+# Kanalen worden LIVE uit de relay gelezen (buzz channels list), zodat maken/
+# verwijderen in de web-app meteen doorwerkt. #general staat vooraan.
+def list_channels():
+    rc, out, err = buzz(["channels", "list"])
+    if rc != 0:
+        return []
+    try:
+        d = json.loads(out)
+    except Exception:
+        return []
+    c = d if isinstance(d, list) else d.get("channels", [])
+    # De relay maakt zelf ondeletebare default-kanalen aan (een tweede 'general'
+    # en 'welcome-everyone'); die filteren we weg. Voor 'general' houden we het
+    # kanaal aan waar de agents in zitten.
+    HIDE = {"welcome-everyone"}
+    PREFER = {"general": "32ef5cd2-70d8-4b7e-9235-9692b8ab2a1c"}
+    seen, rows = {}, []
+    for x in c:
+        name = x.get("name"); cid = x.get("channel_id") or x.get("id")
+        if not name or not cid or name in HIDE:
+            continue
+        if name in PREFER and cid != PREFER[name]:
+            continue  # sla het niet-voorkeurs-duplicaat over
+        if name in seen:
+            continue
+        seen[name] = cid
+        rows.append((name, cid))
+    rows.sort(key=lambda r: (r[0] != "general", r[0]))  # general eerst, dan a-z
+    return rows
+
+
+def valid_cid(cid):
+    return any(i == cid for _, i in list_channels())
 
 # pubkey -> weergavenaam
 NAMES = {
@@ -78,7 +101,7 @@ def channel_member_pubkeys(cid):
 
 def agent_roster():
     """Per agent: in welke kanalen (naam) hij zit, met rol. Data uit buzz."""
-    membership = {name: channel_member_pubkeys(cid) for name, cid in CHANNELS}
+    membership = {name: channel_member_pubkeys(cid) for name, cid in list_channels()}
     roster = []
     for a in AGENTS:
         chans = [name for name, mem in membership.items() if a["pubkey"] in mem]
@@ -106,12 +129,12 @@ class H(BaseHTTPRequestHandler):
                 return self._send(200, f.read(), "text/html; charset=utf-8")
         if u.path == "/api/channels":
             return self._send(200, json.dumps(
-                [{"name": n, "id": i} for n, i in CHANNELS]))
+                [{"name": n, "id": i} for n, i in list_channels()]))
         if u.path == "/api/agents":
             return self._send(200, json.dumps({"agents": agent_roster()}))
         if u.path == "/api/messages":
             cid = (parse_qs(u.query).get("channel") or [""])[0]
-            if cid not in CHANNEL_IDS:
+            if not valid_cid(cid):
                 return self._send(400, json.dumps({"error": "onbekend kanaal"}))
             rc, out, err = buzz(["messages", "get", "--channel", cid])
             if rc != 0:
@@ -134,15 +157,35 @@ class H(BaseHTTPRequestHandler):
 
     def do_POST(self):
         u = urlparse(self.path)
-        if u.path != "/api/send":
-            return self._send(404, json.dumps({"error": "not found"}))
         n = int(self.headers.get("Content-Length", 0))
         try:
             body = json.loads(self.rfile.read(n) or b"{}")
         except Exception:
             return self._send(400, json.dumps({"error": "bad json"}))
+
+        if u.path == "/api/channels/create":
+            name = (body.get("name") or "").strip().lower()
+            if not re.match(r"^[a-z0-9][a-z0-9_-]{0,30}$", name):
+                return self._send(400, json.dumps({"error": "naam: a-z 0-9 _ - (max 31)"}))
+            rc, out, err = buzz(["channels", "create", "--name", name,
+                                 "--type", "stream", "--visibility", "open"])
+            if rc != 0:
+                return self._send(502, json.dumps({"error": err.strip()[:200]}))
+            return self._send(200, json.dumps({"ok": True, "name": name}))
+
+        if u.path == "/api/channels/delete":
+            cid = body.get("channel")
+            if not valid_cid(cid):
+                return self._send(400, json.dumps({"error": "onbekend kanaal"}))
+            rc, out, err = buzz(["channels", "delete", "--channel", cid])
+            if rc != 0:
+                return self._send(502, json.dumps({"error": err.strip()[:200]}))
+            return self._send(200, json.dumps({"ok": True}))
+
+        if u.path != "/api/send":
+            return self._send(404, json.dumps({"error": "not found"}))
         cid, content = body.get("channel"), (body.get("content") or "").strip()
-        if cid not in CHANNEL_IDS:
+        if not valid_cid(cid):
             return self._send(400, json.dumps({"error": "onbekend kanaal"}))
         if not content:
             return self._send(400, json.dumps({"error": "leeg bericht"}))
