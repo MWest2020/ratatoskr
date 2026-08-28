@@ -29,7 +29,7 @@ def list_channels():
     # De relay maakt zelf ondeletebare default-kanalen aan (een tweede 'general'
     # en 'welcome-everyone'); die filteren we weg. Voor 'general' houden we het
     # kanaal aan waar de agents in zitten.
-    HIDE = {"welcome-everyone"}
+    HIDE = {"welcome-everyone", "Welcome"}
     PREFER = {"general": "32ef5cd2-70d8-4b7e-9235-9692b8ab2a1c"}
     seen, rows = {}, []
     for x in c:
