@@ -137,7 +137,8 @@ def build_prompt(handle, chan, recent, trigger):
         who = PUB2NAME.get(m.get("pubkey", ""), "iemand")
         lines.append(f"{who}: {m.get('content','')}")
     lines.append("")
-    lines.append(f"Je bent '{handle}', genoemd met @{handle}. Reageer op: {trigger!r}")
+    lines.append(f"Je bent '{handle}'. Reageer als vervolg op het gesprek "
+                 f"hierboven, op dit laatste bericht: {trigger!r}")
     return "\n".join(lines)
 
 
@@ -165,12 +166,24 @@ def main():
                 if m.get("pubkey") in AGENT_PUBS:
                     continue
                 content = m.get("content", "")
-                for handle, cfg in AGENTS.items():
-                    if cname not in cfg["channels"]:
-                        continue
-                    if ("@" + handle).lower() not in content.lower():
-                        continue
-                    print(f"[listener] @{handle} in #{cname}: {content[:50]}", flush=True)
+                # Wie moet reageren? (a) expliciete @mentions van hier-gescopte
+                # agents; (b) anders thread-continuïteit: de laatst-actieve agent
+                # in dit kanaal (binnen ~10 berichten) praat door zonder mention.
+                targets = [h for h, cfg in AGENTS.items()
+                           if cname in cfg["channels"]
+                           and ("@" + h).lower() in content.lower()]
+                reason = "mention"
+                if not targets:
+                    for prev in reversed(msgs[max(0, i - 10):i]):
+                        if prev.get("pubkey") in AGENT_PUBS:
+                            h = PUB2NAME.get(prev.get("pubkey"))
+                            if h in AGENTS and cname in AGENTS[h]["channels"]:
+                                targets = [h]
+                                reason = "vervolg"
+                            break  # alleen de meest recente agent telt
+                for handle in targets:
+                    cfg = AGENTS[handle]
+                    print(f"[listener] {reason} @{handle} in #{cname}: {content[:50]}", flush=True)
                     recent = msgs[max(0, i - MAX_CTX):i + 1]
                     try:
                         ans = ask_claude(cfg["system"], build_prompt(handle, cname, recent, content))
@@ -179,7 +192,7 @@ def main():
                     except Exception as e:
                         ans = f"(fout: {e})"
                     send(cid, ans, cfg["nsec"], cfg["npub"])
-                    print(f"[listener] {handle} antwoordde in #{cname}", flush=True)
+                    print(f"[listener] {handle} antwoordde in #{cname} ({reason})", flush=True)
         time.sleep(POLL)
 
 
