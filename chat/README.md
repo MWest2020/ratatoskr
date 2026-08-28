@@ -6,14 +6,17 @@ vanaf de telefoonbrowser over het tailnet. `server.py` (stdlib) praat via
 browser. Tailnet-only.
 
 ## Draaien (op de relay-VM)
-    BUZZ_PRIVATE_KEY=<mark-nsec, sops -d> \
-    BUZZ_RELAY_URL=ws://192.168.178.60:3000 \
-    PORT=8090 python3 server.py
+
+Draait als systemd-unit `boomhuis-chat.service` (unit-file: homelab-repo
+`ansible/files/boomhuis-chat.service`). De nsec komt uit
+`/opt/buzz-build/chat/chat.env` (root:600) via `EnvironmentFile` — nooit op de
+commandline (ps-zichtbaar) en nooit in git; de SOPS-bron is
+`secrets/identities.yaml` in deze repo. Beheer:
+
+    sudo systemctl status|restart boomhuis-chat
 
 Open op de telefoon (Tailscale aan): http://192.168.178.60:8090/
 
 ## Nog te doen (hardening)
-- Als systemd-service in de homelab-repo (nu nohup; overleeft geen reboot).
-- nsec bij start uit SOPS halen i.p.v. env op de commandline.
 - Wanneer de chat-native agents live zijn (fase 2), verschijnen ze vanzelf in
   dezelfde kanalen — dan wordt dit de plek waar je ze aanstuurt.
