@@ -33,6 +33,7 @@ NAMES = {
     "378aaf0fca61133c14bbd0e6a4ab26cea4cdffdeb7d2513fdc458b1b9d864255": "assistent",
     "a18ce524d234433a0702f85f09325165d19aa6fe5e9c28d01e22ffcf55922d49": "architect",
     "2827e3d844551b81f4193fd7e64b60141759a5a4848482f48b9ad2c2fd938b74": "bouwer",
+    "ba5bf9d6b4009984378561c35a346e64b488282ffd1fbc7dcdde1d19c515fd64": "marketing",
 }
 ME = "821de7df04297a3a5e53c1ae423456b32826505a1caef5fe0979a4940720c2db"
 
@@ -47,9 +48,10 @@ AGENTS = [
     {"handle": "bouwer",
      "pubkey": "2827e3d844551b81f4193fd7e64b60141759a5a4848482f48b9ad2c2fd938b74",
      "rol": "bouw-agent (habitat)"},
+    {"handle": "marketing",
+     "pubkey": "ba5bf9d6b4009984378561c35a346e64b488282ffd1fbc7dcdde1d19c515fd64",
+     "rol": "marketing — usecases naar buiten"},
 ]
-# handle -> pubkey, voor @mention-resolutie bij het posten
-HANDLES = {a["handle"]: a["pubkey"] for a in AGENTS}
 
 
 def buzz(args, stdin=None, timeout=25):
@@ -144,11 +146,12 @@ class H(BaseHTTPRequestHandler):
             return self._send(400, json.dumps({"error": "onbekend kanaal"}))
         if not content:
             return self._send(400, json.dumps({"error": "leeg bericht"}))
-        # @handle -> pubkey injecteren zodat buzz de mention accepteert
-        args = ["messages", "send", "--channel", cid, "--content", "-"]
-        for handle, pub in HANDLES.items():
-            if ("@" + handle).lower() in content.lower():
-                args += ["--mention", pub]
+        # Altijd mark's eigen mention meegeven: dat staat elk @woord toe als
+        # presentation-only (geen "geen kanaal-lid"-error meer), terwijl een
+        # agent die WEL lid van dit kanaal is nog steeds uniek resolvet + getriggerd
+        # wordt. Zo werkt @agent overal waar de agent woont, en faalt het nergens.
+        args = ["messages", "send", "--channel", cid, "--content", "-",
+                "--mention", ME]
         # content via stdin (--content -) om shell/escaping-problemen te vermijden
         rc, out, err = buzz(args, stdin=content)
         if rc != 0:
