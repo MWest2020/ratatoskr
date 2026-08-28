@@ -16,6 +16,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 
 # Kanalen (naam -> id). Bron van waarheid: boomhuis/channels.yml.
 CHANNELS = [
+    ("general", "32ef5cd2-70d8-4b7e-9235-9692b8ab2a1c"),
     ("runs", "74504227-8f82-42d5-b943-e0bc059778bc"),
     ("escalatie", "c1a0db51-3c96-46f9-9afa-1f03acfd87a3"),
     ("bouw", "69cf0949-f1ab-4383-9627-8ef0f51977e1"),

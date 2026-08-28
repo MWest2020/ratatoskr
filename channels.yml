@@ -2,6 +2,9 @@
 # functie; channel-id's zijn de bron van waarheid voor notify/buzz-notify.sh.
 # Aangemaakt 2026-08-27 door de orchestrator-identiteit op de relay (.60).
 channels:
+  general:
+    id: 32ef5cd2-70d8-4b7e-9235-9692b8ab2a1c
+    doel: hub — roep hier elke agent aan (@naam), verhuis naar een specifiek kanaal indien nodig
   runs:
     id: 74504227-8f82-42d5-b943-e0bc059778bc
     doel: machinale feed — run-start en verdict per habitat-run, thread per run
