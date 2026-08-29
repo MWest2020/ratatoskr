@@ -43,3 +43,9 @@ identities:
     pubkey_hex: c14d1cdd1931061af176392f39fd17303591af0cef17d37e2aadf4bc2b36a8dc
     npub: npub1c9x3ehgexyrp4utk8yhnnlghxq6ertcvautaxl324h6tc2ek4rwqxf6nvn
     aangemaakt: '2026-08-29'
+  ontwerper:
+    rol: chat-agent
+    status: actief
+    pubkey_hex: 24ab03329773e12fb183d93e34e05485b3055246c12786e9cad46a311b5ed0e0
+    npub: npub1yj4sxv5hw0sjlvvrmylrfcz5skes25jxcyncd6w2634rzx676rsqn8vhmm
+    aangemaakt: '2026-08-29'
