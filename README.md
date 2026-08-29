@@ -1,5 +1,10 @@
 # Boomhuis
 
+> **Status: beta (v0.1).** Fasen 0–3 zijn gebouwd en draaien reboot-vast op het
+> tailnet. De webchat, zes chat-agents (uit één bron van waarheid) en de
+> doel→dispatch-brug leven. Wat nog gesuperviseerd/open is, staat hieronder
+> expliciet gemarkeerd.
+
 Coördinatielaag voor Marks agent-ecosysteem, gebouwd op een zelf-gehoste
 [buzz](https://github.com/block/buzz)-relay (Block, Apache-2.0, Nostr-protocol).
 Het boomhuis is de plek waar de bende samenkomt: kanalen waarin mens en agents —
@@ -38,11 +43,12 @@ te tornen.
 |---|---|---|
 | 0 | `add-relay` | Zelf-gehoste relay (compose, closed mode, TLS) + identiteiten Mark & orchestrator |
 | 1 | `add-notifications` | Kanaaltopologie + habitat-runlevens en escalaties als berichten (post-only, buiten de kooi) |
-| 2 | `add-chat-native-agents` | Langlopende buzz-acp-agents: marketing, architectuur-sparring |
+| 2 | `add-chat-native-agents` | Langlopende `claude -p`-agents (sub-first): marketing, architectuur-sparring, coördinatie |
 | 3 | `add-habitat-bridge` | Verzoek-in-kanaal → dispatch, bevindingen terug in de thread (vergt habitat-amendement) |
 
-Status: greenfield — alle changes staan op *propose*. Rome is niet in één dag
-gebouwd; dit loopt over maanden en elke fase is los waardevol.
+Status: **beta**. Fasen 0–3 zijn gebouwd en live op het tailnet; de laatste
+cluster-fire van de brug is nog gesuperviseerd (`BRIDGE_LIVE`). Rome is niet in
+één dag gebouwd; elke fase is los waardevol en draait nu.
 
 ## Wat er nu leeft (2026-08)
 
@@ -54,15 +60,30 @@ gebouwd; dit loopt over maanden en elke fase is los waardevol.
   uit de relay, **maken/verwijderen in de app**, agents-overzicht, `@mention` +
   thread-continuïteit (doorpraten zonder mention).
 - **Kanalen** — `#general` (hub: roep hier elke agent aan), plus `#runs
-  #escalatie #bouw #review #architectuur #marketing`.
-- **Vier chat-agents** — `assistent` (overal), `architect` (#architectuur),
-  `bouwer` (#bouw), `marketing` (#marketing) — allemaal ook in #general. Ze
-  draaien via één multi-agent `claude -p`-listener (`agents/`).
+  #escalatie #bouw #review #architectuur #marketing`. Kanalen maken/verwijderen
+  kan in de webchat.
+- **Zes chat-agents** — `assistent` (overal), `architect` (#architectuur),
+  `bouwer` (#bouw), `marketing` (#marketing), `ontwerper` (frontend/UX,
+  #architectuur) en `coordinator` (de meta-agent in #general) — allemaal ook in
+  #general. Ze draaien via één multi-agent `claude -p`-listener (`agents/`).
 - **Eén bron van waarheid voor agent-definities** — canoniek in de **handbook**
   (`docs/agents/<naam>.md`, MCP-leesbaar), met twee facetten (chat voor
   boomhuis, executie voor habitat). De listener leest de chat-facet daarvandaan
   (guardrail: geen bron/npub-mismatch → geen spawn); habitat-seeds worden er
   met een drift-gate uit afgeleid. Een bouwer is overal dezelfde bouwer.
+- **Coördinator + create-agent-flow** — drop een idee met `@coordinator` in
+  #general; die beslist of er een agent voor is (route), er één bij moet
+  (voorstel) of er één uitgebreid moet. Aanmaken loopt via
+  `orchestrator/create-agent.py`: keypair → handbook-PR (CODEOWNERS = Mark) →
+  boomhuis-bedrading. De agent gaat pas live nadat Mark de handbook-PR merget.
+- **Recurring jobs** (`jobs/`) — geplande `claude -p`-digests naar kanalen
+  (systemd-timers), bijv. `#technical_depth`, `#news_from_zettelkast`,
+  `#proposals`.
+- **Protocol-naad + per-kanaal kennis** (geleend van
+  [Switch](https://github.com/sandbox-quantum/switch)) — elk agent-backend zit
+  achter één `run_provider(...)`-functie (vandaag `claude -p`, een nieuw backend
+  is één tak); en `knowledge/<kanaal>.md` wordt als context aan elke agent-beurt
+  in dat kanaal meegegeven.
 - **Doel→dispatch-brug** (`orchestrator/bridge.py`, spec `add-habitat-bridge`) —
   gebouwd t/m de rand van de kooi: Marks `!dispatch <rol> <change> <repo>` in
   #bouw passeert de poort, de brug bereidt een habitat-run voor met

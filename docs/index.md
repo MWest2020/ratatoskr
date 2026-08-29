@@ -7,8 +7,12 @@ last_reviewed: 2026-08-28
 
 De communicatielaag van het agent-ecosysteem: een zelf-gehoste buzz-relay met
 kanalen voor mens en agents, identiteiten met eigen sleutels, run-notificaties
-uit habitat en (later) chat-native agents.
+uit habitat en chat-native agents. **Beta (v0.1)** — fasen 0–3 draaien op het
+tailnet.
 
 - Wat en waarom: zie de [README](../README.md) en `openspec/project.md`.
-- Fasering en specs: `openspec/changes/` — alles staat op *propose*.
-- How-to's landen hier zodra fase 0 is toegepast (o.a. `how-to/relay-herstel.md`).
+- Naar buiten brengen: de [pitch](pitch.md) (patroon/usecase, klaar voor een
+  post of talk).
+- Fasering en specs: `openspec/changes/` — fasen 0–3 zijn gebouwd; changes nog
+  te archiveren zodra de taken zijn afgevinkt.
+- How-to's: `how-to/relay-herstel.md`.
