@@ -6,7 +6,7 @@ identities:
     pubkey_hex: a05339f005904935da71e0498f3d542ac223e8cdfac920c6152a743f91640769
     npub: npub15pfnnuq9jpyntkn3upyc70259tpz86xdltyjp3s49f6rlytyqa5sn4zx8q
     aangemaakt: 2026-08-23
-    geroteerd: 2026-08-28  # oude key (npub1sgw70..., ps-zichtbaar geweest) ingetrokken; zie openspec rotate-mark-identity
+    geroteerd: 2026-08-28
   orchestrator:
     rol: orchestrator
     status: actief
@@ -37,3 +37,9 @@ identities:
     pubkey_hex: ba5bf9d6b4009984378561c35a346e64b488282ffd1fbc7dcdde1d19c515fd64
     npub: npub1hfdln445qzvcgdu9v8p45drwvj6gs2p0l50mclwdmcw3n3g4l4jqcezul9
     aangemaakt: '2026-08-27'
+  coordinator:
+    rol: meta-agent
+    status: actief
+    pubkey_hex: c14d1cdd1931061af176392f39fd17303591af0cef17d37e2aadf4bc2b36a8dc
+    npub: npub1c9x3ehgexyrp4utk8yhnnlghxq6ertcvautaxl324h6tc2ek4rwqxf6nvn
+    aangemaakt: '2026-08-29'

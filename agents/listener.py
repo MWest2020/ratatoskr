@@ -131,6 +131,17 @@ def ask_claude(system, prompt):
     return (p.stdout or "").strip() or "(geen antwoord)"
 
 
+def roster_text():
+    """Korte samenvatting van de huidige vloot — context voor de coordinator."""
+    lines = ["Huidige agent-vloot (uit de handbook-registry):"]
+    for h, c in AGENTS.items():
+        if h == "coordinator":
+            continue
+        first = (c.get("system", "").strip().split("\n", 1)[0])[:110]
+        lines.append(f"- @{h} (kanalen: {','.join(c['channels'])}) — {first}")
+    return "\n".join(lines)
+
+
 def build_prompt(handle, chan, recent, trigger):
     lines = [f"Kanaal #{chan}. Recente berichten:"]
     for m in recent:
@@ -185,8 +196,11 @@ def main():
                     cfg = AGENTS[handle]
                     print(f"[listener] {reason} @{handle} in #{cname}: {content[:50]}", flush=True)
                     recent = msgs[max(0, i - MAX_CTX):i + 1]
+                    p = build_prompt(handle, cname, recent, content)
+                    if handle == "coordinator":
+                        p = roster_text() + "\n\n" + p
                     try:
-                        ans = ask_claude(cfg["system"], build_prompt(handle, cname, recent, content))
+                        ans = ask_claude(cfg["system"], p)
                     except subprocess.TimeoutExpired:
                         ans = "(time-out — vraag te zwaar voor een chatbeurt)"
                     except Exception as e:
