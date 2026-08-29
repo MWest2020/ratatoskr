@@ -70,7 +70,9 @@ def fetch_def(base, handle):
             ln[2:] if ln.startswith("> ") else ln[1:] if ln.startswith(">") else ""
             for ln in cf.group(1).splitlines() if ln.startswith(">")
         ).strip()
-    return {"npub": fm.get("npub"), "channels": channels, "system": system}
+    provider = (fm.get("provider") or "claude-p")
+    return {"npub": fm.get("npub"), "channels": channels, "system": system,
+            "provider": provider}
 
 
 CHANNELS = load_channels()
@@ -125,10 +127,26 @@ def send(cid, content, nsec, self_npub):
                    env=buzz_env(nsec), input=content, capture_output=True, text=True, timeout=25)
 
 
-def ask_claude(system, prompt):
-    p = subprocess.run([CLAUDE, "-p", "--append-system-prompt", system, prompt],
-                       capture_output=True, text=True, timeout=MAX_TURN_S)
-    return (p.stdout or "").strip() or "(geen antwoord)"
+# Protocol-naad: het agent-backend zit achter één functie. Vandaag 'claude-p'
+# (sub-first). Een nieuw backend = één extra tak; de handbook-def declareert de
+# provider (front-matter agent.provider, default claude-p).
+def run_provider(provider, system, prompt):
+    if provider in (None, "claude-p", "claude"):
+        p = subprocess.run([CLAUDE, "-p", "--append-system-prompt", system, prompt],
+                           capture_output=True, text=True, timeout=MAX_TURN_S)
+        return (p.stdout or "").strip() or "(geen antwoord)"
+    # hier pluggen toekomstige backends in (codex, remote-agent, http/SSE-connector…)
+    return f"(provider '{provider}' nog niet ondersteund door deze listener)"
+
+
+def channel_knowledge(cname):
+    """Per-kanaal kennis: knowledge/<kanaal>.md (conventie) wordt als context
+    aan elke agent-beurt in dat kanaal meegegeven. Leeg = geen extra context."""
+    path = os.path.join(ROOT, "knowledge", f"{cname}.md")
+    try:
+        return open(path).read().strip()[:4000]
+    except OSError:
+        return ""
 
 
 def roster_text():
@@ -197,10 +215,13 @@ def main():
                     print(f"[listener] {reason} @{handle} in #{cname}: {content[:50]}", flush=True)
                     recent = msgs[max(0, i - MAX_CTX):i + 1]
                     p = build_prompt(handle, cname, recent, content)
+                    know = channel_knowledge(cname)
+                    if know:
+                        p = f"Kanaal-kennis (#{cname}):\n{know}\n\n" + p
                     if handle == "coordinator":
                         p = roster_text() + "\n\n" + p
                     try:
-                        ans = ask_claude(cfg["system"], p)
+                        ans = run_provider(cfg.get("provider"), cfg["system"], p)
                     except subprocess.TimeoutExpired:
                         ans = "(time-out — vraag te zwaar voor een chatbeurt)"
                     except Exception as e:
