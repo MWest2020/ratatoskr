@@ -32,3 +32,6 @@ channels:
   technical_depth:
     id: 6a195e7f-dee9-40c6-a4e1-fe890321339a
     doel: recurring — technical-depth-check door architect (job)
+  red-team:
+    id: 78b129fe-fc1a-476e-995b-0845ba25b4ff
+    doel: coördinatie van geautoriseerde pentests/security-reviews op Marks eigen infra/repo's; alleen findings mét reproduceerbaar exploit-pad + geverifieerde fix
