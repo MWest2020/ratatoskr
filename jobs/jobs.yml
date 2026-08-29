@@ -1,0 +1,51 @@
+# Recurring jobs — geplande claude -p-taken die naar een kanaal posten.
+# Elk job: kanaal-id, post-identiteit (handle, nsec via SOPS), prompt, en een
+# optioneel context_cmd (shell op de host; stdout wordt context voor claude -p).
+# Het schema staat in de bijbehorende systemd-timer, niet hier.
+
+jobs:
+  news_from_zettelkast:
+    channel: 1c0566f6-a6ae-485f-8920-81767f09b350
+    identity: orchestrator
+    prompt: |
+      Maak een korte, eerlijke "nieuws uit de zettelkast"-digest voor Mark op
+      basis van de context hieronder (recente journal-entries + laatste
+      funding-memo). Noem 3-6 concrete punten: wat is er gebeurd, welke
+      funding/kansen zijn relevant, en wat vraagt aandacht. Kort, Nederlands,
+      geen opsmuk. Begin met "🗞️ Zettelkast-digest".
+    context_cmd: |
+      git -C /home/agent/zettelkast log --oneline -12 2>/dev/null
+      echo '--- laatste funding-memo ---'
+      f=$(ls -t /home/agent/zettelkast/memos/*funding* 2>/dev/null | head -1)
+      [ -n "$f" ] && sed -n '1,45p' "$f"
+
+  proposals:
+    channel: e9150354-ee43-49d7-83a6-290602766a74
+    identity: orchestrator
+    prompt: |
+      Vat de OPEN OpenSpec-proposals uit het ecosysteem samen (context = de
+      niet-gearchiveerde proposal.md's). Per proposal: repo, naam, en in één zin
+      waar het over gaat. Groepeer per repo. Kort, Nederlands. Begin met
+      "📋 Open proposals". Geen open proposals? Zeg dat.
+    context_cmd: |
+      for p in /home/agent/*/openspec/changes/*/proposal.md; do
+        [ -f "$p" ] || continue
+        repo=$(echo "$p" | sed 's#/home/agent/##; s#/openspec/.*##')
+        ch=$(basename "$(dirname "$p")")
+        why=$(grep -A1 -m1 '## Why' "$p" | tail -1 | cut -c1-90)
+        echo "[$repo] $ch — $why"
+      done 2>/dev/null | head -50
+
+  technical_depth:
+    channel: 6a195e7f-dee9-40c6-a4e1-fe890321339a
+    identity: architect
+    prompt: |
+      Je bent de architect. Reflecteer kort op technische schuld in het
+      ecosysteem: waar bouwen we fast&clever op i.p.v. boring&auditable, welke
+      afweging betaalt straks rente? Gebruik de recente journal-context. Noem
+      1-3 concrete aandachtspunten met een suggestie. Kort, Nederlands. Begin
+      met "🏗️ Technical-depth check".
+    context_cmd: |
+      git -C /home/agent/zettelkast log --oneline -10 2>/dev/null
+      echo '--- boomhuis recente commits ---'
+      git -C /home/agent/boomhuis log --oneline -8 2>/dev/null
