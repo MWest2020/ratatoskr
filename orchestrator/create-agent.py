@@ -129,18 +129,17 @@ Geen — {name} draait alleen in de chat.
          f"cd /opt/buzz-relay && docker compose exec -T relay buzz-admin add-member --pubkey {pub} --role member"])
     benv = dict(os.environ, BUZZ_PRIVATE_KEY=mark_nsec, BUZZ_RELAY_URL=RELAY)
     buzz = os.path.expanduser("~/.local/bin/buzz")
-    chan_ids = {}
-    lst = run([buzz, "channels", "list"], env=benv).stdout
-    try:
-        import json
-        for x in (json.loads(lst) if lst.strip().startswith("[") else []):
-            chan_ids[x.get("name")] = x.get("channel_id") or x.get("id")
-    except Exception:
-        pass
+    import time
+    time.sleep(2)  # relay-lidmaatschap laten propageren vóór kanaal-adds
+    # kanaal-id's uit channels.yml (bron), niet uit een geparste list
+    chdef = yaml.safe_load(open(os.path.join(BOOMHUIS, "channels.yml"))).get("channels", {})
     for c in chans:
-        cid = chan_ids.get(c) or (GENERAL if c == "general" else None)
-        if cid:
-            run([buzz, "channels", "add-member", "--channel", cid, "--pubkey", pub, "--role", "bot"], env=benv)
+        cid = chdef.get(c, {}).get("id") or (GENERAL if c == "general" else None)
+        if not cid:
+            print(f"[create] kanaal '{c}' onbekend in channels.yml — sla lidmaatschap over")
+            continue
+        r = run([buzz, "channels", "add-member", "--channel", cid, "--pubkey", pub, "--role", "bot"], env=benv)
+        print(f"[create] {c}-bot: {'ok' if 'accepted' in r.stdout and 'true' in r.stdout else r.stdout[:80] or r.stderr[:80]}")
     # eigen profielnaam
     run([buzz, "users", "set-profile", "--name", name, "--about", a.mandaat[:120]],
         env=dict(os.environ, BUZZ_PRIVATE_KEY=nsec, BUZZ_RELAY_URL=RELAY))
