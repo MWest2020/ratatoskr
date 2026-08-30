@@ -38,15 +38,16 @@ def open_batons():
 
 
 def habitat_jobs():
-    """kubectl get jobs, alleen als een cluster is gekoppeld via env KUBECTL
-    (bv. 'ssh cp-01 sudo -n kubectl --kubeconfig /etc/kubernetes/admin.conf')."""
+    """Habitat-Jobs (namespace 'agents'), alleen als een cluster is gekoppeld via
+    env KUBECTL (bv. 'ssh jumpy kubectl'). HABITAT_NS overschrijft de namespace."""
     kubectl = os.environ.get("KUBECTL")
     if not kubectl:
         return None
+    ns = os.environ.get("HABITAT_NS", "agents")
     try:
-        r = subprocess.run(kubectl.split() + ["get", "jobs", "-A", "--no-headers"],
+        r = subprocess.run(kubectl.split() + ["get", "jobs", "-n", ns, "--no-headers"],
                            capture_output=True, text=True, timeout=20)
-        return r.stdout.strip() or "(geen jobs)"
+        return r.stdout.strip() or f"(geen jobs in ns {ns})"
     except Exception as e:
         return f"(kubectl-fout: {e})"
 
