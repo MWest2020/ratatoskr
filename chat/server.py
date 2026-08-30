@@ -204,4 +204,9 @@ class H(BaseHTTPRequestHandler):
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", "8090"))
-    ThreadingHTTPServer(("0.0.0.0", port), H).serve_forever()
+    # Bind-host is config, niet code. Default 0.0.0.0 (ongewijzigd gedrag); op de
+    # relay-VM zetten we BIND_HOST op het tailnet-IP (100.x) zodat de poort niet
+    # op de LAN-interface luistert — dan kan alleen een tailnet-node posten.
+    host = os.environ.get("BIND_HOST", "0.0.0.0")
+    print(f"[chat] luistert op {host}:{port}", flush=True)
+    ThreadingHTTPServer((host, port), H).serve_forever()

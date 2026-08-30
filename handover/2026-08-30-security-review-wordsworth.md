@@ -2,7 +2,7 @@
 type: handover-baton
 van: security-review-sessie + boomhuis (tweede, onafhankelijke blik)
 naar: Mark
-status: deels-open
+status: afgehandeld (op ontwerp-beslispunten na)
 onderwerp: geautoriseerde security-pass wordsworth-PII-pad + boomhuis-comms
 datum: 2026-08-30
 scope: MWest2020/wordsworth (homelab) + boomhuis chat-backend. Alma (prod) OUT-OF-SCOPE.
@@ -10,7 +10,7 @@ autorisatie: Marks eigen infra/repo's; read/gerichte probes, geen DoS/destructie
 artefact_links:
   - wordsworth-console (live): https://mwest2020.github.io/wordsworth-console/  # commit f15571d
   - wordsworth F1/F3-mitigaties: MWest2020/wordsworth (auth per-caller keys + grant-scoping)
-next_step: Mark kiest de comms-fix (token / tailscale / beide); dan sluit boomhuis de Medium.
+next_step: comms-Medium FIXED (tailscale-bind). Rest = ontwerp-beslissingen voor Mark (F4-exposure, optionele app-token) + de baton-conventie zelf.
 ---
 
 # Verdict — security-pass wordsworth-PII-pad + boomhuis-comms (2026-08-30)
@@ -40,20 +40,30 @@ exploit-details horen hier, niet daar.
 - **Fix (peer):** Console geeft nu optioneel `document_id` mee (scoping).
 - **Bewijs:** gescopete grant → reveal op eigen doc 200, op ander doc 403.
 
-### Comms — chat-backend bindt 0.0.0.0, geen auth, tekent als mark · Medium · OPEN
+### Comms — chat-backend bindt 0.0.0.0, geen auth, tekent als mark · Medium · FIXED+verified
 - **Entry:** `POST http://192.168.178.60:8090/api/send` (ook `/api/channels/create|delete`).
-- **Defect:** `chat/server.py` bindt op `("0.0.0.0", 8090)` zonder auth en tekent
+- **Defect:** `chat/server.py` bond op `("0.0.0.0", 8090)` zonder auth en tekende
   elk bericht als `mark`. Bereikt vanaf een andere host over de LAN. Elke node op
-  het homelab-net (incl. andere agents) kan als mark posten / kanalen CRUD-en.
-- **Belangrijke correctie op de eerste fix-formulering:** tailscale draait NIET op
-  de VM (enige interface eth0 192.168.178.60; geen 100.x). "Tailnet-only" komt van
-  een subnet-router elders. Binden op een 100.x kan dus niet (bind faalt → chat
-  plat); binden op 192.168.178.60 sluit de LAN-exposure niet.
-- **Echte opties (Marks keuze):** (1) app-token op de write-endpoints —
-  topologie-onafhankelijk, geen nieuwe infra; (2) tailscale op de VM + bind op de
-  dan-echte 100.x — socket-niveau tailnet-only, vergt een auth-key. Sterkste = beide.
-- **Re-test na fix:** vanaf niet-tailnet host naar VM-LAN-IP:8090 → connection
-  refused (was 200); geldig kanaal alleen met token/over-tailnet.
+  het homelab-net (incl. andere agents) kon als mark posten / kanalen CRUD-en.
+- **Correctie op de eerste fix-formulering:** tailscale draaide NIET op de VM
+  (enige interface eth0 192.168.178.60; geen 100.x). "Tailnet-only" kwam van een
+  subnet-router elders. Binden op 192.168.178.60 zou de LAN-exposure niet sluiten.
+- **Gekozen fix (Mark, 2026-08-30): optie 2 — tailscale op de VM + socket-bind op
+  het echte 100.x.** Uitgevoerd: tailscale geïnstalleerd op de relay-VM (join via
+  1-daagse auth-key), VM-tailnet-IP = `100.80.218.83` (`boomhuis-relay`).
+  `chat/server.py` nu `BIND_HOST`-configureerbaar (default 0.0.0.0); op de VM
+  `BIND_HOST=100.80.218.83` in `chat.env`. Systemd drop-in `10-wait-tailnet.conf`
+  wacht op het tailnet-IP vóór de bind (reboot-race) + `Restart=on-failure`.
+- **Re-test (vanaf agent-lxc, tailnet-node 100.90.159.10):** ná de flip →
+  `tailnet 100.80.218.83:8090` = 200, `LAN 192.168.178.60:8090` = connection
+  refused (was 200). Impersonatie vanaf het LAN is dicht.
+- **Nieuwe toegangs-URL:** `http://100.80.218.83:8090/` of `http://boomhuis-relay:8090/`
+  (MagicDNS). De oude LAN-URL vervalt bewust.
+- **Nog open (optioneel):** app-token op de write-endpoints als tweede laag
+  (defense-in-depth). Nu niet nodig — netwerklaag is dicht; alleen als een
+  tailnet-node ooit gecompromitteerd raakt. Marks keuze.
+- **Niet live-reboot-getest:** de relay-VM niet herstart (verstoort de dienst);
+  resilience is by-design (drop-in + Restart). Mark kan reboot-testen wanneer 't uitkomt.
 
 ## Beslispunten voor Mark (geen bug)
 
