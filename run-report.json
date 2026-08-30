@@ -1,0 +1,14 @@
+{
+  "role": "builder",
+  "change": "add-pwa-howto",
+  "run_id": "20260830-220919-25802",
+  "repo": "https://github.com/MWest2020/boomhuis.git",
+  "verdict": "ok",
+  "subtype": "success",
+  "total_cost_usd": "0.7263705000000001",
+  "num_turns": "24",
+  "claude_exit": "0",
+  "finished_at": "2026-08-30T20:11:13Z",
+  "diff_hash": "cf489eb875181f5ebc8f8e58655553282caf6c12dec962c06f50dd85001e39e3",
+  "diff_hash_scope": "git diff <base-ref> HEAD -- . ':(exclude,literal).habitat/audit.jsonl' ':(exclude,literal).habitat/run-report-20260830-220919-25802.html' ':(exclude,literal).habitat/run-output-20260830-220919-25802.md' ':(exclude,literal)run-report.json' | sha256sum"
+}

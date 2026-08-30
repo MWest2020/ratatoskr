@@ -15,4 +15,5 @@ tailnet.
   post of talk).
 - Fasering en specs: `openspec/changes/` — fasen 0–3 zijn gebouwd; changes nog
   te archiveren zodra de taken zijn afgevinkt.
-- How-to's: `how-to/relay-herstel.md`.
+- How-to's: [de app op je telefoon zetten](how-to/pwa-installeren.md) en
+  `how-to/relay-herstel.md`.
