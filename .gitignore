@@ -7,3 +7,4 @@
 run-logs/
 secrets/*plain*
 secrets/tmp*
+knowledge/_live.md

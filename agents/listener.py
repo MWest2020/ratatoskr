@@ -149,6 +149,15 @@ def channel_knowledge(cname):
         return ""
 
 
+def live_text():
+    """Wat er nu draait (uit knowledge/_live.md, door orchestrator/live.py
+    gegenereerd) — liveness-context voor de coordinator. Leeg = onbekend."""
+    try:
+        return open(os.path.join(ROOT, "knowledge", "_live.md")).read().strip()[:4000]
+    except OSError:
+        return ""
+
+
 def roster_text():
     """Korte samenvatting van de huidige vloot — context voor de coordinator."""
     lines = ["Huidige agent-vloot (uit de handbook-registry):"]
@@ -220,6 +229,9 @@ def main():
                         p = f"Kanaal-kennis (#{cname}):\n{know}\n\n" + p
                     if handle == "coordinator":
                         p = roster_text() + "\n\n" + p
+                        lt = live_text()
+                        if lt:
+                            p = lt + "\n\n" + p
                     try:
                         ans = run_provider(cfg.get("provider"), cfg["system"], p)
                     except subprocess.TimeoutExpired:
