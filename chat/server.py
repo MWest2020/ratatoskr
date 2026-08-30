@@ -127,6 +127,23 @@ class H(BaseHTTPRequestHandler):
         if u.path in ("/", "/index.html"):
             with open(os.path.join(HERE, "index.html"), "rb") as f:
                 return self._send(200, f.read(), "text/html; charset=utf-8")
+        # PWA-assets (app-shell). sw.js op root-scope zodat de worker de hele
+        # app kan controleren.
+        static = {
+            "/manifest.webmanifest": ("manifest.webmanifest", "application/manifest+json"),
+            "/sw.js": ("sw.js", "text/javascript"),
+            "/icon.svg": ("icon.svg", "image/svg+xml"),
+            "/icon-192.png": ("icon-192.png", "image/png"),
+            "/icon-512.png": ("icon-512.png", "image/png"),
+            "/apple-touch-icon.png": ("apple-touch-icon.png", "image/png"),
+        }
+        if u.path in static:
+            fname, ctype = static[u.path]
+            try:
+                with open(os.path.join(HERE, fname), "rb") as f:
+                    return self._send(200, f.read(), ctype)
+            except OSError:
+                return self._send(404, json.dumps({"error": "asset weg"}))
         if u.path == "/api/channels":
             return self._send(200, json.dumps(
                 [{"name": n, "id": i} for n, i in list_channels()]))

@@ -5,6 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#15130f">
 <title>Boomhuis</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Boomhuis">
 <style>
   :root{
     --bg:#15130f; --panel:#1e1b16; --panel2:#26221b; --line:#332d24;
@@ -291,6 +298,21 @@ input.addEventListener("keydown",e=>{
   pollTimer=setInterval(()=>refresh(false), 4000);
   document.addEventListener("visibilitychange",()=>{ if(!document.hidden) refresh(false); });
 })();
+
+// --- PWA: service worker + installeer-knop ---
+if("serviceWorker" in navigator){
+  navigator.serviceWorker.register("/sw.js").catch(()=>{});
+}
+let deferredPrompt=null;
+window.addEventListener("beforeinstallprompt", e=>{
+  e.preventDefault(); deferredPrompt=e;
+  const b=document.createElement("button");
+  b.textContent="Installeer";
+  b.style.cssText="margin-left:.4rem;background:var(--accent);color:#15130f;border:0;border-radius:10px;padding:.4rem .7rem;font-size:.85rem;font-weight:700";
+  b.onclick=async()=>{ b.remove(); if(!deferredPrompt)return; deferredPrompt.prompt();
+    await deferredPrompt.userChoice; deferredPrompt=null; };
+  document.querySelector("header").appendChild(b);
+});
 </script>
 </body>
 </html>

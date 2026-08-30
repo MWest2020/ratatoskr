@@ -55,11 +55,12 @@ cluster-fire van de brug is nog gesuperviseerd (`BRIDGE_LIVE`). Rome is niet in
 - **Relay** — self-hosted buzz op vm 109 / `192.168.178.60`, closed mode,
   tailnet-only. Reboot-vaste systemd-services: `boomhuis-chat` (relay-VM) en
   `boomhuis-agents` (agent-lxc, user-service).
-- **Web-chat** (`chat/`) — Slack/Telegram-achtige interface op
-  `http://100.80.218.83:8090/` (of via MagicDNS `http://boomhuis-relay:8090/`);
-  desktop-browser + telefoon. **Tailnet-only op socket-niveau**: het backend
-  bindt op het tailnet-IP (`BIND_HOST`), niet op de LAN-interface, zodat alleen
-  een tailnet-node kan posten (geen impersonatie vanaf het LAN). Kanalen dynamisch
+- **Web-chat / PWA** (`chat/`) — Slack/Telegram-achtige, **installeerbare** PWA op
+  `https://boomhuis-relay.tail8f7877.ts.net/` (desktop-browser + telefoon;
+  "toevoegen aan beginscherm"). Het backend bindt op **loopback** (`127.0.0.1`,
+  `BIND_HOST`) en wordt via **tailscale serve** met HTTPS naar buiten gebracht —
+  alleen bereikbaar over het tailnet, geen directe poort op LAN of tailnet-IP,
+  geen impersonatie. Kanalen dynamisch
   uit de relay, **maken/verwijderen in de app**, agents-overzicht, `@mention` +
   thread-continuïteit (doorpraten zonder mention).
 - **Kanalen** — `#general` (hub: roep hier elke agent aan), plus `#runs

@@ -57,8 +57,11 @@ exploit-details horen hier, niet daar.
 - **Re-test (vanaf agent-lxc, tailnet-node 100.90.159.10):** ná de flip →
   `tailnet 100.80.218.83:8090` = 200, `LAN 192.168.178.60:8090` = connection
   refused (was 200). Impersonatie vanaf het LAN is dicht.
-- **Nieuwe toegangs-URL:** `http://100.80.218.83:8090/` of `http://boomhuis-relay:8090/`
-  (MagicDNS). De oude LAN-URL vervalt bewust.
+- **Verder gehard (PWA-fase):** backend nu op loopback `127.0.0.1:8090`, naar buiten
+  via `tailscale serve` met HTTPS op `https://boomhuis-relay.tail8f7877.ts.net`.
+  Geen directe :8090-poort meer op LAN of tailnet-IP (beide geverifieerd dicht);
+  toegang loopt uitsluitend via de tailnet-HTTPS-proxy. Nieuwe URL vervangt de
+  oude LAN-URL.
 - **Nog open (optioneel):** app-token op de write-endpoints als tweede laag
   (defense-in-depth). Nu niet nodig — netwerklaag is dicht; alleen als een
   tailnet-node ooit gecompromitteerd raakt. Marks keuze.
