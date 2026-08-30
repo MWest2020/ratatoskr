@@ -125,12 +125,31 @@
   .toast{position:absolute; bottom:5rem; left:50%; transform:translateX(-50%);
     background:var(--danger); color:#1a1710; padding:.4rem .8rem; border-radius:10px;
     font-size:.85rem; font-weight:700; z-index:30; display:none}
+  /* repo/PR-view */
+  .rrow{padding:.6rem .7rem; border:1px solid var(--line); border-radius:12px;
+    margin-bottom:.5rem; background:var(--panel2); cursor:pointer}
+  .rrow:active{background:var(--other)}
+  .rrow .rn{font-weight:700}
+  .rrow .rn .own{color:var(--muted); font-weight:400}
+  .rrow .rd{color:var(--muted); font-size:.8rem; margin-top:.15rem; line-height:1.35}
+  .rrow .badge{float:right; font-family:"IBM Plex Mono",monospace; font-size:.72rem;
+    background:var(--mine); border-radius:999px; padding:.1rem .5rem; color:var(--accent)}
+  .rback{color:var(--accent2); font-size:.85rem; cursor:pointer; margin-bottom:.5rem;
+    display:inline-block; font-weight:600}
+  .prdet .st{color:var(--muted); font-size:.82rem; margin:.2rem 0 .5rem}
+  .prdet .add{color:#8ecf8e} .prdet .del{color:var(--danger)}
+  .prdet .file{font-family:"IBM Plex Mono",monospace; font-size:.76rem; padding:.2rem 0;
+    border-bottom:1px solid var(--line); word-break:break-all}
+  .rrow .rev, .prdet .rev{background:var(--accent); color:#15130f; border:0;
+    border-radius:10px; padding:.4rem .7rem; font-weight:700; font-size:.82rem; margin-top:.6rem}
+  .prdet a.gh{color:var(--accent2); font-size:.85rem; word-break:break-all}
 </style>
 </head>
 <body>
   <header>
     <span class="bee">🐝</span>
     <h1><span class="hash">#</span><span id="chanName">runs</span></h1>
+    <button id="reposBtn">📦 Repos</button>
     <button id="agentsBtn">🤖 Agents</button>
     <button id="switch">Kanalen</button>
   </header>
@@ -150,6 +169,11 @@
     <div id="agentList"></div>
     <div class="agenthint">Noem een agent met <b>@naam</b> in een kanaal om te praten.
       Meer agents (architect, marketing…) volgen — elk met eigen rol.</div>
+  </div></div>
+
+  <div id="reposDrawer"><div class="sheet">
+    <div class="title" id="repoTitle">Repo's · GitHub</div>
+    <div id="repoView"><div class="agenthint">laden…</div></div>
   </div></div>
 
   <div id="msgs"><div class="empty">laden…</div></div>
@@ -263,10 +287,89 @@ async function loadAgents(){
   }
 }
 function closeAgents(){ $("#agentsDrawer").classList.remove("open"); }
+function closeRepos(){ $("#reposDrawer").classList.remove("open"); }
+
+async function sendTo(channelName, text){
+  const c = channels.find(x=>x.name===channelName);
+  if(!c){ toast("kanaal #"+channelName+" bestaat niet"); return false; }
+  const r = await fetch("/api/send",{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({channel:c.id, content:text})});
+  const j = await r.json().catch(()=>({}));
+  if(!r.ok||j.error){ toast(j.error||"versturen mislukt"); return false; }
+  return true;
+}
+async function reviewPR(repo, num, title, url){
+  const ok = await sendTo("review", `@reviewer bekijk PR ${repo}#${num} — ${title}\n${url}`);
+  if(ok){ closeRepos(); const c=channels.find(x=>x.name==="review");
+    if(c) selectChannel(c); toast("review aangevraagd in #review"); }
+}
+async function openRepos(){
+  $("#repoTitle").textContent="Repo's · GitHub";
+  const view=$("#repoView"); view.innerHTML='<div class="agenthint">laden…</div>';
+  $("#reposDrawer").classList.add("open");
+  let d; try{ d=await (await fetch("/api/repos")).json(); }
+  catch(e){ view.innerHTML='<div class="agenthint">GitHub onbereikbaar.</div>'; return; }
+  if(d.error){ view.innerHTML=`<div class="agenthint">${d.error}</div>`; return; }
+  view.innerHTML="";
+  for(const r of (d.repos||[])){
+    const el=document.createElement("div"); el.className="rrow";
+    const [own,nm]=r.full_name.split("/");
+    el.innerHTML=`<span class="badge">${r.open_issues} open</span>`+
+      `<div class="rn"><span class="own">${own}/</span>${nm}${r.private?" 🔒":""}</div>`+
+      `<div class="rd">${r.description||"—"}</div>`;
+    el.onclick=()=>showRepo(r.full_name);
+    view.appendChild(el);
+  }
+}
+async function showRepo(full){
+  $("#repoTitle").textContent=full;
+  const view=$("#repoView");
+  view.innerHTML='<span class="rback">← repo\'s</span><div class="agenthint">PR\'s laden…</div>';
+  view.querySelector(".rback").onclick=openRepos;
+  let d; try{ d=await (await fetch("/api/prs?repo="+encodeURIComponent(full))).json(); }
+  catch(e){ return; }
+  const back='<span class="rback">← repo\'s</span>';
+  if(d.error){ view.innerHTML=back+`<div class="agenthint">${d.error}</div>`; view.querySelector(".rback").onclick=openRepos; return; }
+  const prs=d.prs||[];
+  view.innerHTML=back+(prs.length?"":'<div class="agenthint">Geen open PR\'s.</div>');
+  view.querySelector(".rback").onclick=openRepos;
+  for(const p of prs){
+    const el=document.createElement("div"); el.className="rrow";
+    el.innerHTML=`<span class="badge">#${p.number}</span>`+
+      `<div class="rn">${p.title}${p.draft?" · concept":""}</div>`+
+      `<div class="rd">${p.head} → ${p.base} · door ${p.author}</div>`;
+    el.onclick=()=>showPR(full, p.number);
+    view.appendChild(el);
+  }
+}
+async function showPR(repo, num){
+  const view=$("#repoView");
+  view.innerHTML='<span class="rback">← PR\'s</span><div class="agenthint">laden…</div>';
+  view.querySelector(".rback").onclick=()=>showRepo(repo);
+  let p; try{ p=await (await fetch(`/api/pr?repo=${encodeURIComponent(repo)}&num=${num}`)).json(); }
+  catch(e){ return; }
+  if(p.error){ view.innerHTML=`<span class="rback">← PR's</span><div class="agenthint">${p.error}</div>`;
+    view.querySelector(".rback").onclick=()=>showRepo(repo); return; }
+  const files=(p.files||[]).map(f=>`<div class="file">${f.status[0].toUpperCase()} ${f.filename} `+
+    `<span class="add">+${f.additions}</span> <span class="del">−${f.deletions}</span></div>`).join("");
+  const d=document.createElement("div"); d.className="prdet";
+  d.innerHTML=`<span class="rback">← PR\'s</span>`+
+    `<div class="rn" style="margin:.3rem 0">#${p.number} · ${p.title}</div>`+
+    `<div class="st">${p.head} → ${p.base} · door ${p.author} · `+
+    `<span class="add">+${p.additions}</span> <span class="del">−${p.deletions}</span> in ${p.changed_files} bestanden</div>`+
+    `${files}`+
+    `<div style="margin-top:.6rem"><a class="gh" href="${p.url}" target="_blank" rel="noopener">op GitHub openen ↗</a></div>`+
+    `<button class="rev">🔍 Laat @reviewer kijken</button>`;
+  view.innerHTML=""; view.appendChild(d);
+  d.querySelector(".rback").onclick=()=>showRepo(repo);
+  d.querySelector(".rev").onclick=()=>reviewPR(repo, p.number, p.title, p.url);
+}
 
 // UI-bindings
 $("#switch").onclick=()=>$("#drawer").classList.add("open");
 $("#agentsBtn").onclick=()=>{ loadAgents(); $("#agentsDrawer").classList.add("open"); };
+$("#reposBtn").onclick=openRepos;
+$("#reposDrawer").onclick=e=>{ if(e.target.id==="reposDrawer") closeRepos(); };
 $("#newChan").addEventListener("submit", async e=>{
   e.preventDefault();
   const inp=$("#newChanName"); const name=(inp.value||"").trim().toLowerCase();

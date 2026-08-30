@@ -12,6 +12,8 @@ import subprocess
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
 
+import github  # lokale GitHub-leeslaag (repo/PR-view)
+
 BUZZ = os.environ.get("BUZZ_BIN", "/usr/local/bin/buzz")
 HERE = os.path.dirname(os.path.abspath(__file__))
 
@@ -149,6 +151,29 @@ class H(BaseHTTPRequestHandler):
                 [{"name": n, "id": i} for n, i in list_channels()]))
         if u.path == "/api/agents":
             return self._send(200, json.dumps({"agents": agent_roster()}))
+        if u.path == "/api/repos":
+            try:
+                return self._send(200, json.dumps({"repos": github.list_repos()}))
+            except Exception as e:
+                return self._send(502, json.dumps({"error": str(e)[:200]}))
+        if u.path == "/api/prs":
+            repo = (parse_qs(u.query).get("repo") or [""])[0]
+            if not repo:
+                return self._send(400, json.dumps({"error": "repo ontbreekt"}))
+            try:
+                return self._send(200, json.dumps({"prs": github.list_prs(repo)}))
+            except Exception as e:
+                return self._send(502, json.dumps({"error": str(e)[:200]}))
+        if u.path == "/api/pr":
+            q = parse_qs(u.query)
+            repo = (q.get("repo") or [""])[0]
+            num = (q.get("num") or [""])[0]
+            if not repo or not num.isdigit():
+                return self._send(400, json.dumps({"error": "repo/num ontbreekt"}))
+            try:
+                return self._send(200, json.dumps(github.get_pr(repo, int(num))))
+            except Exception as e:
+                return self._send(502, json.dumps({"error": str(e)[:200]}))
         if u.path == "/api/messages":
             cid = (parse_qs(u.query).get("channel") or [""])[0]
             if not valid_cid(cid):
