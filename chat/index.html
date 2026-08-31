@@ -153,10 +153,12 @@
     color:var(--muted); line-height:1.4; font-size:.82rem}
   #pinned.collapsed .body{display:none}
   /* ongelezen-badge in de kanaallijst */
-  .chan .unread{margin-left:auto; background:var(--accent); color:#15130f;
+  .chan .cn{flex:1}
+  .chan .unread{background:var(--accent); color:#15130f;
     font-size:.72rem; font-weight:800; min-width:1.25rem; height:1.25rem;
     border-radius:999px; display:inline-flex; align-items:center;
     justify-content:center; padding:0 .35rem}
+  .chan .unread[hidden]{display:none}  /* author-regel wint van UA; expliciet verbergen */
 </style>
 </head>
 <body>
@@ -219,17 +221,19 @@ function renderBadges(){
   document.querySelectorAll("#chanList .chan").forEach(row=>{
     const b=row.querySelector(".unread"); if(!b) return;
     const n=(current&&row.dataset.id===current.id)?0:unreadFor(row.dataset.id);
-    if(n>0){ b.textContent=n>99?"99+":n; b.hidden=false; } else { b.hidden=true; }
+    if(n>0){ b.textContent=n>99?"99+":n; b.hidden=false; }
+    else { b.textContent=""; b.hidden=true; }
   });
 }
 async function loadOverview(){
   try{ const d=await (await fetch("/api/overview")).json();
     overview={};
-    const sm=seenMap(); let changed=false;
+    const sm=seenMap(); let changed=false; const ids=new Set();
     for(const c of (d.channels||[])){
-      overview[c.id]={count:c.count, latest:c.latest};
+      overview[c.id]={count:c.count}; ids.add(c.id);
       if(sm[c.id]==null){ sm[c.id]=c.count; changed=true; } // baseline: nog nooit geopend → nu gelezen
     }
+    for(const k of Object.keys(sm)){ if(!ids.has(k)){ delete sm[k]; changed=true; } } // prune verwijderde kanalen
     if(changed){ try{ localStorage.setItem("bh_seen", JSON.stringify(sm)); }catch(e){} }
     renderBadges();
   }catch(e){}
