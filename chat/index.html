@@ -211,7 +211,7 @@ function toast(t){ const e=$("#toast"); e.textContent=t; e.style.display="block"
   setTimeout(()=>e.style.display="none", 2600); }
 
 // --- ongelezen-teller per kanaal (per device via localStorage) ---
-let overview = {}; // id -> {count, latest}
+let overview = {}; // id -> {count}
 function seenMap(){ try{ return JSON.parse(localStorage.getItem("bh_seen")||"{}"); }catch(e){ return {}; } }
 function markSeen(id, count){ const m=seenMap(); m[id]=count;
   try{ localStorage.setItem("bh_seen", JSON.stringify(m)); }catch(e){} }
@@ -227,9 +227,11 @@ function renderBadges(){
 }
 async function loadOverview(){
   try{ const d=await (await fetch("/api/overview")).json();
+    const chans=d.channels||[];
+    if(!chans.length) return;  // lege/gefaalde overview (bv. 502) → niets bijwerken, NIET prunen
     overview={};
     const sm=seenMap(); let changed=false; const ids=new Set();
-    for(const c of (d.channels||[])){
+    for(const c of chans){
       overview[c.id]={count:c.count}; ids.add(c.id);
       if(sm[c.id]==null){ sm[c.id]=c.count; changed=true; } // baseline: nog nooit geopend → nu gelezen
     }
@@ -246,9 +248,12 @@ async function loadChannels(){
     const row=document.createElement("div");
     row.className="chan"+(current&&c.id===current.id?" active":"");
     row.dataset.id=c.id;
-    row.innerHTML=`<span class="hash">#</span><span class="cn">${c.name}</span><span class="unread" hidden></span>`;
-    row.querySelector(".cn").onclick=()=>{ selectChannel(c); closeDrawer(); };
-    row.querySelector(".hash").onclick=()=>{ selectChannel(c); closeDrawer(); };
+    row.innerHTML=`<span class="hash">#</span><span class="cn"></span><span class="unread" hidden></span>`;
+    row.querySelector(".cn").textContent=c.name;  // textContent: geen HTML-injectie via kanaalnaam
+    const open=()=>{ selectChannel(c); closeDrawer(); };
+    row.querySelector(".cn").onclick=open;
+    row.querySelector(".hash").onclick=open;
+    row.querySelector(".unread").onclick=open;
     if(c.name!=="general"){
       const del=document.createElement("button");
       del.className="del"; del.textContent="🗑"; del.title="verwijder #"+c.name;

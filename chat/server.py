@@ -120,17 +120,23 @@ def channel_overview():
         now = time.time()
         if _ov_cache["data"] is not None and now - _ov_cache["t"] < _OV_TTL:
             return _ov_cache["data"]
+        chans = list_channels()
+        if not chans:
+            # Leeg is niet te onderscheiden van een buzz-storing → NIET cachen en
+            # signaleren (route geeft 502). Anders wist de client-prune de
+            # leesstatus op een tijdelijke hik.
+            raise RuntimeError("kanaallijst leeg of onbereikbaar")
         out = []
-        for name, cid in list_channels():
-            rc, o, e = buzz(["messages", "get", "--channel", cid])
+        for name, cid in chans:
             cnt = 0
-            if rc == 0:
-                try:
+            try:
+                rc, o, e = buzz(["messages", "get", "--channel", cid])
+                if rc == 0:
                     raw = json.loads(o)
                     msgs = raw if isinstance(raw, list) else raw.get("messages", [])
                     cnt = len(msgs)
-                except Exception:
-                    pass
+            except (subprocess.TimeoutExpired, Exception):
+                pass
             out.append({"name": name, "id": cid, "count": cnt})
         _ov_cache["t"], _ov_cache["data"] = time.time(), out
         return out
@@ -187,7 +193,10 @@ class H(BaseHTTPRequestHandler):
         if u.path == "/api/agents":
             return self._send(200, json.dumps({"agents": agent_roster()}))
         if u.path == "/api/overview":
-            return self._send(200, json.dumps({"channels": channel_overview()}))
+            try:
+                return self._send(200, json.dumps({"channels": channel_overview()}))
+            except Exception as e:
+                return self._send(502, json.dumps({"error": str(e)[:200]}))
         if u.path == "/api/repos":
             try:
                 return self._send(200, json.dumps({"repos": github.list_repos()}))
