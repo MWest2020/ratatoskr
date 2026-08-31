@@ -15,7 +15,8 @@ commandline (ps-zichtbaar) en nooit in git; de SOPS-bron is
 
     sudo systemctl status|restart boomhuis-chat
 
-Open op de telefoon (Tailscale aan): http://192.168.178.60:8090/
+Open op de telefoon (Tailscale aan): https://boomhuis-relay.tail8f7877.ts.net/
+(HTTPS via tailscale serve — een secure context, nodig voor de service worker).
 
 ## Nog te doen (hardening)
 - Wanneer de chat-native agents live zijn (fase 2), verschijnen ze vanzelf in
