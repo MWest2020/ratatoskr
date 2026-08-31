@@ -1,7 +1,8 @@
 // Boomhuis PWA service worker.
 // - De PAGINA (navigatie/index.html): netwerk-eerst MET timeout → een herlaad
 //   toont online de laatste versie, maar een koude launch vóór de tailnet-tunnel
-//   op is valt binnen ~3s terug op de cache i.p.v. te hangen.
+//   op is valt binnen ~3s terug op de cache i.p.v. te hangen. De netwerk-fetch
+//   loopt na een timeout dóór en ververst de cache alsnog (waitUntil).
 // - Statics (iconen, manifest): cache-eerst met achtergrond-update.
 // - /api/*: NOOIT cachen (chat is realtime, git is waarheid).
 const CACHE = "boomhuis-shell-v2";
@@ -17,7 +18,13 @@ const SHELL = [
 ];
 
 self.addEventListener("install", (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  // Veerkrachtig: één falende shell-URL laat de hele install (en dus v2) niet
+  // sneuvelen — cache elk item los, negeer individuele fouten.
+  e.waitUntil(
+    caches.open(CACHE)
+      .then((c) => Promise.all(SHELL.map((u) => c.add(u).catch(() => {}))))
+      .then(() => self.skipWaiting())
+  );
 });
 
 self.addEventListener("activate", (e) => {
@@ -29,8 +36,8 @@ self.addEventListener("activate", (e) => {
 });
 
 function putCache(req, res) {
-  // fire-and-forget, maar mét .catch: een volle-opslag-QuotaExceededError mag
-  // geen unhandled rejection in de worker worden.
+  // fire-and-forget mét .catch: een volle-opslag-QuotaExceededError mag geen
+  // unhandled rejection in de worker worden.
   caches.open(CACHE).then((c) => c.put(req, res)).catch(() => {});
 }
 
@@ -44,26 +51,29 @@ function fromCache(req) {
 
 function cacheFirst(req) {
   return caches.match(req).then((hit) => {
-    const net = fetch(req).then((res) => {
+    if (hit) {
+      // achtergrond-update, maar serveer meteen de cache
+      fetch(req).then((res) => { if (res && res.status === 200) putCache(req, res.clone()); }).catch(() => {});
+      return hit;
+    }
+    return fetch(req).then((res) => {
       if (res && res.status === 200) putCache(req, res.clone());
-      return res;
-    }).catch(() => hit);
-    return hit || net;
+      return res || fromCache(req);
+    }).catch(() => fromCache(req));
   });
 }
 
-function networkFirst(req) {
-  // no-store: omzeil de HTTP-cache zodat ook een koude launch (cache-mode
-  // 'default') vers haalt, niet alleen een expliciete reload (no-cache).
-  const fresh = fetch(req.url, { cache: "no-store" });
-  const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), NET_TIMEOUT));
-  return Promise.race([fresh, timeout])
-    .then((res) => {
-      if (!res || !res.ok) throw new Error("bad status");  // 4xx/5xx → val terug op cache
-      putCache(req, res.clone());
-      return res;
-    })
-    .catch(() => fromCache(req));
+function networkFirst(e) {
+  const req = e.request;
+  // De fetch loopt volledig af en ververst de cache bij succes — óók als de race
+  // hieronder al door de timeout is beslist. waitUntil houdt de worker levend.
+  const fresh = fetch(req.url, { cache: "no-store" }).then((res) => {
+    if (res && res.ok) putCache(req, res.clone());
+    return res;
+  }).catch(() => null);
+  e.waitUntil(fresh);
+  const timeout = new Promise((resolve) => setTimeout(() => resolve(null), NET_TIMEOUT));
+  return Promise.race([fresh, timeout]).then((res) => (res && res.ok) ? res : fromCache(req));
 }
 
 self.addEventListener("fetch", (e) => {
@@ -73,5 +83,5 @@ self.addEventListener("fetch", (e) => {
   }
   const isPage = e.request.mode === "navigate" ||
     url.pathname === "/" || url.pathname === "/index.html";
-  e.respondWith(isPage ? networkFirst(e.request) : cacheFirst(e.request));
+  e.respondWith(isPage ? networkFirst(e) : cacheFirst(e.request));
 });

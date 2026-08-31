@@ -25,12 +25,15 @@ een fetch naar een onbereikbare host hangt dan op de OS-timeout (tientallen
 seconden). De timeout maakt de koude launch snel: binnen 3s de gecachete shell,
 en de volgende herlaad (tunnel op) haalt vers.
 
-## 3. `fetch(url, {cache: "no-store"})` i.p.v. de request ongewijzigd doorgeven
+## 3. `fetch(url, {cache: "no-store"})` — defensief
 
-**Keuze:** de pagina-fetch forceert `no-store`.
+**Keuze:** de pagina-fetch zet expliciet `no-store`.
 
-**Verworpen:** `fetch(req)` ongewijzigd. Die erft de cache-mode van het request:
-een expliciete reload is `no-cache` (haalt vers), maar een gewone home-screen-
-launch is `default` — dan mag de HTTP-cache van de browser de fetch stil met een
-oude respons bedienen, buiten de service worker om. `no-store` omzeilt dat, zodat
-de fresh-garantie ook bij een launch geldt.
+**Context:** het backend stuurt al `Cache-Control: no-store` op elke respons
+(`chat/server.py` `_send`), dus de browser-HTTP-cache hoort de pagina sowieso niet
+te bewaren. `no-store` op de fetch is daarmee **belt-and-suspenders**: het maakt de
+service worker onafhankelijk van de server-headers, zodat een gewone home-screen-
+launch (cache-mode `default`) ook zonder die header niet stil een oude respons uit
+de HTTP-cache kan krijgen. **Verworpen:** `fetch(req)` ongewijzigd doorgeven en
+enkel op de server-header vertrouwen — dat koppelt de fresh-garantie aan een
+config die elders staat en stil kan wijzigen.
