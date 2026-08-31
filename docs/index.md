@@ -1,6 +1,6 @@
 ---
 status: draft
-last_reviewed: 2026-08-28
+last_reviewed: 2026-08-31
 ---
 
 # Boomhuis
@@ -16,4 +16,4 @@ tailnet.
 - Fasering en specs: `openspec/changes/` — fasen 0–3 zijn gebouwd; changes nog
   te archiveren zodra de taken zijn afgevinkt.
 - How-to's: [de app op je telefoon zetten](how-to/pwa-installeren.md) en
-  `how-to/relay-herstel.md`.
+  [relay-herstel](how-to/relay-herstel.md).

@@ -1,6 +1,6 @@
 ---
 status: actief
-last_reviewed: 2026-08-30
+last_reviewed: 2026-08-31
 ---
 
 # De Boomhuis-app op je telefoon zetten (PWA)
@@ -11,9 +11,10 @@ aan je beginscherm". Daarna start hij als losse app, zonder browserbalk.
 ## Vereisten
 
 - Je telefoon is een **node in het tailnet**: Tailscale-app geïnstalleerd,
-  ingelogd en verbonden. Buiten het tailnet is de relay niet bereikbaar — dat is
-  opzet, er is geen publieke voordeur.
-- Je identiteit staat in `identities.yml` en is lid van de relay (closed mode).
+  ingelogd en verbonden. Buiten het tailnet is de app niet bereikbaar — dat is
+  opzet, er is geen publieke voordeur. Toegang loopt uitsluitend via het tailnet;
+  de app zelf heeft geen login. Ze post namens de identiteit `mark`, die
+  server-side is geconfigureerd (er staat geen sleutel in je browser).
 
 ## De URL
 
@@ -22,7 +23,9 @@ https://boomhuis-relay.tail8f7877.ts.net/
 ```
 
 Werkt de URL niet? Controleer eerst of Tailscale actief is (schakelaar aan in de
-app), daarna of de relay draait — zie [relay-herstel](relay-herstel.md).
+app). Daarna, op de relay-VM: draait de chat-backend (`systemctl status
+boomhuis-chat`) en staat de HTTPS-voorkant aan (`tailscale serve status`)? Pas
+als de relay zelf stuk is, is [relay-herstel](relay-herstel.md) aan de orde.
 
 ## Android (Chrome)
 
@@ -44,6 +47,7 @@ Op iOS kan dit **alleen in Safari** — Chrome of Firefox hebben de optie niet.
 
 ## Daarna
 
-De app start als losse app. Sessie en kanalen zijn dezelfde als op desktop; je
-bent aangemeld met je eigen sleutel. Verwijderen doe je als bij elke app —
-icoon ingedrukt houden → verwijderen.
+De app start als losse app. Ze praat met dezelfde backend als op desktop en post
+namens `mark`; er staat geen sleutel in je browser, dus kanalen en berichten zijn
+overal hetzelfde. Verwijderen doe je als bij elke app — icoon ingedrukt houden →
+verwijderen.
