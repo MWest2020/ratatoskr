@@ -9,6 +9,8 @@ import json
 import os
 import re
 import subprocess
+import threading
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
 
@@ -101,6 +103,47 @@ def channel_member_pubkeys(cid):
     return {x.get("pubkey"): x.get("role") for x in m}
 
 
+_OV_TTL = 15  # >= client-poll (12s) zodat één client de cache echt raakt
+_ov_lock = threading.Lock()
+_ov_cache = {"t": 0.0, "data": None}
+
+
+def channel_overview():
+    """Per kanaal {name, id, count} via buzz-fan-out. Kort gecachet met een
+    single-flight-lock: bij een koude cache doet maar één thread de fan-out, de
+    rest wacht en krijgt het verse resultaat (geen thundering herd)."""
+    now = time.time()
+    if _ov_cache["data"] is not None and now - _ov_cache["t"] < _OV_TTL:
+        return _ov_cache["data"]
+    with _ov_lock:
+        # dubbel-check binnen de lock: een andere thread kan net ververst hebben
+        now = time.time()
+        if _ov_cache["data"] is not None and now - _ov_cache["t"] < _OV_TTL:
+            return _ov_cache["data"]
+        chans = list_channels()
+        if not chans:
+            # Leeg is niet te onderscheiden van een buzz-storing → NIET cachen en
+            # signaleren (route geeft 502). Anders wist de client-prune de
+            # leesstatus op een tijdelijke hik.
+            raise RuntimeError("kanaallijst leeg of onbereikbaar")
+        out = []
+        for name, cid in chans:
+            try:
+                rc, o, e = buzz(["messages", "get", "--channel", cid], timeout=8)
+            except subprocess.TimeoutExpired:
+                continue  # deel-storing: kanaal overslaan i.p.v. als count 0 melden
+            if rc != 0:
+                continue
+            try:
+                raw = json.loads(o)
+                msgs = raw if isinstance(raw, list) else raw.get("messages", [])
+            except (ValueError, AttributeError):
+                continue
+            out.append({"name": name, "id": cid, "count": len(msgs)})
+        _ov_cache["t"], _ov_cache["data"] = time.time(), out
+        return out
+
+
 def agent_roster():
     """Per agent: in welke kanalen (naam) hij zit, met rol. Data uit buzz."""
     membership = {name: channel_member_pubkeys(cid) for name, cid in list_channels()}
@@ -151,6 +194,11 @@ class H(BaseHTTPRequestHandler):
                 [{"name": n, "id": i} for n, i in list_channels()]))
         if u.path == "/api/agents":
             return self._send(200, json.dumps({"agents": agent_roster()}))
+        if u.path == "/api/overview":
+            try:
+                return self._send(200, json.dumps({"channels": channel_overview()}))
+            except Exception as e:
+                return self._send(502, json.dumps({"error": str(e)[:200]}))
         if u.path == "/api/repos":
             try:
                 return self._send(200, json.dumps({"repos": github.list_repos()}))
