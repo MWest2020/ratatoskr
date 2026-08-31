@@ -8,3 +8,4 @@ run-logs/
 secrets/*plain*
 secrets/tmp*
 knowledge/_live.md
+__pycache__/

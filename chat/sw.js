@@ -10,6 +10,9 @@ const NET_TIMEOUT = 3000;
 const SHELL = [
   "/",
   "/index.html",
+  "/app.css",
+  "/app.js",
+  "/app-ui.js",
   "/manifest.webmanifest",
   "/icon.svg",
   "/icon-192.png",
