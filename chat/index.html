@@ -228,14 +228,13 @@ function renderBadges(){
 async function loadOverview(){
   try{ const d=await (await fetch("/api/overview")).json();
     const chans=d.channels||[];
-    if(!chans.length) return;  // lege/gefaalde overview (bv. 502) → niets bijwerken, NIET prunen
+    if(!chans.length) return;  // lege/gefaalde overview (bv. 502) → niets bijwerken
     overview={};
-    const sm=seenMap(); let changed=false; const ids=new Set();
-    for(const c of chans){
-      overview[c.id]={count:c.count}; ids.add(c.id);
+    const sm=seenMap(); let changed=false;
+    for(const c of chans){          // overzicht kan deels zijn (falende kanalen overgeslagen)
+      overview[c.id]={count:c.count};
       if(sm[c.id]==null){ sm[c.id]=c.count; changed=true; } // baseline: nog nooit geopend → nu gelezen
     }
-    for(const k of Object.keys(sm)){ if(!ids.has(k)){ delete sm[k]; changed=true; } } // prune verwijderde kanalen
     if(changed){ try{ localStorage.setItem("bh_seen", JSON.stringify(sm)); }catch(e){} }
     renderBadges();
   }catch(e){}
@@ -270,6 +269,11 @@ async function loadChannels(){
     }
     wrap.appendChild(row);
   }
+  // prune bh_seen op de AUTHORITATIEVE, niet-lege kanaallijst (niet op het
+  // mogelijk-gedeeltelijke overzicht) — zo wist een deel-storing geen leesstatus.
+  if(channels.length){ try{ const sm=seenMap(); const ids=new Set(channels.map(c=>c.id));
+    let ch=false; for(const k of Object.keys(sm)){ if(!ids.has(k)){ delete sm[k]; ch=true; } }
+    if(ch) localStorage.setItem("bh_seen", JSON.stringify(sm)); }catch(e){} }
   renderBadges();
 }
 async function createChannel(name){

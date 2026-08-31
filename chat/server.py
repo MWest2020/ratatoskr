@@ -128,16 +128,18 @@ def channel_overview():
             raise RuntimeError("kanaallijst leeg of onbereikbaar")
         out = []
         for name, cid in chans:
-            cnt = 0
             try:
-                rc, o, e = buzz(["messages", "get", "--channel", cid])
-                if rc == 0:
-                    raw = json.loads(o)
-                    msgs = raw if isinstance(raw, list) else raw.get("messages", [])
-                    cnt = len(msgs)
-            except (subprocess.TimeoutExpired, Exception):
-                pass
-            out.append({"name": name, "id": cid, "count": cnt})
+                rc, o, e = buzz(["messages", "get", "--channel", cid], timeout=8)
+            except subprocess.TimeoutExpired:
+                continue  # deel-storing: kanaal overslaan i.p.v. als count 0 melden
+            if rc != 0:
+                continue
+            try:
+                raw = json.loads(o)
+                msgs = raw if isinstance(raw, list) else raw.get("messages", [])
+            except (ValueError, AttributeError):
+                continue
+            out.append({"name": name, "id": cid, "count": len(msgs)})
         _ov_cache["t"], _ov_cache["data"] = time.time(), out
         return out
 
