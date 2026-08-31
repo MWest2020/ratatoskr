@@ -37,6 +37,27 @@ def open_batons():
     return out
 
 
+def open_changes():
+    """OpenSpec-changes op propose (niet gearchiveerd) = open werk."""
+    d = os.path.join(ROOT, "openspec", "changes")
+    if not os.path.isdir(d):
+        return []
+    return sorted(n for n in os.listdir(d)
+                  if n != "archive" and os.path.isdir(os.path.join(d, n)))
+
+
+def open_prs():
+    """Open PR's op boomhuis via gh (leeg als gh faalt/ontbreekt)."""
+    try:
+        r = subprocess.run(["gh", "pr", "list", "--repo", "MWest2020/boomhuis",
+                            "--state", "open", "--json", "number,title"],
+                           capture_output=True, text=True, timeout=20)
+        import json as _json
+        return [(p["number"], p["title"]) for p in _json.loads(r.stdout or "[]")]
+    except Exception:
+        return []
+
+
 def habitat_jobs():
     """Habitat-Jobs (namespace 'agents'), alleen als een cluster is gekoppeld via
     env KUBECTL (bv. 'ssh jumpy kubectl'). HABITAT_NS overschrijft de namespace."""
@@ -56,6 +77,12 @@ def main():
     L = ["# Wat er nu draait (gegenereerd — niet handmatig bewerken)", ""]
     L += ["## Draaiende chat-agents (listener)"]
     L += [f"- @{h}" for h in chat_agents()]
+    L += ["", "## Open werk (backlog — altijd oppakken)"]
+    L += ["### OpenSpec-changes op propose"]
+    L += [f"- {n}" for n in open_changes()] or ["- (geen)"]
+    prs = open_prs()
+    L += ["### Open PR's"]
+    L += [f"- #{n} {t}" for n, t in prs] or ["- (geen)"]
     L += ["", "## Open handover-batons"]
     batons = open_batons()
     L += [f"- {n} — {o}. Volgende: {nx}" for n, o, nx in batons] or ["- (geen open batons)"]
