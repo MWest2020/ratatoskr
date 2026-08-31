@@ -35,3 +35,9 @@ channels:
   red-team:
     id: 78b129fe-fc1a-476e-995b-0845ba25b4ff
     doel: coördinatie van geautoriseerde pentests/security-reviews op Marks eigen infra/repo's; alleen findings mét reproduceerbaar exploit-pad + geverifieerde fix
+  wordsworth:
+    id: e70a10d9-c453-4408-8090-88ba6a71d152
+    doel: projectkanaal wordsworth — overdracht + context; actuele context als pinned in knowledge/wordsworth.md
+  netnl:
+    id: 649bf5ef-087e-4e3d-bb00-d65bff987eb7
+    doel: projectkanaal netnl (+ API) — overdracht + context; actuele context als pinned in knowledge/netnl.md
