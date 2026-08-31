@@ -152,6 +152,11 @@
   #pinned .body{margin-top:.4rem; max-height:9rem; overflow:auto; white-space:pre-wrap;
     color:var(--muted); line-height:1.4; font-size:.82rem}
   #pinned.collapsed .body{display:none}
+  /* ongelezen-badge in de kanaallijst */
+  .chan .unread{margin-left:auto; background:var(--accent); color:#15130f;
+    font-size:.72rem; font-weight:800; min-width:1.25rem; height:1.25rem;
+    border-radius:999px; display:inline-flex; align-items:center;
+    justify-content:center; padding:0 .35rem}
 </style>
 </head>
 <body>
@@ -203,13 +208,41 @@ let channels = [], current = null, lastCount = 0, pollTimer = null;
 function toast(t){ const e=$("#toast"); e.textContent=t; e.style.display="block";
   setTimeout(()=>e.style.display="none", 2600); }
 
+// --- ongelezen-teller per kanaal (per device via localStorage) ---
+let overview = {}; // id -> {count, latest}
+function seenMap(){ try{ return JSON.parse(localStorage.getItem("bh_seen")||"{}"); }catch(e){ return {}; } }
+function markSeen(id, count){ const m=seenMap(); m[id]=count;
+  try{ localStorage.setItem("bh_seen", JSON.stringify(m)); }catch(e){} }
+function unreadFor(id){ const o=overview[id]; if(!o) return 0;
+  const s=seenMap()[id]; if(s==null) return 0; return Math.max(0, o.count - s); }
+function renderBadges(){
+  document.querySelectorAll("#chanList .chan").forEach(row=>{
+    const b=row.querySelector(".unread"); if(!b) return;
+    const n=(current&&row.dataset.id===current.id)?0:unreadFor(row.dataset.id);
+    if(n>0){ b.textContent=n>99?"99+":n; b.hidden=false; } else { b.hidden=true; }
+  });
+}
+async function loadOverview(){
+  try{ const d=await (await fetch("/api/overview")).json();
+    overview={};
+    const sm=seenMap(); let changed=false;
+    for(const c of (d.channels||[])){
+      overview[c.id]={count:c.count, latest:c.latest};
+      if(sm[c.id]==null){ sm[c.id]=c.count; changed=true; } // baseline: nog nooit geopend → nu gelezen
+    }
+    if(changed){ try{ localStorage.setItem("bh_seen", JSON.stringify(sm)); }catch(e){} }
+    renderBadges();
+  }catch(e){}
+}
+
 async function loadChannels(){
   channels = await (await fetch("/api/channels")).json();
   const wrap = $("#chanList"); wrap.innerHTML="";
   for(const c of channels){
     const row=document.createElement("div");
     row.className="chan"+(current&&c.id===current.id?" active":"");
-    row.innerHTML=`<span class="hash">#</span><span class="cn">${c.name}</span>`;
+    row.dataset.id=c.id;
+    row.innerHTML=`<span class="hash">#</span><span class="cn">${c.name}</span><span class="unread" hidden></span>`;
     row.querySelector(".cn").onclick=()=>{ selectChannel(c); closeDrawer(); };
     row.querySelector(".hash").onclick=()=>{ selectChannel(c); closeDrawer(); };
     if(c.name!=="general"){
@@ -228,6 +261,7 @@ async function loadChannels(){
     }
     wrap.appendChild(row);
   }
+  renderBadges();
 }
 async function createChannel(name){
   const r=await fetch("/api/channels/create",{method:"POST",
@@ -278,6 +312,7 @@ async function refresh(force){
   const msgs=data.messages||[];
   if(!force && msgs.length===lastCount) return;
   lastCount=msgs.length;
+  if(current){ markSeen(current.id, msgs.length); renderBadges(); }
   if(msgs.length===0){ box.innerHTML='<div class="empty">Nog geen berichten — begin het gesprek.</div>'; return; }
   box.innerHTML="";
   for(const m of msgs){
@@ -430,8 +465,10 @@ input.addEventListener("keydown",e=>{
   await loadChannels();
   selectChannel(channels[0]);
   await loadChannels();
+  loadOverview();
   pollTimer=setInterval(()=>refresh(false), 4000);
-  document.addEventListener("visibilitychange",()=>{ if(!document.hidden) refresh(false); });
+  setInterval(loadOverview, 12000);
+  document.addEventListener("visibilitychange",()=>{ if(!document.hidden){ refresh(false); loadOverview(); } });
 })();
 
 // --- PWA: service worker + installeer-knop ---

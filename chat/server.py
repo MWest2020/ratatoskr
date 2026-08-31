@@ -9,6 +9,7 @@ import json
 import os
 import re
 import subprocess
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
 
@@ -101,6 +102,32 @@ def channel_member_pubkeys(cid):
     return {x.get("pubkey"): x.get("role") for x in m}
 
 
+_ov_cache = {"t": 0.0, "data": None}
+
+
+def channel_overview():
+    """Per kanaal {name, id, count, latest} via buzz-fan-out, kort gecachet zodat
+    meerdere pollende clients de relay niet hameren."""
+    now = time.time()
+    if _ov_cache["data"] is not None and now - _ov_cache["t"] < 6:
+        return _ov_cache["data"]
+    out = []
+    for name, cid in list_channels():
+        rc, o, e = buzz(["messages", "get", "--channel", cid])
+        cnt, latest = 0, 0
+        if rc == 0:
+            try:
+                raw = json.loads(o)
+                msgs = raw if isinstance(raw, list) else raw.get("messages", [])
+                cnt = len(msgs)
+                latest = max((m.get("created_at", 0) for m in msgs), default=0)
+            except Exception:
+                pass
+        out.append({"name": name, "id": cid, "count": cnt, "latest": latest})
+    _ov_cache["t"], _ov_cache["data"] = now, out
+    return out
+
+
 def agent_roster():
     """Per agent: in welke kanalen (naam) hij zit, met rol. Data uit buzz."""
     membership = {name: channel_member_pubkeys(cid) for name, cid in list_channels()}
@@ -151,6 +178,8 @@ class H(BaseHTTPRequestHandler):
                 [{"name": n, "id": i} for n, i in list_channels()]))
         if u.path == "/api/agents":
             return self._send(200, json.dumps({"agents": agent_roster()}))
+        if u.path == "/api/overview":
+            return self._send(200, json.dumps({"channels": channel_overview()}))
         if u.path == "/api/repos":
             try:
                 return self._send(200, json.dumps({"repos": github.list_repos()}))
