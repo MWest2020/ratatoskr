@@ -81,7 +81,7 @@ cluster-fire van de brug is nog gesuperviseerd (`BRIDGE_LIVE`). Rome is niet in
   `orchestrator/create-agent.py`: keypair → handbook-PR (CODEOWNERS = Mark) →
   boomhuis-bedrading. De agent gaat pas live nadat Mark de handbook-PR merget.
 - **Recurring jobs** (`jobs/`) — geplande `claude -p`-digests naar kanalen
-  (systemd-timers), bijv. `#technical_depth`, `#news_from_zettelkast`,
+  (systemd-timers), bijv. `#technical_debt`, `#news_from_zettelkast`,
   `#proposals`.
 - **Protocol-naad + per-kanaal kennis** (geleend van
   [Switch](https://github.com/sandbox-quantum/switch)) — elk agent-backend zit

@@ -36,8 +36,8 @@ jobs:
         echo "[$repo] $ch — $why"
       done 2>/dev/null | head -50
 
-  technical_depth:
-    channel: 6a195e7f-dee9-40c6-a4e1-fe890321339a
+  technical_debt:
+    channel: 2dd07372-b77a-4090-a06b-840fffc15f4c
     identity: architect
     prompt: |
       Je bent de architect. Reflecteer kort op technische schuld in het

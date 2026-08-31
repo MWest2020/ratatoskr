@@ -16,7 +16,7 @@ systemd user-timers (linger).
 - **news_from_zettelkast** (ma 09:00) — digest uit de zettelkast (journal +
   funding-memo), post als orchestrator.
 - **proposals** (ma 09:15) — open OpenSpec-proposals uit het ecosysteem.
-- **technical_depth** (vr 16:00) — architect reflecteert op technische schuld.
+- **technical_debt** (vr 16:00) — architect reflecteert op technische schuld.
 
 ## Nieuwe job toevoegen
 1. Kanaal aanmaken (web-app of `buzz channels create`), post-identiteit als lid.
