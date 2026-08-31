@@ -68,7 +68,7 @@ function cacheFirst(req) {
   });
 }
 
-function networkFirst(e) {
+function networkFirst(e, isNav) {
   const req = e.request;
   // De fetch loopt volledig af en ververst de cache bij succes — óók als de race
   // hieronder al door de timeout is beslist. waitUntil houdt de worker levend.
@@ -78,15 +78,23 @@ function networkFirst(e) {
   }).catch(() => null);
   e.waitUntil(fresh);
   const timeout = new Promise((resolve) => setTimeout(() => resolve(null), NET_TIMEOUT));
-  return Promise.race([fresh, timeout]).then((res) => (res && res.ok) ? res : fromCache(req, true));
+  // isNav bepaalt de fallback: een navigatie mag terugvallen op "/" (de shell),
+  // een asset (app.js/app.css) niet — die krijgt z'n eigen cache of 503.
+  return Promise.race([fresh, timeout]).then((res) => (res && res.ok) ? res : fromCache(req, isNav));
 }
+
+// De app-shell (HTML + app.css + app.js + app-ui.js) is netwerk-eerst zodat een
+// herlaad de laatste versie toont; sinds de JS/CSS losse assets zijn moeten die
+// dezelfde freshness krijgen als de pagina. Iconen/manifest blijven cache-eerst.
+const FRESH_ASSETS = new Set(["/app.css", "/app.js", "/app-ui.js"]);
 
 self.addEventListener("fetch", (e) => {
   const url = new URL(e.request.url);
   if (url.pathname.startsWith("/api/") || e.request.method !== "GET") {
     return; // API/niet-GET: altijd live, nooit via de cache
   }
-  const isPage = e.request.mode === "navigate" ||
+  const isNav = e.request.mode === "navigate" ||
     url.pathname === "/" || url.pathname === "/index.html";
-  e.respondWith(isPage ? networkFirst(e) : cacheFirst(e.request));
+  const fresh = isNav || FRESH_ASSETS.has(url.pathname);
+  e.respondWith(fresh ? networkFirst(e, isNav) : cacheFirst(e.request));
 });

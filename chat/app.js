@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: EUPL-1.2
 const $ = s => document.querySelector(s);
 let channels = [], current = null, lastCount = 0, pollTimer = null;
 

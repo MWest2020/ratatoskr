@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: EUPL-1.2
 async function loadAgents(){
   let data;
   try{ data=await (await fetch("/api/agents")).json(); }catch(e){ return; }

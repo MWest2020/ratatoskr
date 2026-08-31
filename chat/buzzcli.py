@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: EUPL-1.2
 """buzzcli — de buzz/relay-datalaag voor de chat-backend.
 
 Praat via buzz-cli met de relay: kanalen, leden, berichten-counts, agent-roster.
