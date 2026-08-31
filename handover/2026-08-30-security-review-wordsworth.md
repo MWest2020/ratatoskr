@@ -10,7 +10,7 @@ autorisatie: Marks eigen infra/repo's; read/gerichte probes, geen DoS/destructie
 artefact_links:
   - wordsworth-console (live): https://mwest2020.github.io/wordsworth-console/  # commit f15571d
   - wordsworth F1/F3-mitigaties: MWest2020/wordsworth (auth per-caller keys + grant-scoping)
-next_step: comms-Medium FIXED (tailscale-bind). Rest = ontwerp-beslissingen voor Mark (F4-exposure, optionele app-token) + de baton-conventie zelf.
+next_step: RONDE COMPLEET (2026-08-31). F1+F3+F4 fixed+verified (review-sessie), comms-Medium fixed (boomhuis). Rest = alleen F2 als staande guardrail (nooit VC REQUIRED met test/publieke issuer). Optionele app-token op comms = nog open (niet nodig; netwerklaag dicht).
 ---
 
 # Verdict — security-pass wordsworth-PII-pad + boomhuis-comms (2026-08-30)
@@ -68,11 +68,17 @@ exploit-details horen hier, niet daar.
 - **Niet live-reboot-getest:** de relay-VM niet herstart (verstoort de dienst);
   resilience is by-design (drop-in + Restart). Mark kan reboot-testen wanneer 't uitkomt.
 
-## Beslispunten voor Mark (geen bug)
+## Beslispunten voor Mark
 
 - **F4 — /anonymized + /export geven de volledige de-identified tekst aan elke
-  key-houder zonder grant.** CARDINAL ok (nooit klare PII), maar breder dan
-  snippets. Wel of niet toestaan = ontwerpkeuze.
+  key-houder zonder grant · FIXED+verified (2026-08-31).** Mark koos: afschermen
+  achter een read-scope. Opt-in corpus-read-scope in de core: beide endpoints
+  gegate't door `WORDSWORTH_CORPUS_READ_LABELS` (leeg=uit, non-breaking;
+  fail-closed voor None-caller). Pure `authorize_corpus_read()` + guard vóór
+  DB-access. Gedeployed `sha-55bd145`, configmap `CORPUS_READ_LABELS=console,cli`.
+  Live bewijs: /anonymized console-key 200 / test-key 403; /export cli-key 200 /
+  test-key 403; /search+/hybrid test-key 200 (metadata blijft open, alleen
+  full-text gescoped). CARDINAL ok. (Was ontwerp-beslispunt.)
 - **F2 (latent) — `WORDSWORTH_VC_REQUIRED=true` met een publieke test-issuer** wordt
   teniet gedaan door de ingebedde test-VC. Nu inactief (REQUIRED=false). Guardrail:
   nooit REQUIRED aan met een test/publieke issuer; echte afdwinging = niet-publieke
