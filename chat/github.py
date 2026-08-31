@@ -4,6 +4,7 @@ Token uit env GITHUB_TOKEN (tailnet-only .env op de host, nooit in git). Scope
 bewust beperkt tot MWest2020's eigen repo's; een hard vangnet filtert alles wat
 naar 'conduction' ruikt eruit (werkgever-org blijft buiten beeld).
 """
+import base64
 import json
 import os
 import urllib.request
@@ -28,6 +29,22 @@ def _gh(path):
                  "User-Agent": "boomhuis-pwa"})
     with urllib.request.urlopen(req, timeout=15) as r:
         return json.loads(r.read().decode("utf-8"))
+
+
+def get_file(path, repo=f"{OWNER}/boomhuis"):
+    """Bestandsinhoud uit een repo (default boomhuis) via de contents-API.
+    Voor de 'pinned context' (knowledge/<kanaal>.md). Return "" bij ontbreken."""
+    if _forbidden(repo):
+        return ""
+    try:
+        d = _gh(f"/repos/{repo}/contents/{path}")
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            return ""
+        raise
+    if isinstance(d, dict) and d.get("encoding") == "base64":
+        return base64.b64decode(d.get("content", "")).decode("utf-8", "replace")
+    return ""
 
 
 def list_repos(limit=30):

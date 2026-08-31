@@ -143,6 +143,15 @@
   .rrow .rev, .prdet .rev{background:var(--accent); color:#15130f; border:0;
     border-radius:10px; padding:.4rem .7rem; font-weight:700; font-size:.82rem; margin-top:.6rem}
   .prdet a.gh{color:var(--accent2); font-size:.85rem; word-break:break-all}
+  /* pinned context */
+  #pinned{flex:0 0 auto; background:var(--panel2); border-bottom:1px solid var(--line);
+    padding:.5rem .8rem; font-size:.85rem; color:var(--ink)}
+  #pinned .head{display:flex; align-items:center; gap:.4rem; cursor:pointer; font-weight:700}
+  #pinned .head .pin{color:var(--accent)}
+  #pinned .head .caret{margin-left:auto; color:var(--muted); font-size:.8rem}
+  #pinned .body{margin-top:.4rem; max-height:9rem; overflow:auto; white-space:pre-wrap;
+    color:var(--muted); line-height:1.4; font-size:.82rem}
+  #pinned.collapsed .body{display:none}
 </style>
 </head>
 <body>
@@ -175,6 +184,8 @@
     <div class="title" id="repoTitle">Repo's · GitHub</div>
     <div id="repoView"><div class="agenthint">laden…</div></div>
   </div></div>
+
+  <div id="pinned" hidden></div>
 
   <div id="msgs"><div class="empty">laden…</div></div>
 
@@ -230,7 +241,28 @@ async function createChannel(name){
 function selectChannel(c){
   current=c; lastCount=0; $("#chanName").textContent=c.name;
   $("#msgs").innerHTML='<div class="empty">laden…</div>';
+  loadPinned(c.name);
   refresh(true);
+}
+async function loadPinned(name){
+  const el=$("#pinned");
+  let content="";
+  try{ const d=await (await fetch("/api/pinned?channel="+encodeURIComponent(name))).json();
+    content=(d.content||"").trim(); }catch(e){ content=""; }
+  if(!content){ el.hidden=true; el.innerHTML=""; return; }
+  const lines=content.split("\n");
+  let title="Vastgezette context", body=content;
+  if(lines[0] && lines[0].startsWith("#")){
+    title=lines[0].replace(/^#+\s*/,"").replace(/^📌\s*/,"");
+    body=lines.slice(1).join("\n").replace(/^>.*$/gm,"").trim();
+  }
+  el.hidden=false; el.classList.add("collapsed");
+  el.innerHTML='<div class="head"><span class="pin">📌</span><span class="ttl"></span>'+
+    '<span class="caret">▸</span></div><div class="body"></div>';
+  el.querySelector(".ttl").textContent=title;
+  el.querySelector(".body").textContent=body;
+  el.querySelector(".head").onclick=()=>{ el.classList.toggle("collapsed");
+    el.querySelector(".caret").textContent=el.classList.contains("collapsed")?"▸":"▾"; };
 }
 const fmtTime = ts => { const d=new Date(ts*1000);
   return d.toLocaleString("nl-NL",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}); };

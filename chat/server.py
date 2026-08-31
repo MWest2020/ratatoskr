@@ -174,6 +174,17 @@ class H(BaseHTTPRequestHandler):
                 return self._send(200, json.dumps(github.get_pr(repo, int(num))))
             except Exception as e:
                 return self._send(502, json.dumps({"error": str(e)[:200]}))
+        if u.path == "/api/pinned":
+            # Pinned context = knowledge/<kanaal>.md uit de boomhuis-repo (één bron
+            # van waarheid; update via git push). Leeg = geen pin.
+            name = (parse_qs(u.query).get("channel") or [""])[0].lower()
+            if not re.match(r"^[a-z0-9][a-z0-9_-]{0,30}$", name):
+                return self._send(200, json.dumps({"content": ""}))
+            try:
+                return self._send(200, json.dumps(
+                    {"content": github.get_file(f"knowledge/{name}.md")}))
+            except Exception:
+                return self._send(200, json.dumps({"content": ""}))
         if u.path == "/api/messages":
             cid = (parse_qs(u.query).get("channel") or [""])[0]
             if not valid_cid(cid):
