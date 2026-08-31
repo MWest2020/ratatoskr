@@ -37,3 +37,14 @@ launch (cache-mode `default`) ook zonder die header niet stil een oude respons u
 de HTTP-cache kan krijgen. **Verworpen:** `fetch(req)` ongewijzigd doorgeven en
 enkel op de server-header vertrouwen — dat koppelt de fresh-garantie aan een
 config die elders staat en stil kan wijzigen.
+
+## 4. Veerkrachtige install (elk shell-item los i.p.v. `addAll`)
+
+**Keuze:** de install cachet elk shell-item apart met `c.add(u).catch(()=>{})`.
+
+**Verworpen:** `c.addAll(SHELL)`. `addAll` is alles-of-niets: faalt één van de
+zeven shell-URL's (een tijdelijke 5xx, een asset die net gedeployd wordt), dan
+faalt de hele install, activeert de nieuwe (v2) worker nooit, en blijft de oude
+v1 cache-first-worker aan het roer — precies het gedrag dat deze change wil
+vervangen. Per-item cachen met genegeerde individuele fouten laat de worker altijd
+activeren; een gemiste asset wordt later alsnog gecachet via de fetch-handler.

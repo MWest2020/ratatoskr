@@ -41,10 +41,12 @@ function putCache(req, res) {
   caches.open(CACHE).then((c) => c.put(req, res)).catch(() => {});
 }
 
-function fromCache(req) {
-  // Altijd een Response teruggeven, nooit undefined.
+function fromCache(req, isPage) {
+  // Altijd een Response teruggeven, nooit undefined. Alleen een PAGINA valt terug
+  // op "/" (de shell); een asset mag dat niet — dan krijg je HTML met de verkeerde
+  // content-type. Een asset zonder cache-hit → 503.
   return caches.match(req)
-    .then((hit) => hit || caches.match("/"))
+    .then((hit) => hit || (isPage ? caches.match("/") : null))
     .then((hit) => hit || new Response("offline", {
       status: 503, headers: { "Content-Type": "text/plain; charset=utf-8" } }));
 }
@@ -58,8 +60,8 @@ function cacheFirst(req) {
     }
     return fetch(req).then((res) => {
       if (res && res.status === 200) putCache(req, res.clone());
-      return res || fromCache(req);
-    }).catch(() => fromCache(req));
+      return res || fromCache(req, false);
+    }).catch(() => fromCache(req, false));
   });
 }
 
@@ -73,7 +75,7 @@ function networkFirst(e) {
   }).catch(() => null);
   e.waitUntil(fresh);
   const timeout = new Promise((resolve) => setTimeout(() => resolve(null), NET_TIMEOUT));
-  return Promise.race([fresh, timeout]).then((res) => (res && res.ok) ? res : fromCache(req));
+  return Promise.race([fresh, timeout]).then((res) => (res && res.ok) ? res : fromCache(req, true));
 }
 
 self.addEventListener("fetch", (e) => {
