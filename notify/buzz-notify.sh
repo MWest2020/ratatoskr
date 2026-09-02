@@ -55,13 +55,19 @@ push_phone() {
   [ "${BUZZ_PUSH:-0}" = "1" ] || return 0
   command -v uv >/dev/null 2>&1 || { log "uv ontbreekt; geen push"; return 0; }
   local title="$1" url="$2" body="$3"
-  # Op de ACHTERGROND (&): een push mag run-end/escalate nooit ophouden. Ruime
-  # timeout (180s) want een koude uv-cache moet pywebpush + cryptography eerst
-  # resolven; anders werd de eerste push na een cache-clear gekilld. Een non-
-  # interactieve parent HUP't z'n achtergrond-kind niet bij normale exit, dus dit
-  # overleeft de afronding van buzz-notify.sh. Alle uitvoer naar het log.
-  ( cd "$HERE" && printf '%s' "$body" | timeout 180 uv run orchestrator/push-notify.py \
-      --title "$title" --url "$url" >>"$LOG" 2>&1 || log "push-notify faalde (best-effort)" ) &
+  # Op de ACHTERGROND (setsid → eigen sessie, losgekoppeld van de terminal): een
+  # push mag run-end/escalate nooit ophouden. Ruime timeout (180s) want een koude
+  # uv-cache moet pywebpush + cryptography eerst resolven, anders werd de eerste
+  # push na een cache-clear gekilld. Kanttekening: draait een STRAK systemd-unit/Job
+  # dit script en ruimt het bij exit de hele cgroup op, dan kan dit kind alsnog
+  # gereapt worden — inherent aan best-effort; de #runs-post blijft de gezaghebbende
+  # melding. (Vandaag draait dispatch dit vanuit tmux, geen cgroup-cleanup.)
+  HERE="$HERE" BODY="$body" TITLE="$title" URL="$url" LOG="$LOG" setsid bash -c '
+    cd "$HERE" || exit 0
+    printf "%s" "$BODY" | timeout 180 uv run orchestrator/push-notify.py \
+      --title "$TITLE" --url "$URL" >>"$LOG" 2>&1 \
+      || printf "%s push-notify faalde (best-effort)\n" "$(date -u +%FT%TZ)" >>"$LOG"
+  ' </dev/null >/dev/null 2>&1 &
   return 0
 }
 

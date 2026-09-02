@@ -4,16 +4,15 @@
 # ///
 """Stuur een Web Push naar alle boomhuis-subscriptions (vanaf agent-lxc).
 
-De VM bewaart de subscriptions (chat/push_subs.json); dit script leest ze via ssh
-en verstuurt met pywebpush + de VAPID-private-key uit SOPS. De VM-backend blijft
-zo dependency-loos. Aanroep:
+De VM bewaart de subscriptions (/var/lib/boomhuis/push_subs.json, buiten de
+deploy-checkout); dit script leest ze via ssh en verstuurt met pywebpush + de
+VAPID-private-key uit SOPS. De VM-backend blijft zo dependency-loos. Aanroep:
   uv run orchestrator/push-notify.py --title "PR #7" --url / --body "verdict: FAIL"
   echo "bericht" | uv run orchestrator/push-notify.py --title "Boomhuis"
 """
 import argparse
 import json
 import os
-import shlex
 import subprocess
 import sys
 
@@ -21,9 +20,10 @@ from pywebpush import webpush, WebPushException
 import yaml
 
 BOOMHUIS = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-# State-pad op de VM, BUITEN de deploy-checkout (design §4). De chat-backend draait
-# als root en schrijft 0600; de sender leest/pruned via passwordless sudo (ubuntu).
-SUBS_REMOTE = os.environ.get("PUSH_SUBS_REMOTE", "/var/lib/boomhuis/push_subs.json")
+# Lezen/prunen van de subs gebeurt via één vastgepinde VM-helper (sudoers pint
+# precies dit pad), zodat de sender geen `sudo sh`/`sudo python3 -c` — feitelijk
+# een root-shell — nodig heeft. De helper draait als root en schrijft 0600.
+SUBS_ADMIN = os.environ.get("PUSH_SUBS_ADMIN", "/usr/local/bin/boomhuis-push-subs")
 
 
 def vapid():
@@ -36,13 +36,12 @@ def vapid():
 
 
 def subscriptions():
-    # Eén sudo-shell: bestaat het bestand → cat; bestaat het niet (nog geen subs)
-    # → printf "[]", beide exit 0. Een gefaalde ssh-hop (255), een sudo-weigering
-    # of een leesfout geeft rc != 0 — dat mag NIET als "0 subs" doorgaan, anders
-    # meldt de sender vals succes terwijl er wél abonnees zijn.
-    inner = f'cat {shlex.quote(SUBS_REMOTE)} 2>/dev/null || printf "[]"'
+    # De helper print de subs (of [] als er nog geen bestand is). Een gefaalde
+    # ssh-hop (255), sudo-weigering of leesfout geeft rc != 0 — dat mag NIET als
+    # "0 subs" doorgaan, anders meldt de sender vals succes terwijl er wél abonnees
+    # zijn. Alleen een expliciete lege/[]-uitvoer is echt 0 subs.
     r = subprocess.run(["ssh", "-o", "BatchMode=yes", "buzz-relay",
-                        "sudo -n sh -c " + shlex.quote(inner)],
+                        "sudo", "-n", SUBS_ADMIN, "read"],
                        capture_output=True, text=True)
     if r.returncode != 0:
         sys.exit(f"[push] subs lezen op buzz-relay faalde (rc={r.returncode}): "
@@ -53,36 +52,17 @@ def subscriptions():
     try:
         d = json.loads(raw)
     except ValueError:
-        # Een corrupt/half-geschreven bestand is GEEN '0 subs' — dan zou de sender
-        # vals succes melden terwijl er wél abonnees zijn. Fout, niet stil door.
         sys.exit(f"[push] push_subs.json is corrupt (kon niet parsen): {raw[:120]}")
     return d if isinstance(d, list) else []
 
 
-# Prune-programma dat de VM ZELF het bestand laat herlezen (race-veilig t.o.v. een
-# gelijktijdige aanmelding) en atomair 0600 terugschrijft. Program via `-c`, de
-# dode endpoints via stdin — géén heredoc, anders zou `python3 -` z'n programma
-# van stdin lezen en de data opeten.
-_PRUNE_PROG = (
-    "import json,os,sys\n"
-    f"p={SUBS_REMOTE!r}\n"
-    "dead=set(json.load(sys.stdin))\n"
-    "try:\n"
-    "    subs=json.load(open(p))\n"
-    "except Exception:\n"
-    "    sys.exit(0)\n"
-    "keep=[s for s in subs if s.get('endpoint') not in dead]\n"
-    "fd=os.open(p+'.tmp',os.O_WRONLY|os.O_CREAT|os.O_TRUNC,0o600)\n"
-    "os.write(fd,json.dumps(keep).encode()); os.close(fd); os.replace(p+'.tmp',p)\n"
-)
-
-
 def prune(dead):
-    """Verwijder verlopen endpoints (404/410) remote."""
+    """Verwijder verlopen endpoints (404/410) via de VM-helper (race-veilig: de VM
+    herleest zelf)."""
     if not dead:
         return
-    remote = "sudo -n python3 -c " + shlex.quote(_PRUNE_PROG)
-    r = subprocess.run(["ssh", "-o", "BatchMode=yes", "buzz-relay", remote],
+    r = subprocess.run(["ssh", "-o", "BatchMode=yes", "buzz-relay",
+                        "sudo", "-n", SUBS_ADMIN, "prune"],
                        input=json.dumps(list(dead)), capture_output=True, text=True)
     if r.returncode == 0:
         print(f"[push] {len(dead)} verlopen subscription(s) opgeruimd")

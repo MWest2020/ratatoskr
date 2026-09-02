@@ -13,6 +13,7 @@ const SHELL = [
   "/app.css",
   "/app.js",
   "/app-ui.js",
+  "/app-push.js",
   "/manifest.webmanifest",
   "/icon.svg",
   "/icon-192.png",
@@ -86,7 +87,7 @@ function networkFirst(e, isNav) {
 // De app-shell (HTML + app.css + app.js + app-ui.js) is netwerk-eerst zodat een
 // herlaad de laatste versie toont; sinds de JS/CSS losse assets zijn moeten die
 // dezelfde freshness krijgen als de pagina. Iconen/manifest blijven cache-eerst.
-const FRESH_ASSETS = new Set(["/app.css", "/app.js", "/app-ui.js"]);
+const FRESH_ASSETS = new Set(["/app.css", "/app.js", "/app-ui.js", "/app-push.js"]);
 
 // Web Push: toon een notificatie bij een binnenkomende push.
 self.addEventListener("push", (e) => {

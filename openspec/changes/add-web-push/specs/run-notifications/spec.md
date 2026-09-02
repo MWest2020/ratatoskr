@@ -1,5 +1,3 @@
-# run-notifications Specification (delta)
-
 ## ADDED Requirements
 
 ### Requirement: Telefoon-push bij verdict en escalatie

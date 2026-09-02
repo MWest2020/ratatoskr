@@ -43,10 +43,14 @@ de VM en ruimt verlopen subscriptions (404/410) op. Automatisch afgevuurd door
 
 Host-config die de sender nodig heeft (naast de env-waarden hierboven):
 
-- **Passwordless sudo op de VM** voor de lezende/prunende commando's — de backend
-  schrijft `push_subs.json` als root 0600, de sender sshet als `ubuntu`. Zonder
-  `sudo -n` leest de sender niets en meldt 'ie (terecht) een fout. Regel in
-  `/etc/sudoers.d/boomhuis-push`: `ubuntu ALL=(root) NOPASSWD: /usr/bin/cat, /usr/bin/python3`.
+- **VM-helper + één vastgepinde sudoers-regel.** De backend schrijft `push_subs.json`
+  als root 0600; de sender sshet als `ubuntu` en kan dat niet lezen zonder sudo.
+  I.p.v. `sudo cat`/`sudo python3` (feitelijk een root-shell) draait de sender één
+  vastgepinde helper. Deploy 'm uit deze repo:
+  `sudo install -m0755 orchestrator/vm/boomhuis-push-subs /usr/local/bin/boomhuis-push-subs`.
+  Sudoers (`/etc/sudoers.d/boomhuis-push`, least privilege — precies dit pad):
+  `ubuntu ALL=(root) NOPASSWD: /usr/local/bin/boomhuis-push-subs`. De helper maakt
+  ook `/var/lib/boomhuis` aan als 'ie ontbreekt.
 - **ssh-alias `buzz-relay`** in `~/.ssh/config` op agent-lxc (BatchMode, key-based)
   → de VM `192.168.178.60`.
 

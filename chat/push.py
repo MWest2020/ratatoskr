@@ -56,6 +56,11 @@ def load_subscriptions():
 
 
 def _write(subs):
+    # State-dir kan ontbreken (verse VM, gemiste mkdir-stap): aanmaken i.p.v. een
+    # onbehandelde FileNotFoundError door do_POST heen (traceback, geen HTTP-antwoord).
+    d = os.path.dirname(SUBS_PATH)
+    if d:
+        os.makedirs(d, exist_ok=True)
     tmp = SUBS_PATH + ".tmp"
     # 0600: de subscriptions zijn per-apparaat push-tokens; net als chat.env
     # horen ze niet wereld-leesbaar (default umask geeft 0644).
