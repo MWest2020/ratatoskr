@@ -27,7 +27,7 @@ if e.get("rol") == "mens":
 if e.get("status") != "actief":
     sys.stderr.write("IDENT %r is niet actief (status=%s)\n" % (ident, e.get("status"))); sys.exit(5)
 print(e["npub"])')
-GEN=$(CHAN="$CHAN" ROOT="$ROOT" python3 -c '
+CID=$(CHAN="$CHAN" ROOT="$ROOT" python3 -c '
 import os, sys, yaml
 ch = yaml.safe_load(open(os.environ["ROOT"] + "/channels.yml"))["channels"]
 c = ch.get(os.environ["CHAN"])
@@ -44,5 +44,5 @@ NSEC=$(sops -d "$ROOT/secrets/identities.yaml" | IDENT="$IDENT" python3 -c 'impo
 # tailnet-node werkt dit via de subnet-router; override met env BUZZ_RELAY_URL.
 # Eigen npub als --mention: staat vrije @-woorden toe (presentation-only).
 BUZZ_PRIVATE_KEY="$NSEC" BUZZ_RELAY_URL="${BUZZ_RELAY_URL:-ws://192.168.178.60:3000}" \
-  ~/.local/bin/buzz messages send --channel "$GEN" --content - --mention "$NPUB" <<<"$MSG" >/dev/null
+  ~/.local/bin/buzz messages send --channel "$CID" --content - --mention "$NPUB" <<<"$MSG" >/dev/null
 echo "[ping] verstuurd naar #$CHAN (als $IDENT)"

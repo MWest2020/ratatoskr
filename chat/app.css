@@ -41,7 +41,7 @@
   #drawer .title{color:var(--muted); font-size:.72rem; text-transform:uppercase;
     letter-spacing:.1em; padding:.2rem .7rem .5rem}
   .chan{
-    display:flex; align-items:center; gap:.5rem; width:100%; text-align:left;
+    display:flex; align-items:flex-start; gap:.5rem; width:100%; text-align:left;
     background:none; border:none; color:var(--ink); font-size:1rem;
     padding:.7rem .7rem; border-radius:10px; font-weight:600;
   }
