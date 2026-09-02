@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
-# Post een bericht naar #general — de ping-lus met Mark in de app.
-# Identiteit via env IDENT (default 'bouwer', zodat bestaande aanroepen blijven
-# werken); bericht via arg of stdin. Geen secret in dit bestand: de nsec komt uit
+# Post een bericht naar een boomhuis-kanaal (default #general) — de ping-lus.
+# Env: IDENT = identiteit (default 'bouwer'; de mens-identiteit + niet-actieve
+# sleutels worden geweigerd). CHAN = doelkanaal-naam uit channels.yml (default
+# 'general'), bv. CHAN=review of CHAN=runs. Bericht via arg of stdin.
+#   IDENT=reviewer CHAN=review ~/boomhuis/orchestrator/ping.sh 'verdict: ...' Geen secret in dit bestand: de nsec komt uit
 # SOPS. De IDENT-filter weigert de mens-identiteit (rol mens) en niet-actieve
 # identiteiten, zodat niemand zich als de mens (of ingetrokken) kan voordoen.
 #   IDENT=hubby ~/boomhuis/orchestrator/ping.sh 'mijlpaal: ...'
@@ -31,7 +33,10 @@ ch = yaml.safe_load(open(os.environ["ROOT"] + "/channels.yml"))["channels"]
 c = ch.get(os.environ["CHAN"])
 if not c:
     sys.stderr.write("onbekend kanaal %r (niet in channels.yml)\n" % os.environ["CHAN"]); sys.exit(6)
-print(c["id"])')
+cid = c.get("id")
+if not cid:
+    sys.stderr.write("kanaal %r heeft geen id in channels.yml\n" % os.environ["CHAN"]); sys.exit(7)
+print(cid)')
 NSEC=$(sops -d "$ROOT/secrets/identities.yaml" | IDENT="$IDENT" python3 -c 'import os,sys,yaml;print(yaml.safe_load(sys.stdin)["identities"][os.environ["IDENT"]]["nsec"])')
 
 # Relay via de community-host 192.168.178.60 (de relay is community-scoped op DEZE
