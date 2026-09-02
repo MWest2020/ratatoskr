@@ -102,7 +102,14 @@ self.addEventListener("notificationclick", (e) => {
   e.notification.close();
   const url = (e.notification.data && e.notification.data.url) || "/";
   e.waitUntil(clients.matchAll({ type: "window", includeUncontrolled: true }).then((wins) => {
-    for (const w of wins) { if ("focus" in w) return w.focus(); }
+    for (const w of wins) {
+      if ("focus" in w) {
+        // Bestaand venster: navigeer het óók naar de url uit de notificatie —
+        // enkel focus() liet d.url stil verdampen.
+        const go = ("navigate" in w) ? w.navigate(url).catch(() => w) : Promise.resolve(w);
+        return go.then((c) => (c || w).focus());
+      }
+    }
     if (clients.openWindow) return clients.openWindow(url);
   }));
 });

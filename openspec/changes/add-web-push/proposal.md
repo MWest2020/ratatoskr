@@ -8,10 +8,15 @@ via Web Push (een push-service levert de melding, ook met de app gesloten).
 
 - **VAPID-sleutels** (public in de VM-env, private SOPS-versleuteld).
 - **VM-backend (stdlib)**: `/api/push/vapid` (serveert de public key) +
-  `/api/push/subscribe` (bewaart de subscription in `chat/push_subs.json`, dedup).
-- **Service worker**: `push`- en `notificationclick`-handlers (toon melding, open
-  de app).
-- **Frontend**: een 🔔-knop die permissie vraagt, abonneert en de subscription post.
+  `/api/push/subscribe` (vormvalidatie + dedup + FIFO-cap, 0600, state buiten de
+  checkout via `PUSH_SUBS_PATH`).
+- **Service worker**: `push`- en `notificationclick`-handlers (toon melding, focus
+  + navigeer naar de url).
+- **Frontend**: een 🔔-knop die permissie vraagt en abonneert; bij een reeds
+  verleende permissie borgt de app de subscription stil bij elke load (zelfherstel).
 - **Sender op agent-lxc**: `orchestrator/push-notify.py` (uv + pywebpush) leest de
-  subs van de VM en verstuurt met de VAPID-private. De VM-backend blijft
+  subs van de VM en verstuurt met de VAPID-private; een gefaalde ssh-hop telt niet
+  als succes en verlopen subs (404/410) worden opgeruimd. De VM-backend blijft
   dependency-loos; de crypto zit waar de events al leven (agent-lxc).
+- **Bedrading**: `notify/buzz-notify.sh` vuurt bij een verdict (run-end) en een
+  escalatie een push af (best-effort, `BUZZ_PUSH=1`), zodat de telefoon rinkelt.

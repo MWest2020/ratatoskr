@@ -159,23 +159,41 @@ function urlB64ToUint8Array(b64){
   for(let i=0;i<raw.length;i++) arr[i]=raw.charCodeAt(i);
   return arr;
 }
+// Zorg dat er een geldige subscription bij de server bekend is en POST 'm.
+// Eén pad voor zowel de eerste aanmelding als het stille zelfherstel: de
+// browser kan de subscription intrekken (bijv. sleutelrotatie) of de server kan
+// push_subs kwijtraken — getSubscription() geeft dan null en we abonneren
+// opnieuw i.p.v. stil te falen.
+async function ensurePushSubscription(){
+  const {key}=await (await fetch("/api/push/vapid")).json();
+  if(!key) throw new Error("geen VAPID-key");
+  const reg=await navigator.serviceWorker.ready;
+  let sub=await reg.pushManager.getSubscription();
+  if(!sub){
+    sub=await reg.pushManager.subscribe({userVisibleOnly:true, applicationServerKey:urlB64ToUint8Array(key)});
+  }
+  const r=await fetch("/api/push/subscribe",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(sub)});
+  if(!r.ok) throw new Error("subscribe-POST faalde");
+  return sub;
+}
 async function enablePush(btn){
   if(!("serviceWorker" in navigator) || !("PushManager" in window)){ toast("push niet ondersteund"); return; }
   try{
     const perm=await Notification.requestPermission();
     if(perm!=="granted"){ toast("meldingen niet toegestaan"); return; }
-    const {key}=await (await fetch("/api/push/vapid")).json();
-    if(!key){ toast("push niet geconfigureerd"); return; }
-    const reg=await navigator.serviceWorker.ready;
-    const sub=await reg.pushManager.subscribe({userVisibleOnly:true, applicationServerKey:urlB64ToUint8Array(key)});
-    const r=await fetch("/api/push/subscribe",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(sub)});
-    if(r.ok){ toast("meldingen aan ✓"); if(btn) btn.remove(); } else toast("aanmelden mislukt");
-  }catch(e){ toast("push-fout"); }
+    await ensurePushSubscription();
+    toast("meldingen aan ✓"); if(btn) btn.remove();
+  }catch(e){ toast("aanmelden mislukt"); }
 }
-// Toon een 🔔-knop als push kan én nog niet is toegestaan.
-if("serviceWorker" in navigator && "PushManager" in window && Notification.permission!=="granted"){
-  const pb=document.createElement("button");
-  pb.id="pushBtn"; pb.textContent="🔔"; pb.title="meldingen aanzetten";
-  pb.onclick=()=>enablePush(pb);
-  document.querySelector("header").appendChild(pb);
+if("serviceWorker" in navigator && "PushManager" in window){
+  if(Notification.permission==="granted"){
+    // Al toegestaan: stil borgen dat de server onze subscription (nog) kent.
+    ensurePushSubscription().catch(()=>{});
+  }else if(Notification.permission!=="denied"){
+    // Nog niet beslist: toon een 🔔-knop.
+    const pb=document.createElement("button");
+    pb.id="pushBtn"; pb.textContent="🔔"; pb.title="meldingen aanzetten";
+    pb.onclick=()=>enablePush(pb);
+    document.querySelector("header").appendChild(pb);
+  }
 }
