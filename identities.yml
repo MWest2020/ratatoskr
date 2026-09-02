@@ -55,3 +55,27 @@ identities:
     pubkey_hex: 7734535c4a432cd0983b965af2ec3b1b07bb6308293e36590d8fdb00d95abff7
     npub: npub1wu69xhz2gvkdpxpmjed09mpmrvrmkccg9ylrvkgd3ldspk26hlms0jvphw
     aangemaakt: '2026-08-29'
+  hubby:
+    rol: sessie
+    status: actief
+    pubkey_hex: cc6a57f2dc4886b2a62d775ba2e2a61e30d7330a1dc8a595b46f9754e668a318
+    npub: npub1e3490ukufzrt9f3dwad69c4xrccdwvc2rhy2t9d5d7t4feng5vvqj6nz9w
+    aangemaakt: '2026-09-02'
+  versum:
+    rol: sessie
+    status: actief
+    pubkey_hex: 3c9d7c6370738600512fb3be7bb2ed539dd7827a9bfc504d66c2bdb31bc18792
+    npub: npub18jwhccmswwrqq5f0kwl8hvhd2wwa0qn6n079qntxc27mxx7ps7fqcr3txl
+    aangemaakt: '2026-09-02'
+  hub:
+    rol: sessie
+    status: actief
+    pubkey_hex: efcef42e9d2ba289c05250a4074f6c8eec7394db0d539e5cc310e93e2ed7bb99
+    npub: npub1al80gt5a9w3gnszj2zjqwnmv3mk889xmp4feuhxrzr5nutkhhwvsxecxvz
+    aangemaakt: '2026-09-02'
+  internetnl-cli:
+    rol: sessie
+    status: actief
+    pubkey_hex: d18b862f07fc43cbfaa2530dae107b7d14ab4ceda5898cc15c51e390375a52cd
+    npub: npub16x9cvtc8l3puh74z2vx6uyrm0522kn8d5kyces2u283eqd662txsqkedpm
+    aangemaakt: '2026-09-02'
