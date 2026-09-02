@@ -111,6 +111,24 @@
   .toast{position:absolute; bottom:5rem; left:50%; transform:translateX(-50%);
     background:var(--danger); color:#1a1710; padding:.4rem .8rem; border-radius:10px;
     font-size:.85rem; font-weight:700; z-index:30; display:none}
+  /* repos-lade — volledig scherm-modal met sluitknop + level-back */
+  #reposDrawer{position:absolute; inset:0; background:rgba(0,0,0,.55); z-index:20;
+    display:none; opacity:0; transition:opacity .15s}
+  #reposDrawer.open{display:block; opacity:1}
+  #reposDrawer .sheet{position:absolute; inset:0; background:var(--panel);
+    display:flex; flex-direction:column;
+    padding:calc(.6rem + env(safe-area-inset-top)) .7rem calc(.7rem + env(safe-area-inset-bottom));
+    transform:translateY(100%); transition:transform .18s}
+  #reposDrawer.open .sheet{transform:none}
+  #reposDrawer .dhead{display:flex; align-items:center; gap:.5rem; flex:0 0 auto;
+    padding-bottom:.5rem; border-bottom:1px solid var(--line); margin-bottom:.5rem}
+  #reposDrawer .dhead .title{color:var(--ink); font-weight:700; font-size:1rem;
+    text-transform:none; letter-spacing:0; padding:0; flex:1;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  #reposDrawer .dclose{background:var(--panel2); color:var(--ink);
+    border:1px solid var(--line); border-radius:10px; padding:.35rem .6rem;
+    font-size:1rem; font-weight:700; flex:0 0 auto; line-height:1}
+  #reposDrawer #repoView{flex:1 1 auto; overflow-y:auto}
   /* repo/PR-view */
   .rrow{padding:.6rem .7rem; border:1px solid var(--line); border-radius:12px;
     margin-bottom:.5rem; background:var(--panel2); cursor:pointer}
