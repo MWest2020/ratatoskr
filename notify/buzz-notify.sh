@@ -47,6 +47,30 @@ post() {
   echo "$out" | python3 -c 'import sys,json;print(json.load(sys.stdin).get("event_id",""))' 2>/dev/null
 }
 
+# Best-effort telefoon-push via de sender op agent-lxc. Mag een run NOOIT
+# vertragen of laten falen: ontbrekende uv/sops → stil overslaan, altijd exit 0.
+# Alleen aan als BUZZ_PUSH=1 (zo blijft run-start stil en pusht enkel wat telt:
+# verdict + escalatie).
+push_phone() {
+  [ "${BUZZ_PUSH:-0}" = "1" ] || return 0
+  command -v uv >/dev/null 2>&1 || { log "uv ontbreekt; geen push"; return 0; }
+  local title="$1" url="$2" body="$3"
+  # Op de ACHTERGROND (setsid → eigen sessie, losgekoppeld van de terminal): een
+  # push mag run-end/escalate nooit ophouden. Ruime timeout (180s) want een koude
+  # uv-cache moet pywebpush + cryptography eerst resolven, anders werd de eerste
+  # push na een cache-clear gekilld. Kanttekening: draait een STRAK systemd-unit/Job
+  # dit script en ruimt het bij exit de hele cgroup op, dan kan dit kind alsnog
+  # gereapt worden — inherent aan best-effort; de #runs-post blijft de gezaghebbende
+  # melding. (Vandaag draait dispatch dit vanuit tmux, geen cgroup-cleanup.)
+  HERE="$HERE" BODY="$body" TITLE="$title" URL="$url" LOG="$LOG" setsid bash -c '
+    cd "$HERE" || exit 0
+    printf "%s" "$BODY" | timeout 180 uv run orchestrator/push-notify.py \
+      --title "$TITLE" --url "$URL" >>"$LOG" 2>&1 \
+      || printf "%s push-notify faalde (best-effort)\n" "$(date -u +%FT%TZ)" >>"$LOG"
+  ' </dev/null >/dev/null 2>&1 &
+  return 0
+}
+
 cmd="${1:-}"; shift || true
 case "$cmd" in
   run-start)
@@ -60,12 +84,14 @@ case "$cmd" in
     msg="$icon run klaar · rol=$rol · change=$change · verdict=$verdict · branch=$branch"
     [ -n "$link" ] && msg="$msg · rapport: $link"
     post "$(chan runs)" "$msg" "${BUZZ_THREAD:-}"
+    push_phone "boomhuis · $verdict" "/" "$icon $change → $verdict (branch $branch)"
     ;;
   escalate)
     reden="${1:-?}"; link="${2:-}"
     msg="🚨 escalatie · $reden"
     [ -n "$link" ] && msg="$msg · rapport: $link"
     post "$(chan escalatie)" "$msg"
+    push_phone "boomhuis · escalatie 🚨" "/" "$reden"
     ;;
   *)
     echo "gebruik: $0 {run-start|run-end|escalate} ..." >&2; exit 2 ;;

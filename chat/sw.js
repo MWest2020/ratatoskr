@@ -13,6 +13,7 @@ const SHELL = [
   "/app.css",
   "/app.js",
   "/app-ui.js",
+  "/app-push.js",
   "/manifest.webmanifest",
   "/icon.svg",
   "/icon-192.png",
@@ -86,7 +87,36 @@ function networkFirst(e, isNav) {
 // De app-shell (HTML + app.css + app.js + app-ui.js) is netwerk-eerst zodat een
 // herlaad de laatste versie toont; sinds de JS/CSS losse assets zijn moeten die
 // dezelfde freshness krijgen als de pagina. Iconen/manifest blijven cache-eerst.
-const FRESH_ASSETS = new Set(["/app.css", "/app.js", "/app-ui.js"]);
+const FRESH_ASSETS = new Set(["/app.css", "/app.js", "/app-ui.js", "/app-push.js"]);
+
+// Web Push: toon een notificatie bij een binnenkomende push.
+self.addEventListener("push", (e) => {
+  let d = { title: "Boomhuis", body: "" };
+  try { if (e.data) d = e.data.json(); } catch (_) { if (e.data) d.body = e.data.text(); }
+  // GEEN vaste tag: met een constante tag wist elke nieuwe melding de vorige
+  // (verdict B overschrijft verdict A). Alleen groeperen als de payload expliciet
+  // een tag meegeeft (dan mét renotify zodat 'ie alsnog opnieuw meldt).
+  const opts = { body: d.body || "", icon: "/icon-192.png", badge: "/icon-192.png",
+                 data: { url: d.url || "/" } };
+  if (d.tag) { opts.tag = d.tag; opts.renotify = true; }
+  e.waitUntil(self.registration.showNotification(d.title || "Boomhuis", opts));
+});
+// Klik op de notificatie: focus een open venster of open de app.
+self.addEventListener("notificationclick", (e) => {
+  e.notification.close();
+  const url = (e.notification.data && e.notification.data.url) || "/";
+  e.waitUntil(clients.matchAll({ type: "window", includeUncontrolled: true }).then((wins) => {
+    for (const w of wins) {
+      if ("focus" in w) {
+        // Bestaand venster: navigeer het óók naar de url uit de notificatie —
+        // enkel focus() liet d.url stil verdampen.
+        const go = ("navigate" in w) ? w.navigate(url).catch(() => w) : Promise.resolve(w);
+        return go.then((c) => (c || w).focus());
+      }
+    }
+    if (clients.openWindow) return clients.openWindow(url);
+  }));
+});
 
 self.addEventListener("fetch", (e) => {
   const url = new URL(e.request.url);

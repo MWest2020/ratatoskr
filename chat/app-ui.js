@@ -150,3 +150,4 @@ window.addEventListener("beforeinstallprompt", e=>{
     await deferredPrompt.userChoice; deferredPrompt=null; };
   document.querySelector("header").appendChild(b);
 });
+// Web Push zit in app-push.js (aparte module, na deze).

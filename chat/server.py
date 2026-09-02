@@ -11,6 +11,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
 
 import github  # GitHub-leeslaag (repo/PR-view + pinned-context)
+import push    # Web Push — subscription-opslag + VAPID-public-key
 from buzzcli import (buzz, list_channels, list_channels_meta, valid_cid, author,
                      channel_overview, agent_roster, ME)
 
@@ -41,6 +42,7 @@ class H(BaseHTTPRequestHandler):
             "/app.css": ("app.css", "text/css"),
             "/app.js": ("app.js", "text/javascript"),
             "/app-ui.js": ("app-ui.js", "text/javascript"),
+            "/app-push.js": ("app-push.js", "text/javascript"),
             "/manifest.webmanifest": ("manifest.webmanifest", "application/manifest+json"),
             "/sw.js": ("sw.js", "text/javascript"),
             "/icon.svg": ("icon.svg", "image/svg+xml"),
@@ -59,6 +61,8 @@ class H(BaseHTTPRequestHandler):
             return self._send(200, json.dumps(list_channels_meta()))
         if u.path == "/api/agents":
             return self._send(200, json.dumps({"agents": agent_roster()}))
+        if u.path == "/api/push/vapid":
+            return self._send(200, json.dumps({"key": push.vapid_public()}))
         if u.path == "/api/overview":
             try:
                 return self._send(200, json.dumps({"channels": channel_overview()}))
@@ -123,11 +127,23 @@ class H(BaseHTTPRequestHandler):
 
     def do_POST(self):
         u = urlparse(self.path)
-        n = int(self.headers.get("Content-Length", 0))
+        try:
+            n = int(self.headers.get("Content-Length", 0))
+        except ValueError:
+            return self._send(400, json.dumps({"error": "bad length"}))
+        # Harde bovengrens: geen enkele POST-body (send, subscribe) is groot; dit
+        # voorkomt dat een tailnet-node de backend ongelimiteerd laat lezen.
+        if n < 0 or n > 16384:
+            return self._send(413, json.dumps({"error": "body te groot"}))
         try:
             body = json.loads(self.rfile.read(n) or b"{}")
         except Exception:
             return self._send(400, json.dumps({"error": "bad json"}))
+
+        if u.path == "/api/push/subscribe":
+            if push.add_subscription(body):
+                return self._send(200, json.dumps({"ok": True}))
+            return self._send(400, json.dumps({"error": "ongeldige subscription"}))
 
         if u.path == "/api/channels/create":
             name = (body.get("name") or "").strip().lower()

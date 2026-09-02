@@ -45,6 +45,19 @@ Op iOS kan dit **alleen in Safari** — Chrome of Firefox hebben de optie niet.
 3. Scroll in het menu naar **Zet op beginscherm**.
 4. Geef eventueel een naam en tik **Voeg toe**.
 
+## Meldingen aanzetten (Web Push)
+
+Wil je verdicts en escalaties als melding op je telefoon (ook met de app dicht)?
+
+1. Open de geïnstalleerde app en tik rechtsboven op de **🔔**-knop.
+2. Sta meldingen toe. Klaar — je krijgt voortaan een push bij een run-verdict of
+   escalatie.
+
+Zie je geen 🔔? Dan ondersteunt deze context geen Web Push. Belangrijk voor iOS:
+**push werkt daar alleen in de op-het-beginscherm geïnstalleerde app** (iOS 16.4+),
+niet in een gewone Safari-tab — installeer de app dus eerst (stap hierboven). Op
+Android/desktop-Chrome werkt de knop ook in een tab.
+
 ## Daarna
 
 De app start als losse app. Ze praat met dezelfde backend als op desktop en post
