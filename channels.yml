@@ -1,5 +1,5 @@
 # Kanaalregistry van het boomhuis (spec: channel-topology). Vaste kanalen per
-# functie; channel-id's zijn de bron van waarheid voor notify/buzz-notify.sh.
+# functie; channel-ids zijn de bron van waarheid voor notify/buzz-notify.sh.
 # Aangemaakt 2026-08-27 door de orchestrator-identiteit op de relay (.60).
 channels:
   general:
@@ -41,6 +41,3 @@ channels:
   netnl:
     id: 649bf5ef-087e-4e3d-bb00-d65bff987eb7
     doel: projectkanaal netnl — overdracht + context; actuele context als pinned in knowledge/netnl.md
-  netnl-api:
-    id: dd5068a3-1e77-4614-a25c-f0115e984658
-    doel: projectkanaal netnl-API — overdracht + context; actuele context als pinned in knowledge/netnl-api.md
