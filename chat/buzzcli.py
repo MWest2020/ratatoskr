@@ -15,7 +15,8 @@ BUZZ = os.environ.get("BUZZ_BIN", "/usr/local/bin/buzz")
 
 # Kanalen worden LIVE uit de relay gelezen (buzz channels list), zodat maken/
 # verwijderen in de web-app meteen doorwerkt. #general staat vooraan.
-def list_channels():
+def _channels_raw():
+    """[{name, id, description}] uit de relay, gefilterd + gesorteerd."""
     rc, out, err = buzz(["channels", "list"])
     if rc != 0:
         return []
@@ -29,7 +30,7 @@ def list_channels():
     # kanaal aan waar de agents in zitten.
     HIDE = {"welcome-everyone", "Welcome"}
     PREFER = {"general": "32ef5cd2-70d8-4b7e-9235-9692b8ab2a1c"}
-    seen, rows = {}, []
+    seen, rows = set(), []
     for x in c:
         name = x.get("name"); cid = x.get("channel_id") or x.get("id")
         if not name or not cid or name in HIDE:
@@ -38,10 +39,20 @@ def list_channels():
             continue  # sla het niet-voorkeurs-duplicaat over
         if name in seen:
             continue
-        seen[name] = cid
-        rows.append((name, cid))
-    rows.sort(key=lambda r: (r[0] != "general", r[0]))  # general eerst, dan a-z
+        seen.add(name)
+        rows.append({"name": name, "id": cid, "description": x.get("description") or ""})
+    rows.sort(key=lambda r: (r["name"] != "general", r["name"]))  # general eerst, dan a-z
     return rows
+
+
+def list_channels():
+    """(name, id)-tuples — de interne vorm die overal gebruikt wordt."""
+    return [(r["name"], r["id"]) for r in _channels_raw()]
+
+
+def list_channels_meta():
+    """[{name, id, description}] — voor de web-app (kanaal-beschrijvingen)."""
+    return _channels_raw()
 
 
 def valid_cid(cid):

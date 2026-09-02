@@ -11,7 +11,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
 
 import github  # GitHub-leeslaag (repo/PR-view + pinned-context)
-from buzzcli import (buzz, list_channels, valid_cid, author,
+from buzzcli import (buzz, list_channels, list_channels_meta, valid_cid, author,
                      channel_overview, agent_roster, ME)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -56,8 +56,7 @@ class H(BaseHTTPRequestHandler):
             except OSError:
                 return self._send(404, json.dumps({"error": "asset weg"}))
         if u.path == "/api/channels":
-            return self._send(200, json.dumps(
-                [{"name": n, "id": i} for n, i in list_channels()]))
+            return self._send(200, json.dumps(list_channels_meta()))
         if u.path == "/api/agents":
             return self._send(200, json.dumps({"agents": agent_roster()}))
         if u.path == "/api/overview":
