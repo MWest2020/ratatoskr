@@ -100,6 +100,7 @@ async function showPR(repo, num){
 $("#switch").onclick=()=>$("#drawer").classList.add("open");
 $("#agentsBtn").onclick=()=>{ loadAgents(); $("#agentsDrawer").classList.add("open"); };
 $("#reposBtn").onclick=openRepos;
+$("#reposClose").onclick=closeRepos;
 $("#reposDrawer").onclick=e=>{ if(e.target.id==="reposDrawer") closeRepos(); };
 $("#newChan").addEventListener("submit", async e=>{
   e.preventDefault();
