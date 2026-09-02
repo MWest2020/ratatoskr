@@ -42,10 +42,12 @@ async function loadChannels(){
     const row=document.createElement("div");
     row.className="chan"+(current&&c.id===current.id?" active":"");
     row.dataset.id=c.id;
-    row.innerHTML=`<span class="hash">#</span><span class="cn"></span><span class="unread" hidden></span>`;
+    row.innerHTML=`<span class="hash">#</span><span class="cmeta"><span class="cn"></span><span class="cdesc"></span></span><span class="unread" hidden></span>`;
     row.querySelector(".cn").textContent=c.name;  // textContent: geen HTML-injectie via kanaalnaam
+    const cd=row.querySelector(".cdesc");
+    if(c.description) cd.textContent=c.description; else cd.remove();  // beschrijving = waar het kanaal voor is
     const open=()=>{ selectChannel(c); closeDrawer(); };
-    row.querySelector(".cn").onclick=open;
+    row.querySelector(".cmeta").onclick=open;
     row.querySelector(".hash").onclick=open;
     row.querySelector(".unread").onclick=open;
     if(c.name!=="general"){

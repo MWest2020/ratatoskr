@@ -7,6 +7,7 @@
 #   IDENT=hubby ~/boomhuis/orchestrator/ping.sh 'mijlpaal: ...'
 set -euo pipefail
 IDENT="${IDENT:-bouwer}"
+CHAN="${CHAN:-general}"   # doelkanaal (naam uit channels.yml), default #general
 MSG="${1:-$(cat)}"
 export SOPS_AGE_KEY_FILE="${SOPS_AGE_KEY_FILE:-$HOME/.config/sops/age/keys.txt}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -24,7 +25,13 @@ if e.get("rol") == "mens":
 if e.get("status") != "actief":
     sys.stderr.write("IDENT %r is niet actief (status=%s)\n" % (ident, e.get("status"))); sys.exit(5)
 print(e["npub"])')
-GEN=$(ROOT="$ROOT" python3 -c 'import os,yaml;print(yaml.safe_load(open(os.environ["ROOT"]+"/channels.yml"))["channels"]["general"]["id"])')
+GEN=$(CHAN="$CHAN" ROOT="$ROOT" python3 -c '
+import os, sys, yaml
+ch = yaml.safe_load(open(os.environ["ROOT"] + "/channels.yml"))["channels"]
+c = ch.get(os.environ["CHAN"])
+if not c:
+    sys.stderr.write("onbekend kanaal %r (niet in channels.yml)\n" % os.environ["CHAN"]); sys.exit(6)
+print(c["id"])')
 NSEC=$(sops -d "$ROOT/secrets/identities.yaml" | IDENT="$IDENT" python3 -c 'import os,sys,yaml;print(yaml.safe_load(sys.stdin)["identities"][os.environ["IDENT"]]["nsec"])')
 
 # Relay via de community-host 192.168.178.60 (de relay is community-scoped op DEZE
@@ -33,4 +40,4 @@ NSEC=$(sops -d "$ROOT/secrets/identities.yaml" | IDENT="$IDENT" python3 -c 'impo
 # Eigen npub als --mention: staat vrije @-woorden toe (presentation-only).
 BUZZ_PRIVATE_KEY="$NSEC" BUZZ_RELAY_URL="${BUZZ_RELAY_URL:-ws://192.168.178.60:3000}" \
   ~/.local/bin/buzz messages send --channel "$GEN" --content - --mention "$NPUB" <<<"$MSG" >/dev/null
-echo "[ping] verstuurd naar #general (als $IDENT)"
+echo "[ping] verstuurd naar #$CHAN (als $IDENT)"
