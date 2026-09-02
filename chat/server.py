@@ -11,6 +11,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
 
 import github  # GitHub-leeslaag (repo/PR-view + pinned-context)
+import push    # Web Push — subscription-opslag + VAPID-public-key
 from buzzcli import (buzz, list_channels, list_channels_meta, valid_cid, author,
                      channel_overview, agent_roster, ME)
 
@@ -59,6 +60,8 @@ class H(BaseHTTPRequestHandler):
             return self._send(200, json.dumps(list_channels_meta()))
         if u.path == "/api/agents":
             return self._send(200, json.dumps({"agents": agent_roster()}))
+        if u.path == "/api/push/vapid":
+            return self._send(200, json.dumps({"key": push.vapid_public()}))
         if u.path == "/api/overview":
             try:
                 return self._send(200, json.dumps({"channels": channel_overview()}))
@@ -128,6 +131,11 @@ class H(BaseHTTPRequestHandler):
             body = json.loads(self.rfile.read(n) or b"{}")
         except Exception:
             return self._send(400, json.dumps({"error": "bad json"}))
+
+        if u.path == "/api/push/subscribe":
+            if push.add_subscription(body):
+                return self._send(200, json.dumps({"ok": True}))
+            return self._send(400, json.dumps({"error": "ongeldige subscription"}))
 
         if u.path == "/api/channels/create":
             name = (body.get("name") or "").strip().lower()

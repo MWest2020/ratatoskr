@@ -88,6 +88,25 @@ function networkFirst(e, isNav) {
 // dezelfde freshness krijgen als de pagina. Iconen/manifest blijven cache-eerst.
 const FRESH_ASSETS = new Set(["/app.css", "/app.js", "/app-ui.js"]);
 
+// Web Push: toon een notificatie bij een binnenkomende push.
+self.addEventListener("push", (e) => {
+  let d = { title: "Boomhuis", body: "" };
+  try { if (e.data) d = e.data.json(); } catch (_) { if (e.data) d.body = e.data.text(); }
+  e.waitUntil(self.registration.showNotification(d.title || "Boomhuis", {
+    body: d.body || "", icon: "/icon-192.png", badge: "/icon-192.png",
+    tag: d.tag || "boomhuis", data: { url: d.url || "/" },
+  }));
+});
+// Klik op de notificatie: focus een open venster of open de app.
+self.addEventListener("notificationclick", (e) => {
+  e.notification.close();
+  const url = (e.notification.data && e.notification.data.url) || "/";
+  e.waitUntil(clients.matchAll({ type: "window", includeUncontrolled: true }).then((wins) => {
+    for (const w of wins) { if ("focus" in w) return w.focus(); }
+    if (clients.openWindow) return clients.openWindow(url);
+  }));
+});
+
 self.addEventListener("fetch", (e) => {
   const url = new URL(e.request.url);
   if (url.pathname.startsWith("/api/") || e.request.method !== "GET") {

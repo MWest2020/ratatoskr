@@ -150,3 +150,32 @@ window.addEventListener("beforeinstallprompt", e=>{
     await deferredPrompt.userChoice; deferredPrompt=null; };
   document.querySelector("header").appendChild(b);
 });
+
+// --- Web Push: aanmelden voor telefoon-notificaties ---
+function urlB64ToUint8Array(b64){
+  const pad="=".repeat((4-b64.length%4)%4);
+  const s=(b64+pad).replace(/-/g,"+").replace(/_/g,"/");
+  const raw=atob(s); const arr=new Uint8Array(raw.length);
+  for(let i=0;i<raw.length;i++) arr[i]=raw.charCodeAt(i);
+  return arr;
+}
+async function enablePush(btn){
+  if(!("serviceWorker" in navigator) || !("PushManager" in window)){ toast("push niet ondersteund"); return; }
+  try{
+    const perm=await Notification.requestPermission();
+    if(perm!=="granted"){ toast("meldingen niet toegestaan"); return; }
+    const {key}=await (await fetch("/api/push/vapid")).json();
+    if(!key){ toast("push niet geconfigureerd"); return; }
+    const reg=await navigator.serviceWorker.ready;
+    const sub=await reg.pushManager.subscribe({userVisibleOnly:true, applicationServerKey:urlB64ToUint8Array(key)});
+    const r=await fetch("/api/push/subscribe",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(sub)});
+    if(r.ok){ toast("meldingen aan ✓"); if(btn) btn.remove(); } else toast("aanmelden mislukt");
+  }catch(e){ toast("push-fout"); }
+}
+// Toon een 🔔-knop als push kan én nog niet is toegestaan.
+if("serviceWorker" in navigator && "PushManager" in window && Notification.permission!=="granted"){
+  const pb=document.createElement("button");
+  pb.id="pushBtn"; pb.textContent="🔔"; pb.title="meldingen aanzetten";
+  pb.onclick=()=>enablePush(pb);
+  document.querySelector("header").appendChild(pb);
+}
