@@ -19,6 +19,7 @@ lukken (anders exit != 0) — geen halve staat.
 """
 import argparse
 import datetime
+import json
 import os
 import subprocess
 import sys
@@ -110,7 +111,13 @@ def main():
     benv = dict(os.environ, BUZZ_PRIVATE_KEY=mark_nsec, BUZZ_RELAY_URL=RELAY)
     # --role member (niet 'bot'): een sessie is een deelnemer, geen listener-bot.
     r = run([buzz, "channels", "add-member", "--channel", general, "--pubkey", pub, "--role", "member"], env=benv)
-    if not ("accepted" in r.stdout and "true" in r.stdout):
+    ok = False
+    if r.returncode == 0:
+        try:
+            ok = bool(json.loads(r.stdout).get("accepted"))
+        except (ValueError, AttributeError):
+            ok = False
+    if not ok:
         sys.exit(f"[session-id] #general-lidmaatschap MISLUKT: {(r.stdout or r.stderr)[:160]} — "
                  "registry/secret staan al, maar de identiteit kan nog niet posten; check de relay.")
     print("[session-id] #general-lid: ok")

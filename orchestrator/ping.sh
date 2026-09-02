@@ -11,31 +11,21 @@ MSG="${1:-$(cat)}"
 export SOPS_AGE_KEY_FILE="${SOPS_AGE_KEY_FILE:-$HOME/.config/sops/age/keys.txt}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
-# IDENT/ROOT gaan via env naar python (geen broncode-interpolatie → geen injectie).
-NPUB=$(IDENT="$IDENT" ROOT="$ROOT" python3 - <<'PY'
+# python3 -c: het programma staat in de arg (vast, geen shell-interpolatie), IDENT
+# en ROOT gaan via env (geen injectie), en stdin blijft vrij voor de sops-pipe.
+NPUB=$(IDENT="$IDENT" ROOT="$ROOT" python3 -c '
 import os, sys, yaml
 ident, root = os.environ["IDENT"], os.environ["ROOT"]
-d = yaml.safe_load(open(root + "/identities.yml"))["identities"]
-e = d.get(ident)
+e = yaml.safe_load(open(root + "/identities.yml"))["identities"].get(ident)
 if e is None:
-    sys.stderr.write("onbekende IDENT '%s' (niet in identities.yml)\n" % ident); sys.exit(3)
+    sys.stderr.write("onbekende IDENT %r (niet in identities.yml)\n" % ident); sys.exit(3)
 if e.get("rol") == "mens":
-    sys.stderr.write("IDENT '%s' is de mens-identiteit — niet toegestaan via ping.sh\n" % ident); sys.exit(4)
+    sys.stderr.write("IDENT %r is de mens-identiteit — niet toegestaan via ping.sh\n" % ident); sys.exit(4)
 if e.get("status") != "actief":
-    sys.stderr.write("IDENT '%s' is niet actief (status=%s)\n" % (ident, e.get("status"))); sys.exit(5)
-print(e["npub"])
-PY
-)
-GEN=$(ROOT="$ROOT" python3 - <<'PY'
-import os, yaml
-print(yaml.safe_load(open(os.environ["ROOT"] + "/channels.yml"))["channels"]["general"]["id"])
-PY
-)
-NSEC=$(sops -d "$ROOT/secrets/identities.yaml" | IDENT="$IDENT" python3 - <<'PY'
-import os, sys, yaml
-print(yaml.safe_load(sys.stdin)["identities"][os.environ["IDENT"]]["nsec"])
-PY
-)
+    sys.stderr.write("IDENT %r is niet actief (status=%s)\n" % (ident, e.get("status"))); sys.exit(5)
+print(e["npub"])')
+GEN=$(ROOT="$ROOT" python3 -c 'import os,yaml;print(yaml.safe_load(open(os.environ["ROOT"]+"/channels.yml"))["channels"]["general"]["id"])')
+NSEC=$(sops -d "$ROOT/secrets/identities.yaml" | IDENT="$IDENT" python3 -c 'import os,sys,yaml;print(yaml.safe_load(sys.stdin)["identities"][os.environ["IDENT"]]["nsec"])')
 
 # Relay via de community-host 192.168.178.60 (de relay is community-scoped op DEZE
 # host; het tailnet-IP geeft "no community configured for this host"). Vanaf een

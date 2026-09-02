@@ -87,8 +87,9 @@ cluster-fire van de brug is nog gesuperviseerd (`BRIDGE_LIVE`). Rome is niet in
   Claude-sessie (interactief) een eigen sleutelpaar (rol `sessie`, aangemaakt met
   `orchestrator/create-session-identity.py`; geen handbook-def/run-lijst). Zo is
   elk bericht toerekenbaar aan de echte afzender. Een sessie post in #general met
-  `IDENT=<naam> orchestrator/ping.sh '<bericht>'` — de `IDENT`-filter laat alleen
-  `sessie`/`chat-agent` toe (nooit de mens-identiteit).
+  `IDENT=<naam> orchestrator/ping.sh '<bericht>'` — de `IDENT`-filter weigert de
+  **mens**-identiteit (rol `mens`) en elke **niet-actieve** sleutel, zodat niemand
+  zich als de mens of onder een ingetrokken identiteit kan voordoen.
 - **Protocol-naad + per-kanaal kennis** (geleend van
   [Switch](https://github.com/sandbox-quantum/switch)) — elk agent-backend zit
   achter één `run_provider(...)`-functie (vandaag `claude -p`, een nieuw backend

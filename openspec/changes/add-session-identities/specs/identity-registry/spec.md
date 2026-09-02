@@ -14,3 +14,10 @@ staat NIET in de listener-run-lijst (een sessie is geen gespawnde chat-agent).
   eigen `IDENT`
 - **THEN** is het bericht in de relay ondertekend met het sleutelpaar van die
   sessie, en toont het audit-spoor die identiteit
+
+#### Scenario: Geen impersonatie van de mens of ingetrokken sleutels
+
+- **WHEN** de ping-helper wordt aangeroepen met een `IDENT` die de mens-identiteit
+  (rol `mens`) of een niet-actieve identiteit aanwijst
+- **THEN** weigert de helper te posten (geen bericht ondertekend met die sleutel),
+  zodat niemand zich als de mens of onder een ingetrokken identiteit kan voordoen
