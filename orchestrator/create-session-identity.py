@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: EUPL-1.2
 # /// script
 # dependencies = ["coincurve>=20", "bech32>=1.2", "pyyaml>=6"]
 # ///
@@ -11,10 +12,13 @@ i.p.v. onder 'bouwer'.
 
   uv run orchestrator/create-session-identity.py --name hubby
 
-Doet: keypair → identities.yml (rol: sessie) → SOPS-nsec → relay-lid + #general-
-lid → profielnaam. Idempotent-ish: bestaat de naam al, dan stopt 'ie.
+Doet: keypair → SOPS-nsec (versleuteld) → identities.yml (rol: sessie) → relay-lid
++ #general-lid → profielnaam. Fail-closed: een plaintext-sleutel wordt NOOIT naar
+het git-getrackte secrets-bestand geschreven; de secret gaat vóór de publieke
+registry-entry zodat een halve staat geen dangling registry achterlaat.
 """
 import argparse
+import datetime
 import os
 import subprocess
 import sys
@@ -24,7 +28,8 @@ from bech32 import bech32_encode, convertbits
 from coincurve import PrivateKey
 import yaml
 
-BOOMHUIS = os.path.expanduser("~/boomhuis")
+HERE = os.path.dirname(os.path.abspath(__file__))
+BOOMHUIS = os.path.dirname(HERE)  # orchestrator/ zit in de repo-root
 RELAY = "ws://192.168.178.60:3000"
 GENERAL = "32ef5cd2-70d8-4b7e-9235-9692b8ab2a1c"
 
@@ -52,44 +57,53 @@ def main():
     idp = os.path.join(BOOMHUIS, "identities.yml")
     d = yaml.safe_load(open(idp))
     if name in d["identities"]:
-        print(f"[session-id] '{name}' bestaat al in identities.yml — stop.")
-        sys.exit(1)
+        sys.exit(f"[session-id] '{name}' bestaat al in identities.yml — stop.")
 
     pub, npub, priv, nsec = npub_nsec()
     print(f"[session-id] {name}: npub={npub}")
 
-    # 1) publieke registry
-    d["identities"][name] = {"rol": "sessie", "status": "actief",
-                             "pubkey_hex": pub, "npub": npub, "aangemaakt": "2026-09-02"}
-    open(idp, "w").write("# Publieke identiteitsregistry van het boomhuis (spec: identity-registry).\n"
-                         + yaml.safe_dump(d, default_flow_style=False, sort_keys=False))
-
-    # 2) SOPS-nsec
+    # 1) SOPS-nsec EERST (fail-closed): decrypt → toevoegen → versleutel → verifieer
+    #    dat de output versleuteld is → pas dan vervangen. Zo belandt er nooit een
+    #    plaintext-sleutel in het git-getrackte secrets/identities.yaml.
     secp = os.path.join(BOOMHUIS, "secrets", "identities.yaml")
-    sd = yaml.safe_load(run(["sops", "-d", secp], env=env).stdout)
+    dec = run(["sops", "-d", secp], env=env)
+    if dec.returncode != 0:
+        sys.exit(f"[session-id] SOPS-decrypt faalde: {dec.stderr[:200]}")
+    sd = yaml.safe_load(dec.stdout)
     sd["identities"][name] = {"privkey_hex": priv, "nsec": nsec}
     tmp = os.path.join(BOOMHUIS, "secrets", "_new.yaml")
     with open(tmp, "w") as f:
         f.write("# Privesleutels van de boomhuis-identiteiten. Alleen SOPS+age-versleuteld in git.\n")
         yaml.safe_dump(sd, f, default_flow_style=False, sort_keys=False)
-    run(["sops", "-e", "-i", tmp], env=env)
+    enc = run(["sops", "-e", "-i", tmp], env=env)
+    if enc.returncode != 0 or "sops:" not in open(tmp).read():
+        os.remove(tmp)
+        sys.exit(f"[session-id] SOPS-encrypt faalde of output niet versleuteld — "
+                 f"NIETS weggeschreven (geen plaintext naar git). {enc.stderr[:160]}")
     os.replace(tmp, secp)
 
-    # 3) relay-lid + #general-lid (als mark)
+    # 2) publieke registry (pas ná de secret)
+    d["identities"][name] = {"rol": "sessie", "status": "actief", "pubkey_hex": pub,
+                             "npub": npub, "aangemaakt": datetime.date.today().isoformat()}
+    open(idp, "w").write("# Publieke identiteitsregistry van het boomhuis (spec: identity-registry).\n"
+                         + yaml.safe_dump(d, default_flow_style=False, sort_keys=False))
+
+    # 3) relay-lid + #general-lid (als mark); returncodes gecheckt
     mark_nsec = sd["identities"]["mark"]["nsec"]
-    run(["ssh", "-o", "BatchMode=yes", "buzz-relay",
-         f"cd /opt/buzz-relay && docker compose exec -T relay buzz-admin add-member --pubkey {pub} --role member"])
+    rm = run(["ssh", "-o", "BatchMode=yes", "buzz-relay",
+              f"cd /opt/buzz-relay && docker compose exec -T relay buzz-admin add-member --pubkey {pub} --role member"])
+    if rm.returncode != 0:
+        print(f"[session-id] WAARSCHUWING: relay add-member faalde: {(rm.stderr or rm.stdout)[:160]}")
     time.sleep(2)  # relay-lidmaatschap laten propageren
     benv = dict(os.environ, BUZZ_PRIVATE_KEY=mark_nsec, BUZZ_RELAY_URL=RELAY)
     r = run([buzz, "channels", "add-member", "--channel", GENERAL, "--pubkey", pub, "--role", "member"], env=benv)
-    print(f"[session-id] #general-lid: {'ok' if 'accepted' in r.stdout and 'true' in r.stdout else r.stdout[:80] or r.stderr[:80]}")
+    print(f"[session-id] #general-lid: {'ok' if 'accepted' in r.stdout and 'true' in r.stdout else (r.stdout or r.stderr)[:80]}")
 
     # 4) profielnaam
     run([buzz, "users", "set-profile", "--name", name, "--about", f"Claude-sessie {name}"],
         env=dict(os.environ, BUZZ_PRIVATE_KEY=nsec, BUZZ_RELAY_URL=RELAY))
 
-    print(f"[session-id] {name} klaar. ping.sh IDENT={name} post nu onder eigen sleutel.")
-    print("VOLGENDE: commit identities.yml + secrets; de sessie kan pingen met "
+    print(f"[session-id] {name} klaar. De sessie post nu met "
           f"IDENT={name} ~/boomhuis/orchestrator/ping.sh '<bericht>'.")
 
 

@@ -16,6 +16,11 @@ NPUB=$(python3 -c "
 import yaml,sys
 d=yaml.safe_load(open('$ROOT/identities.yml'))['identities']
 if '$IDENT' not in d: sys.stderr.write(\"onbekende IDENT '$IDENT' (niet in identities.yml)\n\"); sys.exit(3)
+rol=d['$IDENT'].get('rol')
+# Alleen sessie- of chat-agent-identiteiten mogen via ping.sh posten. Zo kan
+# niemand zich als de mens ('mark', rol mens) of een andere klasse voordoen.
+if rol not in ('sessie','chat-agent'):
+    sys.stderr.write(\"IDENT '$IDENT' (rol=%s) mag niet via ping.sh posten — alleen 'sessie'/'chat-agent'\n\"%rol); sys.exit(4)
 print(d['$IDENT']['npub'])")
 NSEC=$(sops -d "$ROOT/secrets/identities.yaml" \
   | python3 -c "import sys,yaml;print(yaml.safe_load(sys.stdin)['identities']['$IDENT']['nsec'])")
