@@ -185,7 +185,7 @@ async function enablePush(btn){
     toast("meldingen aan ✓"); if(btn) btn.remove();
   }catch(e){ toast("aanmelden mislukt"); }
 }
-if("serviceWorker" in navigator && "PushManager" in window){
+if("serviceWorker" in navigator && "PushManager" in window && "Notification" in window){
   if(Notification.permission==="granted"){
     // Al toegestaan: stil borgen dat de server onze subscription (nog) kent.
     ensurePushSubscription().catch(()=>{});

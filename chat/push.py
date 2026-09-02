@@ -9,10 +9,10 @@ import json
 import os
 import threading
 
-# Runtime-state, GEEN git-inhoud: op de VM zetten we PUSH_SUBS_PATH naar een
-# state-dir buiten de deploy-checkout (zie deploy-runbook in de proposal). De
+# Runtime-state, GEEN git-inhoud: op de VM zet chat.env PUSH_SUBS_PATH naar een
+# state-dir buiten de deploy-checkout (/var/lib/boomhuis/push_subs.json). De
 # default hier is enkel een lokale fallback voor tests; het bestand staat in
-# .gitignore. Zie ook README → "Web Push · runbook".
+# .gitignore. Runbook: chat/README.md → "Web Push".
 SUBS_PATH = os.environ.get(
     "PUSH_SUBS_PATH",
     os.path.join(os.path.dirname(os.path.abspath(__file__)), "push_subs.json"))

@@ -13,6 +13,7 @@ zo dependency-loos. Aanroep:
 import argparse
 import json
 import os
+import shlex
 import subprocess
 import sys
 
@@ -20,6 +21,9 @@ from pywebpush import webpush, WebPushException
 import yaml
 
 BOOMHUIS = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# State-pad op de VM, BUITEN de deploy-checkout (design §4). De chat-backend draait
+# als root en schrijft 0600; de sender leest/pruned via passwordless sudo (ubuntu).
+SUBS_REMOTE = os.environ.get("PUSH_SUBS_REMOTE", "/var/lib/boomhuis/push_subs.json")
 
 
 def vapid():
@@ -31,18 +35,18 @@ def vapid():
     return yaml.safe_load(dec.stdout)["vapid"]
 
 
-SUBS_REMOTE = "/opt/buzz-build/chat/push_subs.json"
-
-
 def subscriptions():
-    # `|| true` maakt een ontbrekend bestand (nog geen subs) tot exit 0 met lege
-    # output; een écht gefaalde ssh-hop geeft 255 — dat mag NIET als "0 subs"
-    # doorgaan, anders meldt de sender vals succes.
+    # Eén sudo-shell: bestaat het bestand → cat; bestaat het niet (nog geen subs)
+    # → printf "[]", beide exit 0. Een gefaalde ssh-hop (255), een sudo-weigering
+    # of een leesfout geeft rc != 0 — dat mag NIET als "0 subs" doorgaan, anders
+    # meldt de sender vals succes terwijl er wél abonnees zijn.
+    inner = f'cat {shlex.quote(SUBS_REMOTE)} 2>/dev/null || printf "[]"'
     r = subprocess.run(["ssh", "-o", "BatchMode=yes", "buzz-relay",
-                        f"cat {SUBS_REMOTE} 2>/dev/null || true"],
+                        "sudo -n sh -c " + shlex.quote(inner)],
                        capture_output=True, text=True)
     if r.returncode != 0:
-        sys.exit(f"[push] ssh naar buzz-relay faalde (rc={r.returncode}): {r.stderr.strip()[:200]}")
+        sys.exit(f"[push] subs lezen op buzz-relay faalde (rc={r.returncode}): "
+                 f"{(r.stderr or r.stdout).strip()[:200]}")
     try:
         d = json.loads(r.stdout or "[]")
         return d if isinstance(d, list) else []
@@ -50,31 +54,36 @@ def subscriptions():
         return []
 
 
+# Prune-programma dat de VM ZELF het bestand laat herlezen (race-veilig t.o.v. een
+# gelijktijdige aanmelding) en atomair 0600 terugschrijft. Program via `-c`, de
+# dode endpoints via stdin — géén heredoc, anders zou `python3 -` z'n programma
+# van stdin lezen en de data opeten.
+_PRUNE_PROG = (
+    "import json,os,sys\n"
+    f"p={SUBS_REMOTE!r}\n"
+    "dead=set(json.load(sys.stdin))\n"
+    "try:\n"
+    "    subs=json.load(open(p))\n"
+    "except Exception:\n"
+    "    sys.exit(0)\n"
+    "keep=[s for s in subs if s.get('endpoint') not in dead]\n"
+    "fd=os.open(p+'.tmp',os.O_WRONLY|os.O_CREAT|os.O_TRUNC,0o600)\n"
+    "os.write(fd,json.dumps(keep).encode()); os.close(fd); os.replace(p+'.tmp',p)\n"
+)
+
+
 def prune(dead):
-    """Verwijder verlopen endpoints (404/410) remote, atomair, race-veilig: de VM
-    herleest het bestand zelf zodat een gelijktijdige aanmelding niet sneuvelt."""
+    """Verwijder verlopen endpoints (404/410) remote."""
     if not dead:
         return
-    remote = (
-        "python3 - <<'PY'\n"
-        "import json,os,sys\n"
-        f"p={SUBS_REMOTE!r}\n"
-        "dead=set(json.loads(sys.stdin.read()))\n"
-        "try:\n"
-        "    subs=json.load(open(p))\n"
-        "except Exception:\n"
-        "    sys.exit(0)\n"
-        "keep=[s for s in subs if s.get('endpoint') not in dead]\n"
-        "fd=os.open(p+'.tmp',os.O_WRONLY|os.O_CREAT|os.O_TRUNC,0o600)\n"
-        "os.write(fd,json.dumps(keep).encode()); os.close(fd); os.replace(p+'.tmp',p)\n"
-        "PY"
-    )
+    remote = "sudo -n python3 -c " + shlex.quote(_PRUNE_PROG)
     r = subprocess.run(["ssh", "-o", "BatchMode=yes", "buzz-relay", remote],
                        input=json.dumps(list(dead)), capture_output=True, text=True)
     if r.returncode == 0:
         print(f"[push] {len(dead)} verlopen subscription(s) opgeruimd")
     else:
-        print(f"[push] opruimen faalde (rc={r.returncode}): {r.stderr.strip()[:120]}", file=sys.stderr)
+        print(f"[push] opruimen faalde (rc={r.returncode}): {(r.stderr or r.stdout).strip()[:120]}",
+              file=sys.stderr)
 
 
 def main():
@@ -92,17 +101,20 @@ def main():
     sent = 0
     dead = []
     for s in subs:
+        ep = s.get("endpoint") or ""
         try:
             webpush(subscription_info=s, data=payload, vapid_private_key=v["private"],
                     vapid_claims={"sub": v.get("subject", "mailto:boomhuis@localhost")})
             sent += 1
         except WebPushException as e:
-            ep = s.get("endpoint") or ""
             # 404/410 = de push-service kent dit endpoint niet meer → weg ermee.
             code = getattr(getattr(e, "response", None), "status_code", None)
             if code in (404, 410):
                 dead.append(ep)
             print(f"[push] sub faalde ({ep[:40]}): {e}", file=sys.stderr)
+        except Exception as e:  # noqa: BLE001 — één kapotte sub (bv. ongeldige
+            # keys) mag de rest van de batch nooit meesleuren.
+            print(f"[push] sub-fout ({ep[:40]}): {type(e).__name__}: {e}", file=sys.stderr)
     prune(dead)
     print(f"[push] verstuurd naar {sent}/{len(subs)} subscription(s)")
 

@@ -92,10 +92,13 @@ const FRESH_ASSETS = new Set(["/app.css", "/app.js", "/app-ui.js"]);
 self.addEventListener("push", (e) => {
   let d = { title: "Boomhuis", body: "" };
   try { if (e.data) d = e.data.json(); } catch (_) { if (e.data) d.body = e.data.text(); }
-  e.waitUntil(self.registration.showNotification(d.title || "Boomhuis", {
-    body: d.body || "", icon: "/icon-192.png", badge: "/icon-192.png",
-    tag: d.tag || "boomhuis", data: { url: d.url || "/" },
-  }));
+  // GEEN vaste tag: met een constante tag wist elke nieuwe melding de vorige
+  // (verdict B overschrijft verdict A). Alleen groeperen als de payload expliciet
+  // een tag meegeeft (dan mét renotify zodat 'ie alsnog opnieuw meldt).
+  const opts = { body: d.body || "", icon: "/icon-192.png", badge: "/icon-192.png",
+                 data: { url: d.url || "/" } };
+  if (d.tag) { opts.tag = d.tag; opts.renotify = true; }
+  e.waitUntil(self.registration.showNotification(d.title || "Boomhuis", opts));
 });
 // Klik op de notificatie: focus een open venster of open de app.
 self.addEventListener("notificationclick", (e) => {
