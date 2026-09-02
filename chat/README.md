@@ -36,10 +36,19 @@ Wat waar staat en terug moet na een redeploy of host-herstel:
 - **`secrets/vapid.yaml`** (deze repo, SOPS+age) — VAPID-private + subject. Alleen
   de sender op agent-lxc decrypt 'm; de VM heeft de private nooit nodig.
 
-Versturen (vanaf agent-lxc): `IDENT=… uv run orchestrator/push-notify.py --title …
---url / --body "…"`. De sender leest de subs via `sudo` op de VM en ruimt verlopen
-subscriptions (404/410) op. Automatisch afgevuurd door `notify/buzz-notify.sh`
-(run-end + escalate) als `BUZZ_PUSH=1`.
+Versturen (vanaf agent-lxc): `uv run orchestrator/push-notify.py --title … --url /
+--body "…"` (met `SOPS_AGE_KEY_FILE` gezet). De sender leest de subs via `sudo` op
+de VM en ruimt verlopen subscriptions (404/410) op. Automatisch afgevuurd door
+`notify/buzz-notify.sh` (run-end + escalate) als `BUZZ_PUSH=1`.
+
+Host-config die de sender nodig heeft (naast de env-waarden hierboven):
+
+- **Passwordless sudo op de VM** voor de lezende/prunende commando's — de backend
+  schrijft `push_subs.json` als root 0600, de sender sshet als `ubuntu`. Zonder
+  `sudo -n` leest de sender niets en meldt 'ie (terecht) een fout. Regel in
+  `/etc/sudoers.d/boomhuis-push`: `ubuntu ALL=(root) NOPASSWD: /usr/bin/cat, /usr/bin/python3`.
+- **ssh-alias `buzz-relay`** in `~/.ssh/config` op agent-lxc (BatchMode, key-based)
+  → de VM `192.168.178.60`.
 
 ## Nog te doen (hardening)
 - Wanneer de chat-native agents live zijn (fase 2), verschijnen ze vanzelf in

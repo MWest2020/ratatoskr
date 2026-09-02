@@ -55,8 +55,13 @@ push_phone() {
   [ "${BUZZ_PUSH:-0}" = "1" ] || return 0
   command -v uv >/dev/null 2>&1 || { log "uv ontbreekt; geen push"; return 0; }
   local title="$1" url="$2" body="$3"
-  ( cd "$HERE" && printf '%s' "$body" | timeout 30 uv run orchestrator/push-notify.py \
-      --title "$title" --url "$url" >>"$LOG" 2>&1 ) || log "push-notify faalde (best-effort)"
+  # Op de ACHTERGROND (&): een push mag run-end/escalate nooit ophouden. Ruime
+  # timeout (180s) want een koude uv-cache moet pywebpush + cryptography eerst
+  # resolven; anders werd de eerste push na een cache-clear gekilld. Een non-
+  # interactieve parent HUP't z'n achtergrond-kind niet bij normale exit, dus dit
+  # overleeft de afronding van buzz-notify.sh. Alle uitvoer naar het log.
+  ( cd "$HERE" && printf '%s' "$body" | timeout 180 uv run orchestrator/push-notify.py \
+      --title "$title" --url "$url" >>"$LOG" 2>&1 || log "push-notify faalde (best-effort)" ) &
   return 0
 }
 

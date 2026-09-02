@@ -47,11 +47,16 @@ def subscriptions():
     if r.returncode != 0:
         sys.exit(f"[push] subs lezen op buzz-relay faalde (rc={r.returncode}): "
                  f"{(r.stderr or r.stdout).strip()[:200]}")
-    try:
-        d = json.loads(r.stdout or "[]")
-        return d if isinstance(d, list) else []
-    except ValueError:
+    raw = (r.stdout or "").strip()
+    if raw in ("", "[]"):
         return []
+    try:
+        d = json.loads(raw)
+    except ValueError:
+        # Een corrupt/half-geschreven bestand is GEEN '0 subs' — dan zou de sender
+        # vals succes melden terwijl er wél abonnees zijn. Fout, niet stil door.
+        sys.exit(f"[push] push_subs.json is corrupt (kon niet parsen): {raw[:120]}")
+    return d if isinstance(d, list) else []
 
 
 # Prune-programma dat de VM ZELF het bestand laat herlezen (race-veilig t.o.v. een

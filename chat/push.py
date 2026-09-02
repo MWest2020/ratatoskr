@@ -27,18 +27,23 @@ def vapid_public():
     return os.environ.get("VAPID_PUBLIC", "")
 
 
-def _valid_sub(sub):
-    """Een echte Web-Push-subscription: dict met een https-endpoint + p256dh/auth.
-
-    Zonder deze poort accepteert /api/push/subscribe elk JSON-object; dit dwingt
-    de vorm af die pywebpush ook echt kan versturen."""
+def _clean_sub(sub):
+    """Valideer een Web-Push-subscription en geef 'm GENORMALISEERD terug (alleen
+    endpoint + keys.p256dh/auth), of None. Zonder deze poort accepteert
+    /api/push/subscribe elk JSON-object en slaat het ongefilterd op; dit dwingt de
+    vorm af die pywebpush echt kan versturen en begrenst elk veld op lengte."""
     if not isinstance(sub, dict):
-        return False
+        return None
     ep = sub.get("endpoint")
     if not isinstance(ep, str) or not ep.startswith("https://") or len(ep) > 1024:
-        return False
+        return None
     keys = sub.get("keys")
-    return isinstance(keys, dict) and bool(keys.get("p256dh")) and bool(keys.get("auth"))
+    if not isinstance(keys, dict):
+        return None
+    p, a = keys.get("p256dh"), keys.get("auth")
+    if not (isinstance(p, str) and 0 < len(p) <= 256 and isinstance(a, str) and 0 < len(a) <= 256):
+        return None
+    return {"endpoint": ep, "keys": {"p256dh": p, "auth": a}}
 
 
 def load_subscriptions():
@@ -62,12 +67,13 @@ def _write(subs):
 
 def add_subscription(sub):
     """Voeg een subscription toe (dedup op endpoint). Return True bij succes."""
-    if not _valid_sub(sub):
+    clean = _clean_sub(sub)
+    if clean is None:
         return False
-    ep = sub["endpoint"]
+    ep = clean["endpoint"]
     with _lock:
         subs = [s for s in load_subscriptions() if s.get("endpoint") != ep]
-        subs.append(sub)
+        subs.append(clean)
         if len(subs) > MAX_SUBS:
             subs = subs[-MAX_SUBS:]
         _write(subs)

@@ -126,7 +126,14 @@ class H(BaseHTTPRequestHandler):
 
     def do_POST(self):
         u = urlparse(self.path)
-        n = int(self.headers.get("Content-Length", 0))
+        try:
+            n = int(self.headers.get("Content-Length", 0))
+        except ValueError:
+            return self._send(400, json.dumps({"error": "bad length"}))
+        # Harde bovengrens: geen enkele POST-body (send, subscribe) is groot; dit
+        # voorkomt dat een tailnet-node de backend ongelimiteerd laat lezen.
+        if n < 0 or n > 16384:
+            return self._send(413, json.dumps({"error": "body te groot"}))
         try:
             body = json.loads(self.rfile.read(n) or b"{}")
         except Exception:
