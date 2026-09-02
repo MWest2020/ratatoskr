@@ -14,15 +14,18 @@ Niet-voor-de-hand-liggende keuzes met verworpen alternatieven (CLAUDE.md-eis).
 géén gespawnde chat-agent — het onderscheid is bewust. Een sessie hoeft alleen
 toerekenbaar te posten, niet bestuurd te worden door de listener.
 
-## 2. `ping.sh` `IDENT` — default `bouwer`, gefilterd op rol
+## 2. `ping.sh` `IDENT` — default `bouwer`, mens + niet-actief geweigerd
 
 **Keuze:** `IDENT` (env, default `bouwer` voor compat) selecteert de identiteit;
-alleen rollen `sessie` en `chat-agent` mogen posten.
+geweigerd worden de **mens**-identiteit (rol `mens`) en elke **niet-actieve**
+identiteit (`status != actief`).
 
 **Verworpen:** (a) geen filter — dan post `IDENT=mark` onder de mens-sleutel
-(impersonatie, precies wat we dichten); (b) alleen `sessie` toestaan — dan breken
-de bestaande `bouwer`-pings (recurring jobs, ops). De allowlist `{sessie,
-chat-agent}` blokkeert de mens (`mark`, rol `mens`) én houdt compat.
+(impersonatie, precies wat we dichten); (b) een allowlist `{sessie, chat-agent}` —
+die sluit legitieme agentklassen (`orchestrator`, `coordinator`/meta-agent) stil
+uit. Een **denylist op rol `mens`** + de status-check blokkeert precies de mens en
+ingetrokken sleutels, houdt compat, en sluit geen agentklasse onbedoeld uit. IDENT
+gaat via env naar python (geen broncode-interpolatie → geen injectie).
 
 ## 3. Tailnet-adres als relay-URL — verworpen (voor nu)
 
@@ -35,8 +38,13 @@ aparte change. Vanaf tailnet-nodes werkt de LAN-host via de subnet-router.
 
 ## Fail-closed secret-hantering
 
-`create-session-identity.py` schrijft de secret vóór de publieke registry-entry en
-verifieert dat de SOPS-output versleuteld is vóór het git-getrackte bestand te
-vervangen — een mislukte encryptie mag nooit een plaintext-sleutel naar git laten
-lekken. (create-agent.py heeft ditzelfde patroon nog niet gehard — aparte
-follow-up.)
+`create-session-identity.py` schrijft de plaintext-secret alleen in een
+**gitignored** temp (`secrets/_*.yaml`, mode 0600) die in een `finally` altijd
+wordt opgeruimd, en vervangt het git-getrackte `secrets/identities.yaml` pas nadat
+de SOPS-output geverifieerd versleuteld is (`sops:` aanwezig + returncode 0). De
+secret gaat vóór de publieke registry-entry, en het #general-lidmaatschap moet
+lukken (anders exit != 0) — geen halve staat. (create-agent.py heeft ditzelfde
+patroon nog niet gehard — aparte follow-up.)
+
+De temp moet in `secrets/` staan (niet `/tmp`) omdat de SOPS-creation-rule
+path-based is (`secrets/.*`); daarom gitignore i.p.v. buiten de tree schrijven.
