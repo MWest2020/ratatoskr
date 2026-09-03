@@ -13,6 +13,13 @@ import time
 
 TTL = 60  # seconden; topologie verandert zelden
 
+# De relay maakt zelf ondeletebare default-kanalen aan (een tweede 'general',
+# 'welcome-everyone'/'Welcome'); die horen niet in de poll-set. Spiegelt de HIDE
+# in chat/buzzcli.py:_channels_raw. channels.yml is de gecureerde bron: bij een
+# naam-botsing wint de channels.yml-cid (bv. de 'general' waar de agents in zitten),
+# de relay voegt alléén echt-nieuwe namen toe.
+_HIDE = {"welcome-everyone", "Welcome"}
+
 _channels = {"t": 0.0, "data": None}
 _members = {}  # cid -> {"t": float, "pubs": set}
 
@@ -27,18 +34,24 @@ def _rows(out, key):
 
 
 def poll_channels(run, fallback, now=None):
-    """{name: cid} van alle open kanalen (relay), met `fallback` (channels.yml)
-    als vangnet. Union bij succes zodat een bekend kanaal niet wegvalt als de
-    relay 't (even) niet teruggeeft."""
+    """{name: cid} = channels.yml (`fallback`, gecureerd + autoritair op cid) plus
+    de echt-nieuwe namen uit de live relay-lijst. Junk-kanalen (`_HIDE`) eruit. Een
+    mislukte/lege fetch overschrijft een eerder geslaagde cache NIET (val terug op
+    die cache; alleen zonder cache op de kale fallback)."""
     now = time.time() if now is None else now
     if _channels["data"] is not None and now - _channels["t"] < TTL:
         return _channels["data"]
     rows = _rows(run(["channels", "list"]), "channels")
-    data = None
-    if rows is not None:
-        data = {x.get("name"): (x.get("channel_id") or x.get("id"))
-                for x in rows if x.get("name") and (x.get("channel_id") or x.get("id"))}
-    merged = {**fallback, **data} if data else dict(fallback)  # fout/leeg → alleen vangnet
+    if rows is None:  # fetch faalde → goede cache behouden, anders kale fallback
+        data = _channels["data"] if _channels["data"] is not None else dict(fallback)
+        _channels.update(t=now, data=data)
+        return data
+    live = {}
+    for x in rows:
+        name, cid = x.get("name"), (x.get("channel_id") or x.get("id"))
+        if name and cid and name not in _HIDE:
+            live.setdefault(name, cid)  # dedup: eerste record per naam
+    merged = {**live, **fallback}  # channels.yml-cid wint bij naam-botsing
     _channels.update(t=now, data=merged)
     return merged
 

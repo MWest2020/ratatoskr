@@ -120,14 +120,20 @@ def main():
         """Reageert agent h in dit kanaal? Handbook-scope OF relay-lid (union)."""
         return cname in AGENTS[h]["channels"] or name2pub.get(h) in topology.members(run, cid)
 
-    seen = set()
+    seen, seeded = set(), set()
     for cid in topology.poll_channels(run, CHANNELS).values():
         for m in get_messages(cid, read_nsec):
             seen.add(m.get("id"))
+        seeded.add(cid)
     print(f"[listener] actief; agents uit handbook: {', '.join(AGENTS)}", flush=True)
     while True:
         for cname, cid in topology.poll_channels(run, CHANNELS).items():
             msgs = get_messages(cid, read_nsec)
+            if cid not in seeded:  # kanaal net in de poll-set: historie als 'gezien'
+                for m in msgs:      # markeren, NIET op oude berichten reageren
+                    seen.add(m.get("id"))
+                seeded.add(cid)
+                continue
             for i, m in enumerate(msgs):
                 mid = m.get("id")
                 if mid in seen:
