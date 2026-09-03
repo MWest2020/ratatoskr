@@ -34,15 +34,27 @@ def main():
 
     context = ""
     if job.get("context_cmd"):
-        p = subprocess.run(["bash", "-c", job["context_cmd"]],
-                           capture_output=True, text=True, timeout=60)
-        context = (p.stdout or "").strip()[:6000]
+        try:
+            p = subprocess.run(["bash", "-c", job["context_cmd"]],
+                               capture_output=True, text=True, timeout=60)
+            context = (p.stdout or "").strip()[:6000]
+        except subprocess.TimeoutExpired:
+            # Een trage context (relay/gh) mag de job niet laten crashen. Maar ook
+            # niet stil als "niks" doorgaan: geef een expliciete LEESFOUT als context,
+            # zodat een storing nooit als "geen blokkades / niks gedaan" leest.
+            context = ("(LEESFOUT: context-time-out — signaal onvolledig; "
+                       "lees dit NIET als 'geen blokkades' of 'niks gebeurd')")
+            print(f"[job {name}] context_cmd time-out — LEESFOUT-context", flush=True)
 
     prompt = job["prompt"]
     if context:
         prompt += f"\n\nContext:\n{context}"
-    r = subprocess.run([CLAUDE, "-p", "--append-system-prompt", SYSTEM, prompt],
-                       capture_output=True, text=True, timeout=MAX_S)
+    try:
+        r = subprocess.run([CLAUDE, "-p", "--append-system-prompt", SYSTEM, prompt],
+                           capture_output=True, text=True, timeout=MAX_S)
+    except subprocess.TimeoutExpired:
+        print(f"[job {name}] claude -p time-out — niets gepost", flush=True)
+        return
     answer = (r.stdout or "").strip()
     if not answer:
         print(f"[job {name}] leeg antwoord — niets gepost", flush=True)
@@ -58,8 +70,17 @@ def main():
     args = [BUZZ, "messages", "send", "--channel", job["channel"], "--content", "-"]
     if npub:
         args += ["--mention", npub]
-    subprocess.run(args, env=env, input=answer, capture_output=True,
-                   text=True, timeout=25)
+    # send-resultaat wél checken: een trage/weigerende relay mag niet crashen én niet
+    # vals "gepost" melden.
+    try:
+        sr = subprocess.run(args, env=env, input=answer, capture_output=True,
+                            text=True, timeout=25)
+    except subprocess.TimeoutExpired:
+        print(f"[job {name}] relay-time-out bij posten — mogelijk niet gepost", flush=True)
+        return
+    if sr.returncode != 0:
+        print(f"[job {name}] posten mislukt (rc={sr.returncode}): {sr.stderr.strip()[:160]}", flush=True)
+        return
     print(f"[job {name}] gepost in kanaal {job['channel']}", flush=True)
 
 

@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: EUPL-1.2
+[Unit]
+Description=Dagelijkse gedaan-terugblik (wat is er af)
+
+[Timer]
+OnCalendar=*-*-* 18:00
+Persistent=false
+Unit=boomhuis-job@gedaan.service
+
+[Install]
+WantedBy=timers.target

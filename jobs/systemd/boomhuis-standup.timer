@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: EUPL-1.2
+[Unit]
+Description=Dagelijkse ochtend-standup (open werk + blokkades)
+
+[Timer]
+OnCalendar=*-*-* 08:00
+Persistent=true
+Unit=boomhuis-job@standup.service
+
+[Install]
+WantedBy=timers.target
