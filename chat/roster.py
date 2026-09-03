@@ -64,11 +64,18 @@ def name_of(pubkey):
     return ident["name"] if ident else None
 
 
-def pubkey_of(name):
-    """pubkey_hex voor een registry-naam (agent/sessie), of None. Voor de
-    'agent toevoegen'-flow: resolve @naam → pubkey."""
+_AGENT_ROLES = ("chat-agent", "meta-agent")
+
+
+def agent_pubkey(name):
+    """pubkey_hex voor een AGENT-naam (chat-agent/meta-agent), of None. Case-
+    insensitive. Bewust niet voor sessies (hubby/versum/…) of mark (rol: mens) —
+    die hoor je niet via de mention-pop-up als bot toe te voegen."""
+    if not name:
+        return None
+    low = name.strip().lower()
     for pk, v in identity_map().items():
-        if v["name"] == name:
+        if v["name"].lower() == low and v["rol"] in _AGENT_ROLES:
             return pk
     return None
 

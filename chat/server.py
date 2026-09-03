@@ -14,7 +14,7 @@ import github  # GitHub-leeslaag (repo/PR-view + pinned-context)
 import push    # Web Push — subscription-opslag + VAPID-public-key
 from buzzcli import (buzz, list_channels, list_channels_meta, valid_cid, author,
                      channel_overview, agent_roster, channel_roster, ME)
-import roster  # naam↔pubkey-resolutie voor de 'agent toevoegen'-flow
+import actions  # send/add-member/create-acties (server blijft dun)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
@@ -152,25 +152,8 @@ class H(BaseHTTPRequestHandler):
             return self._send(400, json.dumps({"error": "ongeldige subscription"}))
 
         if u.path == "/api/channels/create":
-            name = (body.get("name") or "").strip().lower()
-            if not re.match(r"^[a-z0-9][a-z0-9_-]{0,30}$", name):
-                return self._send(400, json.dumps({"error": "naam: a-z 0-9 _ - (max 31)"}))
-            rc, out, err = buzz(["channels", "create", "--name", name,
-                                 "--type", "stream", "--visibility", "open"])
-            if rc != 0:
-                return self._send(502, json.dumps({"error": err.strip()[:200]}))
-            # Beleid: coordinator zit in ELK kanaal → standaard toevoegen aan een nieuw
-            # kanaal. Best-effort: mislukt dit, dan bestaat het kanaal nog steeds
-            # (coordinator kan later handmatig of via de mention-pop-up toegevoegd).
-            try:
-                new_cid = json.loads(out).get("channel_id")
-                co = roster.pubkey_of("coordinator")
-                if new_cid and co:
-                    buzz(["channels", "add-member", "--channel", new_cid,
-                          "--pubkey", co, "--role", "bot"])
-            except Exception:
-                pass
-            return self._send(200, json.dumps({"ok": True, "name": name}))
+            code, payload = actions.create_channel(body.get("name"))
+            return self._send(code, json.dumps(payload))
 
         if u.path == "/api/channels/delete":
             cid = body.get("channel")
@@ -182,44 +165,14 @@ class H(BaseHTTPRequestHandler):
             return self._send(200, json.dumps({"ok": True}))
 
         if u.path == "/api/channel/add-member":
-            return self._add_member(body)
+            code, payload = actions.add_agent(body.get("channel"), body.get("name"))
+            return self._send(code, json.dumps(payload))
 
         if u.path != "/api/send":
             return self._send(404, json.dumps({"error": "not found"}))
-        cid, content = body.get("channel"), (body.get("content") or "").strip()
-        if not valid_cid(cid):
-            return self._send(400, json.dumps({"error": "onbekend kanaal"}))
-        if not content:
-            return self._send(400, json.dumps({"error": "leeg bericht"}))
-        # Geen geforceerde --mention: de relay resolvet @agent naar het lid en
-        # triggert 'm; een @naam die GEEN kanaal-lid is geeft een nette fout die de
-        # naam noemt. Die vangen we op als een 'agent-niet-in-kanaal'-antwoord voor
-        # de toevoeg-pop-up (content via stdin om escaping te vermijden).
-        rc, out, err = buzz(["messages", "send", "--channel", cid, "--content", "-"],
-                            stdin=content)
-        if rc == 0:
-            return self._send(200, json.dumps({"ok": True}))
-        m = re.search(r"mention '@([A-Za-z0-9_-]+)' does not match", err or "")
-        if m:
-            who = m.group(1)
-            return self._send(409, json.dumps({
-                "missing_agent": who,
-                "known": roster.pubkey_of(who) is not None,  # bestaat 'ie als identiteit?
-                "channel": cid}))
-        return self._send(502, json.dumps({"error": err.strip()[:200]}))
-
-    def _add_member(self, body):
-        cid, name = body.get("channel"), (body.get("name") or "").strip()
-        if not valid_cid(cid):
-            return self._send(400, json.dumps({"error": "onbekend kanaal"}))
-        pk = roster.pubkey_of(name)
-        if not pk:
-            return self._send(404, json.dumps({"error": f"geen identiteit '{name}'"}))
-        rc, out, err = buzz(["channels", "add-member", "--channel", cid,
-                             "--pubkey", pk, "--role", "bot"])
-        if rc != 0:
-            return self._send(502, json.dumps({"error": (err or out).strip()[:200]}))
-        return self._send(200, json.dumps({"ok": True, "name": name}))
+        code, payload = actions.send(body.get("channel"), body.get("content"),
+                                     force=bool(body.get("force")))
+        return self._send(code, json.dumps(payload))
 
 
 if __name__ == "__main__":

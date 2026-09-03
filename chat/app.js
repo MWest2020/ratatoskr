@@ -137,43 +137,59 @@ async function refresh(force){
   if(force||near) box.scrollTop=box.scrollHeight;
 }
 
-async function send(text){
+async function send(text){ return await _postSend(text, false, new Set()); }
+
+async function _postSend(text, force, tried){
   const r = await fetch("/api/send",{method:"POST",headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({channel:current.id, content:text})});
+    body:JSON.stringify({channel:current.id, content:text, force:force})});
   const j = await r.json().catch(()=>({}));
   if(r.ok && !j.error) return true;
-  // Agent niet in dit kanaal? Bied 'm aan om toe te voegen i.p.v. een kale error.
   if(j.missing_agent){
-    if(!j.known){ toast("@"+j.missing_agent+" is geen bekende agent"); return false; }
-    const added = await askAddAgent(j.missing_agent, current.id);
-    if(added){ return await send(text); }   // na toevoegen: opnieuw versturen
-    return false;
+    const ch="#"+(current&&current.name||"dit kanaal");
+    // known + nog niet geprobeerd → toevoegen. Al geprobeerd (relay ziet 't lid nog
+    // niet) → val door naar 'toch versturen', geen oneindige retry.
+    if(j.known && !tried.has(j.missing_agent)){
+      const ok = await modalConfirm("@"+j.missing_agent+" zit niet in "+ch+".",
+        "Toevoegen en je bericht opnieuw versturen?", "Toevoegen");
+      if(!ok) return false;
+      const added = await addAgent(j.missing_agent, current.id);
+      if(added){ tried.add(j.missing_agent); return await _postSend(text, false, tried); }
+      return false;
+    }
+    if(j.can_force){   // geen agent (bv. @here, geplakte handle) → toch als tekst?
+      const ok = await modalConfirm("@"+j.missing_agent+" is geen agent in "+ch+".",
+        "Toch versturen? De @-tekst blijft dan gewoon tekst.", "Toch versturen");
+      if(ok) return await _postSend(text, true, tried);
+      return false;
+    }
+    toast("@"+j.missing_agent+" kan hier niet"); return false;
   }
   toast(j.error||"versturen mislukt"); return false;
 }
 
-// Pop-up: "@agent zit niet in dit kanaal — toevoegen?" → true als toegevoegd.
-function askAddAgent(name, cid){
+// Generieke ja/nee-pop-up → Promise<bool>.
+function modalConfirm(title, sub, okLabel){
   return new Promise(resolve=>{
     const ov=document.createElement("div"); ov.className="modal-ov";
     const box=document.createElement("div"); box.className="modal";
-    const t=document.createElement("div"); t.className="modal-t";
-    t.textContent="@"+name+" zit niet in #"+(current&&current.name||"dit kanaal")+".";
-    const sub=document.createElement("div"); sub.className="modal-sub"; sub.textContent="Toevoegen en je bericht opnieuw versturen?";
+    const t=document.createElement("div"); t.className="modal-t"; t.textContent=title;
+    const s=document.createElement("div"); s.className="modal-sub"; s.textContent=sub;
     const row=document.createElement("div"); row.className="modal-row";
-    const add=document.createElement("button"); add.className="modal-add"; add.textContent="Toevoegen";
+    const ok=document.createElement("button"); ok.className="modal-add"; ok.textContent=okLabel;
     const cancel=document.createElement("button"); cancel.className="modal-cancel"; cancel.textContent="Annuleren";
     const done=v=>{ ov.remove(); resolve(v); };
     cancel.onclick=()=>done(false);
     ov.onclick=e=>{ if(e.target===ov) done(false); };
-    add.onclick=async()=>{
-      add.disabled=true; add.textContent="…";
-      const rr=await fetch("/api/channel/add-member",{method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({channel:cid, name:name})}).catch(()=>null);
-      if(rr && rr.ok){ toast("@"+name+" toegevoegd ✓"); done(true); }
-      else { const jj=rr?await rr.json().catch(()=>({})):{}; toast(jj.error||"toevoegen mislukt"); done(false); }
-    };
-    row.append(add, cancel); box.append(t, sub, row); ov.append(box); document.body.append(ov);
+    ok.onclick=()=>done(true);
+    row.append(ok, cancel); box.append(t, s, row); ov.append(box); document.body.append(ov);
   });
+}
+
+// Voeg een agent toe aan een kanaal → true bij succes.
+async function addAgent(name, cid){
+  const rr=await fetch("/api/channel/add-member",{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({channel:cid, name:name})}).catch(()=>null);
+  if(rr && rr.ok){ toast("@"+name+" toegevoegd ✓"); return true; }
+  const jj=rr?await rr.json().catch(()=>({})):{}; toast(jj.error||"toevoegen mislukt"); return false;
 }
 
