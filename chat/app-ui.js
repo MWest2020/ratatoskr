@@ -17,6 +17,36 @@ async function loadAgents(){
     wrap.appendChild(el);
   }
 }
+async function loadChannelMembers(){
+  const wrap=$("#channelMembers");
+  if(wrap.dataset.loaded){ return; }
+  wrap.innerHTML='<div class="agenthint">laden…</div>';
+  let data; try{ data=await (await fetch("/api/channel-members")).json(); }
+  catch(e){ wrap.innerHTML='<div class="agenthint">kon leden niet laden.</div>'; return; }
+  wrap.innerHTML=""; wrap.dataset.loaded="1";
+  for(const c of (data.channels||[])){
+    const el=document.createElement("div"); el.className="agent";
+    const mem=(c.members||[]).map(m=>{
+      const r=m.channel_role&&m.channel_role!=="member"?` <span class="mrole">${m.channel_role}</span>`:"";
+      return `<span class="chip" data-c="${c.channel}">${m.name}${r}</span>`;
+    }).join("");
+    el.innerHTML=`<div class="nm">#${c.channel}</div>`+
+      (mem?`<div class="chips">${mem}</div>`:`<div class="none">geen leden</div>`);
+    el.querySelectorAll(".chip").forEach(ch=>ch.onclick=()=>{
+      const cc=channels.find(x=>x.name===ch.dataset.c);
+      if(cc){ selectChannel(cc); closeAgents(); }
+    });
+    wrap.appendChild(el);
+  }
+}
+function showAgentTab(which){
+  const agents=which==="agents";
+  $("#tabAgents").classList.toggle("on",agents);
+  $("#tabChannels").classList.toggle("on",!agents);
+  $("#agentList").hidden=!agents;
+  $("#channelMembers").hidden=agents;
+  if(agents) loadAgents(); else loadChannelMembers();
+}
 function closeAgents(){ $("#agentsDrawer").classList.remove("open"); }
 function closeRepos(){ $("#reposDrawer").classList.remove("open"); }
 
@@ -98,7 +128,9 @@ async function showPR(repo, num){
 
 // UI-bindings
 $("#switch").onclick=()=>$("#drawer").classList.add("open");
-$("#agentsBtn").onclick=()=>{ loadAgents(); $("#agentsDrawer").classList.add("open"); };
+$("#agentsBtn").onclick=()=>{ $("#channelMembers").dataset.loaded=""; showAgentTab("agents"); $("#agentsDrawer").classList.add("open"); };
+$("#tabAgents").onclick=()=>showAgentTab("agents");
+$("#tabChannels").onclick=()=>showAgentTab("channels");
 $("#reposBtn").onclick=openRepos;
 $("#reposClose").onclick=closeRepos;
 $("#reposDrawer").onclick=e=>{ if(e.target.id==="reposDrawer") closeRepos(); };

@@ -92,7 +92,51 @@ def buzz(args, stdin=None, timeout=25):
     return p.returncode, p.stdout, p.stderr
 
 
+# De canonieke identiteiten (agents én sessies) leven in identities.yml in de repo,
+# niet hardgecodeerd hier. De VM-backend is stdlib-only en heeft het bestand niet
+# lokaal, dus halen we het via de bestaande git-leeslaag (github.get_file) en parsen
+# het stdlib. Gecachet zodat niet elke call GitHub raakt. NAMES blijft een fallback.
+import re as _re
+
+import github as _gh
+
+_ID_TTL = 300
+_id_lock = threading.Lock()
+_id_cache = {"t": 0.0, "data": None}
+
+
+def _parse_identities(text):
+    """pubkey_hex -> {name, rol} uit de platte identities.yml (stdlib, geen yaml)."""
+    out = {}
+    for m in _re.finditer(r"^  ([A-Za-z0-9_-]+):\n((?:    .*\n?)*)", text, _re.M):
+        block = m.group(2)
+        pk = _re.search(r"pubkey_hex:\s*(\S+)", block)
+        if not pk or pk.group(1) in ("null", "~"):
+            continue
+        rol = _re.search(r"rol:\s*(\S+)", block)
+        out[pk.group(1)] = {"name": m.group(1), "rol": rol.group(1) if rol else ""}
+    return out
+
+
+def identity_map():
+    """pubkey_hex -> {name, rol}, gecachet uit identities.yml (git). {} bij fout."""
+    now = time.time()
+    with _id_lock:
+        if _id_cache["data"] is not None and now - _id_cache["t"] < _ID_TTL:
+            return _id_cache["data"]
+    try:
+        data = _parse_identities(_gh.get_file("identities.yml"))
+    except Exception:
+        data = {}
+    with _id_lock:
+        _id_cache.update(t=now, data=data)
+    return data
+
+
 def author(pubkey):
+    ident = identity_map().get(pubkey)
+    if ident:
+        return ident["name"]
     return NAMES.get(pubkey) or ("npub:" + pubkey[:8])
 
 
@@ -157,3 +201,33 @@ def agent_roster():
         chans = [name for name, mem in membership.items() if a["pubkey"] in mem]
         roster.append({"handle": a["handle"], "rol": a["rol"], "channels": chans})
     return roster
+
+
+_cr_lock = threading.Lock()
+_cr_cache = {"t": 0.0, "data": None}
+
+
+def channel_roster():
+    """Per kanaal: de echte relay-leden met naam + rol (agents én sessies). Zo ziet
+    Mark wie er in een kanaal zit, ook een sessie als internetnl-cli. 15s gecachet
+    (per kanaal een buzz-call, net als agent_roster)."""
+    now = time.time()
+    with _cr_lock:
+        if _cr_cache["data"] is not None and now - _cr_cache["t"] < _OV_TTL:
+            return _cr_cache["data"]
+    idmap = identity_map()
+    out = []
+    for name, cid in list_channels():
+        members = []
+        for pk, chrole in channel_member_pubkeys(cid).items():
+            ident = idmap.get(pk) or {}
+            members.append({
+                "name": ident.get("name") or NAMES.get(pk) or ("npub:" + pk[:8]),
+                "rol": ident.get("rol", ""),          # ecosysteem-rol (agent/sessie/mens)
+                "channel_role": chrole,               # rol op dít kanaal (owner/bot/member)
+            })
+        members.sort(key=lambda m: (m["channel_role"] != "owner", m["name"]))
+        out.append({"channel": name, "id": cid, "members": members})
+    with _cr_lock:
+        _cr_cache.update(t=now, data=out)
+    return out
