@@ -15,12 +15,12 @@ Invariant: conversatie-only. Geen shell/repo/dispatch vanuit hier.
 """
 import json
 import os
-import re
 import subprocess
 import time
-import urllib.request
 
-import yaml
+import bootstrap
+import prompts
+import topology
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
@@ -32,52 +32,9 @@ MAX_CTX = 8
 MAX_TURN_S = 150
 
 
-def load_yaml(path):
-    return yaml.safe_load(open(path))
-
-
-def load_channels():
-    return {n: c["id"] for n, c in load_yaml(os.path.join(ROOT, "channels.yml"))["channels"].items()}
-
-
-def load_identity_npubs():
-    d = load_yaml(os.path.join(ROOT, "identities.yml"))["identities"]
-    return {h: v.get("npub") for h, v in d.items()}, {v["pubkey_hex"]: h for h, v in d.items()}
-
-
-def fetch_def(base, handle):
-    """Haal de canonieke definitie uit de handbook. Return {npub, channels,
-    system} of None bij falen (fail-closed)."""
-    url = f"{base}/{handle}.md"
-    try:
-        with urllib.request.urlopen(url, timeout=15) as r:
-            s = r.read().decode("utf-8")
-    except Exception as e:
-        print(f"[listener] def {handle} niet te laden: {e}", flush=True)
-        return None
-    m = re.match(r"^---\n(.*?)\n---", s, re.S)
-    if not m:
-        return None
-    fm = yaml.safe_load(m.group(1)).get("agent", {})
-    chat = fm.get("chat") or {}
-    channels = chat.get("channels", [])
-    # systemprompt = de blockquote onder '## Chat-facet'
-    body = s[m.end():]
-    cf = re.search(r"##\s*Chat-facet.*?\n(.*?)(?:\n##\s|\Z)", body, re.S)
-    system = ""
-    if cf:
-        system = "\n".join(
-            ln[2:] if ln.startswith("> ") else ln[1:] if ln.startswith(">") else ""
-            for ln in cf.group(1).splitlines() if ln.startswith(">")
-        ).strip()
-    provider = (fm.get("provider") or "claude-p")
-    return {"npub": fm.get("npub"), "channels": channels, "system": system,
-            "provider": provider}
-
-
-CHANNELS = load_channels()
-NPUBS, PUB2NAME = load_identity_npubs()
-CFG = load_yaml(os.path.join(HERE, "agents.yml"))
+CHANNELS = bootstrap.load_channels(ROOT)
+NPUBS, PUB2NAME = bootstrap.load_identity_npubs(ROOT)
+CFG = bootstrap.load_yaml(os.path.join(HERE, "agents.yml"))
 BASE = CFG["registry_base"]
 
 # Bouw de actieve agent-set: def uit handbook + nsec uit env + npub-match.
@@ -87,7 +44,7 @@ for handle in CFG.get("run", []):
     if not nsec:
         print(f"[listener] {handle}: geen NSEC_ in env — overslaan", flush=True)
         continue
-    d = fetch_def(BASE, handle)
+    d = bootstrap.fetch_def(BASE, handle)
     if not d:
         print(f"[listener] {handle}: geen handbook-definitie — NIET gespawnd", flush=True)
         continue
@@ -139,62 +96,37 @@ def run_provider(provider, system, prompt):
     return f"(provider '{provider}' nog niet ondersteund door deze listener)"
 
 
-def channel_knowledge(cname):
-    """Per-kanaal kennis: knowledge/<kanaal>.md (conventie) wordt als context
-    aan elke agent-beurt in dat kanaal meegegeven. Leeg = geen extra context."""
-    path = os.path.join(ROOT, "knowledge", f"{cname}.md")
-    try:
-        return open(path).read().strip()[:4000]
-    except OSError:
-        return ""
-
-
-def live_text():
-    """Wat er nu draait (uit knowledge/_live.md, door orchestrator/live.py
-    gegenereerd) — liveness-context voor de coordinator. Leeg = onbekend."""
-    try:
-        return open(os.path.join(ROOT, "knowledge", "_live.md")).read().strip()[:4000]
-    except OSError:
-        return ""
-
-
-def roster_text():
-    """Korte samenvatting van de huidige vloot — context voor de coordinator."""
-    lines = ["Huidige agent-vloot (uit de handbook-registry):"]
-    for h, c in AGENTS.items():
-        if h == "coordinator":
-            continue
-        first = (c.get("system", "").strip().split("\n", 1)[0])[:110]
-        lines.append(f"- @{h} (kanalen: {','.join(c['channels'])}) — {first}")
-    return "\n".join(lines)
-
-
-def build_prompt(handle, chan, recent, trigger):
-    lines = [f"Kanaal #{chan}. Recente berichten:"]
-    for m in recent:
-        who = PUB2NAME.get(m.get("pubkey", ""), "iemand")
-        lines.append(f"{who}: {m.get('content','')}")
-    lines.append("")
-    lines.append(f"Je bent '{handle}'. Reageer als vervolg op het gesprek "
-                 f"hierboven, op dit laatste bericht: {trigger!r}")
-    return "\n".join(lines)
+def buzz_run(nsec):
+    """Geeft een `run(args) -> stdout|""`-callable voor topology.py, met de
+    buzz-env van deze agent. Faalt de call, dan lege string (topology valt terug)."""
+    def run(args):
+        p = subprocess.run([BUZZ, *args], env=buzz_env(nsec),
+                           capture_output=True, text=True, timeout=25)
+        return p.stdout if p.returncode == 0 else ""
+    return run
 
 
 def main():
     if not AGENTS:
         raise SystemExit("geen agents gespawnd (geen bron/nsec/npub-match)")
     read_nsec = next(iter(AGENTS.values()))["nsec"]
+    run = buzz_run(read_nsec)  # relay-I/O voor topology (kanalen + leden)
     # pubkeys van agents, om niet op agents te reageren
     name2pub = {h: p for p, h in PUB2NAME.items()}
     for h in AGENTS:
         AGENT_PUBS.add(name2pub.get(h))
+
+    def scoped(h, cname, cid):
+        """Reageert agent h in dit kanaal? Handbook-scope OF relay-lid (union)."""
+        return cname in AGENTS[h]["channels"] or name2pub.get(h) in topology.members(run, cid)
+
     seen = set()
-    for cid in CHANNELS.values():
+    for cid in topology.poll_channels(run, CHANNELS).values():
         for m in get_messages(cid, read_nsec):
             seen.add(m.get("id"))
     print(f"[listener] actief; agents uit handbook: {', '.join(AGENTS)}", flush=True)
     while True:
-        for cname, cid in CHANNELS.items():
+        for cname, cid in topology.poll_channels(run, CHANNELS).items():
             msgs = get_messages(cid, read_nsec)
             for i, m in enumerate(msgs):
                 mid = m.get("id")
@@ -204,18 +136,17 @@ def main():
                 if m.get("pubkey") in AGENT_PUBS:
                     continue
                 content = m.get("content", "")
-                # Wie moet reageren? (a) expliciete @mentions van hier-gescopte
-                # agents; (b) anders thread-continuïteit: de laatst-actieve agent
-                # in dit kanaal (binnen ~10 berichten) praat door zonder mention.
-                targets = [h for h, cfg in AGENTS.items()
-                           if cname in cfg["channels"]
-                           and ("@" + h).lower() in content.lower()]
+                # Wie moet reageren? (a) expliciete @mentions van agents die hier
+                # gescopt of relay-lid zijn; (b) anders thread-continuïteit: de
+                # laatst-actieve agent in dit kanaal (binnen ~10 berichten) praat door.
+                targets = [h for h in AGENTS
+                           if ("@" + h).lower() in content.lower() and scoped(h, cname, cid)]
                 reason = "mention"
                 if not targets:
                     for prev in reversed(msgs[max(0, i - 10):i]):
                         if prev.get("pubkey") in AGENT_PUBS:
                             h = PUB2NAME.get(prev.get("pubkey"))
-                            if h in AGENTS and cname in AGENTS[h]["channels"]:
+                            if h in AGENTS and scoped(h, cname, cid):
                                 targets = [h]
                                 reason = "vervolg"
                             break  # alleen de meest recente agent telt
@@ -223,13 +154,13 @@ def main():
                     cfg = AGENTS[handle]
                     print(f"[listener] {reason} @{handle} in #{cname}: {content[:50]}", flush=True)
                     recent = msgs[max(0, i - MAX_CTX):i + 1]
-                    p = build_prompt(handle, cname, recent, content)
-                    know = channel_knowledge(cname)
+                    p = prompts.build_prompt(handle, cname, recent, content, PUB2NAME)
+                    know = prompts.channel_knowledge(ROOT, cname)
                     if know:
                         p = f"Kanaal-kennis (#{cname}):\n{know}\n\n" + p
                     if handle == "coordinator":
-                        p = roster_text() + "\n\n" + p
-                        lt = live_text()
+                        p = prompts.roster_text(AGENTS) + "\n\n" + p
+                        lt = prompts.live_text(ROOT)
                         if lt:
                             p = lt + "\n\n" + p
                     try:
