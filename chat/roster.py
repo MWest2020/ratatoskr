@@ -88,9 +88,12 @@ _FALLBACK = [
     {"handle": "marketing", "pubkey": "ba5bf9d6b4009984378561c35a346e64b488282ffd1fbc7dcdde1d19c515fd64", "rol": "chat-agent"},
     {"handle": "ontwerper", "pubkey": "24ab03329773e12fb183d93e34e05485b3055246c12786e9cad46a311b5ed0e0", "rol": "chat-agent"},
     {"handle": "reviewer", "pubkey": "7734535c4a432cd0983b965af2ec3b1b07bb6308293e36590d8fdb00d95abff7", "rol": "chat-agent"},
-    {"handle": "archivaris", "pubkey": "d3af7f92ea5e184d91f78bc4a9287b27dae1c65e91aba100fb4fcd87c5abb076", "rol": "chat-agent"},
     {"handle": "coordinator", "pubkey": "c14d1cdd1931061af176392f39fd17303591af0cef17d37e2aadf4bc2b36a8dc", "rol": "meta-agent"},
 ]
+# NB: _FALLBACK spiegelt de LIVE registry (identities.yml op main): dat zijn deze
+# 7 agents. archivaris staat alleen op een ongemergede branch en draait nergens,
+# dus die hoort hier NIET — anders zou de fallback een niet-live identiteit als
+# toevoegbaar aanbieden tijdens een registry-storing.
 
 
 def chat_agents():
