@@ -15,9 +15,10 @@ TTL = 60  # seconden; topologie verandert zelden
 
 # De relay maakt zelf ondeletebare default-kanalen aan (een tweede 'general',
 # 'welcome-everyone'/'Welcome'); die horen niet in de poll-set. Spiegelt de HIDE
-# in chat/buzzcli.py:_channels_raw. channels.yml is de gecureerde bron: bij een
-# naam-botsing wint de channels.yml-cid (bv. de 'general' waar de agents in zitten),
-# de relay voegt alléén echt-nieuwe namen toe.
+# in chat/buzzcli.py:_channels_raw. De PREFER-map daar (general -> de juiste cid)
+# hoeven we NIET te kopiëren: channels.yml is de gecureerde bron en wint bij een
+# naam-botsing ({**live, **fallback}), dus de channels.yml-'general'-cid (waar de
+# agents in zitten) is sowieso wat we pollen; de relay voegt alléén nieuwe namen toe.
 _HIDE = {"welcome-everyone", "Welcome"}
 
 _channels = {"t": 0.0, "data": None}
@@ -57,16 +58,20 @@ def poll_channels(run, fallback, now=None):
 
 
 def members(run, cid, now=None):
-    """set van member-pubkeys van een kanaal (relay), ~TTL gecachet. Een lege
-    fetch wordt alleen gecachet als we nog niets beters hadden."""
+    """set van member-pubkeys van een kanaal (relay), ~TTL gecachet. Onderscheidt
+    een MISLUKTE fetch (`None` → goede cache behouden) van een echt LEEG kanaal
+    (`[]` → dat cachen, zodat 'laatste lid weg' ook doorwerkt)."""
     now = time.time() if now is None else now
     e = _members.get(cid)
     if e and now - e["t"] < TTL:
         return e["pubs"]
     rows = _rows(run(["channels", "members", "--channel", cid]), "members")
-    pubs = {x.get("pubkey") for x in rows if x.get("pubkey")} if rows else set()
-    if pubs or not (e and e["pubs"]):  # geen goede cache overschrijven met leeg
-        _members[cid] = {"t": now, "pubs": pubs}
-        return pubs
-    e["t"] = now  # behoud vorige leden, verleng het venster
-    return e["pubs"]
+    if rows is None:  # mislukte fetch → eerdere leden behouden, venster verlengen
+        if e:
+            e["t"] = now
+            return e["pubs"]
+        _members[cid] = {"t": now, "pubs": set()}
+        return set()
+    pubs = {x.get("pubkey") for x in rows if x.get("pubkey")}  # geslaagd (evt. leeg)
+    _members[cid] = {"t": now, "pubs": pubs}
+    return pubs

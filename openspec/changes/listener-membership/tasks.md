@@ -9,7 +9,7 @@
 - [x] 1.3 `agents/listener.py`: target-regel = handbook-scope OF relay-lid
       (`members`); poll-set via `topology.poll_channels`; thread-vervolg
       ongewijzigd.
-- [ ] 1.4 Live smoke: @coordinator in #red-team → antwoord; @<agent> in een via de
+- [x] 1.4 Live smoke: @coordinator in #red-team → antwoord; @<agent> in een via de
       app aangemaakt kanaal → antwoord; def-kanaal (bv. @architect in
       #architectuur) blijft werken; geen dubbel-antwoord.
 - [x] 1.5 r1-fixes: `poll_channels` filtert relay-junk (`_HIDE`) en laat de
@@ -17,3 +17,9 @@
       mislukte/lege fetch behoudt de goede cache i.p.v. terug te vallen op de kale
       fallback; `seen` wordt per NIEUW kanaal geprimed (`seeded`) zodat de listener
       niet op de historie van een later-verschenen kanaal reageert. Offline getest.
+- [x] 1.6 r2-fixes: reader = coordinator-sleutel (lid overal → ziet alle kanalen);
+      `get_messages` geeft None bij mislukte read (≠ leeg) zodat de seed niet te
+      omzeilen is; `send` checkt rc en logt eerlijk (geen valse 'antwoordde');
+      `members` cachet een echt-leeg kanaal maar behoudt de cache bij een fout;
+      `mentioned` = woordgrens-match (`@architect` ≠ `@architectuur`); `_HIDE`-comment
+      legt uit waarom PREFER niet nodig is. Tests in agents/test_topology.py (6, groen).

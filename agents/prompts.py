@@ -4,6 +4,13 @@
 naam-map) komen als parameters binnen, geen module-globals van de listener.
 """
 import os
+import re
+
+
+def mentioned(content, handle):
+    """Wordt @handle genoemd? Woordgrens-match zodat '@architect' niet triggert op
+    '@architectuur' (handles zijn a-z0-9_-, dus geen letter/cijfer/_/- er direct na)."""
+    return re.search(r"@" + re.escape(handle) + r"(?![\w-])", content, re.I) is not None
 
 
 def channel_knowledge(root, cname):

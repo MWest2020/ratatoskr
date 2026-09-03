@@ -64,24 +64,31 @@ def buzz_env(nsec):
 
 
 def get_messages(cid, nsec):
+    """Berichten oplopend gesorteerd. None bij een MISLUKTE read (rc!=0/onparsebaar),
+    [] bij een echt LEEG kanaal — de aanroeper mag die twee niet verwarren (anders
+    wordt een gefaalde read als 'geseed' behandeld en volgt historie-spam)."""
     p = subprocess.run([BUZZ, "messages", "get", "--channel", cid],
                        env=buzz_env(nsec), capture_output=True, text=True, timeout=25)
     if p.returncode != 0:
-        return []
+        return None
     try:
         d = json.loads(p.stdout)
     except Exception:
-        return []
+        return None
     msgs = d if isinstance(d, list) else d.get("messages", [])
     return sorted(msgs, key=lambda m: m.get("created_at", 0))
 
 
 def send(cid, content, nsec, self_npub):
-    # Eigen npub als --mention: dat staat willekeurige @woorden in het antwoord
-    # toe als presentation-only (buzz weigert anders onbekende @mentions).
-    subprocess.run([BUZZ, "messages", "send", "--channel", cid, "--content", "-",
-                    "--mention", self_npub],
-                   env=buzz_env(nsec), input=content, capture_output=True, text=True, timeout=25)
+    """Post een antwoord (eigen npub als --mention → willekeurige @woorden blijven
+    presentation-only). Geeft True bij succes; een geweigerde send loggen we i.p.v.
+    onterecht 'antwoordde' te melden."""
+    p = subprocess.run([BUZZ, "messages", "send", "--channel", cid, "--content", "-",
+                        "--mention", self_npub],
+                       env=buzz_env(nsec), input=content, capture_output=True, text=True, timeout=25)
+    if p.returncode != 0:
+        print(f"[listener] send FAALDE in {cid}: {(p.stderr or p.stdout).strip()[:120]}", flush=True)
+    return p.returncode == 0
 
 
 # Protocol-naad: het agent-backend zit achter één functie. Vandaag 'claude-p'
@@ -97,8 +104,8 @@ def run_provider(provider, system, prompt):
 
 
 def buzz_run(nsec):
-    """Geeft een `run(args) -> stdout|""`-callable voor topology.py, met de
-    buzz-env van deze agent. Faalt de call, dan lege string (topology valt terug)."""
+    """`run(args) -> stdout|""`-callable voor topology.py (buzz-env van deze agent;
+    faalt de call → lege string, topology valt dan terug)."""
     def run(args):
         p = subprocess.run([BUZZ, *args], env=buzz_env(nsec),
                            capture_output=True, text=True, timeout=25)
@@ -109,7 +116,9 @@ def buzz_run(nsec):
 def main():
     if not AGENTS:
         raise SystemExit("geen agents gespawnd (geen bron/nsec/npub-match)")
-    read_nsec = next(iter(AGENTS.values()))["nsec"]
+    # Reader = coordinator (lid van elk kanaal via default+backfill) zodat list/
+    # members/messages álle kanalen zien; één agent-sleutel mist private kanalen.
+    read_nsec = (AGENTS.get("coordinator") or next(iter(AGENTS.values())))["nsec"]
     run = buzz_run(read_nsec)  # relay-I/O voor topology (kanalen + leden)
     # pubkeys van agents, om niet op agents te reageren
     name2pub = {h: p for p, h in PUB2NAME.items()}
@@ -121,18 +130,26 @@ def main():
         return cname in AGENTS[h]["channels"] or name2pub.get(h) in topology.members(run, cid)
 
     seen, seeded = set(), set()
-    for cid in topology.poll_channels(run, CHANNELS).values():
-        for m in get_messages(cid, read_nsec):
+
+    def seed(cid, msgs):
+        # Historie van een (nieuw) kanaal als gezien markeren. Alleen bij een
+        # GESLAAGDE read (msgs≠None) — anders 'geseed' + historie-spam.
+        for m in msgs:
             seen.add(m.get("id"))
         seeded.add(cid)
+
+    for cid in topology.poll_channels(run, CHANNELS).values():
+        msgs = get_messages(cid, read_nsec)
+        if msgs is not None:
+            seed(cid, msgs)
     print(f"[listener] actief; agents uit handbook: {', '.join(AGENTS)}", flush=True)
     while True:
         for cname, cid in topology.poll_channels(run, CHANNELS).items():
             msgs = get_messages(cid, read_nsec)
+            if msgs is None:      # mislukte read → overslaan, volgende tick opnieuw
+                continue
             if cid not in seeded:  # kanaal net in de poll-set: historie als 'gezien'
-                for m in msgs:      # markeren, NIET op oude berichten reageren
-                    seen.add(m.get("id"))
-                seeded.add(cid)
+                seed(cid, msgs)    # markeren, NIET op oude berichten reageren
                 continue
             for i, m in enumerate(msgs):
                 mid = m.get("id")
@@ -142,11 +159,10 @@ def main():
                 if m.get("pubkey") in AGENT_PUBS:
                     continue
                 content = m.get("content", "")
-                # Wie moet reageren? (a) expliciete @mentions van agents die hier
-                # gescopt of relay-lid zijn; (b) anders thread-continuïteit: de
-                # laatst-actieve agent in dit kanaal (binnen ~10 berichten) praat door.
+                # Wie reageert? (a) @mentions van agents die hier gescopt/relay-lid
+                # zijn; (b) anders: de laatst-actieve agent praat door (thread-vervolg).
                 targets = [h for h in AGENTS
-                           if ("@" + h).lower() in content.lower() and scoped(h, cname, cid)]
+                           if prompts.mentioned(content, h) and scoped(h, cname, cid)]
                 reason = "mention"
                 if not targets:
                     for prev in reversed(msgs[max(0, i - 10):i]):
@@ -175,8 +191,8 @@ def main():
                         ans = "(time-out — vraag te zwaar voor een chatbeurt)"
                     except Exception as e:
                         ans = f"(fout: {e})"
-                    send(cid, ans, cfg["nsec"], cfg["npub"])
-                    print(f"[listener] {handle} antwoordde in #{cname} ({reason})", flush=True)
+                    if send(cid, ans, cfg["nsec"], cfg["npub"]):
+                        print(f"[listener] {handle} antwoordde in #{cname} ({reason})", flush=True)
         time.sleep(POLL)
 
 
