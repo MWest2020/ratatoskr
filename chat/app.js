@@ -141,7 +141,39 @@ async function send(text){
   const r = await fetch("/api/send",{method:"POST",headers:{"Content-Type":"application/json"},
     body:JSON.stringify({channel:current.id, content:text})});
   const j = await r.json().catch(()=>({}));
-  if(!r.ok||j.error){ toast(j.error||"versturen mislukt"); return false; }
-  return true;
+  if(r.ok && !j.error) return true;
+  // Agent niet in dit kanaal? Bied 'm aan om toe te voegen i.p.v. een kale error.
+  if(j.missing_agent){
+    if(!j.known){ toast("@"+j.missing_agent+" is geen bekende agent"); return false; }
+    const added = await askAddAgent(j.missing_agent, current.id);
+    if(added){ return await send(text); }   // na toevoegen: opnieuw versturen
+    return false;
+  }
+  toast(j.error||"versturen mislukt"); return false;
+}
+
+// Pop-up: "@agent zit niet in dit kanaal — toevoegen?" → true als toegevoegd.
+function askAddAgent(name, cid){
+  return new Promise(resolve=>{
+    const ov=document.createElement("div"); ov.className="modal-ov";
+    const box=document.createElement("div"); box.className="modal";
+    const t=document.createElement("div"); t.className="modal-t";
+    t.textContent="@"+name+" zit niet in #"+(current&&current.name||"dit kanaal")+".";
+    const sub=document.createElement("div"); sub.className="modal-sub"; sub.textContent="Toevoegen en je bericht opnieuw versturen?";
+    const row=document.createElement("div"); row.className="modal-row";
+    const add=document.createElement("button"); add.className="modal-add"; add.textContent="Toevoegen";
+    const cancel=document.createElement("button"); cancel.className="modal-cancel"; cancel.textContent="Annuleren";
+    const done=v=>{ ov.remove(); resolve(v); };
+    cancel.onclick=()=>done(false);
+    ov.onclick=e=>{ if(e.target===ov) done(false); };
+    add.onclick=async()=>{
+      add.disabled=true; add.textContent="…";
+      const rr=await fetch("/api/channel/add-member",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({channel:cid, name:name})}).catch(()=>null);
+      if(rr && rr.ok){ toast("@"+name+" toegevoegd ✓"); done(true); }
+      else { const jj=rr?await rr.json().catch(()=>({})):{}; toast(jj.error||"toevoegen mislukt"); done(false); }
+    };
+    row.append(add, cancel); box.append(t, sub, row); ov.append(box); document.body.append(ov);
+  });
 }
 

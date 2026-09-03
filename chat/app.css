@@ -175,3 +175,10 @@
 .kchips{display:flex;flex-wrap:wrap;gap:.35rem;margin-top:.4rem}
 .kmem{font-size:.75rem;cursor:pointer;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:.15rem .45rem;color:var(--accent2)}
 .knone{color:var(--muted);font-size:.78rem;font-style:italic;margin-top:.3rem}
+.modal-ov{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:50;padding:1rem}
+.modal{background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:1rem 1.1rem;max-width:22rem;width:100%}
+.modal-t{font-weight:700;color:var(--ink)}
+.modal-sub{color:var(--muted);font-size:.85rem;margin:.35rem 0 .9rem}
+.modal-row{display:flex;gap:.5rem}
+.modal-add{flex:1;background:var(--accent);color:var(--bg);border:0;border-radius:10px;padding:.5rem;font-weight:700;cursor:pointer}
+.modal-cancel{flex:1;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:.5rem;cursor:pointer}

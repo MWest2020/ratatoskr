@@ -64,6 +64,15 @@ def name_of(pubkey):
     return ident["name"] if ident else None
 
 
+def pubkey_of(name):
+    """pubkey_hex voor een registry-naam (agent/sessie), of None. Voor de
+    'agent toevoegen'-flow: resolve @naam → pubkey."""
+    for pk, v in identity_map().items():
+        if v["name"] == name:
+            return pk
+    return None
+
+
 # Kern-agents als fallback: als de registry-fetch faalt (github down/rate-limit),
 # blijft de 'per agent'-tab gevuld i.p.v. leeg. De registry is de primaire bron.
 _FALLBACK = [

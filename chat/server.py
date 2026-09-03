@@ -13,7 +13,8 @@ from urllib.parse import urlparse, parse_qs
 import github  # GitHub-leeslaag (repo/PR-view + pinned-context)
 import push    # Web Push — subscription-opslag + VAPID-public-key
 from buzzcli import (buzz, list_channels, list_channels_meta, valid_cid, author,
-                     channel_overview, agent_roster, channel_roster, ME, MENTION_PUBKEY)
+                     channel_overview, agent_roster, channel_roster, ME)
+import roster  # naam↔pubkey-resolutie voor de 'agent toevoegen'-flow
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
@@ -169,6 +170,9 @@ class H(BaseHTTPRequestHandler):
                 return self._send(502, json.dumps({"error": err.strip()[:200]}))
             return self._send(200, json.dumps({"ok": True}))
 
+        if u.path == "/api/channel/add-member":
+            return self._add_member(body)
+
         if u.path != "/api/send":
             return self._send(404, json.dumps({"error": "not found"}))
         cid, content = body.get("channel"), (body.get("content") or "").strip()
@@ -176,17 +180,35 @@ class H(BaseHTTPRequestHandler):
             return self._send(400, json.dumps({"error": "onbekend kanaal"}))
         if not content:
             return self._send(400, json.dumps({"error": "leeg bericht"}))
-        # Altijd mark's eigen mention meegeven: dat staat elk @woord toe als
-        # presentation-only (geen "geen kanaal-lid"-error meer), terwijl een
-        # agent die WEL lid van dit kanaal is nog steeds uniek resolvet + getriggerd
-        # wordt. Zo werkt @agent overal waar de agent woont, en faalt het nergens.
-        args = ["messages", "send", "--channel", cid, "--content", "-",
-                "--mention", MENTION_PUBKEY]
-        # content via stdin (--content -) om shell/escaping-problemen te vermijden
-        rc, out, err = buzz(args, stdin=content)
+        # Geen geforceerde --mention: de relay resolvet @agent naar het lid en
+        # triggert 'm; een @naam die GEEN kanaal-lid is geeft een nette fout die de
+        # naam noemt. Die vangen we op als een 'agent-niet-in-kanaal'-antwoord voor
+        # de toevoeg-pop-up (content via stdin om escaping te vermijden).
+        rc, out, err = buzz(["messages", "send", "--channel", cid, "--content", "-"],
+                            stdin=content)
+        if rc == 0:
+            return self._send(200, json.dumps({"ok": True}))
+        m = re.search(r"mention '@([A-Za-z0-9_-]+)' does not match", err or "")
+        if m:
+            who = m.group(1)
+            return self._send(409, json.dumps({
+                "missing_agent": who,
+                "known": roster.pubkey_of(who) is not None,  # bestaat 'ie als identiteit?
+                "channel": cid}))
+        return self._send(502, json.dumps({"error": err.strip()[:200]}))
+
+    def _add_member(self, body):
+        cid, name = body.get("channel"), (body.get("name") or "").strip()
+        if not valid_cid(cid):
+            return self._send(400, json.dumps({"error": "onbekend kanaal"}))
+        pk = roster.pubkey_of(name)
+        if not pk:
+            return self._send(404, json.dumps({"error": f"geen identiteit '{name}'"}))
+        rc, out, err = buzz(["channels", "add-member", "--channel", cid,
+                             "--pubkey", pk, "--role", "bot"])
         if rc != 0:
-            return self._send(502, json.dumps({"error": err.strip()[:200]}))
-        return self._send(200, json.dumps({"ok": True}))
+            return self._send(502, json.dumps({"error": (err or out).strip()[:200]}))
+        return self._send(200, json.dumps({"ok": True, "name": name}))
 
 
 if __name__ == "__main__":
