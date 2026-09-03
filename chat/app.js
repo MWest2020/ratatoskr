@@ -138,33 +138,31 @@ async function refresh(force){
   if(force||near) box.scrollTop=box.scrollHeight;
 }
 
-async function send(text){ return await _postSend(text, false, new Set()); }
+async function send(text){ return await _postSend(text, false); }
 
-async function _postSend(text, force, tried){
+async function _postSend(text, force){
   const r = await fetch("/api/send",{method:"POST",headers:{"Content-Type":"application/json"},
     body:JSON.stringify({channel:current.id, content:text, force:force})});
   const j = await r.json().catch(()=>({}));
   if(r.ok && !j.error) return true;
   if(j.missing_agent){
-    const who=j.missing_agent, ch="#"+(current&&current.name||"dit kanaal");
-    // Kwam de 409 terug ná een force-send, dan is de mention echt onhoudbaar
-    // (geen enkel kanaal-lid als anker): stoppen, geen tweede pop-up = geen loop.
+    const who=j.missing_agent, cid=j.channel||current.id, ch="#"+(current&&current.name||"dit kanaal");
+    // 409 ná een force = mention echt onhoudbaar → stoppen (geen tweede pop-up, geen loop).
     if(force){ toast("@"+who+" kan hier niet — bericht niet verstuurd"); return false; }
-    // Bekende agent, nog niet toegevoegd → toevoegen; daarna FORCE-versturen zodat
-    // het bericht sowieso doorgaat (relay ziet het verse lidmaatschap soms nog niet).
-    if(j.known && !tried.has(who)){
+    // Bekende agent → toevoegen, dan FORCE-versturen (relay ziet vers lidmaatschap
+    // soms nog niet); een 409 daarna valt in de force-tak hierboven = geen loop.
+    if(j.known){
       const ok = await modalConfirm("@"+who+" zit niet in "+ch+".",
         "Toevoegen en je bericht versturen?", "Toevoegen");
       if(!ok) return false;
-      const added = await addAgent(who, current.id);
-      if(added){ tried.add(who); return await _postSend(text, true, tried); }
-      toast("@"+who+" toevoegen mislukte"); return false;
+      if(!await addAgent(who, cid)){ toast("@"+who+" toevoegen mislukte"); return false; }
+      return await _postSend(text, true);
     }
-    // Geen agent (of net toegevoegd maar nog 409) → toch als platte tekst versturen.
+    // Geen agent → toch als platte tekst versturen.
     if(j.can_force){
       const ok = await modalConfirm("@"+who+" is geen kanaal-lid in "+ch+".",
         "Toch versturen? De @-tekst blijft dan gewoon tekst.", "Toch versturen");
-      if(ok) return await _postSend(text, true, tried);
+      if(ok) return await _postSend(text, true);
       return false;
     }
     toast("@"+who+" kan hier niet"); return false;

@@ -40,3 +40,11 @@ De pop-up-flow herkent een niet-lid-mention aan de relay-fout
 formulering, dan valt de send terug op een gewone error-toast (niet kapot, wel
 minder mooi) — veilige degradatie. Een regressietest hierop is vervolgwerk zodra de
 backend een test-harness krijgt.
+
+## Meerdere niet-lid-mentions in één bericht
+
+De relay meldt per send maar één ontbrekende mention. Bij bv. `@a @b` (beiden geen
+lid) voegt de pop-up @a toe en verstuurt daarna met `force`; @b blijft dan platte
+tekst (wordt niet toegevoegd). Bewuste keuze: force = "verstuur het, namen zijn
+tekst". Wil je @b óók als lid, noem 'm dan in een volgend bericht. Geen add-lus over
+alle mentions — dat is meer machinerie dan de winst rechtvaardigt (KISS).

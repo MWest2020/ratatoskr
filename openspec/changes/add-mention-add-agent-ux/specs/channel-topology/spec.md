@@ -2,7 +2,7 @@
 
 ### Requirement: Coordinator standaard lid bij nieuw kanaal
 
-Een kanaal dat via de webchat wordt aangemaakt SHALL de coordinator (meta-agent) standaard als lid toegevoegd krijgen bij het aanmaken (best-effort — het kanaal bestaat ook als de add faalt; de respons meldt dit via `coordinator_added`). Bestaande kanalen vallen buiten deze change: die worden eenmalig via de operator-backfill (`orchestrator/add-member.py --all-channels`) op het beleid gebracht, want de webchat maakt of muteert lidmaatschap van bestaande kanalen niet vanzelf.
+Een kanaal dat via de webchat wordt aangemaakt SHALL de coordinator (meta-agent) standaard als lid toegevoegd krijgen bij het aanmaken (best-effort — het kanaal bestaat ook als de add faalt; de respons meldt dit via `coordinator_added`). Bestaande kanalen vallen BUITEN deze change: de webchat maakt of muteert lidmaatschap van al-bestaande kanalen niet vanzelf, dus die worden los, operationeel op het beleid gebracht (de operator voegt coordinator eenmalig als lid toe). Deze change dekt alleen het aanmaak-pad.
 
 Dit is een lidmaatschaps-beleid (coordinator ís lid, zodat een @coordinator-mention niet op "geen lid" faalt). Of coordinator er ook ANTWOORDT hangt van de listener af (aparte change: listener op lidmaatschap i.p.v. alleen def-kanalen).
 

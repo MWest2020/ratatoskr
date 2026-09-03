@@ -14,11 +14,16 @@ _MENTION_ERR = re.compile(r"mention '@([A-Za-z0-9_-]+)' does not match")
 
 
 def _a_member_of(cid):
-    """Een pubkey die écht LID is van DIT kanaal (voor de force-mention). We nemen
-    een willekeurig bestaand lid — geen aanname dat een vaste identiteit overal zit.
-    Het lid wordt niet ge-@t in de content, dus de listener triggert 'm niet."""
-    mem = sorted(p for p in channel_member_pubkeys(cid) if p)  # sorteer: stabiel per call
-    return mem[0] if mem else None
+    """Een pubkey die écht LID is van DIT kanaal (anker voor de force-mention).
+    Deterministisch (gesorteerd) en bij voorkeur een NIET-agent-lid, zodat het
+    anker sowieso niet met een agent te verwarren is. Het lid wordt niet ge-@t in
+    de content, dus de listener (die op @handle in de tekst triggert) reageert er
+    niet op; de voorkeur is een extra gordel."""
+    mem = sorted(p for p in channel_member_pubkeys(cid) if p)  # stabiel per call
+    if not mem:
+        return None
+    agents = {a["pubkey"] for a in roster.chat_agents()}
+    return next((p for p in mem if p not in agents), mem[0])
 
 
 def add_agent(cid, name):
@@ -76,7 +81,7 @@ def _add_coordinator(create_out):
         co = roster.agent_pubkey("coordinator")
         if not (cid and co):
             sys.stderr.write("[create] coordinator-add overgeslagen: geen cid/pubkey\n")
-            return None
+            return False
         ar, _o, ae = buzz(["channels", "add-member", "--channel", cid,
                            "--pubkey", co, "--role", "bot"])
         if ar != 0:
@@ -84,7 +89,7 @@ def _add_coordinator(create_out):
         return ar == 0
     except Exception as e:  # noqa: BLE001 — create is al geslaagd; add is bijzaak
         sys.stderr.write(f"[create] coordinator-add fout: {e}\n")
-        return None
+        return False
 
 
 def create_channel(name):

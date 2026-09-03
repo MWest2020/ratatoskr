@@ -17,3 +17,9 @@
       `channel_id|id`); `_a_member_of` deterministisch (sorted); topology-spec herschreven
       naar "nieuw kanaal + operator-backfill" (geen valse "elk kanaal"-claim); docstring +
       proposal-payload (`can_force`) rechtgezet.
+- [x] 1.9 r5-fixes: `_add_coordinator` geeft altijd bool (False i.p.v. None op
+      faalpaden) zodat een mislukte add zichtbaar is; topology-spec noemt geen
+      niet-bestaand script meer (operator-backfill generiek); app.js `_postSend`
+      zonder dode `tried`-set, gebruikt `j.channel` uit de 409, onder 200 regels;
+      `_a_member_of` kiest bij voorkeur een niet-agent-lid als force-anker;
+      multi-mention-gedrag in design vastgelegd.
