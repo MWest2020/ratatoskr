@@ -12,3 +12,8 @@
       "toch versturen"-escape (force → lid-mention presentation-only).
 - [x] 1.7 Live gesmoked: @lid → ok, @niet-lid-agent → 409+toevoegen, @niet-agent →
       409+toch-versturen, add-member → ok, retry → ok, create → coordinator erbij.
+- [x] 1.8 r4-fixes: force-retry prompt niet opnieuw (geen loop) + force-versturen na
+      add; `create` best-effort losgetrokken (`_add_coordinator`, brede guard + stderr-log,
+      `channel_id|id`); `_a_member_of` deterministisch (sorted); topology-spec herschreven
+      naar "nieuw kanaal + operator-backfill" (geen valse "elk kanaal"-claim); docstring +
+      proposal-payload (`can_force`) rechtgezet.

@@ -146,24 +146,28 @@ async function _postSend(text, force, tried){
   const j = await r.json().catch(()=>({}));
   if(r.ok && !j.error) return true;
   if(j.missing_agent){
-    const ch="#"+(current&&current.name||"dit kanaal");
-    // known + nog niet geprobeerd → toevoegen. Al geprobeerd (relay ziet 't lid nog
-    // niet) → val door naar 'toch versturen', geen oneindige retry.
-    if(j.known && !tried.has(j.missing_agent)){
-      const ok = await modalConfirm("@"+j.missing_agent+" zit niet in "+ch+".",
-        "Toevoegen en je bericht opnieuw versturen?", "Toevoegen");
+    const who=j.missing_agent, ch="#"+(current&&current.name||"dit kanaal");
+    // Kwam de 409 terug ná een force-send, dan is de mention echt onhoudbaar
+    // (geen enkel kanaal-lid als anker): stoppen, geen tweede pop-up = geen loop.
+    if(force){ toast("@"+who+" kan hier niet — bericht niet verstuurd"); return false; }
+    // Bekende agent, nog niet toegevoegd → toevoegen; daarna FORCE-versturen zodat
+    // het bericht sowieso doorgaat (relay ziet het verse lidmaatschap soms nog niet).
+    if(j.known && !tried.has(who)){
+      const ok = await modalConfirm("@"+who+" zit niet in "+ch+".",
+        "Toevoegen en je bericht versturen?", "Toevoegen");
       if(!ok) return false;
-      const added = await addAgent(j.missing_agent, current.id);
-      if(added){ tried.add(j.missing_agent); return await _postSend(text, false, tried); }
-      return false;
+      const added = await addAgent(who, current.id);
+      if(added){ tried.add(who); return await _postSend(text, true, tried); }
+      toast("@"+who+" toevoegen mislukte"); return false;
     }
-    if(j.can_force){   // geen agent (bv. @here, geplakte handle) → toch als tekst?
-      const ok = await modalConfirm("@"+j.missing_agent+" is geen agent in "+ch+".",
+    // Geen agent (of net toegevoegd maar nog 409) → toch als platte tekst versturen.
+    if(j.can_force){
+      const ok = await modalConfirm("@"+who+" is geen kanaal-lid in "+ch+".",
         "Toch versturen? De @-tekst blijft dan gewoon tekst.", "Toch versturen");
       if(ok) return await _postSend(text, true, tried);
       return false;
     }
-    toast("@"+j.missing_agent+" kan hier niet"); return false;
+    toast("@"+who+" kan hier niet"); return false;
   }
   toast(j.error||"versturen mislukt"); return false;
 }

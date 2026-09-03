@@ -12,7 +12,7 @@ error een pop-up "agent zit niet in dit kanaal — toevoegen?".
 - **Send zonder geforceerde `--mention`**: de relay resolvet een @agent naar het lid
   en triggert 'm; een @naam die geen lid is geeft een nette fout die de naam noemt.
 - **`/api/send`** vangt die fout op en antwoordt gestructureerd
-  (`409 {missing_agent, known, channel}`) i.p.v. een 502.
+  (`409 {missing_agent, known, can_force, channel}`) i.p.v. een 502.
 - **`/api/channel/add-member`** (nieuw): voegt een agent (naam→pubkey uit de
   registry) toe aan het kanaal.
 - **Frontend**: bij `missing_agent` een pop-up "@X zit niet in #kanaal — toevoegen?";

@@ -4,6 +4,7 @@ beide onder de =<200-regel-conventie blijven. Elke functie geeft (status, payloa
 """
 import json
 import re
+import sys
 
 import roster
 from buzzcli import buzz, channel_member_pubkeys, valid_cid
@@ -16,8 +17,7 @@ def _a_member_of(cid):
     """Een pubkey die écht LID is van DIT kanaal (voor de force-mention). We nemen
     een willekeurig bestaand lid — geen aanname dat een vaste identiteit overal zit.
     Het lid wordt niet ge-@t in de content, dus de listener triggert 'm niet."""
-    mem = list(channel_member_pubkeys(cid).keys())
-    mem = [p for p in mem if p]
+    mem = sorted(p for p in channel_member_pubkeys(cid) if p)  # sorteer: stabiel per call
     return mem[0] if mem else None
 
 
@@ -39,8 +39,8 @@ def send(cid, content, force=False):
     """Verstuur een bericht. Zonder --mention resolvet de relay een @agent naar het
     lid en triggert 'm; een @naam die geen lid is geeft een 409 met een keuze
     (toevoegen als 't een agent is, of 'toch versturen'). Met `force` geven we een
-    lid-mention (coordinator, zit in elk kanaal) mee zodat álle @woorden
-    presentation-only worden — voor @here, een geplakte handle, e.d."""
+    écht bestaand kanaal-lid (`_a_member_of`) als anker-mention mee zodat álle
+    @woorden presentation-only worden — voor @here, een geplakte handle, e.d."""
     if not valid_cid(cid):
         return 400, {"error": "onbekend kanaal"}
     content = (content or "").strip()
@@ -66,9 +66,30 @@ def send(cid, content, force=False):
     return 502, {"error": (err or out or "").strip()[:200]}
 
 
+def _add_coordinator(create_out):
+    """Best-effort: coordinator als lid van een net-gemaakt kanaal. Mag NOOIT
+    raisen — het kanaal bestaat al. Faalt stil-maar-zichtbaar (log naar stderr,
+    return None/False), zodat een add-fout niet de hele create doet omvallen."""
+    try:
+        d = json.loads(create_out)
+        cid = d.get("channel_id") or d.get("id")  # relay gebruikt beide
+        co = roster.agent_pubkey("coordinator")
+        if not (cid and co):
+            sys.stderr.write("[create] coordinator-add overgeslagen: geen cid/pubkey\n")
+            return None
+        ar, _o, ae = buzz(["channels", "add-member", "--channel", cid,
+                           "--pubkey", co, "--role", "bot"])
+        if ar != 0:
+            sys.stderr.write(f"[create] coordinator-add faalde: {(ae or _o).strip()[:120]}\n")
+        return ar == 0
+    except Exception as e:  # noqa: BLE001 — create is al geslaagd; add is bijzaak
+        sys.stderr.write(f"[create] coordinator-add fout: {e}\n")
+        return None
+
+
 def create_channel(name):
     """Maak een open kanaal + voeg coordinator standaard toe (best-effort:
-    mislukt de add, dan bestaat het kanaal nog steeds)."""
+    mislukt de add, dan bestaat het kanaal nog steeds; `coordinator_added` meldt 't)."""
     name = (name or "").strip().lower()
     if not _NAME_RE.match(name):
         return 400, {"error": "naam: a-z 0-9 _ - (max 31)"}
@@ -76,15 +97,4 @@ def create_channel(name):
                          "--type", "stream", "--visibility", "open"])
     if rc != 0:
         return 502, {"error": err.strip()[:200]}
-    added = None
-    try:
-        d = json.loads(out)
-        new_cid = d.get("channel_id") or d.get("id")  # relay gebruikt beide
-        co = roster.agent_pubkey("coordinator")
-        if new_cid and co:
-            ar, _o, ae = buzz(["channels", "add-member", "--channel", new_cid,
-                               "--pubkey", co, "--role", "bot"])
-            added = (ar == 0)
-    except (ValueError, AttributeError):
-        pass
-    return 200, {"ok": True, "name": name, "coordinator_added": added}
+    return 200, {"ok": True, "name": name, "coordinator_added": _add_coordinator(out)}
