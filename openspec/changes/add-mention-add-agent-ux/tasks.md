@@ -5,4 +5,5 @@
 - [x] 1.2 `/api/channel/add-member` + `roster.pubkey_of`.
 - [x] 1.3 Frontend: pop-up "toevoegen?" + auto-retry na toevoegen; onbekende naam → melding.
 - [x] 1.4 MENTION_PUBKEY-workaround verwijderd.
-- [x] 1.5 Live gesmoked: @lid → ok, @niet-lid → 409, add-member → ok, retry → ok, onbekend → 404.
+- [x] 1.5 `/api/channels/create` voegt coordinator standaard toe (best-effort).
+- [x] 1.6 Live gesmoked: @lid → ok, @niet-lid → 409, add-member → ok, retry → ok, onbekend → 404.

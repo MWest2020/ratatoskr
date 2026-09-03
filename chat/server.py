@@ -159,6 +159,17 @@ class H(BaseHTTPRequestHandler):
                                  "--type", "stream", "--visibility", "open"])
             if rc != 0:
                 return self._send(502, json.dumps({"error": err.strip()[:200]}))
+            # Beleid: coordinator zit in ELK kanaal → standaard toevoegen aan een nieuw
+            # kanaal. Best-effort: mislukt dit, dan bestaat het kanaal nog steeds
+            # (coordinator kan later handmatig of via de mention-pop-up toegevoegd).
+            try:
+                new_cid = json.loads(out).get("channel_id")
+                co = roster.pubkey_of("coordinator")
+                if new_cid and co:
+                    buzz(["channels", "add-member", "--channel", new_cid,
+                          "--pubkey", co, "--role", "bot"])
+            except Exception:
+                pass
             return self._send(200, json.dumps({"ok": True, "name": name}))
 
         if u.path == "/api/channels/delete":

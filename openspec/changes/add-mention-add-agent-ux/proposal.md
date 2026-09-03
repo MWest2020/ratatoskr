@@ -18,6 +18,8 @@ error een pop-up "agent zit niet in dit kanaal — toevoegen?".
 - **Frontend**: bij `missing_agent` een pop-up "@X zit niet in #kanaal — toevoegen?";
   na toevoegen wordt het bericht automatisch opnieuw verstuurd. Onbekende naam →
   nette melding.
+- **Nieuw kanaal krijgt coordinator standaard** (beleid: coordinator in elk kanaal):
+  `/api/channels/create` voegt 'm best-effort toe na aanmaken.
 - Verwijdert de `MENTION_PUBKEY`-workaround (was niet overal lid).
 
 ## Impact
