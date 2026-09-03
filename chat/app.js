@@ -143,13 +143,16 @@ async function send(text){ return await _postSend(text, current.id, false, new S
 // cid wordt door de hele retry-flow vastgepind (server stuurt 'm mee in de 409),
 // zodat een kanaalwissel het bericht niet naar het verkeerde kanaal stuurt.
 async function _postSend(text, cid, force, added){
-  const r = await fetch("/api/send",{method:"POST",headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({channel:cid, content:text, force:force})});
+  let r;
+  try {
+    r = await fetch("/api/send",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({channel:cid, content:text, force:force})});
+  } catch(e){ toast("netwerkfout — bericht niet verstuurd"); return false; }
   const j = await r.json().catch(()=>({}));
   if(r.ok && !j.error) return true;
   if(j.missing_agent){
     const who=j.missing_agent, tgt=j.channel||cid;
-    const ch="#"+((current&&current.id===tgt&&current.name)||"het kanaal");
+    const ch=(current&&current.id===tgt&&current.name)?"#"+current.name:"dit kanaal";
     // 409 ná een force = mention echt onhoudbaar → stoppen (geen tweede pop-up, geen loop).
     if(force){ toast("@"+who+" kan hier niet — bericht niet verstuurd"); return false; }
     // Bekende agent, nog niet toegevoegd → toevoegen, dan NORMAAL opnieuw versturen

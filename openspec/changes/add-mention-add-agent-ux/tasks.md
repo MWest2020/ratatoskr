@@ -31,3 +31,8 @@
 - [ ] 1.11 FOLLOW-UP (open): regressietest op de relay-foutstring `_MENTION_ERR`
       zodra de chat-backend een test-harness heeft; nu leunt de pop-up-flow op één
       niet-gepinde Engelse relay-string (veilige degradatie naar toast bij drift).
+- [x] 1.12 r7-fixes: sw.js precachet /app-modal.js (SHELL + FRESH_ASSETS, cache→v3)
+      zodat de pop-up-helpers offline/cold-launch laden; `sendTo` (reviewPR-pad)
+      delegeert naar `_postSend` → krijgt óók de 409-/mention-afhandeling; `_postSend`
+      vangt netwerkfouten (geen throw → composer-knop blijft niet op slot), composer-
+      submit met try/finally; kanaal-label-minor recht.
