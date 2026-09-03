@@ -1,4 +1,4 @@
-# jobs — recurring events (geplande claude -p-posts naar kanalen)
+# jobs — recurring jobs (geplande claude -p-posts naar kanalen)
 
 Geplande "nieuws"-jobs: op een tijdschema draait `claude -p` (sub-first) over
 context van de host en post een digest naar een kanaal. Reboot-vast via
@@ -17,11 +17,16 @@ systemd user-timers (linger).
   funding-memo), post als orchestrator.
 - **proposals** (ma 09:15) — open OpenSpec-proposals uit het ecosysteem.
 - **technical_debt** (vr 16:00) — architect reflecteert op technische schuld.
+- **standup** (dagelijks 08:00) — open werk (PR's/OpenSpec) + blokkades (#escalatie/#review).
+- **gedaan** (dagelijks 18:00) — wat is er vandaag af (commits + gemergede PR's).
 
 ## Nieuwe job toevoegen
 1. Kanaal aanmaken (web-app of `buzz channels create`), post-identiteit als lid.
 2. Entry in `jobs.yml` (channel/identity/prompt/context_cmd).
-3. Timer: kopieer een `boomhuis-*.timer` met een nieuwe `OnCalendar` + `Unit=`.
+3. Timer + template: `jobs/systemd/` bevat de gecommitte timers + het
+   `boomhuis-job@.service`-template; kopieer die naar `~/.config/systemd/user/`. Het template hoort gelijk te blijven
+   aan de live host-unit (waar news/proposals/technical_debt op draaien); wijk je
+   ervan af, werk beide bij.
 4. `systemctl --user daemon-reload && systemctl --user enable --now boomhuis-<x>.timer`.
 
 Handmatig draaien/testen: `bash jobs/run-jobs.sh <naam>`.

@@ -64,8 +64,8 @@ cluster-fire van de brug is nog gesuperviseerd (`BRIDGE_LIVE`). Rome is niet in
   uit de relay, **maken/verwijderen in de app**, agents-overzicht, `@mention` +
   thread-continuïteit (doorpraten zonder mention).
 - **Kanalen** — `#general` (hub: roep hier elke agent aan), plus `#runs
-  #escalatie #bouw #review #architectuur #marketing`. Kanalen maken/verwijderen
-  kan in de webchat.
+  #escalatie #bouw #review #architectuur #marketing #standup`. Kanalen
+  maken/verwijderen kan in de webchat.
 - **Zes chat-agents** — `assistent` (overal), `architect` (#architectuur),
   `bouwer` (#bouw), `marketing` (#marketing), `ontwerper` (frontend/UX,
   #architectuur) en `coordinator` (de meta-agent in #general) — allemaal ook in
@@ -82,7 +82,7 @@ cluster-fire van de brug is nog gesuperviseerd (`BRIDGE_LIVE`). Rome is niet in
   boomhuis-bedrading. De agent gaat pas live nadat Mark de handbook-PR merget.
 - **Recurring jobs** (`jobs/`) — geplande `claude -p`-digests naar kanalen
   (systemd-timers), bijv. `#technical_debt`, `#news_from_zettelkast`,
-  `#proposals`.
+  `#proposals`, `#standup` (dagelijks 08:00/18:00).
 - **Sessie-identiteiten** — naast de gespawnde chat-agents heeft elke vaste
   Claude-sessie (interactief) een eigen sleutelpaar (rol `sessie`, aangemaakt met
   `orchestrator/create-session-identity.py`; geen handbook-def/run-lijst). Zo is

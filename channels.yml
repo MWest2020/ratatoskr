@@ -41,3 +41,6 @@ channels:
   netnl:
     id: 649bf5ef-087e-4e3d-bb00-d65bff987eb7
     doel: projectkanaal netnl — overdracht + context; actuele context als pinned in knowledge/netnl.md
+  standup:
+    id: bd75be15-28ad-4243-8d2a-a15ed50826e6
+    doel: dagelijkse ochtend-standup (08:00, open werk + blokkades) en gedaan-terugblik (18:00); recurring jobs
