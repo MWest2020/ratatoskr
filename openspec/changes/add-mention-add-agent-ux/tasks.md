@@ -23,3 +23,11 @@
       zonder dode `tried`-set, gebruikt `j.channel` uit de 409, onder 200 regels;
       `_a_member_of` kiest bij voorkeur een niet-agent-lid als force-anker;
       multi-mention-gedrag in design vastgelegd.
+- [x] 1.10 r6-fixes: `_postSend` pint het doelkanaal (`j.channel`) door de hele
+      retry-flow; NORMALE resend na toevoegen (mention blijft echt → relay triggert,
+      i.p.v. force die 'm tot tekst maakte) met een `added`-set als loop-vangnet;
+      dubbele toast weg (addAgent toont zelf de fout); `modalConfirm`+`addAgent`
+      naar `app-modal.js` (app.js 181); README module-layout bijgewerkt.
+- [ ] 1.11 FOLLOW-UP (open): regressietest op de relay-foutstring `_MENTION_ERR`
+      zodra de chat-backend een test-harness heeft; nu leunt de pop-up-flow op één
+      niet-gepinde Engelse relay-string (veilige degradatie naar toast bij drift).
