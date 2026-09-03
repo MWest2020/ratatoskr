@@ -70,14 +70,13 @@ _AGENT_ROLES = ("chat-agent", "meta-agent")
 def agent_pubkey(name):
     """pubkey_hex voor een AGENT-naam (chat-agent/meta-agent), of None. Case-
     insensitive. Bewust niet voor sessies (hubby/versum/…) of mark (rol: mens) —
-    die hoor je niet via de mention-pop-up als bot toe te voegen."""
+    die hoor je niet via de mention-pop-up als bot toe te voegen. Gaat via
+    chat_agents() zodat het bij een falende registry-fetch de _FALLBACK gebruikt
+    i.p.v. iedereen als 'geen agent' te behandelen."""
     if not name:
         return None
     low = name.strip().lower()
-    for pk, v in identity_map().items():
-        if v["name"].lower() == low and v["rol"] in _AGENT_ROLES:
-            return pk
-    return None
+    return next((a["pubkey"] for a in chat_agents() if a["handle"].lower() == low), None)
 
 
 # Kern-agents als fallback: als de registry-fetch faalt (github down/rate-limit),
@@ -96,5 +95,5 @@ def chat_agents():
     (nog) niet beschikbaar is, zodat de tab nooit stil leeg is."""
     agents = [{"handle": v["name"], "pubkey": pk, "rol": v["rol"]}
               for pk, v in sorted(identity_map().items(), key=lambda kv: kv[1]["name"])
-              if v["rol"] in ("chat-agent", "meta-agent")]
+              if v["rol"] in _AGENT_ROLES]
     return agents or _FALLBACK

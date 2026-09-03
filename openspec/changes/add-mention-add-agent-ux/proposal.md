@@ -24,6 +24,7 @@ error een pop-up "agent zit niet in dit kanaal — toevoegen?".
 
 ## Impact
 
-- `chat/server.py` (send-flow + add-member-route), `chat/roster.py` (`pubkey_of`),
+- `chat/server.py` (dunne routing) + `chat/actions.py` (send/add/create-acties),
+  `chat/roster.py` (`agent_pubkey`),
   `chat/buzzcli.py` (MENTION_PUBKEY weg), `chat/app.js` (pop-up + retry), `chat/app.css`.
   Read/write, additief; live gesmoked (ok / 409 / add / retry / 404).

@@ -6,14 +6,19 @@ import json
 import re
 
 import roster
-from buzzcli import buzz, valid_cid
+from buzzcli import buzz, channel_member_pubkeys, valid_cid
 
 _NAME_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,30}$")
 _MENTION_ERR = re.compile(r"mention '@([A-Za-z0-9_-]+)' does not match")
 
 
-def _coordinator():
-    return roster.agent_pubkey("coordinator")
+def _a_member_of(cid):
+    """Een pubkey die écht LID is van DIT kanaal (voor de force-mention). We nemen
+    een willekeurig bestaand lid — geen aanname dat een vaste identiteit overal zit.
+    Het lid wordt niet ge-@t in de content, dus de listener triggert 'm niet."""
+    mem = list(channel_member_pubkeys(cid).keys())
+    mem = [p for p in mem if p]
+    return mem[0] if mem else None
 
 
 def add_agent(cid, name):
@@ -43,9 +48,9 @@ def send(cid, content, force=False):
         return 400, {"error": "leeg bericht"}
     args = ["messages", "send", "--channel", cid, "--content", "-"]
     if force:
-        co = _coordinator()
-        if co:
-            args += ["--mention", co]  # lid → maakt @woorden presentation-only
+        anchor = _a_member_of(cid)
+        if anchor:
+            args += ["--mention", anchor]  # echt lid → maakt @woorden presentation-only
     rc, out, err = buzz(args, stdin=content)
     if rc == 0:
         return 200, {"ok": True}
@@ -75,7 +80,7 @@ def create_channel(name):
     try:
         d = json.loads(out)
         new_cid = d.get("channel_id") or d.get("id")  # relay gebruikt beide
-        co = _coordinator()
+        co = roster.agent_pubkey("coordinator")
         if new_cid and co:
             ar, _o, ae = buzz(["channels", "add-member", "--channel", new_cid,
                                "--pubkey", co, "--role", "bot"])

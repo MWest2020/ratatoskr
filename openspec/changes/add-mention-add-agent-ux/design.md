@@ -19,15 +19,9 @@ structureel op: je voegt de échte agent toe.
 
 `/api/channel/add-member` tekent als mark (backend-nsec) — mark kan andere
 identiteiten toevoegen (niet zichzelf: self-add faalt op "missing p tag", maar dat
-is hier niet aan de orde). Naam→pubkey komt uit de registry (`roster.pubkey_of`);
-een onbekende naam geeft 404, geen stille no-op.
-
-## Afhankelijk van de relay-foutstring
-
-De pop-up-flow herkent een niet-lid-mention aan de relay-fout . Wijzigt de relay die formulering, dan valt de send
-terug op een gewone error-toast (niet kapot, wel minder mooi) — de functionaliteit
-degradeert veilig. Een regressietest hierop is vervolgwerk zodra de jobs/backend een
-test-harness krijgen.
+is hier niet aan de orde). Naam→pubkey komt uit de registry via
+`roster.agent_pubkey` (case-insensitive, alléén chat-agent/meta-agent — sessies en
+mark worden bewust niet aangeboden); een onbekende agent geeft 404, geen stille no-op.
 
 ## Afhankelijk van de relay-foutstring
 
