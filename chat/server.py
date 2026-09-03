@@ -13,7 +13,7 @@ from urllib.parse import urlparse, parse_qs
 import github  # GitHub-leeslaag (repo/PR-view + pinned-context)
 import push    # Web Push — subscription-opslag + VAPID-public-key
 from buzzcli import (buzz, list_channels, list_channels_meta, valid_cid, author,
-                     channel_overview, agent_roster, channel_roster, ME)
+                     channel_overview, agent_roster, channel_roster, ME, MENTION_PUBKEY)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
@@ -181,7 +181,7 @@ class H(BaseHTTPRequestHandler):
         # agent die WEL lid van dit kanaal is nog steeds uniek resolvet + getriggerd
         # wordt. Zo werkt @agent overal waar de agent woont, en faalt het nergens.
         args = ["messages", "send", "--channel", cid, "--content", "-",
-                "--mention", ME]
+                "--mention", MENTION_PUBKEY]
         # content via stdin (--content -) om shell/escaping-problemen te vermijden
         rc, out, err = buzz(args, stdin=content)
         if rc != 0:
