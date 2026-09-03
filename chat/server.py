@@ -13,7 +13,7 @@ from urllib.parse import urlparse, parse_qs
 import github  # GitHub-leeslaag (repo/PR-view + pinned-context)
 import push    # Web Push — subscription-opslag + VAPID-public-key
 from buzzcli import (buzz, list_channels, list_channels_meta, valid_cid, author,
-                     channel_overview, agent_roster, ME)
+                     channel_overview, agent_roster, channel_roster, ME)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
@@ -61,6 +61,11 @@ class H(BaseHTTPRequestHandler):
             return self._send(200, json.dumps(list_channels_meta()))
         if u.path == "/api/agents":
             return self._send(200, json.dumps({"agents": agent_roster()}))
+        if u.path == "/api/channel-members":
+            try:
+                return self._send(200, json.dumps({"channels": channel_roster()}))
+            except Exception as e:
+                return self._send(502, json.dumps({"error": str(e)[:200]}))
         if u.path == "/api/push/vapid":
             return self._send(200, json.dumps({"key": push.vapid_public()}))
         if u.path == "/api/overview":

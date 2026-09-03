@@ -11,6 +11,8 @@ import subprocess
 import threading
 import time
 
+import roster  # identiteits-/ledenlogica (namen uit identities.yml)
+
 BUZZ = os.environ.get("BUZZ_BIN", "/usr/local/bin/buzz")
 
 # Kanalen worden LIVE uit de relay gelezen (buzz channels list), zodat maken/
@@ -58,8 +60,10 @@ def list_channels_meta():
 def valid_cid(cid):
     return any(i == cid for _, i in list_channels())
 
-# pubkey -> weergavenaam
+# pubkey -> weergavenaam. Fallback als de registry-fetch faalt; bevat ook mark's
+# PRE-rotatie-pubkey zodat berichten van vóór rotate-mark-identity nog "mark" tonen.
 NAMES = {
+    "a05339f005904935da71e0498f3d542ac223e8cdfac920c6152a743f91640769": "mark",
     "821de7df04297a3a5e53c1ae423456b32826505a1caef5fe0979a4940720c2db": "mark",
     "27308f27bfdac7d051d6c79cbacffcf20eccc54abccb7495db68a58f25d083f0": "orchestrator",
     "378aaf0fca61133c14bbd0e6a4ab26cea4cdffdeb7d2513fdc458b1b9d864255": "assistent",
@@ -67,23 +71,7 @@ NAMES = {
     "2827e3d844551b81f4193fd7e64b60141759a5a4848482f48b9ad2c2fd938b74": "bouwer",
     "ba5bf9d6b4009984378561c35a346e64b488282ffd1fbc7dcdde1d19c515fd64": "marketing",
 }
-ME = "821de7df04297a3a5e53c1ae423456b32826505a1caef5fe0979a4940720c2db"
-
-# Bekende agents (uitbreidbaar: kopie met eigen identiteit + systemprompt).
-AGENTS = [
-    {"handle": "assistent",
-     "pubkey": "378aaf0fca61133c14bbd0e6a4ab26cea4cdffdeb7d2513fdc458b1b9d864255",
-     "rol": "algemene chat-agent"},
-    {"handle": "architect",
-     "pubkey": "a18ce524d234433a0702f85f09325165d19aa6fe5e9c28d01e22ffcf55922d49",
-     "rol": "architectuur-sparring"},
-    {"handle": "bouwer",
-     "pubkey": "2827e3d844551b81f4193fd7e64b60141759a5a4848482f48b9ad2c2fd938b74",
-     "rol": "bouw-agent (habitat)"},
-    {"handle": "marketing",
-     "pubkey": "ba5bf9d6b4009984378561c35a346e64b488282ffd1fbc7dcdde1d19c515fd64",
-     "rol": "marketing — usecases naar buiten"},
-]
+ME = "a05339f005904935da71e0498f3d542ac223e8cdfac920c6152a743f91640769"
 
 
 def buzz(args, stdin=None, timeout=25):
@@ -93,7 +81,9 @@ def buzz(args, stdin=None, timeout=25):
 
 
 def author(pubkey):
-    return NAMES.get(pubkey) or ("npub:" + pubkey[:8])
+    # Namen komen uit de registry (roster.identity_map, uit identities.yml); NAMES
+    # is een fallback als de git-fetch faalt.
+    return roster.name_of(pubkey) or NAMES.get(pubkey) or ("npub:" + pubkey[:8])
 
 
 def channel_member_pubkeys(cid):
@@ -150,10 +140,49 @@ def channel_overview():
 
 
 def agent_roster():
-    """Per agent: in welke kanalen (naam) hij zit, met rol. Data uit buzz."""
+    """Per (chat-)agent uit de registry: in welke kanalen hij zit. Data uit buzz."""
     membership = {name: channel_member_pubkeys(cid) for name, cid in list_channels()}
-    roster = []
-    for a in AGENTS:
+    out = []
+    for a in roster.chat_agents():
         chans = [name for name, mem in membership.items() if a["pubkey"] in mem]
-        roster.append({"handle": a["handle"], "rol": a["rol"], "channels": chans})
-    return roster
+        out.append({"handle": a["handle"], "rol": a["rol"], "channels": chans})
+    return out
+
+
+_cr_lock = threading.Lock()
+_cr_cache = {"t": 0.0, "data": None}
+
+
+def channel_roster():
+    """Per kanaal: de echte relay-leden met naam + rol (agents én sessies). Zo ziet
+    Mark wie er in een kanaal zit, ook een sessie als internetnl-cli. 15s gecachet
+    (per kanaal een buzz-call, net als agent_roster)."""
+    now = time.time()
+    if _cr_cache["data"] is not None and now - _cr_cache["t"] < _OV_TTL:
+        return _cr_cache["data"]
+    with _cr_lock:  # single-flight, net als channel_overview: één thread doet de fan-out
+        now = time.time()
+        if _cr_cache["data"] is not None and now - _cr_cache["t"] < _OV_TTL:
+            return _cr_cache["data"]
+        chans = list_channels()
+        if not chans:
+            # Leeg is niet te onderscheiden van een buzz-storing → NIET cachen en de
+            # route 502 laten geven (zoals channel_overview), i.p.v. stil "geen kanalen".
+            raise RuntimeError("kanaallijst leeg of onbereikbaar")
+        idmap = roster.identity_map()
+        out = []
+        for name, cid in chans:
+            members = []
+            for pk, chrole in channel_member_pubkeys(cid).items():
+                if not pk:
+                    continue  # lid-entry zonder pubkey → geen None-sleutel (TypeError)
+                ident = idmap.get(pk) or {}
+                members.append({
+                    "name": ident.get("name") or NAMES.get(pk) or ("npub:" + pk[:8]),
+                    "rol": ident.get("rol", ""),          # ecosysteem-rol (agent/sessie/mens)
+                    "channel_role": chrole,               # rol op dít kanaal (owner/bot/member)
+                })
+            members.sort(key=lambda m: (m["channel_role"] != "owner", m["name"]))
+            out.append({"channel": name, "id": cid, "members": members})
+        _cr_cache["t"], _cr_cache["data"] = time.time(), out
+        return out
