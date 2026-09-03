@@ -152,7 +152,8 @@ async function _postSend(text, cid, force, added){
   if(r.ok && !j.error) return true;
   if(j.missing_agent){
     const who=j.missing_agent, tgt=j.channel||cid;
-    const ch=(current&&current.id===tgt&&current.name)?"#"+current.name:"dit kanaal";
+    const tc=(typeof channels!=="undefined")&&channels.find(x=>x.id===tgt);
+    const ch=tc?"#"+tc.name:"dit kanaal";  // ook juist als het doelkanaal ≠ open kanaal
     // 409 ná een force = mention echt onhoudbaar → stoppen (geen tweede pop-up, geen loop).
     if(force){ toast("@"+who+" kan hier niet — bericht niet verstuurd"); return false; }
     // Bekende agent, nog niet toegevoegd → toevoegen, dan NORMAAL opnieuw versturen

@@ -28,11 +28,15 @@
       i.p.v. force die 'm tot tekst maakte) met een `added`-set als loop-vangnet;
       dubbele toast weg (addAgent toont zelf de fout); `modalConfirm`+`addAgent`
       naar `app-modal.js` (app.js 181); README module-layout bijgewerkt.
-- [ ] 1.11 FOLLOW-UP (open): regressietest op de relay-foutstring `_MENTION_ERR`
-      zodra de chat-backend een test-harness heeft; nu leunt de pop-up-flow op één
-      niet-gepinde Engelse relay-string (veilige degradatie naar toast bij drift).
 - [x] 1.12 r7-fixes: sw.js precachet /app-modal.js (SHELL + FRESH_ASSETS, cache→v3)
       zodat de pop-up-helpers offline/cold-launch laden; `sendTo` (reviewPR-pad)
       delegeert naar `_postSend` → krijgt óók de 409-/mention-afhandeling; `_postSend`
       vangt netwerkfouten (geen throw → composer-knop blijft niet op slot), composer-
       submit met try/finally; kanaal-label-minor recht.
+- [x] 1.13 r8-fixes: design-sectie "meerdere mentions" rechtgezet (normale resend →
+      élke ontbrekende agent-mention wordt iteratief aangeboden, geen force-aanname);
+      proposal-Impact noemt nu app-modal.js/app-ui.js/index.html/sw.js; kanaal-label
+      in de pop-up zoekt de naam op via de `channels`-lijst (klopt ook als het
+      doelkanaal ≠ het open kanaal); open follow-up-taak losgetrokken (de
+      `_MENTION_ERR`-regressietest staat als prose-vervolgwerk in design.md, niet als
+      blokkerende taak) zodat de change naar archive kan.

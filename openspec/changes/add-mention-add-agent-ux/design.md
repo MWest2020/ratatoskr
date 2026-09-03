@@ -43,8 +43,11 @@ backend een test-harness krijgt.
 
 ## Meerdere niet-lid-mentions in één bericht
 
-De relay meldt per send maar één ontbrekende mention. Bij bv. `@a @b` (beiden geen
-lid) voegt de pop-up @a toe en verstuurt daarna met `force`; @b blijft dan platte
-tekst (wordt niet toegevoegd). Bewuste keuze: force = "verstuur het, namen zijn
-tekst". Wil je @b óók als lid, noem 'm dan in een volgend bericht. Geen add-lus over
-alle mentions — dat is meer machinerie dan de winst rechtvaardigt (KISS).
+De relay meldt per send maar één ontbrekende mention. Omdat de resend na een add
+NORMAAL is (geen force), komt de vólgende ontbrekende mention gewoon als een nieuwe
+409 terug: bij `@a @b` (beide agent, geen lid) biedt de pop-up eerst "@a toevoegen?",
+verstuurt normaal opnieuw, ziet dan de 409 op @b en biedt "@b toevoegen?", enz. Zo
+worden alle genoemde agents één voor één toegevoegd tot de send lukt — de `added`-set
+voorkomt dat dezelfde agent twee keer wordt aangeboden. Een @woord dat géén agent is
+(bv. `@here`) valt onderweg op "toch versturen?" (force), waarna de resterende
+@-tekst presentation-only wordt en het bericht doorgaat.

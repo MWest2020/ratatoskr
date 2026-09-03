@@ -29,7 +29,10 @@ lidmaatschap). Aanspreekbaar maken = aparte, gekoppelde change (listener-members
 
 ## Impact
 
-- `chat/server.py` (dunne routing) + `chat/actions.py` (send/add/create-acties),
-  `chat/roster.py` (`agent_pubkey`),
-  `chat/buzzcli.py` (MENTION_PUBKEY weg), `chat/app.js` (pop-up + retry), `chat/app.css`.
-  Read/write, additief; live gesmoked (ok / 409 / add / retry / 404).
+- Backend: `chat/server.py` (dunne routing + `/app-modal.js`-route), `chat/actions.py`
+  (send/add/create-acties, nieuw), `chat/roster.py` (`agent_pubkey`), `chat/buzzcli.py`
+  (MENTION_PUBKEY weg).
+- Frontend: `chat/app.js` (409-flow + retry), `chat/app-modal.js` (pop-up-helpers,
+  nieuw), `chat/app-ui.js` (`sendTo` → `_postSend`), `chat/index.html` (script-tag),
+  `chat/sw.js` (app-modal.js in shell, cache→v3), `chat/app.css`, `chat/README.md`.
+  Read/write, additief; live gesmoked (ok / 409 / add / retry / 404 / asset-serve).
