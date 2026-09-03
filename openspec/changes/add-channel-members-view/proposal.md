@@ -19,5 +19,5 @@ is toegevoegd. De namen-map was bovendien hardgecodeerd en liep achter op
 
 ## Impact
 
-- `chat/buzzcli.py` (identity_map + channel_roster), `chat/server.py` (route),
+- `chat/roster.py` (nieuw: identity_map + chat_agents), `chat/buzzcli.py` (channel_roster, author, ME→gerotenteerde mark-pubkey), `chat/server.py` (route),
   `chat/index.html`, `chat/app-ui.js`, `chat/app.css`. Read-only, additief.

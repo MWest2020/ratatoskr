@@ -3,17 +3,21 @@ async function loadAgents(){
   let data;
   try{ data=await (await fetch("/api/agents")).json(); }catch(e){ return; }
   const wrap=$("#agentList"); wrap.innerHTML="";
+  // registry-data via textContent (geen HTML-injectie), zelfde idioom als de per-kanaal-view.
   for(const a of (data.agents||[])){
     const el=document.createElement("div"); el.className="agent";
-    const chips=(a.channels||[]).length
-      ? `<div class="chips">${a.channels.map(c=>`<span class="chip" data-c="${c}">${c}</span>`).join("")}</div>`
-      : `<div class="none">in geen enkel kanaal</div>`;
-    el.innerHTML=`<div class="nm">${a.handle}</div><div class="rol">${a.rol||""}</div>${chips}`;
-    el.querySelectorAll(".chip").forEach(ch=>ch.onclick=()=>{
-      const c=channels.find(x=>x.name===ch.dataset.c);
-      if(c){ selectChannel(c); closeAgents();
-        input.value="@"+a.handle+" "; input.focus(); }
-    });
+    const nm=document.createElement("div"); nm.className="nm"; nm.textContent=a.handle; el.appendChild(nm);
+    const rol=document.createElement("div"); rol.className="rol"; rol.textContent=a.rol||""; el.appendChild(rol);
+    if((a.channels||[]).length){
+      const chips=document.createElement("div"); chips.className="chips";
+      for(const c of a.channels){
+        const ch=document.createElement("span"); ch.className="chip"; ch.textContent=c;
+        ch.onclick=()=>{ const cc=channels.find(x=>x.name===c);
+          if(cc){ selectChannel(cc); closeAgents(); input.value="@"+a.handle+" "; input.focus(); } };
+        chips.appendChild(ch);
+      }
+      el.appendChild(chips);
+    } else { const none=document.createElement("div"); none.className="none"; none.textContent="in geen enkel kanaal"; el.appendChild(none); }
     wrap.appendChild(el);
   }
 }
@@ -23,19 +27,29 @@ async function loadChannelMembers(){
   wrap.innerHTML='<div class="agenthint">laden…</div>';
   let data; try{ data=await (await fetch("/api/channel-members")).json(); }
   catch(e){ wrap.innerHTML='<div class="agenthint">kon leden niet laden.</div>'; return; }
-  wrap.innerHTML=""; wrap.dataset.loaded="1";
-  for(const c of (data.channels||[])){
-    const el=document.createElement("div"); el.className="agent";
-    const mem=(c.members||[]).map(m=>{
-      const r=m.channel_role&&m.channel_role!=="member"?` <span class="mrole">${m.channel_role}</span>`:"";
-      return `<span class="chip" data-c="${c.channel}">${m.name}${r}</span>`;
-    }).join("");
-    el.innerHTML=`<div class="nm">#${c.channel}</div>`+
-      (mem?`<div class="chips">${mem}</div>`:`<div class="none">geen leden</div>`);
-    el.querySelectorAll(".chip").forEach(ch=>ch.onclick=()=>{
-      const cc=channels.find(x=>x.name===ch.dataset.c);
-      if(cc){ selectChannel(cc); closeAgents(); }
-    });
+  wrap.innerHTML="";
+  const chans=data.channels||[];
+  if(!chans.length){ wrap.innerHTML='<div class="agenthint">geen kanalen (relay onbereikbaar?).</div>'; return; }
+  wrap.dataset.loaded="1";
+  // Eigen classes (krow/kname/kmem): NIET .agent/.nm/.chip, die dragen ::before-@/#
+  // die #netnl tot "@#netnl" zouden maken. DOM + textContent = geen HTML-injectie.
+  for(const c of chans){
+    const el=document.createElement("div"); el.className="krow";
+    const nm=document.createElement("div"); nm.className="kname"; nm.textContent="#"+c.channel; el.appendChild(nm);
+    const mem=c.members||[];
+    if(mem.length){
+      const chips=document.createElement("div"); chips.className="kchips";
+      for(const m of mem){
+        const ch=document.createElement("span"); ch.className="kmem"; ch.textContent=m.name;
+        if(m.rol) ch.title=m.rol;                          // ecosysteem-rol (agent/sessie/mens)
+        if(m.channel_role && m.channel_role!=="member"){    // rol op dít kanaal
+          const r=document.createElement("span"); r.className="mrole"; r.textContent=" "+m.channel_role; ch.appendChild(r);
+        }
+        ch.onclick=()=>{ const cc=channels.find(x=>x.name===c.channel); if(cc){ selectChannel(cc); closeAgents(); } };
+        chips.appendChild(ch);
+      }
+      el.appendChild(chips);
+    } else { const none=document.createElement("div"); none.className="knone"; none.textContent="geen leden"; el.appendChild(none); }
     wrap.appendChild(el);
   }
 }

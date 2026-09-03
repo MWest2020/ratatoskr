@@ -1,5 +1,15 @@
 # Design: add-channel-members-view
 
+## Aparte module `roster.py` (200-regel-invariant)
+
+De identiteits-/ledenlogica (identity_map, parser, chat_agents) staat in
+`chat/roster.py`, los van `buzzcli.py` (relay-datalaag) — beide blijven zo onder de
+=<200-regel-conventie. Een MISLUKTE/lege git-fetch wordt NIET gecachet (anders houdt
+één transiente fout de map de hele TTL leeg); dan val je terug op de laatste goede
+map. Ingetrokken identiteiten (status != actief) worden overgeslagen. Ook
+`agent_roster` (de 'per agent'-tab) komt nu uit de registry i.p.v. een hardgecodeerde
+lijst van vier.
+
 ## Namen uit identities.yml, niet hardgecodeerd
 
 `NAMES`/`AGENTS` in buzzcli.py waren een hardgecodeerde subset (4 agents) en liepen
@@ -15,5 +25,5 @@ blijft een fallback als de git-fetch faalt.
 `channel_roster()` leest de *werkelijke* leden per kanaal (`buzz channels members`),
 niet wat een agent-def declareert — anders zag je een handmatig toegevoegde sessie
 niet. Per lid: de ecosysteem-rol (agent/sessie/mens) én de rol op dít kanaal
-(owner/bot/member). 15s gecachet, net als de bestaande overview (één buzz-call per
-kanaal).
+(owner/bot/member). De frontend toont de kanaalrol als badge en de ecosysteem-rol
+als tooltip, met `textContent` (geen HTML-injectie via namen). 15s gecachet.

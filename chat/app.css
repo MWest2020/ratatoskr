@@ -167,6 +167,11 @@
     justify-content:center; padding:0 .35rem}
   .chan .unread[hidden]{display:none}  /* author-regel wint van UA; expliciet verbergen */
 .tabs{display:flex;gap:.4rem;margin:.2rem 0 .6rem}
-.tab{flex:1;background:var(--panel,#1c1a16);color:var(--fg,#e8e4dc);border:1px solid #35312a;border-radius:10px;padding:.4rem;font-size:.85rem;cursor:pointer}
-.tab.on{background:var(--accent,#d8a657);color:#15130f;border-color:var(--accent,#d8a657);font-weight:700}
+.tab{flex:1;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:.4rem;font-size:.85rem;cursor:pointer}
+.tab.on{background:var(--accent);color:var(--bg);border-color:var(--accent);font-weight:700}
 .mrole{font-size:.7rem;opacity:.7;font-style:italic}
+.krow{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:.55rem .7rem;margin-bottom:.5rem}
+.kname{font-weight:700;color:var(--accent);font-family:"IBM Plex Mono",monospace;font-size:.82rem}
+.kchips{display:flex;flex-wrap:wrap;gap:.35rem;margin-top:.4rem}
+.kmem{font-size:.75rem;cursor:pointer;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:.15rem .45rem;color:var(--accent2)}
+.knone{color:var(--muted);font-size:.78rem;font-style:italic;margin-top:.3rem}
