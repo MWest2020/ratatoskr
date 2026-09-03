@@ -54,7 +54,7 @@ def send(cid, content, force=False):
     rc, out, err = buzz(args, stdin=content)
     if rc == 0:
         return 200, {"ok": True}
-    m = _MENTION_ERR.search(err or "")
+    m = _MENTION_ERR.search((err or "") + (out or ""))
     if m:
         who = m.group(1)
         return 409, {
@@ -63,7 +63,7 @@ def send(cid, content, force=False):
             "can_force": True,                              # 'toch versturen' (presentation-only) mag
             "channel": cid,
         }
-    return 502, {"error": (err or "").strip()[:200]}
+    return 502, {"error": (err or out or "").strip()[:200]}
 
 
 def create_channel(name):

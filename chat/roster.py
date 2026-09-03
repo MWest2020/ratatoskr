@@ -86,6 +86,9 @@ _FALLBACK = [
     {"handle": "architect", "pubkey": "a18ce524d234433a0702f85f09325165d19aa6fe5e9c28d01e22ffcf55922d49", "rol": "chat-agent"},
     {"handle": "bouwer", "pubkey": "2827e3d844551b81f4193fd7e64b60141759a5a4848482f48b9ad2c2fd938b74", "rol": "chat-agent"},
     {"handle": "marketing", "pubkey": "ba5bf9d6b4009984378561c35a346e64b488282ffd1fbc7dcdde1d19c515fd64", "rol": "chat-agent"},
+    {"handle": "ontwerper", "pubkey": "24ab03329773e12fb183d93e34e05485b3055246c12786e9cad46a311b5ed0e0", "rol": "chat-agent"},
+    {"handle": "reviewer", "pubkey": "7734535c4a432cd0983b965af2ec3b1b07bb6308293e36590d8fdb00d95abff7", "rol": "chat-agent"},
+    {"handle": "coordinator", "pubkey": "c14d1cdd1931061af176392f39fd17303591af0cef17d37e2aadf4bc2b36a8dc", "rol": "meta-agent"},
 ]
 
 

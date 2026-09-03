@@ -22,6 +22,11 @@ error een pop-up "agent zit niet in dit kanaal — toevoegen?".
   `/api/channels/create` voegt 'm best-effort toe na aanmaken.
 - Verwijdert de `MENTION_PUBKEY`-workaround (was niet overal lid).
 
+**Grens van deze change:** dit regelt het versturen (geen kale error) + het
+LIDMAATSCHAP (toevoegen / coordinator standaard). Het maakt een agent NIET
+aanspreekbaar — dat bepaalt de listener (def-kanalen + substring-match, niet
+lidmaatschap). Aanspreekbaar maken = aparte, gekoppelde change (listener-membership).
+
 ## Impact
 
 - `chat/server.py` (dunne routing) + `chat/actions.py` (send/add/create-acties),

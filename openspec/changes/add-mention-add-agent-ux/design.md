@@ -1,19 +1,29 @@
 # Design: add-mention-add-agent-ux
 
-## De relay is al de juiste bron van waarheid
+## Scope: versturen + lidmaatschap, NIET aanspreekbaarheid
 
-Zonder geforceerde `--mention` doet de relay precies wat we willen: `@agent` dat lid
-is → geaccepteerd + getriggerd (`mention_pubkeys`); `@naam` dat geen lid is → fout
-`mention '@X' does not match a current channel member`. We parsen die fout i.p.v.
-'m te onderdrukken — de fout bevat de naam, dus we weten wie en waar.
+Deze change gaat over het VERSTUREN en het toe-te-voegen LIDMAATSCHAP, niet over of
+een agent antwoordt. Zonder geforceerde `--mention` accepteert de relay een bericht
+met `@naam` alleen als die naam LID is; is 'ie geen lid → fout
+`mention '@X' does not match a current channel member`. We parsen die fout (die de
+naam bevat) en bieden een keuze: agent → toevoegen (lid maken), anders → toch
+versturen (presentation-only).
+
+**Belangrijk (grens van deze change):** lid worden ≠ antwoorden. Of een agent
+reageert bepaalt de listener (`agents/listener.py`): die scopet op de handbook-
+`chat.channels` van de agent en triggert op substring-match in de content — hij
+kijkt (nog) niet naar relay-lidmaatschap. Aanspreekbaar maken van een toegevoegde
+agent (of coordinator overal) is dus een aparte, gekoppelde change: **listener op
+lidmaatschap**. Deze change zorgt dat de send lukt en de agent lid ís, als
+voorwaarde daarvoor.
 
 ## Waarom de vorige `--mention <vaste pubkey>` fout was
 
 Die truc maakte elk @woord presentation-only, maar vereiste dat de meegegeven
 pubkey LID van het kanaal was. Geen enkele vaste pubkey is lid van álle kanalen
 (mark's geroteerde pubkey is nergens lid, z'n oude alleen in sommige), dus de send
-brak in kanalen waar de pubkey niet zat. De registry-gedreven pop-up lost dat
-structureel op: je voegt de échte agent toe.
+brak in kanalen waar de pubkey niet zat. Vandaar `_a_member_of`: bij force nemen we
+een écht bestaand lid van dát kanaal als anker-mention.
 
 ## Toevoegen mag vanuit de backend
 

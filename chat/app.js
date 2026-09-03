@@ -78,6 +78,7 @@ async function createChannel(name){
     headers:{"Content-Type":"application/json"},body:JSON.stringify({name})});
   const j=await r.json().catch(()=>({}));
   if(!r.ok||j.error){ toast(j.error||"aanmaken mislukt"); return false; }
+  if(j.coordinator_added===false) toast("kanaal aangemaakt — coordinator toevoegen mislukte");
   await loadChannels();
   const c=channels.find(x=>x.name===name); if(c) selectChannel(c);
   return true;
