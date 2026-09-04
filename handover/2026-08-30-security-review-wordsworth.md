@@ -2,7 +2,7 @@
 type: handover-baton
 van: security-review-sessie + boomhuis (tweede, onafhankelijke blik)
 naar: Mark
-status: afgehandeld (op ontwerp-beslispunten na)
+status: volledig afgehandeld (2026-09-04)
 onderwerp: geautoriseerde security-pass wordsworth-PII-pad + boomhuis-comms
 datum: 2026-08-30
 scope: MWest2020/wordsworth (homelab) + boomhuis chat-backend. Alma (prod) OUT-OF-SCOPE.
@@ -10,7 +10,7 @@ autorisatie: Marks eigen infra/repo's; read/gerichte probes, geen DoS/destructie
 artefact_links:
   - wordsworth-console (live): https://mwest2020.github.io/wordsworth-console/  # commit f15571d
   - wordsworth F1/F3-mitigaties: MWest2020/wordsworth (auth per-caller keys + grant-scoping)
-next_step: RONDE COMPLEET (2026-08-31); F3 STRUCTUREEL GEFIXT + gedeployed (2026-09-04, wordsworth PR #35 + homelab 57dafaf). Rest = alleen F2 als staande guardrail (nooit VC REQUIRED met test/publieke issuer). App-token op comms GEDAAN (2026-09-04, boomhuis PR #15, live). Nog open: alleen de reboot-test van de relay-VM (Mark, wanneer het uitkomt).
+next_step: RONDE COMPLEET (2026-08-31); F3 STRUCTUREEL GEFIXT + gedeployed (2026-09-04, wordsworth PR #35 + homelab 57dafaf). Rest = alleen F2 als staande guardrail (nooit VC REQUIRED met test/publieke issuer). App-token op comms GEDAAN (2026-09-04, boomhuis PR #15, live) en de reboot-test van de relay-VM GEDAAN + GESLAAGD (2026-09-04 19:58Z). Deze baton is hiermee volledig afgehandeld; er staat niets meer open.
 ---
 
 # Verdict — security-pass wordsworth-PII-pad + boomhuis-comms (2026-08-30)
@@ -94,8 +94,20 @@ exploit-details horen hier, niet daar.
   de pagina — anders kon elke tailnet-node het gewoon uit de pagina lezen. Agents
   raakt het niet: die tekenen zelf tegen de relay. Live bewezen op de VM: lezen
   200, schrijven zonder/met fout token 401, met juist token door de gate.
-- **Niet live-reboot-getest:** de relay-VM niet herstart (verstoort de dienst);
-  resilience is by-design (drop-in + Restart). Mark kan reboot-testen wanneer 't uitkomt.
+- **Reboot-test: GEDAAN en GESLAAGD (2026-09-04 19:58Z).** De VM is op Marks
+  verzoek echt herstart (~15s down, systemd userspace 9,6s). Uitslag:
+  `boomhuis-chat` kwam **bij de eerste poging** op (`NRestarts=0`,
+  `Result=success`) en werd actief om 19:58:15, **2s ná** tailscaled (19:58:13) —
+  dus de `After=tailscaled.service network-online.target`-drop-in doet precies
+  wat hij belooft en het `Restart=on-failure`-vangnet was niet nodig. De
+  `tailscale serve`-configuratie overleefde de reboot (HTTPS-voorkant terug,
+  proxy naar 127.0.0.1:8090). Netwerklaag ná reboot opnieuw bewezen dicht:
+  `192.168.178.60:8090` en `100.80.218.83:8090` geven geen verbinding, alleen de
+  tailnet-HTTPS-voorkant antwoordt (200). Relay-containers (unless-stopped) alle
+  vier healthy terug. Functioneel identiek aan de nulmeting: 15 kanalen, 50
+  berichten in #general. Schrijf-token overleefde ook (401 zonder token, door de
+  gate met het juiste token). Het agent-pad naar de relay is los bewezen met een
+  echte `ping.sh`-post in #general.
 
 ## Beslispunten voor Mark
 
