@@ -11,7 +11,10 @@ default, of de operator-backfill) daadwerkelijk aanspreekbaar zonder handbook-wi
 De listener SHALL de te pollen kanaal-set live uit de relay bepalen (`buzz channels
 list`), met `channels.yml` als vangnet, zodat na deploy aangemaakte kanalen worden
 opgepikt. Kanaal-lidmaatschap en kanaal-lijst MOGEN kort gecachet worden; een
-mislukte of lege fetch SHALL een eerder geslaagde cache niet overschrijven.
+MISLUKTE fetch SHALL een eerder geslaagde cache niet overschrijven. Voor de kanaal-
+LIJST geldt een geslaagd-maar-lege uitkomst óók als mislukt (een lege lijst is nooit
+legitiem). Voor LIDMAATSCHAP is een geslaagde lege uitkomst wél geldig (het laatste
+lid kan weg zijn) en actualiseert die de cache.
 
 #### Scenario: Lid-maar-niet-def-gescopt reageert
 

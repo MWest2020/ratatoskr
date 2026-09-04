@@ -20,9 +20,13 @@ handbook-`chat.channels`.
 
 De poll-lus draait elke ~5s over alle kanalen. Lidmaatschap en de kanaal-lijst
 veranderen zelden, dus beide worden ~60s gecachet (`topology.py`). Zo blijft het
-aantal `buzz channels members`-calls laag, ook met tientallen kanalen. Een lege
-of mislukte fetch overschrijft géén goede cache (val-terug op wat we hadden),
-net als bij `roster.identity_map`.
+aantal `buzz channels members`-calls laag, ook met tientallen kanalen. Een MISLUKTE
+fetch overschrijft géén goede cache (val-terug op wat we hadden), net als bij
+`roster.identity_map`. Onderscheid: een geslaagd-maar-lege LEDENlijst (`[]`) is een
+geldige uitkomst (laatste lid weg) en actualiseert de cache; een geslaagd-maar-lege
+KANAALlijst is nooit legitiem en wordt als mislukt behandeld (goede cache behouden).
+`_rows` maakt dit onderscheid: None = mislukt/onparsebaar/sleutel-afwezig, `[]` =
+geslaagd leeg.
 
 De post die met de live kanaal-set meeschaalt is `get_messages` — één seriële
 `buzz messages get` per kanaal per tick (timeout 25s), die de volledige historie

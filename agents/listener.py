@@ -125,8 +125,8 @@ def main():
         AGENT_PUBS.add(name2pub.get(h))
 
     def scoped(h, cname, cid):  # mention-scope: handbook OF relay-lid (pure is_scoped)
-        return topology.is_scoped(AGENTS[h]["channels"], cname,
-                                  name2pub.get(h), topology.members(run, cid))
+        return topology.is_scoped(AGENTS[h]["channels"], cname, name2pub.get(h),
+                                  lambda: topology.members(run, cid))  # lui: alleen bij need
 
     seen, seeded = set(), set()
 

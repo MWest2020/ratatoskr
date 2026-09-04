@@ -12,7 +12,7 @@
 - [x] 1.4 Live smoke: @coordinator in #red-team → antwoord; @<agent> in een via de
       app aangemaakt kanaal → antwoord; def-kanaal (bv. @architect in
       #architectuur) blijft werken; geen dubbel-antwoord.
-      Bewijs (listener-log, 4× herhaald over r1–r3-fixes; #red-team staat niet in
+      Bewijs (listener-log, 6× herhaald, ook na de r4/r5-fixes (laatst na r5); #red-team staat niet in
       coordinators handbook-`chat.channels: [general]`, dus dit kan ALLEEN via de
       relay-lidmaatschap-tak): `mention @coordinator in #red-team` → `coordinator
       antwoordde in #red-team (mention)`. Def-kanaal (@architect/#architectuur) en de
@@ -45,3 +45,8 @@
       is ongeguard); design eerlijk over de verruimde `get_messages`-kostenpost
       (poll-set = channels.yml ∪ alle open relay-kanalen, niet meer de curatie) +
       de bewuste vervolg-tak-tradeoff. Tests: 9, groen.
+- [x] 1.10 r6-fixes: `poll_channels` behandelt een geslaagd-maar-lege KANAALlijst als
+      mislukt (`if not rows`) → verliest geen ontdekte kanalen; spec/design zetten het
+      onderscheid recht (mislukt vs geslaagd-leeg: kanaallijst nooit legitiem leeg,
+      ledenlijst wél); `is_scoped` neemt de leden LUI (0-arg callable) → geen members-
+      fetch voor een def-gescopt kanaal. Tests: 11 (incl. lege-lijst + laziness), groen.

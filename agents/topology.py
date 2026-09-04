@@ -49,9 +49,9 @@ def poll_channels(run, fallback, now=None):
     if _channels["data"] is not None and now - _channels["t"] < TTL:
         return _channels["data"]
     rows = _rows(run(["channels", "list"]), "channels")
-    if rows is None:  # fetch faalde → goede cache behouden, anders kale fallback
+    if not rows:  # mislukt (None) OF leeg — een lege kanaallijst is nooit legitiem
         data = _channels["data"] if _channels["data"] is not None else dict(fallback)
-        _channels.update(t=now, data=data)
+        _channels.update(t=now, data=data)  # goede cache behouden, anders kale fallback
         return data
     live = {}
     for x in rows:
@@ -82,8 +82,9 @@ def members(run, cid, now=None):
     return pubs
 
 
-def is_scoped(def_channels, cname, agent_pub, member_pubs):
+def is_scoped(def_channels, cname, agent_pub, member_pubs_fn):
     """Reageert een agent in dit kanaal? Handbook-scope OF relay-lid (union). Puur
-    (geen I/O) zodat de kernregel van deze change getest kan worden; de listener
-    voert `member_pubs` aan uit `members(run, cid)`."""
-    return cname in def_channels or agent_pub in member_pubs
+    (geen I/O) zodat de kernregel getest kan worden. `member_pubs_fn` is een 0-arg
+    callable — LUI: alleen aangeroepen als de handbook-scope de vraag niet al
+    beantwoordt, zodat we geen members-fetch doen voor een def-gescopt kanaal."""
+    return cname in def_channels or agent_pub in member_pubs_fn()

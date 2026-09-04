@@ -46,6 +46,15 @@ class PollChannels(unittest.TestCase):
         d = topology.poll_channels(_run({"list": ""}), fb, now=1000)
         self.assertEqual(d, fb)
 
+    def test_lege_relay_lijst_behoudt_ontdekte_kanalen(self):
+        # geslaagd-maar-leeg ({"channels":[]}) is nooit legitiem → goede cache houden,
+        # niet terugvallen op fallback-only (verlies van een ontdekt kanaal).
+        fb = {"general": "g"}
+        topology.poll_channels(_run({"list": '{"channels":[{"name":"nieuw","id":"n1"}]}'}), fb, now=1000)
+        topology._channels["t"] = 0.0  # verlopen
+        d = topology.poll_channels(_run({"list": '{"channels":[]}'}), fb, now=2000)
+        self.assertEqual(d.get("nieuw"), "n1")
+
 
 class Members(unittest.TestCase):
     def setUp(self):
@@ -87,9 +96,15 @@ class Rows(unittest.TestCase):
 
 class IsScoped(unittest.TestCase):
     def test_union(self):
-        self.assertTrue(topology.is_scoped(["general"], "general", "p", set()))   # def
-        self.assertTrue(topology.is_scoped(["general"], "red-team", "p", {"p"}))   # lid
-        self.assertFalse(topology.is_scoped(["general"], "red-team", "p", {"q"}))  # geen van beide
+        self.assertTrue(topology.is_scoped(["general"], "general", "p", lambda: set()))
+        self.assertTrue(topology.is_scoped(["general"], "red-team", "p", lambda: {"p"}))
+        self.assertFalse(topology.is_scoped(["general"], "red-team", "p", lambda: {"q"}))
+
+    def test_members_lui_bij_def_scope(self):
+        # def-scope beantwoordt de vraag → member_pubs_fn mag NIET worden aangeroepen
+        def boom():
+            raise AssertionError("members onnodig opgehaald")
+        self.assertTrue(topology.is_scoped(["general"], "general", "p", boom))
 
 
 class Mentioned(unittest.TestCase):
