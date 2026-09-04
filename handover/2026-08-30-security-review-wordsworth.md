@@ -10,7 +10,7 @@ autorisatie: Marks eigen infra/repo's; read/gerichte probes, geen DoS/destructie
 artefact_links:
   - wordsworth-console (live): https://mwest2020.github.io/wordsworth-console/  # commit f15571d
   - wordsworth F1/F3-mitigaties: MWest2020/wordsworth (auth per-caller keys + grant-scoping)
-next_step: RONDE COMPLEET (2026-08-31). F1+F3+F4 fixed+verified (review-sessie), comms-Medium fixed (boomhuis). Rest = alleen F2 als staande guardrail (nooit VC REQUIRED met test/publieke issuer). Optionele app-token op comms = nog open (niet nodig; netwerklaag dicht).
+next_step: RONDE COMPLEET (2026-08-31); F3 STRUCTUREEL GEFIXT + gedeployed (2026-09-04, wordsworth PR #35 + homelab 57dafaf). Rest = alleen F2 als staande guardrail (nooit VC REQUIRED met test/publieke issuer). Nog open: optionele app-token op comms (niet nodig zolang elke tailnet-node Marks eigen hardware is) en de reboot-test van de relay-VM (Mark, wanneer het uitkomt).
 ---
 
 # Verdict — security-pass wordsworth-PII-pad + boomhuis-comms (2026-08-30)
@@ -32,13 +32,37 @@ exploit-details horen hier, niet daar.
 - **Bewijs:** reveal met console-key → audit `caller=console` (distinct); wrong
   key → 401. Non-repudiation hersteld.
 
-### F3 — ongescopete grants reveal op álle docs · Low/Med · FIXED+verified
+### F3 — ongescopete grants reveal op álle docs · Low/Med · STRUCTUREEL GEFIXT (2026-09-04)
 - **Entry:** `POST /documents/{id}/reveal` met een global grant.
 - **Defect:** `grants.py:39` markeert `document_id=None` als "global"; `authorize()`
   (r.67) slaat de doc-check over als `document_id is None` ⇒ één grant reveal-t op
   elk document. Live-repro: één `[PERSON]`-grant → 200 op twee doc-id's.
-- **Fix (peer):** Console geeft nu optioneel `document_id` mee (scoping).
-- **Bewijs:** gescopete grant → reveal op eigen doc 200, op ander doc 403.
+- **Eerste fix (peer, 2026-08-30):** Console geeft nu optioneel `document_id` mee
+  (scoping). Bewijs: gescopete grant → reveal op eigen doc 200, op ander doc 403.
+- **Waarom dat niet genoeg was:** die fix zat bij de *uitgever*. Het console-veld
+  heet "document-id (optioneel)" en `authorize()` zag `document_id is None` nog
+  steeds als global — een grant die je leeg laat, of die rechtstreeks in de DB
+  staat, reveal-t nog steeds alles. Veilig pad mogelijk, niet default.
+- **Structurele fix (2026-09-04, wordsworth PR #35, change `harden-global-grant-gate`):**
+  `WORDSWORTH_ALLOW_GLOBAL_GRANTS`, default `false`. Ongescopete grant wordt
+  geweigerd bij issue (400, geen grant-rij, geen audit-event) **en** is inert in
+  `authorize()`, dus ook grants van vóór de gate vallen eronder. Spec-amendement
+  op de `grants`-capability door Mark geratificeerd; bewust breaking-by-default,
+  wat kon omdat er live 6 ongescopete grants zijn en daarvan **0 actief**.
+  Volgt het precedent van `add-domain-keys` ("a grant never spans domains
+  implicitly").
+- **Live bewijs (homelab, image `sha-33186cb`, gate DICHT):** issue zonder
+  `document_id` → 400 met detail; mét `document_id` → 201; reveal op eigen
+  document → 200 (`['EMAIL']`); reveal op een ánder document → 403
+  "grant not applicable"; smoke-grant daarna ingetrokken. De API-key is binnen
+  de pod gebruikt, dus geen sleutelmateriaal in transcript of logs.
+- **Bijvangst van deze deploy:** de ArgoCD PreSync-init-job stond gepind op
+  `sha-06f7294` en had de kolom-migraties uit `init_schema()` nooit toegepast
+  (`grants.domain`, `pii_mappings.norm_version` ontbraken). Zichtbaar als 500 bij
+  elke grant-issue zodra de api op een post-#34-image kwam. Opgelost door
+  init-job en api op dezelfde sha te pinnen (homelab `57dafaf`); init draaide
+  daarna "schema ready" en beide kolommen bestaan. **Les: init-job en api altijd
+  samen bumpen.**
 
 ### Comms — chat-backend bindt 0.0.0.0, geen auth, tekent als mark · Medium · FIXED+verified
 - **Entry:** `POST http://192.168.178.60:8090/api/send` (ook `/api/channels/create|delete`).
