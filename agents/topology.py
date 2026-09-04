@@ -14,11 +14,11 @@ import time
 TTL = 60  # seconden; topologie verandert zelden
 
 # De relay maakt zelf ondeletebare default-kanalen aan (een tweede 'general',
-# 'welcome-everyone'/'Welcome'); die horen niet in de poll-set. Spiegelt de HIDE
-# in chat/buzzcli.py:_channels_raw. De PREFER-map daar (general -> de juiste cid)
-# hoeven we NIET te kopiëren: channels.yml is de gecureerde bron en wint bij een
-# naam-botsing ({**live, **fallback}), dus de channels.yml-'general'-cid (waar de
-# agents in zitten) is sowieso wat we pollen; de relay voegt alléén nieuwe namen toe.
+# 'welcome-everyone'/'Welcome'); die horen niet in de poll-set. Spiegelt (bewust
+# gedupliceerd, andere dir/geen gedeelde import) de HIDE in chat/buzzcli.py. De
+# PREFER-map daar hoeven we niet te kopiëren ZOLANG channels.yml de canonieke cids
+# bevat: die wint bij naam-botsing ({**live, **fallback}). Ontbreekt een naam in
+# channels.yml, dan valt 'ie terug op de eerste relay-record voor die naam.
 _HIDE = {"welcome-everyone", "Welcome"}
 
 _channels = {"t": 0.0, "data": None}
@@ -26,12 +26,18 @@ _members = {}  # cid -> {"t": float, "pubs": set}
 
 
 def _rows(out, key):
-    """JSON-lijst uit relay-output: kale lijst of {<key>: [...]}."""
+    """JSON-lijst uit relay-output: kale lijst of {<key>: [...]}. None bij onparse-
+    baar OF een onverwacht type (null/string/getal) — dan mag de aanroeper niet
+    crashen op .get(); die None is 'mislukte fetch'."""
     try:
         d = json.loads(out)
     except Exception:
         return None
-    return d if isinstance(d, list) else d.get(key, [])
+    if isinstance(d, list):
+        return d
+    if isinstance(d, dict):
+        return d.get(key, [])
+    return None
 
 
 def poll_channels(run, fallback, now=None):
@@ -66,12 +72,18 @@ def members(run, cid, now=None):
     if e and now - e["t"] < TTL:
         return e["pubs"]
     rows = _rows(run(["channels", "members", "--channel", cid]), "members")
-    if rows is None:  # mislukte fetch → eerdere leden behouden, venster verlengen
-        if e:
-            e["t"] = now
+    if rows is None:  # mislukte fetch → eerdere leden behouden; GEEN lege entry
+        if e:                          # cachen zonder eerdere entry (dat zou een
+            e["t"] = now               # echt-leeg kanaal nabootsen en 60s vastzetten)
             return e["pubs"]
-        _members[cid] = {"t": now, "pubs": set()}
         return set()
     pubs = {x.get("pubkey") for x in rows if x.get("pubkey")}  # geslaagd (evt. leeg)
     _members[cid] = {"t": now, "pubs": pubs}
     return pubs
+
+
+def is_scoped(def_channels, cname, agent_pub, member_pubs):
+    """Reageert een agent in dit kanaal? Handbook-scope OF relay-lid (union). Puur
+    (geen I/O) zodat de kernregel van deze change getest kan worden; de listener
+    voert `member_pubs` aan uit `members(run, cid)`."""
+    return cname in def_channels or agent_pub in member_pubs

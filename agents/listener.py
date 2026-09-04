@@ -20,16 +20,15 @@ import time
 
 import bootstrap
 import prompts
+import providers
 import topology
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 BUZZ = os.environ.get("BUZZ_BIN", "buzz")
-CLAUDE = os.environ.get("CLAUDE_BIN", "claude")
 RELAY = os.environ["BUZZ_RELAY_URL"]
 POLL = int(os.environ.get("POLL_SECONDS", "5"))
 MAX_CTX = 8
-MAX_TURN_S = 150
 
 
 CHANNELS = bootstrap.load_channels(ROOT)
@@ -91,18 +90,6 @@ def send(cid, content, nsec, self_npub):
     return p.returncode == 0
 
 
-# Protocol-naad: het agent-backend zit achter één functie. Vandaag 'claude-p'
-# (sub-first). Een nieuw backend = één extra tak; de handbook-def declareert de
-# provider (front-matter agent.provider, default claude-p).
-def run_provider(provider, system, prompt):
-    if provider in (None, "claude-p", "claude"):
-        p = subprocess.run([CLAUDE, "-p", "--append-system-prompt", system, prompt],
-                           capture_output=True, text=True, timeout=MAX_TURN_S)
-        return (p.stdout or "").strip() or "(geen antwoord)"
-    # hier pluggen toekomstige backends in (codex, remote-agent, http/SSE-connector…)
-    return f"(provider '{provider}' nog niet ondersteund door deze listener)"
-
-
 def buzz_run(nsec):
     """`run(args) -> stdout|""`-callable voor topology.py (buzz-env van deze agent;
     faalt de call → lege string, topology valt dan terug)."""
@@ -125,9 +112,9 @@ def main():
     for h in AGENTS:
         AGENT_PUBS.add(name2pub.get(h))
 
-    def scoped(h, cname, cid):
-        """Reageert agent h in dit kanaal? Handbook-scope OF relay-lid (union)."""
-        return cname in AGENTS[h]["channels"] or name2pub.get(h) in topology.members(run, cid)
+    def scoped(h, cname, cid):  # mention-scope: handbook OF relay-lid (pure is_scoped)
+        return topology.is_scoped(AGENTS[h]["channels"], cname,
+                                  name2pub.get(h), topology.members(run, cid))
 
     seen, seeded = set(), set()
 
@@ -168,7 +155,9 @@ def main():
                     for prev in reversed(msgs[max(0, i - 10):i]):
                         if prev.get("pubkey") in AGENT_PUBS:
                             h = PUB2NAME.get(prev.get("pubkey"))
-                            if h in AGENTS and scoped(h, cname, cid):
+                            # vervolg (zonder mention) blijft def-kanaal-only (spec);
+                            # membership verbreedt alléén de mention-tak hierboven.
+                            if h in AGENTS and cname in AGENTS[h]["channels"]:
                                 targets = [h]
                                 reason = "vervolg"
                             break  # alleen de meest recente agent telt
@@ -186,7 +175,7 @@ def main():
                         if lt:
                             p = lt + "\n\n" + p
                     try:
-                        ans = run_provider(cfg.get("provider"), cfg["system"], p)
+                        ans = providers.run(cfg.get("provider"), cfg["system"], p)
                     except subprocess.TimeoutExpired:
                         ans = "(time-out — vraag te zwaar voor een chatbeurt)"
                     except Exception as e:

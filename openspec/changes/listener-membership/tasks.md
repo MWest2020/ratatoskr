@@ -23,3 +23,10 @@
       `members` cachet een echt-leeg kanaal maar behoudt de cache bij een fout;
       `mentioned` = woordgrens-match (`@architect` ≠ `@architectuur`); `_HIDE`-comment
       legt uit waarom PREFER niet nodig is. Tests in agents/test_topology.py (6, groen).
+- [x] 1.7 r3-fixes: thread-vervolg terug naar def-kanaal-only (membership verbreedt
+      alléén de mention-tak, conform spec); `_rows` geeft None bij non-dict JSON
+      (geen AttributeError-crash); `members` cachet geen negatieve lege entry bij een
+      eerste mislukte fetch; `mentioned` heeft nu óók een linker-woordgrens
+      (`deploy@bouwer` matcht niet); pure `topology.is_scoped` (getest); provider-naad
+      naar `providers.py` (listener 189 regels); README + design-kostennoot bijgewerkt;
+      test-commando in de docstring rechtgezet. Tests: 9, groen.

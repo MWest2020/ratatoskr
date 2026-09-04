@@ -17,6 +17,14 @@ aantal `buzz channels members`-calls laag, ook met tientallen kanalen. Een lege
 of mislukte fetch overschrijft géén goede cache (val-terug op wat we hadden),
 net als bij `roster.identity_map`.
 
+De post die WÉL met de live kanaal-set meeschaalt is `get_messages` — één seriële
+`buzz messages get` per kanaal per tick (timeout 25s), die de volledige historie
+ophaalt. Dat is bewust niet gecachet (we willen juist nieuwe berichten zien) en
+bestond al vóór deze change; de grens is het reële aantal kanalen (nu ~15–20). De
+cache dekt dus de topologie-calls, niet deze read. Groeit het kanaal-aantal sterk,
+dan is een `since`/paginatie-optimalisatie op `get_messages` het logische vervolg
+(buiten deze change).
+
 ## Live kanaal-set met `channels.yml` als vangnet
 
 `buzz channels list` geeft alle open kanalen; daarmee poll't de listener ook

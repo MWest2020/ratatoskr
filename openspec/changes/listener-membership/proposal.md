@@ -33,7 +33,10 @@ sowieso niets opgepikt.
 ## Impact
 
 - `agents/listener.py` (routing op lidmaatschap + live poll-set), nieuw
-  `agents/topology.py` (relay-kanalen + leden, gecachet) en `agents/prompts.py`
-  (context/prompt-bouwers uitgesplitst zodat listener.py ≤200 regels blijft).
-- Gedrag: agents antwoorden nu in élk kanaal waar ze lid zijn; leesbaar via de
-  bestaande listener-logs. Additief, geen migratie.
+  `agents/topology.py` (relay-kanalen + leden + pure `is_scoped`), `agents/prompts.py`
+  (context/prompt-bouwers + `mentioned`), `agents/bootstrap.py` (yaml + handbook-def)
+  en `agents/providers.py` (provider-naad) — uitgesplitst zodat listener.py ≤200
+  regels blijft; `agents/test_topology.py` dekt de pure logica.
+- Gedrag: agents antwoorden nu op een @mention in élk kanaal waar ze lid zijn
+  (thread-vervolg blijft def-kanaal-only); leesbaar via de bestaande listener-logs.
+  Additief, geen migratie.

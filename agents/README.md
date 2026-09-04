@@ -11,7 +11,15 @@ in de **handbook** — single source of truth: `MWest2020/handbook` →
   npub tegen `identities.yml` (guardrail: geen bron of npub-mismatch → geen
   spawn, fail-closed), en draait de loop: `@handle`-mention → `claude -p` met de
   handbook-systemprompt → antwoord terug in het kanaal.
+- `bootstrap.py` — opstart-helpers: YAML-lezers + de handbook-def-parser (`fetch_def`).
+- `topology.py` — relay-topologie: welke kanalen bestaan (`poll_channels`) en wie
+  is waar lid (`members`), gecachet; `is_scoped` (pure union-regel).
+- `prompts.py` — context/prompt-bouwers + `mentioned` (woordgrens-match).
+- `providers.py` — provider-naad (`claude -p`; een nieuw backend = één tak).
+- `test_topology.py` — offline unittests (`cd agents && python3 -m unittest test_topology`).
 - `run.sh` — exporteert NSEC_<HANDLE> uit SOPS en start de listener.
+
+De backend is bewust opgesplitst zodat elk bestand ≤200 regels blijft.
 
 Draaien: `bash agents/run.sh` (op agent-lxc; claude+buzz+age-key aanwezig).
 
