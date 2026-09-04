@@ -130,5 +130,12 @@ class Mentioned(unittest.TestCase):
         self.assertTrue(prompts.mentioned("HOI @Coordinator", "coordinator"))  # case-insens
 
 
+class ChannelKnowledge(unittest.TestCase):
+    def test_path_traversal_geweigerd(self):
+        # onveilige (relay-geleverde) kanaalnaam mag geen bestand buiten knowledge/ lezen
+        for bad in ["../../etc/passwd", "..", "a/b", "x/../y", "/etc/hosts", ""]:
+            self.assertEqual(prompts.channel_knowledge("/tmp", bad), "")
+
+
 if __name__ == "__main__":
     unittest.main()

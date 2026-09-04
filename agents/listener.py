@@ -152,7 +152,7 @@ def main():
                 continue
             for i, m in enumerate(msgs):
                 mid = m.get("id")
-                if mid in seen:
+                if not mid or mid in seen:  # id-loos bericht overslaan (niet dedup-baar)
                     continue
                 seen.add(mid)
                 if m.get("pubkey") in AGENT_PUBS:

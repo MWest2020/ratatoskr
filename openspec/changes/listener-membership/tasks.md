@@ -63,3 +63,8 @@
       staat nu ook in de spec-delta; cid-dedup-keuze (channels.yml canoniek bij
       relay-hernoeming) + `seen`-groei als follow-up in design vastgelegd; smoke-bewijs
       eerlijk herkaderd (happy-path live, edges via de 12 unittests).
+- [x] 1.13 r9-fixes (incl. SECURITY): `channel_knowledge` valideert de kanaalnaam
+      streng (`_SAFE_NAME`) vóór 't pad — de naam komt nu uit de relay, dus een
+      `../..`-naam zou anders een path-traversal-read geven; `bootstrap` vangt
+      `channels:` = YAML null (`or []`); id-loze berichten worden overgeslagen (geen
+      None in `seen`); vervolg-def-only heeft nu een spec-scenario. Tests: 13, groen.

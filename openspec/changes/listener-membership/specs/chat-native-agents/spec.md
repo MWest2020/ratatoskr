@@ -37,3 +37,11 @@ lid kan weg zijn) en actualiseert die de cache.
 
 - **WHEN** een kanaal via de webchat is aangemaakt en dus niet in `channels.yml` staat
 - **THEN** neemt de listener het via de live kanaal-lijst op in de poll-set
+
+#### Scenario: Vervolg zonder mention blijft def-kanaal-only
+
+- **WHEN** een agent alléén via relay-lidmaatschap (niet via z'n handbook-
+  `chat.channels`) in een kanaal zit en er een bericht ZONDER mention op z'n
+  vorige beurt volgt
+- **THEN** praat de agent NIET automatisch door — het thread-vervolg geldt alleen
+  in de handbook-gescopte kanalen

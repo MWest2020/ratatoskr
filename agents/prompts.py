@@ -6,6 +6,8 @@ naam-map) komen als parameters binnen, geen module-globals van de listener.
 import os
 import re
 
+_SAFE_NAME = re.compile(r"^[a-z0-9][a-z0-9_-]*$")  # kanaalnaam → bestandspad: geen ../ of /
+
 
 def mentioned(content, handle):
     """Wordt @handle genoemd? Woordgrens links én rechts: rechts zodat '@architect'
@@ -16,7 +18,12 @@ def mentioned(content, handle):
 
 def channel_knowledge(root, cname):
     """Per-kanaal kennis: knowledge/<kanaal>.md wordt als context aan elke
-    agent-beurt in dat kanaal meegegeven. Leeg = geen extra context."""
+    agent-beurt in dat kanaal meegegeven. Leeg = geen extra context. De kanaalnaam
+    komt uit de relay (niet meer alleen channels.yml), dus we valideren 'm streng
+    tegen `_SAFE_NAME` vóór 'ie in een pad belandt — anders zou `../..`-naam een
+    path-traversal-read geven."""
+    if not _SAFE_NAME.match(cname or ""):
+        return ""
     try:
         return open(os.path.join(root, "knowledge", f"{cname}.md")).read().strip()[:4000]
     except OSError:

@@ -38,7 +38,7 @@ def fetch_def(base, handle):
         return None
     fm = yaml.safe_load(m.group(1)).get("agent", {})
     chat = fm.get("chat") or {}
-    channels = chat.get("channels", [])
+    channels = chat.get("channels") or []  # `or`: vangt óók `channels:` = YAML null
     # systemprompt = de blockquote onder '## Chat-facet'
     body = s[m.end():]
     cf = re.search(r"##\s*Chat-facet.*?\n(.*?)(?:\n##\s|\Z)", body, re.S)
