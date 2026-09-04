@@ -63,11 +63,14 @@ def buzz_env(nsec):
 
 
 def get_messages(cid, nsec):
-    """Berichten oplopend gesorteerd. None bij een MISLUKTE read (rc!=0/onparsebaar),
-    [] bij een echt LEEG kanaal — de aanroeper mag die twee niet verwarren (anders
-    wordt een gefaalde read als 'geseed' behandeld en volgt historie-spam)."""
-    p = subprocess.run([BUZZ, "messages", "get", "--channel", cid],
-                       env=buzz_env(nsec), capture_output=True, text=True, timeout=25)
+    """Berichten oplopend gesorteerd. None bij een MISLUKTE read (rc!=0/timeout/
+    onparsebaar), [] bij een echt LEEG kanaal — niet verwarren (anders wordt een
+    gefaalde read 'geseed' en volgt historie-spam)."""
+    try:
+        p = subprocess.run([BUZZ, "messages", "get", "--channel", cid],
+                           env=buzz_env(nsec), capture_output=True, text=True, timeout=25)
+    except Exception:  # timeout/OSError = mislukte read (None), mag de daemon niet doden
+        return None
     if p.returncode != 0:
         return None
     try:
@@ -79,12 +82,15 @@ def get_messages(cid, nsec):
 
 
 def send(cid, content, nsec, self_npub):
-    """Post een antwoord (eigen npub als --mention → willekeurige @woorden blijven
-    presentation-only). Geeft True bij succes; een geweigerde send loggen we i.p.v.
-    onterecht 'antwoordde' te melden."""
-    p = subprocess.run([BUZZ, "messages", "send", "--channel", cid, "--content", "-",
-                        "--mention", self_npub],
-                       env=buzz_env(nsec), input=content, capture_output=True, text=True, timeout=25)
+    """Post een antwoord (eigen npub als --mention → @woorden blijven presentation-
+    only). True bij succes; een geweigerde send loggen we (geen valse 'antwoordde')."""
+    try:
+        p = subprocess.run([BUZZ, "messages", "send", "--channel", cid, "--content", "-",
+                            "--mention", self_npub],
+                           env=buzz_env(nsec), input=content, capture_output=True, text=True, timeout=25)
+    except Exception as e:  # timeout/OSError mag de daemon niet doden
+        print(f"[listener] send-fout in {cid}: {e}", flush=True)
+        return False
     if p.returncode != 0:
         print(f"[listener] send FAALDE in {cid}: {(p.stderr or p.stdout).strip()[:120]}", flush=True)
     return p.returncode == 0
@@ -152,8 +158,7 @@ def main():
                 if m.get("pubkey") in AGENT_PUBS:
                     continue
                 content = m.get("content", "")
-                # Wie reageert? (a) @mentions van agents die hier gescopt/relay-lid
-                # zijn; (b) anders: de laatst-actieve agent praat door (thread-vervolg).
+                # (a) @mentions van hier-gescopte/relay-lid-agents; (b) anders: vervolg.
                 targets = [h for h in AGENTS
                            if prompts.mentioned(content, h) and scoped(h, cname, cid)]
                 reason = "mention"

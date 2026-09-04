@@ -40,3 +40,8 @@
       poll-lus niet crasht; `_rows` geeft None voor een dict zonder de sleutel
       (bv. `{"error":..}`, geen valse lege-lijst-cache); reader-fallback logt een
       waarschuwing als coordinator ontbreekt; smoke-bewijs vastgelegd in 1.4. Tests: 9.
+- [x] 1.9 r5-fixes: óók `get_messages`/`send` vangen subprocess-excepties (timeout/
+      OSError) → None/False, zodat één timeout de daemon niet doodt (de `while True`
+      is ongeguard); design eerlijk over de verruimde `get_messages`-kostenpost
+      (poll-set = channels.yml ∪ alle open relay-kanalen, niet meer de curatie) +
+      de bewuste vervolg-tak-tradeoff. Tests: 9, groen.
