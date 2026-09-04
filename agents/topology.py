@@ -36,7 +36,7 @@ def _rows(out, key):
     if isinstance(d, list):
         return d
     if isinstance(d, dict):
-        return d.get(key, [])
+        return d[key] if key in d else None  # sleutel afwezig (bv. {"error":..}) = mislukt
     return None
 
 

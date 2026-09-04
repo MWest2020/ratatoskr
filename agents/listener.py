@@ -94,8 +94,11 @@ def buzz_run(nsec):
     """`run(args) -> stdout|""`-callable voor topology.py (buzz-env van deze agent;
     faalt de call → lege string, topology valt dan terug)."""
     def run(args):
-        p = subprocess.run([BUZZ, *args], env=buzz_env(nsec),
-                           capture_output=True, text=True, timeout=25)
+        try:
+            p = subprocess.run([BUZZ, *args], env=buzz_env(nsec),
+                               capture_output=True, text=True, timeout=25)
+        except Exception:  # timeout/OSError → lege string (belofte houdt, poll crasht niet)
+            return ""
         return p.stdout if p.returncode == 0 else ""
     return run
 
@@ -105,6 +108,9 @@ def main():
         raise SystemExit("geen agents gespawnd (geen bron/nsec/npub-match)")
     # Reader = coordinator (lid van elk kanaal via default+backfill) zodat list/
     # members/messages álle kanalen zien; één agent-sleutel mist private kanalen.
+    if "coordinator" not in AGENTS:
+        print("[listener] LET OP: geen coordinator gespawnd — reader valt terug op "
+              f"{next(iter(AGENTS))}, mogelijk smallere kanaal-zichtbaarheid", flush=True)
     read_nsec = (AGENTS.get("coordinator") or next(iter(AGENTS.values())))["nsec"]
     run = buzz_run(read_nsec)  # relay-I/O voor topology (kanalen + leden)
     # pubkeys van agents, om niet op agents te reageren

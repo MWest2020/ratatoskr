@@ -79,6 +79,8 @@ class Rows(unittest.TestCase):
         self.assertIsNone(topology._rows("null", "channels"))
         self.assertIsNone(topology._rows('"hoi"', "channels"))
         self.assertIsNone(topology._rows("", "channels"))
+        self.assertIsNone(topology._rows('{"error":"boom"}', "members"))  # sleutel afwezig
+        self.assertEqual(topology._rows('{"members":[]}', "members"), [])  # leeg ≠ fout
         self.assertEqual(topology._rows('{"channels":[1]}', "channels"), [1])
         self.assertEqual(topology._rows("[1,2]", "channels"), [1, 2])
 

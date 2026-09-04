@@ -12,6 +12,11 @@
 - [x] 1.4 Live smoke: @coordinator in #red-team → antwoord; @<agent> in een via de
       app aangemaakt kanaal → antwoord; def-kanaal (bv. @architect in
       #architectuur) blijft werken; geen dubbel-antwoord.
+      Bewijs (listener-log, 4× herhaald over r1–r3-fixes; #red-team staat niet in
+      coordinators handbook-`chat.channels: [general]`, dus dit kan ALLEEN via de
+      relay-lidmaatschap-tak): `mention @coordinator in #red-team` → `coordinator
+      antwoordde in #red-team (mention)`. Def-kanaal (@architect/#architectuur) en de
+      #general-vervolg-tak bleven in dezelfde runs werken; geen dubbel-antwoord.
 - [x] 1.5 r1-fixes: `poll_channels` filtert relay-junk (`_HIDE`) en laat de
       channels.yml-cid winnen bij naam-botsing (relay overschrijft niet meer); een
       mislukte/lege fetch behoudt de goede cache i.p.v. terug te vallen op de kale
@@ -30,3 +35,8 @@
       (`deploy@bouwer` matcht niet); pure `topology.is_scoped` (getest); provider-naad
       naar `providers.py` (listener 189 regels); README + design-kostennoot bijgewerkt;
       test-commando in de docstring rechtgezet. Tests: 9, groen.
+- [x] 1.8 r4-fixes: `buzz_run` vangt subprocess-excepties (timeout/OSError) → lege
+      string, zodat de belofte 'faalt → val terug' óók bij een timeout houdt en de
+      poll-lus niet crasht; `_rows` geeft None voor een dict zonder de sleutel
+      (bv. `{"error":..}`, geen valse lege-lijst-cache); reader-fallback logt een
+      waarschuwing als coordinator ontbreekt; smoke-bewijs vastgelegd in 1.4. Tests: 9.
