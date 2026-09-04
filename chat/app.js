@@ -78,6 +78,7 @@ async function createChannel(name){
     headers:{"Content-Type":"application/json"},body:JSON.stringify({name})});
   const j=await r.json().catch(()=>({}));
   if(!r.ok||j.error){ toast(j.error||"aanmaken mislukt"); return false; }
+  if(j.coordinator_added===false) toast("kanaal aangemaakt — coordinator toevoegen mislukte");
   await loadChannels();
   const c=channels.find(x=>x.name===name); if(c) selectChannel(c);
   return true;
@@ -137,11 +138,48 @@ async function refresh(force){
   if(force||near) box.scrollTop=box.scrollHeight;
 }
 
-async function send(text){
-  const r = await fetch("/api/send",{method:"POST",headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({channel:current.id, content:text})});
+async function send(text){ return await _postSend(text, current.id, false, new Set()); }
+
+// cid wordt door de hele retry-flow vastgepind (server stuurt 'm mee in de 409),
+// zodat een kanaalwissel het bericht niet naar het verkeerde kanaal stuurt.
+async function _postSend(text, cid, force, added){
+  let r;
+  try {
+    r = await fetch("/api/send",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({channel:cid, content:text, force:force})});
+  } catch(e){ toast("netwerkfout — bericht niet verstuurd"); return false; }
   const j = await r.json().catch(()=>({}));
-  if(!r.ok||j.error){ toast(j.error||"versturen mislukt"); return false; }
-  return true;
+  if(r.ok && !j.error) return true;
+  if(j.missing_agent){
+    const who=j.missing_agent, tgt=j.channel||cid;
+    const tc=(typeof channels!=="undefined")&&channels.find(x=>x.id===tgt);
+    const ch=tc?"#"+tc.name:"dit kanaal";  // ook juist als het doelkanaal ≠ open kanaal
+    // 409 ná een force = mention echt onhoudbaar → stoppen (geen tweede pop-up, geen loop).
+    if(force){ toast("@"+who+" kan hier niet — bericht niet verstuurd"); return false; }
+    // Bekende agent, nog niet toegevoegd → toevoegen, dan NORMAAL opnieuw versturen
+    // zodat de relay @who naar het verse lid resolvet en 'm ook echt triggert.
+    if(j.known && !added.has(who)){
+      const ok = await modalConfirm("@"+who+" zit niet in "+ch+".",
+        "Toevoegen en je bericht versturen?", "Toevoegen");
+      if(!ok) return false;
+      if(!await addAgent(who, tgt)) return false;   // addAgent toont zelf de serverfout
+      added.add(who);
+      return await _postSend(text, tgt, false, added);
+    }
+    // Geen agent, óf net toegevoegd maar de relay ziet 't nog niet (409 op dezelfde
+    // who) → toch als platte tekst versturen (force-anker; @who blijft dan tekst).
+    if(j.can_force){
+      const just=added.has(who);
+      const ok = await modalConfirm(
+        "@"+who+(just?" is toegevoegd maar nog niet zichtbaar":" is geen kanaal-lid")+" in "+ch+".",
+        just?"Nu toch als platte tekst versturen?":"Toch versturen? De @-tekst blijft dan gewoon tekst.",
+        "Versturen");
+      if(ok) return await _postSend(text, tgt, true, added);
+      return false;
+    }
+    toast("@"+who+" kan hier niet"); return false;
+  }
+  toast(j.error||"versturen mislukt"); return false;
 }
+// modalConfirm + addAgent staan in app-modal.js (houdt app.js ≤200 regels).
 

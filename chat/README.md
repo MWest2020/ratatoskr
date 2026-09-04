@@ -1,10 +1,12 @@
 # chat — mobiele boomhuis-interface
 
 Slack/Telegram-achtige webchat op de relay-VM: lezen én posten in de kanalen,
-vanaf de telefoonbrowser over het tailnet. `buzzcli.py` (stdlib) praat via
-`buzz-cli` met de relay; `server.py` doet de HTTP-routing + serveert de PWA-shell
-(`index.html` + `app.css`/`app.js`/`app-ui.js`). De nsec (identiteit `mark`) zit
-in de procesomgeving, nóóit in de browser. Tailnet-only.
+vanaf de telefoonbrowser over het tailnet. De backend is opgesplitst (elk bestand
+≤200 regels): `buzzcli.py` (stdlib) is de relay-datalaag, `roster.py` de
+identiteits-/ledenlogica, `actions.py` de send/add/create-acties, en `server.py`
+doet alleen de HTTP-routing + serveert de PWA-shell (`index.html` +
+`app.css`/`app.js`/`app-modal.js`/`app-ui.js`/`app-push.js`). De nsec (identiteit
+`mark`) zit in de procesomgeving, nóóit in de browser. Tailnet-only.
 
 ## Draaien (op de relay-VM)
 

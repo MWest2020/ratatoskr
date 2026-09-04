@@ -64,6 +64,21 @@ def name_of(pubkey):
     return ident["name"] if ident else None
 
 
+_AGENT_ROLES = ("chat-agent", "meta-agent")
+
+
+def agent_pubkey(name):
+    """pubkey_hex voor een AGENT-naam (chat-agent/meta-agent), of None. Case-
+    insensitive. Bewust niet voor sessies (hubby/versum/…) of mark (rol: mens) —
+    die hoor je niet via de mention-pop-up als bot toe te voegen. Gaat via
+    chat_agents() zodat het bij een falende registry-fetch de _FALLBACK gebruikt
+    i.p.v. iedereen als 'geen agent' te behandelen."""
+    if not name:
+        return None
+    low = name.strip().lower()
+    return next((a["pubkey"] for a in chat_agents() if a["handle"].lower() == low), None)
+
+
 # Kern-agents als fallback: als de registry-fetch faalt (github down/rate-limit),
 # blijft de 'per agent'-tab gevuld i.p.v. leeg. De registry is de primaire bron.
 _FALLBACK = [
@@ -71,7 +86,14 @@ _FALLBACK = [
     {"handle": "architect", "pubkey": "a18ce524d234433a0702f85f09325165d19aa6fe5e9c28d01e22ffcf55922d49", "rol": "chat-agent"},
     {"handle": "bouwer", "pubkey": "2827e3d844551b81f4193fd7e64b60141759a5a4848482f48b9ad2c2fd938b74", "rol": "chat-agent"},
     {"handle": "marketing", "pubkey": "ba5bf9d6b4009984378561c35a346e64b488282ffd1fbc7dcdde1d19c515fd64", "rol": "chat-agent"},
+    {"handle": "ontwerper", "pubkey": "24ab03329773e12fb183d93e34e05485b3055246c12786e9cad46a311b5ed0e0", "rol": "chat-agent"},
+    {"handle": "reviewer", "pubkey": "7734535c4a432cd0983b965af2ec3b1b07bb6308293e36590d8fdb00d95abff7", "rol": "chat-agent"},
+    {"handle": "coordinator", "pubkey": "c14d1cdd1931061af176392f39fd17303591af0cef17d37e2aadf4bc2b36a8dc", "rol": "meta-agent"},
 ]
+# NB: _FALLBACK spiegelt de LIVE registry (identities.yml op main): dat zijn deze
+# 7 agents. archivaris staat alleen op een ongemergede branch en draait nergens,
+# dus die hoort hier NIET — anders zou de fallback een niet-live identiteit als
+# toevoegbaar aanbieden tijdens een registry-storing.
 
 
 def chat_agents():
@@ -80,5 +102,5 @@ def chat_agents():
     (nog) niet beschikbaar is, zodat de tab nooit stil leeg is."""
     agents = [{"handle": v["name"], "pubkey": pk, "rol": v["rol"]}
               for pk, v in sorted(identity_map().items(), key=lambda kv: kv[1]["name"])
-              if v["rol"] in ("chat-agent", "meta-agent")]
+              if v["rol"] in _AGENT_ROLES]
     return agents or _FALLBACK

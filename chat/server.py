@@ -13,7 +13,8 @@ from urllib.parse import urlparse, parse_qs
 import github  # GitHub-leeslaag (repo/PR-view + pinned-context)
 import push    # Web Push — subscription-opslag + VAPID-public-key
 from buzzcli import (buzz, list_channels, list_channels_meta, valid_cid, author,
-                     channel_overview, agent_roster, channel_roster, ME, MENTION_PUBKEY)
+                     channel_overview, agent_roster, channel_roster, ME)
+import actions  # send/add-member/create-acties (server blijft dun)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
@@ -41,6 +42,7 @@ class H(BaseHTTPRequestHandler):
         static = {
             "/app.css": ("app.css", "text/css"),
             "/app.js": ("app.js", "text/javascript"),
+            "/app-modal.js": ("app-modal.js", "text/javascript"),
             "/app-ui.js": ("app-ui.js", "text/javascript"),
             "/app-push.js": ("app-push.js", "text/javascript"),
             "/manifest.webmanifest": ("manifest.webmanifest", "application/manifest+json"),
@@ -151,14 +153,8 @@ class H(BaseHTTPRequestHandler):
             return self._send(400, json.dumps({"error": "ongeldige subscription"}))
 
         if u.path == "/api/channels/create":
-            name = (body.get("name") or "").strip().lower()
-            if not re.match(r"^[a-z0-9][a-z0-9_-]{0,30}$", name):
-                return self._send(400, json.dumps({"error": "naam: a-z 0-9 _ - (max 31)"}))
-            rc, out, err = buzz(["channels", "create", "--name", name,
-                                 "--type", "stream", "--visibility", "open"])
-            if rc != 0:
-                return self._send(502, json.dumps({"error": err.strip()[:200]}))
-            return self._send(200, json.dumps({"ok": True, "name": name}))
+            code, payload = actions.create_channel(body.get("name"))
+            return self._send(code, json.dumps(payload))
 
         if u.path == "/api/channels/delete":
             cid = body.get("channel")
@@ -169,24 +165,15 @@ class H(BaseHTTPRequestHandler):
                 return self._send(502, json.dumps({"error": err.strip()[:200]}))
             return self._send(200, json.dumps({"ok": True}))
 
+        if u.path == "/api/channel/add-member":
+            code, payload = actions.add_agent(body.get("channel"), body.get("name"))
+            return self._send(code, json.dumps(payload))
+
         if u.path != "/api/send":
             return self._send(404, json.dumps({"error": "not found"}))
-        cid, content = body.get("channel"), (body.get("content") or "").strip()
-        if not valid_cid(cid):
-            return self._send(400, json.dumps({"error": "onbekend kanaal"}))
-        if not content:
-            return self._send(400, json.dumps({"error": "leeg bericht"}))
-        # Altijd mark's eigen mention meegeven: dat staat elk @woord toe als
-        # presentation-only (geen "geen kanaal-lid"-error meer), terwijl een
-        # agent die WEL lid van dit kanaal is nog steeds uniek resolvet + getriggerd
-        # wordt. Zo werkt @agent overal waar de agent woont, en faalt het nergens.
-        args = ["messages", "send", "--channel", cid, "--content", "-",
-                "--mention", MENTION_PUBKEY]
-        # content via stdin (--content -) om shell/escaping-problemen te vermijden
-        rc, out, err = buzz(args, stdin=content)
-        if rc != 0:
-            return self._send(502, json.dumps({"error": err.strip()[:200]}))
-        return self._send(200, json.dumps({"ok": True}))
+        code, payload = actions.send(body.get("channel"), body.get("content"),
+                                     force=bool(body.get("force")))
+        return self._send(code, json.dumps(payload))
 
 
 if __name__ == "__main__":

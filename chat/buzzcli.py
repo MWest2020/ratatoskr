@@ -72,12 +72,6 @@ NAMES = {
     "ba5bf9d6b4009984378561c35a346e64b488282ffd1fbc7dcdde1d19c515fd64": "marketing",
 }
 ME = "a05339f005904935da71e0498f3d542ac223e8cdfac920c6152a743f91640769"
-# De `--mention`-truc (elk @woord presentation-only) vereist een pubkey die LID is
-# van het kanaal. De app POST als mark's geroteerde pubkey (ME, a05339f0), maar die
-# is (nog) geen kanaal-lid; mark's PRE-rotatie-pubkey is dat wél (admin). Daarom een
-# aparte, gegarandeerd-lid mention-pubkey — anders faalt elke send op "mentioned
-# pubkey not a member". (Volledige fix: mark's geroteerde pubkey overal lid maken.)
-MENTION_PUBKEY = "821de7df04297a3a5e53c1ae423456b32826505a1caef5fe0979a4940720c2db"
 
 
 def buzz(args, stdin=None, timeout=25):

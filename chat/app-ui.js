@@ -67,11 +67,9 @@ function closeRepos(){ $("#reposDrawer").classList.remove("open"); }
 async function sendTo(channelName, text){
   const c = channels.find(x=>x.name===channelName);
   if(!c){ toast("kanaal #"+channelName+" bestaat niet"); return false; }
-  const r = await fetch("/api/send",{method:"POST",headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({channel:c.id, content:text})});
-  const j = await r.json().catch(()=>({}));
-  if(!r.ok||j.error){ toast(j.error||"versturen mislukt"); return false; }
-  return true;
+  // via _postSend zodat óók dit pad de mention-pop-up + 409-afhandeling krijgt
+  // (bv. @reviewer die nog geen lid van #review is).
+  return await _postSend(text, c.id, false, new Set());
 }
 async function reviewPR(repo, num, title, url){
   const ok = await sendTo("review", `@reviewer bekijk PR ${repo}#${num} — ${title}\n${url}`);
@@ -164,9 +162,11 @@ $("#composer").addEventListener("submit", async e=>{
   e.preventDefault();
   const t=input.value.trim(); if(!t||!current) return;
   $("#send").disabled=true;
-  const ok=await send(t);
-  $("#send").disabled=false;
-  if(ok){ input.value=""; input.style.height="auto"; await refresh(true); }
+  // try/finally: knop nooit permanent op slot (bv. netwerkfout mid-send).
+  try {
+    const ok=await send(t);
+    if(ok){ input.value=""; input.style.height="auto"; await refresh(true); }
+  } finally { $("#send").disabled=false; }
 });
 input.addEventListener("keydown",e=>{
   if(e.key==="Enter"&&!e.shiftKey){ e.preventDefault(); $("#composer").requestSubmit(); }
