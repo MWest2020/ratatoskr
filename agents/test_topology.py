@@ -46,6 +46,17 @@ class PollChannels(unittest.TestCase):
         d = topology.poll_channels(_run({"list": ""}), fb, now=1000)
         self.assertEqual(d, fb)
 
+    def test_dedup_op_cid_bij_twee_namen(self):
+        # zelfde cid onder een relay-naam en een channels.yml-naam → één entry,
+        # de channels.yml-naam (canoniek) wint, geen dubbele poll.
+        rows = '{"channels":[{"name":"algemeen","id":"X"},{"name":"nieuw","id":"n1"}]}'
+        d = topology.poll_channels(_run({"list": rows}), {"general": "X"}, now=1000)
+        cids = list(d.values())
+        self.assertEqual(cids.count("X"), 1)          # X maar één keer
+        self.assertIn("general", d)                    # channels.yml-naam behouden
+        self.assertNotIn("algemeen", d)                # relay-alias voor dezelfde cid weg
+        self.assertEqual(d["nieuw"], "n1")
+
     def test_lege_relay_lijst_behoudt_ontdekte_kanalen(self):
         # geslaagd-maar-leeg ({"channels":[]}) is nooit legitiem → goede cache houden,
         # niet terugvallen op fallback-only (verlies van een ontdekt kanaal).
@@ -89,6 +100,8 @@ class Rows(unittest.TestCase):
         self.assertIsNone(topology._rows('"hoi"', "channels"))
         self.assertIsNone(topology._rows("", "channels"))
         self.assertIsNone(topology._rows('{"error":"boom"}', "members"))  # sleutel afwezig
+        self.assertIsNone(topology._rows('{"channels":{"a":1}}', "channels"))  # geen lijst
+        self.assertIsNone(topology._rows('{"channels":"x"}', "channels"))      # geen lijst
         self.assertEqual(topology._rows('{"members":[]}', "members"), [])  # leeg ≠ fout
         self.assertEqual(topology._rows('{"channels":[1]}', "channels"), [1])
         self.assertEqual(topology._rows("[1,2]", "channels"), [1, 2])

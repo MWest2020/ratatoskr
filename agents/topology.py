@@ -36,7 +36,8 @@ def _rows(out, key):
     if isinstance(d, list):
         return d
     if isinstance(d, dict):
-        return d[key] if key in d else None  # sleutel afwezig (bv. {"error":..}) = mislukt
+        v = d.get(key)  # afwezig (bv. {"error":..}) OF geen lijst ({..}/"x") = mislukt
+        return v if isinstance(v, list) else None
     return None
 
 
@@ -58,9 +59,17 @@ def poll_channels(run, fallback, now=None):
         name, cid = x.get("name"), (x.get("channel_id") or x.get("id"))
         if name and cid and name not in _HIDE:
             live.setdefault(name, cid)  # dedup: eerste record per naam
-    merged = {**live, **fallback}  # channels.yml-cid wint bij naam-botsing
-    _channels.update(t=now, data=merged)
-    return merged
+    # Dedup op NAAM én CID: channels.yml (canoniek) eerst, dan de nieuwe relay-namen.
+    # Zo staat een kanaal dat onder twee namen dezelfde cid heeft maar één keer in de
+    # poll-set (anders zou de listener 't dubbel pollen).
+    out, seen_cids = {}, set()
+    for name, cid in list(fallback.items()) + list(live.items()):
+        if name in out or cid in seen_cids:
+            continue
+        out[name] = cid
+        seen_cids.add(cid)
+    _channels.update(t=now, data=out)
+    return out
 
 
 def members(run, cid, now=None):

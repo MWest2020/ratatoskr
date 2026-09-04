@@ -50,3 +50,7 @@
       onderscheid recht (mislukt vs geslaagd-leeg: kanaallijst nooit legitiem leeg,
       ledenlijst wél); `is_scoped` neemt de leden LUI (0-arg callable) → geen members-
       fetch voor een def-gescopt kanaal. Tests: 11 (incl. lege-lijst + laziness), groen.
+- [x] 1.11 r7-fixes: poll_channels dedupt nu op NAAM én CID (channels.yml canoniek
+      eerst) → een kanaal onder twee namen met dezelfde cid staat maar één keer in de
+      poll-set (geen dubbele poll); `_rows` valideert dat de sleutelwaarde een lijst
+      is (`{"channels":{...}}`/`"x"` → None, geen crash op `.get`). Tests: 12, groen.
