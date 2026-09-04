@@ -10,7 +10,7 @@ autorisatie: Marks eigen infra/repo's; read/gerichte probes, geen DoS/destructie
 artefact_links:
   - wordsworth-console (live): https://mwest2020.github.io/wordsworth-console/  # commit f15571d
   - wordsworth F1/F3-mitigaties: MWest2020/wordsworth (auth per-caller keys + grant-scoping)
-next_step: RONDE COMPLEET (2026-08-31); F3 STRUCTUREEL GEFIXT + gedeployed (2026-09-04, wordsworth PR #35 + homelab 57dafaf). Rest = alleen F2 als staande guardrail (nooit VC REQUIRED met test/publieke issuer). Nog open: optionele app-token op comms (niet nodig zolang elke tailnet-node Marks eigen hardware is) en de reboot-test van de relay-VM (Mark, wanneer het uitkomt).
+next_step: RONDE COMPLEET (2026-08-31); F3 STRUCTUREEL GEFIXT + gedeployed (2026-09-04, wordsworth PR #35 + homelab 57dafaf). Rest = alleen F2 als staande guardrail (nooit VC REQUIRED met test/publieke issuer). App-token op comms GEDAAN (2026-09-04, boomhuis PR #15, live). Nog open: alleen de reboot-test van de relay-VM (Mark, wanneer het uitkomt).
 ---
 
 # Verdict — security-pass wordsworth-PII-pad + boomhuis-comms (2026-08-30)
@@ -86,9 +86,14 @@ exploit-details horen hier, niet daar.
   Geen directe :8090-poort meer op LAN of tailnet-IP (beide geverifieerd dicht);
   toegang loopt uitsluitend via de tailnet-HTTPS-proxy. Nieuwe URL vervangt de
   oude LAN-URL.
-- **Nog open (optioneel):** app-token op de write-endpoints als tweede laag
-  (defense-in-depth). Nu niet nodig — netwerklaag is dicht; alleen als een
-  tailnet-node ooit gecompromitteerd raakt. Marks keuze.
+- **App-token: GEDAAN (2026-09-04, boomhuis PR #15).** Mark koos ervoor het toch
+  te doen. `BOOMHUIS_APP_TOKEN` in `chat.env`: leeg = uit, gezet = elke POST eist
+  een constant-time gelijke `X-App-Token`, anders 401 vóór er iets richting de
+  relay gaat. Lezen blijft open (meelezen is geen impersonatie). De PWA vraagt het
+  token bij de eerste 401 en bewaart het per apparaat; de server zet het nooit in
+  de pagina — anders kon elke tailnet-node het gewoon uit de pagina lezen. Agents
+  raakt het niet: die tekenen zelf tegen de relay. Live bewezen op de VM: lezen
+  200, schrijven zonder/met fout token 401, met juist token door de gate.
 - **Niet live-reboot-getest:** de relay-VM niet herstart (verstoort de dienst);
   resilience is by-design (drop-in + Restart). Mark kan reboot-testen wanneer 't uitkomt.
 

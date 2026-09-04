@@ -21,6 +21,12 @@
 
 ## 4. Deploy
 
-- [ ] 4.1 `BOOMHUIS_APP_TOKEN` in `chat.env` op de relay-VM (niet in git), service herstart.
-- [ ] 4.2 Live bewijs: schrijven zonder token 401, met token 200; lezen blijft 200.
-- [ ] 4.3 Token aan Mark geven; hij voert het één keer in per apparaat.
+- [x] 4.1 `BOOMHUIS_APP_TOKEN` in `chat.env` op de relay-VM (root:600, back-up van
+      de oude env ernaast, token op de VM zelf gegenereerd), `boomhuis-chat`
+      herstart en actief.
+- [x] 4.2 Live bewijs via de tailnet-HTTPS-voorkant: lezen 200; `POST /api/send`
+      zonder token 401 en met een fout token 401; `POST /api/channels/create`
+      zonder token 401; met het juiste token passeert het verzoek de gate (400
+      "onbekend kanaal" op een expres ongeldig kanaal, dus geen ruis in een echt
+      kanaal). Het token komt in geen enkel antwoord voor.
+- [x] 4.3 Token aan Mark geven; hij voert het één keer in per apparaat.
