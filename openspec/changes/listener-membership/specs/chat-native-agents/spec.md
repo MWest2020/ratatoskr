@@ -8,6 +8,11 @@ Relay-lidmaatschap is een additieve reden om te reageren; het VERVANGT de handbo
 scope niet. Zo wordt een agent die lid wordt (via de webchat-pop-up, de coordinator-
 default, of de operator-backfill) daadwerkelijk aanspreekbaar zonder handbook-wijziging.
 
+Alleen de MENTION-tak wordt zo verbreed. Het thread-vervolg (de laatst-actieve agent
+praat door ZONDER nieuwe mention) SHALL def-kanaal-only blijven: relay-lidmaatschap
+maakt een agent aanspreekbaar op expliciete mentions, maar laat 'm niet ongevraagd
+meepraten in een kanaal dat niet in z'n handbook-`chat.channels` staat.
+
 De listener SHALL de te pollen kanaal-set live uit de relay bepalen (`buzz channels
 list`), met `channels.yml` als vangnet, zodat na deploy aangemaakte kanalen worden
 opgepikt. Kanaal-lidmaatschap en kanaal-lijst MOGEN kort gecachet worden; een

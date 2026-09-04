@@ -51,9 +51,11 @@ def poll_channels(run, fallback, now=None):
         return _channels["data"]
     rows = _rows(run(["channels", "list"]), "channels")
     if not rows:  # mislukt (None) OF leeg — een lege kanaallijst is nooit legitiem
-        data = _channels["data"] if _channels["data"] is not None else dict(fallback)
-        _channels.update(t=now, data=data)  # goede cache behouden, anders kale fallback
-        return data
+        if _channels["data"] is not None:
+            _channels["t"] = now          # goede cache behouden + venster verlengen
+            return _channels["data"]
+        return dict(fallback)             # eerste mislukking: NIET cachen (net als
+                                          # members) → volgende tick probeert opnieuw
     live = {}
     for x in rows:
         name, cid = x.get("name"), (x.get("channel_id") or x.get("id"))

@@ -12,11 +12,15 @@
 - [x] 1.4 Live smoke: @coordinator in #red-team → antwoord; @<agent> in een via de
       app aangemaakt kanaal → antwoord; def-kanaal (bv. @architect in
       #architectuur) blijft werken; geen dubbel-antwoord.
-      Bewijs (listener-log, 6× herhaald, ook na de r4/r5-fixes (laatst na r5); #red-team staat niet in
-      coordinators handbook-`chat.channels: [general]`, dus dit kan ALLEEN via de
-      relay-lidmaatschap-tak): `mention @coordinator in #red-team` → `coordinator
-      antwoordde in #red-team (mention)`. Def-kanaal (@architect/#architectuur) en de
-      #general-vervolg-tak bleven in dezelfde runs werken; geen dubbel-antwoord.
+      Bewijs (listener-log): de live smoke dekt het ROUTING-happy-path — `mention
+      @coordinator in #red-team` → `coordinator antwoordde in #red-team (mention)`.
+      #red-team staat niet in coordinators handbook-`chat.channels: [general]`, dus
+      dit kán alleen via de relay-lidmaatschap-tak; def-kanaal (@architect/
+      #architectuur) en de #general-vervolg-tak bleven werken, geen dubbel-antwoord.
+      Deze smoke is ná ELKE fix-ronde opnieuw gedraaid en bleef groen (t/m r7). De
+      EDGE-cases die r6/r7 raakten (lege/onparsebare relay-lijst, cid-dedup, luie
+      members) zitten niet in dit happy-path maar zijn gedekt door de 12 unittests in
+      `agents/test_topology.py` — die vormen samen het regressiebewijs.
 - [x] 1.5 r1-fixes: `poll_channels` filtert relay-junk (`_HIDE`) en laat de
       channels.yml-cid winnen bij naam-botsing (relay overschrijft niet meer); een
       mislukte/lege fetch behoudt de goede cache i.p.v. terug te vallen op de kale
@@ -54,3 +58,8 @@
       eerst) → een kanaal onder twee namen met dezelfde cid staat maar één keer in de
       poll-set (geen dubbele poll); `_rows` valideert dat de sleutelwaarde een lijst
       is (`{"channels":{...}}`/`"x"` → None, geen crash op `.get`). Tests: 12, groen.
+- [x] 1.12 r8-fixes: `poll_channels` cachet niet meer bij een EERSTE mislukking
+      (consistent met `members`: volgende tick probeert opnieuw); vervolg-tak-def-only
+      staat nu ook in de spec-delta; cid-dedup-keuze (channels.yml canoniek bij
+      relay-hernoeming) + `seen`-groei als follow-up in design vastgelegd; smoke-bewijs
+      eerlijk herkaderd (happy-path live, edges via de 12 unittests).

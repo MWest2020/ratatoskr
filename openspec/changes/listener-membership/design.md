@@ -36,10 +36,23 @@ gecureerde `channels.yml` (~15 kanalen); nu is het `channels.yml` ∪ álle OPEN
 relay-kanalen. De grens is dus niet langer de curatie maar het aantal open kanalen
 op de relay. Dat is aanvaardbaar op de huidige schaal — de relay is privé, tailnet-
 only, en kanalen worden bewust door Mark/agents aangemaakt (orde ~15–20, groeit
-langzaam) — maar het is een echte verruiming, geen constante. Twee vervolgen als het
-groeit (buiten deze change): (a) de poll-set filteren op kanalen waar minstens één
-draaiende agent lid/gescopt is, (b) een `since`/paginatie-optimalisatie op
-`get_messages`.
+langzaam) — maar het is een echte verruiming, geen constante. Dezelfde grens raakt de
+`seen`-set (message-ids die al verwerkt zijn): die groeit met het totale aantal
+berichten over alle gepollde kanalen, monotoon over de daemon-levensduur. Drie
+vervolgen als het groeit (buiten deze change): (a) de poll-set filteren op kanalen
+waar minstens één draaiende agent lid/gescopt is, (b) een `since`/paginatie-optie op
+`get_messages` (begrenst dan óók `seen`, want dan houden we per kanaal alleen een
+high-water-mark bij i.p.v. alle ids), (c) `seen` periodiek snoeien tot nog-zichtbare
+ids. Bij de huidige orde (~15–20 kanalen, tailnet-only) is dit geen praktijkprobleem.
+
+## Dedup op cid: channels.yml is canoniek
+
+De poll-set dedupt op naam én cid, met channels.yml eerst. Bewust gevolg: is een
+kanaal op de relay HERNOEMD (channels.yml `bouw` = cid X, relay `bouw-overleg` = cid X),
+dan pollt de listener 't onder de channels.yml-naam `bouw`, niet de relay-naam. Dat is
+juist gewenst — channels.yml is de gecureerde bron van namen; een relay-hernoeming
+werkt pas door na een channels.yml-update. Het kanaal valt niet weg (zelfde cid), het
+draagt alleen de canonieke naam.
 
 ## Live kanaal-set met `channels.yml` als vangnet
 
