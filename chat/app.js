@@ -55,8 +55,7 @@ async function loadChannels(){
       del.className="del"; del.textContent="🗑"; del.title="verwijder #"+c.name;
       del.onclick=async(e)=>{ e.stopPropagation();
         if(!confirm("Kanaal #"+c.name+" verwijderen?")) return;
-        const r=await fetch("/api/channels/delete",{method:"POST",
-          headers:{"Content-Type":"application/json"},body:JSON.stringify({channel:c.id})});
+        const r=await postJSON("/api/channels/delete",{channel:c.id});
         const j=await r.json().catch(()=>({}));
         if(!r.ok||j.error){ toast(j.error||"verwijderen mislukt"); return; }
         if(current&&current.id===c.id){ current=null; $("#msgs").innerHTML='<div class="empty">kies een kanaal</div>'; }
@@ -74,8 +73,7 @@ async function loadChannels(){
   renderBadges();
 }
 async function createChannel(name){
-  const r=await fetch("/api/channels/create",{method:"POST",
-    headers:{"Content-Type":"application/json"},body:JSON.stringify({name})});
+  const r=await postJSON("/api/channels/create",{name});
   const j=await r.json().catch(()=>({}));
   if(!r.ok||j.error){ toast(j.error||"aanmaken mislukt"); return false; }
   if(j.coordinator_added===false) toast("kanaal aangemaakt — coordinator toevoegen mislukte");
@@ -145,8 +143,7 @@ async function send(text){ return await _postSend(text, current.id, false, new S
 async function _postSend(text, cid, force, added){
   let r;
   try {
-    r = await fetch("/api/send",{method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({channel:cid, content:text, force:force})});
+    r = await postJSON("/api/send",{channel:cid, content:text, force:force});
   } catch(e){ toast("netwerkfout — bericht niet verstuurd"); return false; }
   const j = await r.json().catch(()=>({}));
   if(r.ok && !j.error) return true;

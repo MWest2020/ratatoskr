@@ -35,7 +35,7 @@ async function ensurePushSubscription(){
   if(!sub){
     sub=await reg.pushManager.subscribe({userVisibleOnly:true, applicationServerKey:wanted});
   }
-  const r=await fetch("/api/push/subscribe",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(sub)});
+  const r=await postJSON("/api/push/subscribe", sub);
   if(!r.ok) throw new Error("subscribe-POST faalde");
   return sub;
 }

@@ -21,8 +21,7 @@ function modalConfirm(title, sub, okLabel){
 
 // Voeg een agent toe aan een kanaal → true bij succes (toont zelf de serverfout).
 async function addAgent(name, cid){
-  const rr=await fetch("/api/channel/add-member",{method:"POST",headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({channel:cid, name:name})}).catch(()=>null);
+  const rr=await postJSON("/api/channel/add-member",{channel:cid, name:name}).catch(()=>null);
   if(rr && rr.ok){ toast("@"+name+" toegevoegd ✓"); return true; }
   const jj=rr?await rr.json().catch(()=>({})):{}; toast(jj.error||"toevoegen mislukt"); return false;
 }

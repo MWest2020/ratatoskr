@@ -5,7 +5,7 @@ vanaf de telefoonbrowser over het tailnet. De backend is opgesplitst (elk bestan
 ≤200 regels): `buzzcli.py` (stdlib) is de relay-datalaag, `roster.py` de
 identiteits-/ledenlogica, `actions.py` de send/add/create-acties, en `server.py`
 doet alleen de HTTP-routing + serveert de PWA-shell (`index.html` +
-`app.css`/`app.js`/`app-modal.js`/`app-ui.js`/`app-push.js`). De nsec (identiteit
+`app.css`/`app.js`/`app-auth.js`/`app-modal.js`/`app-ui.js`/`app-push.js`). De nsec (identiteit
 `mark`) zit in de procesomgeving, nóóit in de browser. Tailnet-only.
 
 ## Draaien (op de relay-VM)
@@ -20,6 +20,24 @@ commandline (ps-zichtbaar) en nooit in git; de SOPS-bron is
 
 Open op de telefoon (Tailscale aan): https://boomhuis-relay.tail8f7877.ts.net/
 (HTTPS via tailscale serve — een secure context, nodig voor de service worker).
+
+## Schrijf-token (BOOMHUIS_APP_TOKEN)
+
+Tweede laag onder de netwerklaag: staat `BOOMHUIS_APP_TOKEN` in `chat.env`, dan
+eist elke POST (send, kanaal maken/verwijderen, agent toevoegen,
+push-registratie) een gelijke `X-App-Token`; anders 401, vóór er ook maar iets
+richting de relay gaat. Leeg of afwezig = uit, gedrag ongewijzigd. Lezen blijft
+altijd open — meelezen op het tailnet is geen impersonatie, schrijven wel (alles
+komt aan als `mark`).
+
+De PWA vraagt het token bij de eerste 401 en bewaart het in `localStorage` van
+dat apparaat; de server zet het nooit in de pagina (wie de pagina kan ophalen,
+zou het anders kunnen lezen). Vergelijking is constant-time; het token staat in
+geen enkel log of antwoord. Agents raakt dit niet: `ping.sh` en de chat-native
+agents tekenen zelf tegen de relay en gebruiken deze HTTP-API niet.
+
+Token wijzigen: waarde in `chat.env` aanpassen, `sudo systemctl restart
+boomhuis-chat`, en op elk apparaat één keer opnieuw invoeren.
 
 ## Web Push (telefoon-notificaties)
 
