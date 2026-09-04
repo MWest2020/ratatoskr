@@ -15,69 +15,25 @@ Invariant: conversatie-only. Geen shell/repo/dispatch vanuit hier.
 """
 import json
 import os
-import re
 import subprocess
 import time
-import urllib.request
 
-import yaml
+import bootstrap
+import prompts
+import providers
+import topology
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 BUZZ = os.environ.get("BUZZ_BIN", "buzz")
-CLAUDE = os.environ.get("CLAUDE_BIN", "claude")
 RELAY = os.environ["BUZZ_RELAY_URL"]
 POLL = int(os.environ.get("POLL_SECONDS", "5"))
 MAX_CTX = 8
-MAX_TURN_S = 150
 
 
-def load_yaml(path):
-    return yaml.safe_load(open(path))
-
-
-def load_channels():
-    return {n: c["id"] for n, c in load_yaml(os.path.join(ROOT, "channels.yml"))["channels"].items()}
-
-
-def load_identity_npubs():
-    d = load_yaml(os.path.join(ROOT, "identities.yml"))["identities"]
-    return {h: v.get("npub") for h, v in d.items()}, {v["pubkey_hex"]: h for h, v in d.items()}
-
-
-def fetch_def(base, handle):
-    """Haal de canonieke definitie uit de handbook. Return {npub, channels,
-    system} of None bij falen (fail-closed)."""
-    url = f"{base}/{handle}.md"
-    try:
-        with urllib.request.urlopen(url, timeout=15) as r:
-            s = r.read().decode("utf-8")
-    except Exception as e:
-        print(f"[listener] def {handle} niet te laden: {e}", flush=True)
-        return None
-    m = re.match(r"^---\n(.*?)\n---", s, re.S)
-    if not m:
-        return None
-    fm = yaml.safe_load(m.group(1)).get("agent", {})
-    chat = fm.get("chat") or {}
-    channels = chat.get("channels", [])
-    # systemprompt = de blockquote onder '## Chat-facet'
-    body = s[m.end():]
-    cf = re.search(r"##\s*Chat-facet.*?\n(.*?)(?:\n##\s|\Z)", body, re.S)
-    system = ""
-    if cf:
-        system = "\n".join(
-            ln[2:] if ln.startswith("> ") else ln[1:] if ln.startswith(">") else ""
-            for ln in cf.group(1).splitlines() if ln.startswith(">")
-        ).strip()
-    provider = (fm.get("provider") or "claude-p")
-    return {"npub": fm.get("npub"), "channels": channels, "system": system,
-            "provider": provider}
-
-
-CHANNELS = load_channels()
-NPUBS, PUB2NAME = load_identity_npubs()
-CFG = load_yaml(os.path.join(HERE, "agents.yml"))
+CHANNELS = bootstrap.load_channels(ROOT)
+NPUBS, PUB2NAME = bootstrap.load_identity_npubs(ROOT)
+CFG = bootstrap.load_yaml(os.path.join(HERE, "agents.yml"))
 BASE = CFG["registry_base"]
 
 # Bouw de actieve agent-set: def uit handbook + nsec uit env + npub-match.
@@ -87,7 +43,7 @@ for handle in CFG.get("run", []):
     if not nsec:
         print(f"[listener] {handle}: geen NSEC_ in env — overslaan", flush=True)
         continue
-    d = fetch_def(BASE, handle)
+    d = bootstrap.fetch_def(BASE, handle)
     if not d:
         print(f"[listener] {handle}: geen handbook-definitie — NIET gespawnd", flush=True)
         continue
@@ -107,114 +63,111 @@ def buzz_env(nsec):
 
 
 def get_messages(cid, nsec):
-    p = subprocess.run([BUZZ, "messages", "get", "--channel", cid],
-                       env=buzz_env(nsec), capture_output=True, text=True, timeout=25)
+    """Berichten oplopend gesorteerd. None bij een MISLUKTE read (rc!=0/timeout/
+    onparsebaar), [] bij een echt LEEG kanaal — niet verwarren (anders wordt een
+    gefaalde read 'geseed' en volgt historie-spam)."""
+    try:
+        p = subprocess.run([BUZZ, "messages", "get", "--channel", cid],
+                           env=buzz_env(nsec), capture_output=True, text=True, timeout=25)
+    except Exception:  # timeout/OSError = mislukte read (None), mag de daemon niet doden
+        return None
     if p.returncode != 0:
-        return []
+        return None
     try:
         d = json.loads(p.stdout)
     except Exception:
-        return []
+        return None
     msgs = d if isinstance(d, list) else d.get("messages", [])
     return sorted(msgs, key=lambda m: m.get("created_at", 0))
 
 
 def send(cid, content, nsec, self_npub):
-    # Eigen npub als --mention: dat staat willekeurige @woorden in het antwoord
-    # toe als presentation-only (buzz weigert anders onbekende @mentions).
-    subprocess.run([BUZZ, "messages", "send", "--channel", cid, "--content", "-",
-                    "--mention", self_npub],
-                   env=buzz_env(nsec), input=content, capture_output=True, text=True, timeout=25)
-
-
-# Protocol-naad: het agent-backend zit achter één functie. Vandaag 'claude-p'
-# (sub-first). Een nieuw backend = één extra tak; de handbook-def declareert de
-# provider (front-matter agent.provider, default claude-p).
-def run_provider(provider, system, prompt):
-    if provider in (None, "claude-p", "claude"):
-        p = subprocess.run([CLAUDE, "-p", "--append-system-prompt", system, prompt],
-                           capture_output=True, text=True, timeout=MAX_TURN_S)
-        return (p.stdout or "").strip() or "(geen antwoord)"
-    # hier pluggen toekomstige backends in (codex, remote-agent, http/SSE-connector…)
-    return f"(provider '{provider}' nog niet ondersteund door deze listener)"
-
-
-def channel_knowledge(cname):
-    """Per-kanaal kennis: knowledge/<kanaal>.md (conventie) wordt als context
-    aan elke agent-beurt in dat kanaal meegegeven. Leeg = geen extra context."""
-    path = os.path.join(ROOT, "knowledge", f"{cname}.md")
+    """Post een antwoord (eigen npub als --mention → @woorden blijven presentation-
+    only). True bij succes; een geweigerde send loggen we (geen valse 'antwoordde')."""
     try:
-        return open(path).read().strip()[:4000]
-    except OSError:
-        return ""
+        p = subprocess.run([BUZZ, "messages", "send", "--channel", cid, "--content", "-",
+                            "--mention", self_npub],
+                           env=buzz_env(nsec), input=content, capture_output=True, text=True, timeout=25)
+    except Exception as e:  # timeout/OSError mag de daemon niet doden
+        print(f"[listener] send-fout in {cid}: {e}", flush=True)
+        return False
+    if p.returncode != 0:
+        print(f"[listener] send FAALDE in {cid}: {(p.stderr or p.stdout).strip()[:120]}", flush=True)
+    return p.returncode == 0
 
 
-def live_text():
-    """Wat er nu draait (uit knowledge/_live.md, door orchestrator/live.py
-    gegenereerd) — liveness-context voor de coordinator. Leeg = onbekend."""
-    try:
-        return open(os.path.join(ROOT, "knowledge", "_live.md")).read().strip()[:4000]
-    except OSError:
-        return ""
-
-
-def roster_text():
-    """Korte samenvatting van de huidige vloot — context voor de coordinator."""
-    lines = ["Huidige agent-vloot (uit de handbook-registry):"]
-    for h, c in AGENTS.items():
-        if h == "coordinator":
-            continue
-        first = (c.get("system", "").strip().split("\n", 1)[0])[:110]
-        lines.append(f"- @{h} (kanalen: {','.join(c['channels'])}) — {first}")
-    return "\n".join(lines)
-
-
-def build_prompt(handle, chan, recent, trigger):
-    lines = [f"Kanaal #{chan}. Recente berichten:"]
-    for m in recent:
-        who = PUB2NAME.get(m.get("pubkey", ""), "iemand")
-        lines.append(f"{who}: {m.get('content','')}")
-    lines.append("")
-    lines.append(f"Je bent '{handle}'. Reageer als vervolg op het gesprek "
-                 f"hierboven, op dit laatste bericht: {trigger!r}")
-    return "\n".join(lines)
+def buzz_run(nsec):
+    """`run(args) -> stdout|""`-callable voor topology.py (buzz-env van deze agent;
+    faalt de call → lege string, topology valt dan terug)."""
+    def run(args):
+        try:
+            p = subprocess.run([BUZZ, *args], env=buzz_env(nsec),
+                               capture_output=True, text=True, timeout=25)
+        except Exception:  # timeout/OSError → lege string (belofte houdt, poll crasht niet)
+            return ""
+        return p.stdout if p.returncode == 0 else ""
+    return run
 
 
 def main():
     if not AGENTS:
         raise SystemExit("geen agents gespawnd (geen bron/nsec/npub-match)")
-    read_nsec = next(iter(AGENTS.values()))["nsec"]
+    # Reader = coordinator (lid van elk kanaal via default+backfill) zodat list/
+    # members/messages álle kanalen zien; één agent-sleutel mist private kanalen.
+    if "coordinator" not in AGENTS:
+        print("[listener] LET OP: geen coordinator gespawnd — reader valt terug op "
+              f"{next(iter(AGENTS))}, mogelijk smallere kanaal-zichtbaarheid", flush=True)
+    read_nsec = (AGENTS.get("coordinator") or next(iter(AGENTS.values())))["nsec"]
+    run = buzz_run(read_nsec)  # relay-I/O voor topology (kanalen + leden)
     # pubkeys van agents, om niet op agents te reageren
     name2pub = {h: p for p, h in PUB2NAME.items()}
     for h in AGENTS:
         AGENT_PUBS.add(name2pub.get(h))
-    seen = set()
-    for cid in CHANNELS.values():
-        for m in get_messages(cid, read_nsec):
+
+    def scoped(h, cname, cid):  # mention-scope: handbook OF relay-lid (pure is_scoped)
+        return topology.is_scoped(AGENTS[h]["channels"], cname, name2pub.get(h),
+                                  lambda: topology.members(run, cid))  # lui: alleen bij need
+
+    seen, seeded = set(), set()
+
+    def seed(cid, msgs):
+        # Historie van een (nieuw) kanaal als gezien markeren. Alleen bij een
+        # GESLAAGDE read (msgs≠None) — anders 'geseed' + historie-spam.
+        for m in msgs:
             seen.add(m.get("id"))
+        seeded.add(cid)
+
+    for cid in topology.poll_channels(run, CHANNELS).values():
+        msgs = get_messages(cid, read_nsec)
+        if msgs is not None:
+            seed(cid, msgs)
     print(f"[listener] actief; agents uit handbook: {', '.join(AGENTS)}", flush=True)
     while True:
-        for cname, cid in CHANNELS.items():
+        for cname, cid in topology.poll_channels(run, CHANNELS).items():
             msgs = get_messages(cid, read_nsec)
+            if msgs is None:      # mislukte read → overslaan, volgende tick opnieuw
+                continue
+            if cid not in seeded:  # kanaal net in de poll-set: historie als 'gezien'
+                seed(cid, msgs)    # markeren, NIET op oude berichten reageren
+                continue
             for i, m in enumerate(msgs):
                 mid = m.get("id")
-                if mid in seen:
+                if not mid or mid in seen:  # id-loos bericht overslaan (niet dedup-baar)
                     continue
                 seen.add(mid)
                 if m.get("pubkey") in AGENT_PUBS:
                     continue
                 content = m.get("content", "")
-                # Wie moet reageren? (a) expliciete @mentions van hier-gescopte
-                # agents; (b) anders thread-continuïteit: de laatst-actieve agent
-                # in dit kanaal (binnen ~10 berichten) praat door zonder mention.
-                targets = [h for h, cfg in AGENTS.items()
-                           if cname in cfg["channels"]
-                           and ("@" + h).lower() in content.lower()]
+                # (a) @mentions van hier-gescopte/relay-lid-agents; (b) anders: vervolg.
+                targets = [h for h in AGENTS
+                           if prompts.mentioned(content, h) and scoped(h, cname, cid)]
                 reason = "mention"
                 if not targets:
                     for prev in reversed(msgs[max(0, i - 10):i]):
                         if prev.get("pubkey") in AGENT_PUBS:
                             h = PUB2NAME.get(prev.get("pubkey"))
+                            # vervolg (zonder mention) blijft def-kanaal-only (spec);
+                            # membership verbreedt alléén de mention-tak hierboven.
                             if h in AGENTS and cname in AGENTS[h]["channels"]:
                                 targets = [h]
                                 reason = "vervolg"
@@ -223,23 +176,23 @@ def main():
                     cfg = AGENTS[handle]
                     print(f"[listener] {reason} @{handle} in #{cname}: {content[:50]}", flush=True)
                     recent = msgs[max(0, i - MAX_CTX):i + 1]
-                    p = build_prompt(handle, cname, recent, content)
-                    know = channel_knowledge(cname)
+                    p = prompts.build_prompt(handle, cname, recent, content, PUB2NAME)
+                    know = prompts.channel_knowledge(ROOT, cname)
                     if know:
                         p = f"Kanaal-kennis (#{cname}):\n{know}\n\n" + p
                     if handle == "coordinator":
-                        p = roster_text() + "\n\n" + p
-                        lt = live_text()
+                        p = prompts.roster_text(AGENTS) + "\n\n" + p
+                        lt = prompts.live_text(ROOT)
                         if lt:
                             p = lt + "\n\n" + p
                     try:
-                        ans = run_provider(cfg.get("provider"), cfg["system"], p)
+                        ans = providers.run(cfg.get("provider"), cfg["system"], p)
                     except subprocess.TimeoutExpired:
                         ans = "(time-out — vraag te zwaar voor een chatbeurt)"
                     except Exception as e:
                         ans = f"(fout: {e})"
-                    send(cid, ans, cfg["nsec"], cfg["npub"])
-                    print(f"[listener] {handle} antwoordde in #{cname} ({reason})", flush=True)
+                    if send(cid, ans, cfg["nsec"], cfg["npub"]):
+                        print(f"[listener] {handle} antwoordde in #{cname} ({reason})", flush=True)
         time.sleep(POLL)
 
 
