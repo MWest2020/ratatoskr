@@ -5,13 +5,14 @@
 //   loopt na een timeout dóór en ververst de cache alsnog (waitUntil).
 // - Statics (iconen, manifest): cache-eerst met achtergrond-update.
 // - /api/*: NOOIT cachen (chat is realtime, git is waarheid).
-const CACHE = "boomhuis-shell-v3";  // v3: app-modal.js in de shell
+const CACHE = "boomhuis-shell-v4";  // v4: app-auth.js (schrijf-token) in de shell
 const NET_TIMEOUT = 3000;
 const SHELL = [
   "/",
   "/index.html",
   "/app.css",
   "/app.js",
+  "/app-auth.js",
   "/app-modal.js",
   "/app-ui.js",
   "/app-push.js",
@@ -88,7 +89,7 @@ function networkFirst(e, isNav) {
 // De app-shell (HTML + app.css + app.js + app-ui.js) is netwerk-eerst zodat een
 // herlaad de laatste versie toont; sinds de JS/CSS losse assets zijn moeten die
 // dezelfde freshness krijgen als de pagina. Iconen/manifest blijven cache-eerst.
-const FRESH_ASSETS = new Set(["/app.css", "/app.js", "/app-modal.js", "/app-ui.js", "/app-push.js"]);
+const FRESH_ASSETS = new Set(["/app.css", "/app.js", "/app-auth.js", "/app-modal.js", "/app-ui.js", "/app-push.js"]);
 
 // Web Push: toon een notificatie bij een binnenkomende push.
 self.addEventListener("push", (e) => {

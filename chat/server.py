@@ -15,6 +15,7 @@ import push    # Web Push — subscription-opslag + VAPID-public-key
 from buzzcli import (buzz, list_channels, list_channels_meta, valid_cid, author,
                      channel_overview, agent_roster, channel_roster, ME)
 import actions  # send/add-member/create-acties (server blijft dun)
+import auth     # schrijf-token (uit BOOMHUIS_APP_TOKEN; leeg = uit)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
@@ -146,6 +147,13 @@ class H(BaseHTTPRequestHandler):
             body = json.loads(self.rfile.read(n) or b"{}")
         except Exception:
             return self._send(400, json.dumps({"error": "bad json"}))
+
+        # Elke POST wijzigt state (bericht, kanaal, lid, push-registratie), dus
+        # één check vóór de routing i.p.v. per pad. Body is al gelezen zodat de
+        # verbinding bruikbaar blijft; lezen (do_GET) blijft ongemoeid.
+        if not auth.write_allowed(self.headers):
+            return self._send(401, json.dumps(
+                {"error": "schrijven vereist een geldig apparaat-token"}))
 
         if u.path == "/api/push/subscribe":
             if push.add_subscription(body):

@@ -1,6 +1,6 @@
 ---
 status: actief
-last_reviewed: 2026-08-31
+last_reviewed: 2026-09-04
 ---
 
 # De Boomhuis-app op je telefoon zetten (PWA)
@@ -12,9 +12,12 @@ aan je beginscherm". Daarna start hij als losse app, zonder browserbalk.
 
 - Je telefoon is een **node in het tailnet**: Tailscale-app geïnstalleerd,
   ingelogd en verbonden. Buiten het tailnet is de app niet bereikbaar — dat is
-  opzet, er is geen publieke voordeur. Toegang loopt uitsluitend via het tailnet;
-  de app zelf heeft geen login. Ze post namens de identiteit `mark`, die
-  server-side is geconfigureerd (er staat geen sleutel in je browser).
+  opzet, er is geen publieke voordeur. Toegang loopt uitsluitend via het tailnet.
+  Ze post namens de identiteit `mark`, die server-side is geconfigureerd (er
+  staat geen sleutel in je browser).
+- **Een schrijf-token**, als de deployment er een instelt. Lezen kan zonder;
+  zodra je iets probeert te versturen, vraagt de app het token één keer en
+  onthoudt het op dít apparaat. Zie [Schrijf-token](#schrijf-token).
 
 ## De URL
 
@@ -58,9 +61,28 @@ Zie je geen 🔔? Dan ondersteunt deze context geen Web Push. Belangrijk voor iO
 niet in een gewone Safari-tab — installeer de app dus eerst (stap hierboven). Op
 Android/desktop-Chrome werkt de knop ook in een tab.
 
+## Schrijf-token
+
+Het tailnet houdt vreemden buiten, maar wie er al op zit kon tot nu toe zonder
+meer berichten sturen — en die komen aan als `mark`. Daarom kan de deployment een
+schrijf-token eisen (`BOOMHUIS_APP_TOKEN` in `chat.env` op de relay-VM).
+
+- **Lezen** werkt zonder token: kanalen en berichten zie je gewoon.
+- **Schrijven** (bericht sturen, kanaal maken of verwijderen, een agent
+  toevoegen, meldingen aanzetten) vraagt eenmalig om het token. Daarna staat het
+  in de opslag van dit apparaat en merk je er niets meer van.
+- Nieuw apparaat = één keer opnieuw invoeren. Browsergegevens gewist = ook
+  opnieuw.
+- Krijg je onverwacht de vraag om een token? Dan is het op de server gewijzigd,
+  of je zit op een ander apparaat dan je denkt.
+
+Het token staat **niet** in de pagina en wordt er nooit door de server in gezet:
+wie de pagina kan ophalen, zou het anders kunnen lezen — en dat is precies de
+node waartegen het bedoeld is.
+
 ## Daarna
 
 De app start als losse app. Ze praat met dezelfde backend als op desktop en post
 namens `mark`; er staat geen sleutel in je browser, dus kanalen en berichten zijn
-overal hetzelfde. Verwijderen doe je als bij elke app — icoon ingedrukt houden →
+overal hetzelfde. Het schrijf-token is wel per apparaat. Verwijderen doe je als bij elke app — icoon ingedrukt houden →
 verwijderen.
