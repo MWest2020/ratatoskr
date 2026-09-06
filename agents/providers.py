@@ -12,6 +12,28 @@ import subprocess
 CLAUDE = os.environ.get("CLAUDE_BIN", "claude")
 MAX_TURN_S = 150
 
+# Wat de agent-subprocess van de omgeving mág zien. De listener draagt de nsec van
+# ELKE agent in zijn eigen omgeving; zonder deze filter erft elke beurt die sleutels
+# (en de age-key, GitHub-token, ssh-agent) en is één geslaagde prompt-injectie
+# genoeg om ze via /proc/self/environ te lezen en in het kanaal te posten.
+ENV_KEEP = ("PATH", "HOME", "LANG", "LC_ALL", "TZ", "TERM",
+            "XDG_CONFIG_HOME", "XDG_CACHE_HOME", "XDG_DATA_HOME")
+
+# Pad-tools worden begrensd tot de werkboom. `--allowedTools Read` alleen begrenst
+# NIETS: geverifieerd 2026-09-06 dat een agent daarmee een bestand buiten de repo
+# las zonder denial; met `Read(./**)` wordt diezelfde poging geweigerd én gemeld.
+PATH_TOOLS = {"Read", "Grep", "Glob", "Edit", "Write", "NotebookEdit"}
+
+
+def scoped(tools):
+    """Pad-tools krijgen een werkboom-scope; de rest blijft zoals hij is."""
+    return [f"{t}(./**)" if t in PATH_TOOLS else t for t in (tools or [])]
+
+
+def agent_env():
+    """Alleen wat de CLI nodig heeft — geen sleutels, geen tokens."""
+    return {k: v for k, v in os.environ.items() if k in ENV_KEEP}
+
 
 def run(provider, system, prompt, model=None, allow=None, deny=None):
     """Draai één beurt. Return {answer, model, cost, turns, denials, error}.
@@ -35,7 +57,7 @@ def run(provider, system, prompt, model=None, allow=None, deny=None):
     if model:
         cmd += ["--model", model]
     if allow:
-        cmd += ["--allowedTools", ",".join(allow)]
+        cmd += ["--allowedTools", ",".join(scoped(allow))]
     if deny:
         cmd += ["--disallowedTools", ",".join(deny)]
     # Prompt via stdin, niet als argument: --allowedTools/--disallowedTools zijn
@@ -43,7 +65,7 @@ def run(provider, system, prompt, model=None, allow=None, deny=None):
     # ("Input must be provided either through stdin or as a prompt argument").
     try:
         p = subprocess.run(cmd, input=prompt, capture_output=True, text=True,
-                           timeout=MAX_TURN_S)
+                           timeout=MAX_TURN_S, env=agent_env())
     except subprocess.TimeoutExpired:
         return {"answer": "(time-out)", "model": model or "", "cost": 0.0,
                 "turns": 0, "denials": [], "error": "timeout"}
