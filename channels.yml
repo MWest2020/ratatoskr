@@ -8,6 +8,9 @@ channels:
   runs:
     id: 74504227-8f82-42d5-b943-e0bc059778bc
     doel: machinale feed — run-start en verdict per habitat-run, thread per run
+  statistics:
+    id: 4deb736b-a36c-44c0-a966-ee930ffe802b
+    doel: per beurt één regel met agent, kanaal, model, turns en kosten — zodat zichtbaar is wat de vloot draait en wat het kost
   escalatie:
     id: c1a0db51-3c96-46f9-9afa-1f03acfd87a3
     doel: het enige besluitkanaal — alles wat een menselijk besluit vergt, met rapportlink

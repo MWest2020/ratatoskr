@@ -21,6 +21,7 @@ import time
 import bootstrap
 import prompts
 import providers
+import reporting
 import topology
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -36,21 +37,8 @@ NPUBS, PUB2NAME = bootstrap.load_identity_npubs(ROOT)
 CFG = bootstrap.load_yaml(os.path.join(HERE, "agents.yml"))
 BASE = CFG["registry_base"]
 
-# Bouw de actieve agent-set: def uit handbook + nsec uit env + npub-match.
-AGENTS = {}
-for handle in CFG.get("run", []):
-    nsec = os.environ.get("NSEC_" + handle.upper(), "")
-    if not nsec:
-        print(f"[listener] {handle}: geen NSEC_ in env — overslaan", flush=True)
-        continue
-    d = bootstrap.fetch_def(BASE, handle)
-    if not d:
-        print(f"[listener] {handle}: geen handbook-definitie — NIET gespawnd", flush=True)
-        continue
-    if d["npub"] != NPUBS.get(handle):
-        print(f"[listener] {handle}: npub wijkt af van registry — NIET gespawnd", flush=True)
-        continue
-    AGENTS[handle] = {**d, "nsec": nsec}
+# Actieve agent-set: def uit de handbook + nsec uit env + npub-match + model.
+AGENTS = bootstrap.build_agents(CFG, BASE, NPUBS)
 
 AGENT_PUBS = set()  # gevuld met pubkeys van agents (uit identities via naam)
 
@@ -186,13 +174,16 @@ def main():
                         if lt:
                             p = lt + "\n\n" + p
                     try:
-                        ans = providers.run(cfg.get("provider"), cfg["system"], p)
-                    except subprocess.TimeoutExpired:
-                        ans = "(time-out — vraag te zwaar voor een chatbeurt)"
-                    except Exception as e:
-                        ans = f"(fout: {e})"
+                        r = providers.run(cfg.get("provider"),
+                                          cfg["system"] + prompts.LIMIT_CLAUSE, p,
+                                          model=cfg.get("model"), allow=cfg.get("allow"),
+                                          deny=cfg.get("deny"))
+                    except Exception as e:  # incl. time-out: de beurt mag nooit klappen
+                        r = {"answer": f"(fout: {e})", "error": str(e)[:120]}
+                    ans = r.get("answer", "(geen antwoord)")
                     if send(cid, ans, cfg["nsec"], cfg["npub"]):
                         print(f"[listener] {handle} antwoordde in #{cname} ({reason})", flush=True)
+                    reporting.report_run(send, CHANNELS, handle, cname, cfg, r)
         time.sleep(POLL)
 
 

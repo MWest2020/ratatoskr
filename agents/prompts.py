@@ -59,3 +59,17 @@ def build_prompt(handle, chan, recent, trigger, pub2name):
     lines.append(f"Je bent '{handle}'. Reageer als vervolg op het gesprek "
                  f"hierboven, op dit laatste bericht: {trigger!r}")
     return "\n".join(lines)
+
+
+# Een geweigerde tool levert GEEN permission_denial op: hij is niet aanwezig, dus
+# er valt niets te weigeren — de agent merkt het en zegt het in tekst. Daarom vragen
+# we één machineleesbare regel, zodat de listener 'm per run naar #escalatie kan
+# tillen i.p.v. dat een limitatie in een chatregel verdwijnt.
+LIMIT_MARKER = "LIMITATIE:"
+LIMIT_CLAUSE = (
+    "\n\nAls je iets niet kunt doen omdat een tool ontbreekt of geweigerd wordt, "
+    "begin je antwoord dan met één regel:\n"
+    f"{LIMIT_MARKER} <wat je miste, in een halve zin>\n"
+    "Daarna gewoon je antwoord. Gebruik die regel alleen daarvoor — niet voor "
+    "inhoudelijke onzekerheid, en niet als je de vraag wél kon beantwoorden."
+)
