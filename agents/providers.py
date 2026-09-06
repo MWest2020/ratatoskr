@@ -25,7 +25,13 @@ def run(provider, system, prompt, model=None, allow=None, deny=None):
         return {"answer": f"(provider '{provider}' nog niet ondersteund door deze listener)",
                 "model": "", "cost": 0.0, "turns": 0, "denials": [], "error": "provider"}
 
-    cmd = [CLAUDE, "-p", "--output-format", "json", "--append-system-prompt", system]
+    # dontAsk = deny-by-default: alles buiten --allowedTools wordt geweigerd i.p.v.
+    # aangeboden. Zonder deze vlag hield de agent tools als Agent, WebFetch en
+    # SendMessage — de allowlist bepaalde alleen wat zónder vragen mocht. Gemeten
+    # 2026-09-06: mét de vlag komt een WebFetch-poging als permission_denial terug,
+    # zodat #escalatie een machinaal signaal krijgt en niet alleen zelfrapportage.
+    cmd = [CLAUDE, "-p", "--output-format", "json", "--permission-mode", "dontAsk",
+           "--append-system-prompt", system]
     if model:
         cmd += ["--model", model]
     if allow:
