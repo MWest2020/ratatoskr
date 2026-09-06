@@ -79,9 +79,3 @@ identities:
     pubkey_hex: d18b862f07fc43cbfaa2530dae107b7d14ab4ceda5898cc15c51e390375a52cd
     npub: npub16x9cvtc8l3puh74z2vx6uyrm0522kn8d5kyces2u283eqd662txsqkedpm
     aangemaakt: '2026-09-02'
-  roodteam:
-    rol: chat-agent
-    status: actief
-    pubkey_hex: 271a779e507d49f92f42f0664779fb115fbab5a95eebf5eb3e7eed8a2817690f
-    npub: npub1yud808js04yljt6z7pnyw70mz90m4ddftm4lt6e70mkc52qhdy8s2rzkex
-    aangemaakt: '2026-09-06'
