@@ -49,5 +49,36 @@ def fetch_def(base, handle):
             for ln in cf.group(1).splitlines() if ln.startswith(">")
         ).strip()
     provider = (fm.get("provider") or "claude-p")
+    # Model en tools komen uit de registry en worden afgedwongen (besluit Mark
+    # 2026-09-06). Fail-closed: zonder model draait de agent niet — anders valt hij
+    # stil terug op de omgevingsdefault en weet niemand waarop hij draaide.
+    tools = chat.get("tools") or {}
     return {"npub": fm.get("npub"), "channels": channels, "system": system,
-            "provider": provider}
+            "provider": provider, "model": chat.get("model") or "",
+            "allow": tools.get("allow") or [], "deny": tools.get("deny") or [],
+            "skills": chat.get("skills") or []}
+
+
+def build_agents(cfg, base, npubs):
+    """De agents die deze listener draait: definitie uit de handbook, nsec uit env,
+    npub gelijk aan de registry, en een model in de def. Elk van die vier is
+    fail-closed — een agent die er niet doorheen komt draait niet, met de reden op
+    stdout. Zonder de model-check zou hij stil op de omgevingsdefault draaien."""
+    agents = {}
+    for handle in cfg.get("run", []):
+        nsec = os.environ.get("NSEC_" + handle.upper(), "")
+        if not nsec:
+            print(f"[listener] {handle}: geen NSEC_ in env — overslaan", flush=True)
+            continue
+        d = fetch_def(base, handle)
+        if not d:
+            print(f"[listener] {handle}: geen handbook-definitie — NIET gespawnd", flush=True)
+            continue
+        if d["npub"] != npubs.get(handle):
+            print(f"[listener] {handle}: npub wijkt af van registry — NIET gespawnd", flush=True)
+            continue
+        if not d.get("model"):
+            print(f"[listener] {handle}: geen `model` in de definitie — NIET gespawnd", flush=True)
+            continue
+        agents[handle] = {**d, "nsec": nsec}
+    return agents
