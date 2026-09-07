@@ -66,6 +66,8 @@ NAMES = {
     "a05339f005904935da71e0498f3d542ac223e8cdfac920c6152a743f91640769": "mark",
     "821de7df04297a3a5e53c1ae423456b32826505a1caef5fe0979a4940720c2db": "mark",
     "27308f27bfdac7d051d6c79cbacffcf20eccc54abccb7495db68a58f25d083f0": "orchestrator",
+    "b0e20b3080ca3a7d922800deb43c90b48ee0bd1f16cd546b87ccea7473b93ece": "odin",
+    "c14d1cdd1931061af176392f39fd17303591af0cef17d37e2aadf4bc2b36a8dc": "coordinator",  # ingetrokken sleutel; history blijft leesbaar
     "378aaf0fca61133c14bbd0e6a4ab26cea4cdffdeb7d2513fdc458b1b9d864255": "assistent",
     "a18ce524d234433a0702f85f09325165d19aa6fe5e9c28d01e22ffcf55922d49": "architect",
     "2827e3d844551b81f4193fd7e64b60141759a5a4848482f48b9ad2c2fd938b74": "bouwer",
