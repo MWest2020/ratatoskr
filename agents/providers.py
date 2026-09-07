@@ -46,6 +46,33 @@ def agent_env():
     return {k: v for k, v in os.environ.items() if k in ENV_KEEP}
 
 
+def main_model(usage, gevraagd=None):
+    """Het model dat het WERK deed, uit `modelUsage`.
+
+    Eerder werd hier de eerste sleutel van die map genomen. Een run kan meerdere
+    modellen aanraken, en dan noemde de statistiekregel er willekeurig één — precies
+    het getal waarop je zou aflezen of het gedeclareerde model afgedwongen wordt.
+    Nu: het model met de meeste tokens. Geen usage → wat er gevraagd was."""
+    if not isinstance(usage, dict) or not usage:
+        return gevraagd or ""
+
+    def tokens(v):
+        if not isinstance(v, dict):
+            return 0
+        return sum(x for k, x in v.items()
+                   if isinstance(x, (int, float)) and "oken" in k)
+
+    return max(usage, key=lambda k: tokens(usage[k]))
+
+
+def model_klopt(gevraagd, gedraaid):
+    """Is het gedraaide model de familie die gevraagd werd? De def noemt de
+    intentie (haiku/sonnet/opus), de run een exacte id (claude-sonnet-5)."""
+    if not gevraagd:
+        return True
+    return gevraagd.lower() in (gedraaid or "").lower()
+
+
 def run(provider, system, prompt, model=None, allow=None, deny=None, progress=None):
     """Draai één beurt. Return {answer, model, cost, turns, denials, error}.
 
@@ -110,12 +137,12 @@ def run(provider, system, prompt, model=None, allow=None, deny=None, progress=No
     proc.wait(timeout=10)
     if not d:
         err = (proc.stderr.read() or "").strip()[:200]
-        return {"answer": "(geen antwoord)", "model": model or "", "cost": 0.0,
+        return {"answer": "(geen antwoord)", "model": model or "", "model_gevraagd": model or "", "cost": 0.0,
                 "turns": 0, "denials": [], "error": err or "geen resultaat-event"}
 
-    used = list(d.get("modelUsage") or {})
     return {"answer": (d.get("result") or "").strip() or "(geen antwoord)",
-            "model": used[0] if used else (model or ""),
+            "model": main_model(d.get("modelUsage"), model),
+            "model_gevraagd": model or "",
             "cost": float(d.get("total_cost_usd") or 0.0),
             "turns": int(d.get("num_turns") or 0),
             "denials": d.get("permission_denials") or [],

@@ -51,7 +51,14 @@ def report_run(send, channels, handle, cname, cfg, r):
     try:
         stats = channels.get("statistics")
         if stats:
-            line = (f"{handle} · #{cname} · {r.get('model') or '?'} · "
+            gevraagd, gedraaid = r.get("model_gevraagd") or "", r.get("model") or "?"
+            # Gevraagd én gedraaid, met een vlag als ze niet matchen: deze regel is
+            # het enige waarop Mark kan aflezen of het gedeclareerde model echt
+            # afgedwongen wordt. Alleen "wat er draaide" tonen verbergt juist dat.
+            model = gedraaid if not gevraagd else (
+                f"{gevraagd}→{gedraaid}" + ("" if providers.model_klopt(gevraagd, gedraaid)
+                                            else "  ⚠ WIJKT AF"))
+            line = (f"{handle} · #{cname} · {model} · "
                     f"{r.get('turns', 0)} turns · ${r.get('cost', 0.0):.2f}")
             send(stats, line, cfg["nsec"], cfg["npub"])
 
