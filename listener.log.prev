@@ -1,0 +1,4 @@
+[listener] actief; agents uit handbook: assistent, architect, bouwer, marketing, coordinator, ontwerper, reviewer
+[listener] mention @assistent in #general: @assistent korte testbeurt: noem in één zin welke 
+[listener] assistent antwoordde in #general (mention)
+[listener] send FAALDE in 4deb736b-a36c-44c0-a966-ee930ffe802b: {"error":"user_error","message":"{\"add_member_command\":\"buzz channels add-member --channel 4deb736b-a36c-44c0-a966-ee
