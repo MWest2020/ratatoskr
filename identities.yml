@@ -85,3 +85,9 @@ identities:
     pubkey_hex: 271a779e507d49f92f42f0664779fb115fbab5a95eebf5eb3e7eed8a2817690f
     npub: npub1yud808js04yljt6z7pnyw70mz90m4ddftm4lt6e70mkc52qhdy8s2rzkex
     aangemaakt: '2026-09-06'
+  odin:
+    rol: sessie
+    status: actief
+    pubkey_hex: b0e20b3080ca3a7d922800deb43c90b48ee0bd1f16cd546b87ccea7473b93ece
+    npub: npub1kr3qkvyqega8my3gqr0tg0yskj8wp0glzmx4g6u8en48guae8m8q3mt0ak
+    aangemaakt: '2026-09-07'
