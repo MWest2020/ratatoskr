@@ -173,3 +173,28 @@ class HubEnRolTest(unittest.TestCase):
         t = prompts.roster_text(agents, "odin")
         self.assertIn("@bouwer", t)
         self.assertNotIn("@odin", t)
+
+
+class LidmaatschapTest(unittest.TestCase):
+    """Elke agent post óók in #statistics en #escalatie, ongeacht zijn eigen scope.
+    Zonder lidmaatschap faalt die send stil — dat gebeurde: odin zat niet in
+    #statistics en vijf agents niet in #escalatie."""
+
+    CH = {"general": "c-gen", "statistics": "c-stat", "escalatie": "c-esc", "bouw": "c-bouw"}
+
+    def test_meldt_ontbrekend_rapportagekanaal(self):
+        agents = {"odin": {"channels": ["general"]}}
+        leden = {"c-gen": {"pk-odin"}, "c-stat": set(), "c-esc": {"pk-odin"}}
+        mis = topology.missing_memberships(agents, self.CH, {"odin": "pk-odin"}, leden.get)
+        self.assertEqual(mis, [("odin", "statistics")])
+
+    def test_meldt_ontbrekend_eigen_kanaal(self):
+        agents = {"bouwer": {"channels": ["bouw"]}}
+        leden = {"c-bouw": set(), "c-stat": {"pk-b"}, "c-esc": {"pk-b"}}
+        mis = topology.missing_memberships(agents, self.CH, {"bouwer": "pk-b"}, leden.get)
+        self.assertEqual(mis, [("bouwer", "bouw")])
+
+    def test_niets_te_melden_als_alles_klopt(self):
+        agents = {"odin": {"channels": ["general"]}}
+        leden = {c: {"pk-odin"} for c in self.CH.values()}
+        self.assertEqual(topology.missing_memberships(agents, self.CH, {"odin": "pk-odin"}, leden.get), [])
