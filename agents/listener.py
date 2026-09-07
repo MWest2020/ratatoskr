@@ -177,7 +177,9 @@ def main():
                         r = providers.run(cfg.get("provider"),
                                           cfg["system"] + prompts.LIMIT_CLAUSE, p,
                                           model=cfg.get("model"), allow=cfg.get("allow"),
-                                          deny=cfg.get("deny"))
+                                          deny=cfg.get("deny"),
+                                          progress=reporting.progress_poster(
+                                              send, cid, cfg, handle))
                     except Exception as e:  # incl. time-out: de beurt mag nooit klappen
                         r = {"answer": f"(fout: {e})", "error": str(e)[:120]}
                     ans = r.get("answer", "(geen antwoord)")
