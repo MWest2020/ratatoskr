@@ -6,6 +6,7 @@ naar 'conduction' ruikt eruit (werkgever-org blijft buiten beeld).
 """
 import base64
 import json
+import re
 import os
 import urllib.request
 import urllib.error
@@ -45,6 +46,19 @@ def get_file(path, repo=f"{OWNER}/boomhuis"):
     if isinstance(d, dict) and d.get("encoding") == "base64":
         return base64.b64decode(d.get("content", "")).decode("utf-8", "replace")
     return ""
+
+
+# owner/naam, GitHub-tekenset. Zonder deze check ging "boomhuis" (zonder owner)
+# door naar de API en kwam de 404 terug als een 502 met een rauwe upstream-tekst —
+# een invoerfout die zich voordoet als een storing.
+# Elk segment begint met een alfanumeriek teken: anders komen ".." en "."
+# er doorheen en gaat een pad-achtige waarde de GitHub-URL in.
+_SEG = r"[A-Za-z0-9][A-Za-z0-9._-]{0,99}"
+_REPO_RE = re.compile(rf"^{_SEG}/{_SEG}$")
+
+
+def valid_repo(name):
+    return bool(name) and bool(_REPO_RE.match(name))
 
 
 def list_repos(limit=30):

@@ -46,6 +46,7 @@ class H(BaseHTTPRequestHandler):
             "/app-auth.js": ("app-auth.js", "text/javascript"),
             "/app-modal.js": ("app-modal.js", "text/javascript"),
             "/app-ui.js": ("app-ui.js", "text/javascript"),
+            "/app-repos.js": ("app-repos.js", "text/javascript"),
             "/app-push.js": ("app-push.js", "text/javascript"),
             "/manifest.webmanifest": ("manifest.webmanifest", "application/manifest+json"),
             "/sw.js": ("sw.js", "text/javascript"),
@@ -84,8 +85,8 @@ class H(BaseHTTPRequestHandler):
                 return self._send(502, json.dumps({"error": str(e)[:200]}))
         if u.path == "/api/prs":
             repo = (parse_qs(u.query).get("repo") or [""])[0]
-            if not repo:
-                return self._send(400, json.dumps({"error": "repo ontbreekt"}))
+            if not github.valid_repo(repo):
+                return self._send(400, json.dumps({"error": "repo: verwacht owner/naam"}))
             try:
                 return self._send(200, json.dumps({"prs": github.list_prs(repo)}))
             except Exception as e:
@@ -94,8 +95,8 @@ class H(BaseHTTPRequestHandler):
             q = parse_qs(u.query)
             repo = (q.get("repo") or [""])[0]
             num = (q.get("num") or [""])[0]
-            if not repo or not num.isdigit():
-                return self._send(400, json.dumps({"error": "repo/num ontbreekt"}))
+            if not github.valid_repo(repo) or not num.isdigit():
+                return self._send(400, json.dumps({"error": "repo: owner/naam, num: getal"}))
             try:
                 return self._send(200, json.dumps(github.get_pr(repo, int(num))))
             except Exception as e:
