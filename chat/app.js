@@ -46,10 +46,11 @@ async function loadChannels(){
     row.querySelector(".cn").textContent=c.name;  // textContent: geen HTML-injectie via kanaalnaam
     const cd=row.querySelector(".cdesc");
     if(c.description) cd.textContent=c.description; else cd.remove();  // beschrijving = waar het kanaal voor is
-    const open=()=>{ selectChannel(c); closeDrawer(); };
-    row.querySelector(".cmeta").onclick=open;
-    row.querySelector(".hash").onclick=open;
-    row.querySelector(".unread").onclick=open;
+    // Klikdoel is de HELE rij, niet de losse spans: de rij is volledige breedte
+    // met padding, dus alles naast de tekst was dood oppervlak — je tikte een
+    // kanaal aan, er gebeurde niets, en de lade bleef over de invoerbalk staan.
+    // De verwijderknop hieronder stopt de propagatie en houdt zijn eigen actie.
+    row.onclick=()=>{ selectChannel(c); closeDrawer(); };
     if(c.name!=="general"){
       const del=document.createElement("button");
       del.className="del"; del.textContent="🗑"; del.title="verwijder #"+c.name;
