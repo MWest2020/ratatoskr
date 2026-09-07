@@ -73,30 +73,34 @@ def send(cid, content, force=False):
     return 502, {"error": (err or out or "").strip()[:200]}
 
 
-def _add_coordinator(create_out):
-    """Best-effort: coordinator als lid van een net-gemaakt kanaal. Mag NOOIT
+def _add_hub(create_out):
+    """Best-effort: de hub-agent als lid van een net-gemaakt kanaal. Mag NOOIT
     raisen — het kanaal bestaat al. Faalt stil-maar-zichtbaar (log naar stderr,
-    return None/False), zodat een add-fout niet de hele create doet omvallen."""
+    return None/False), zodat een add-fout niet de hele create doet omvallen.
+
+    De hub wordt op ROL opgezocht (`meta-agent`), niet op naam: na de hernoeming
+    coordinator -> odin gaf de naam-variant `geen cid/pubkey` en kwam er in geen
+    enkel nieuw kanaal nog een hub te zitten."""
     try:
         d = json.loads(create_out)
         cid = d.get("channel_id") or d.get("id")  # relay gebruikt beide
-        co = roster.agent_pubkey("coordinator")
+        co = roster.hub_pubkey()
         if not (cid and co):
-            sys.stderr.write("[create] coordinator-add overgeslagen: geen cid/pubkey\n")
+            sys.stderr.write("[create] hub-add overgeslagen: geen cid/hub-pubkey\n")
             return False
         ar, _o, ae = buzz_admin(["channels", "add-member", "--channel", cid,
                                  "--pubkey", co, "--role", "bot"])
         if ar is None or ar != 0:
-            sys.stderr.write(f"[create] coordinator-add faalde: {(ae or _o).strip()[:120]}\n")
+            sys.stderr.write(f"[create] hub-add faalde: {(ae or _o).strip()[:120]}\n")
         return ar == 0
     except Exception as e:  # noqa: BLE001 — create is al geslaagd; add is bijzaak
-        sys.stderr.write(f"[create] coordinator-add fout: {e}\n")
+        sys.stderr.write(f"[create] hub-add fout: {e}\n")
         return False
 
 
 def create_channel(name):
-    """Maak een open kanaal + voeg coordinator standaard toe (best-effort:
-    mislukt de add, dan bestaat het kanaal nog steeds; `coordinator_added` meldt 't)."""
+    """Maak een open kanaal + voeg de hub-agent standaard toe (best-effort:
+    mislukt de add, dan bestaat het kanaal nog steeds; `hub_added` meldt 't)."""
     name = (name or "").strip().lower()
     if not _NAME_RE.match(name):
         return 400, {"error": "naam: a-z 0-9 _ - (max 31)"}
@@ -106,4 +110,4 @@ def create_channel(name):
         return 503, {"error": ADMIN_OFF}
     if rc != 0:
         return 502, {"error": err.strip()[:200]}
-    return 200, {"ok": True, "name": name, "coordinator_added": _add_coordinator(out)}
+    return 200, {"ok": True, "name": name, "hub_added": _add_hub(out)}

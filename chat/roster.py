@@ -79,6 +79,16 @@ def agent_pubkey(name):
     return next((a["pubkey"] for a in chat_agents() if a["handle"].lower() == low), None)
 
 
+def hub_pubkey():
+    """pubkey_hex van de hub-agent: de actieve identiteit met rol `meta-agent`.
+
+    Niet op naam, want de hub is hernoembaar — `coordinator` heette sinds
+    2026-09-07 `odin`, en een hardgecodeerde naam liet elk nieuw kanaal zonder
+    hub achter (stil: de add is best-effort). De rol is de stabiele eigenschap.
+    """
+    return next((pk for pk, i in identity_map().items() if i.get("rol") == "meta-agent"), None)
+
+
 # Kern-agents als fallback: als de registry-fetch faalt (github down/rate-limit),
 # blijft de 'per agent'-tab gevuld i.p.v. leeg. De registry is de primaire bron.
 _FALLBACK = [
@@ -88,7 +98,7 @@ _FALLBACK = [
     {"handle": "marketing", "pubkey": "ba5bf9d6b4009984378561c35a346e64b488282ffd1fbc7dcdde1d19c515fd64", "rol": "chat-agent"},
     {"handle": "ontwerper", "pubkey": "24ab03329773e12fb183d93e34e05485b3055246c12786e9cad46a311b5ed0e0", "rol": "chat-agent"},
     {"handle": "reviewer", "pubkey": "7734535c4a432cd0983b965af2ec3b1b07bb6308293e36590d8fdb00d95abff7", "rol": "chat-agent"},
-    {"handle": "coordinator", "pubkey": "c14d1cdd1931061af176392f39fd17303591af0cef17d37e2aadf4bc2b36a8dc", "rol": "meta-agent"},
+    {"handle": "odin", "pubkey": "b0e20b3080ca3a7d922800deb43c90b48ee0bd1f16cd546b87ccea7473b93ece", "rol": "meta-agent"},
 ]
 # NB: _FALLBACK spiegelt de LIVE registry (identities.yml op main): dat zijn deze
 # 7 agents. archivaris staat alleen op een ongemergede branch en draait nergens,
