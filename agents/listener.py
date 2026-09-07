@@ -103,15 +103,11 @@ def buzz_run(nsec):
 def main():
     if not AGENTS:
         raise SystemExit("geen agents gespawnd (geen bron/nsec/npub-match)")
-    # Reader = de ORCHESTRATOR. Die bezit elk kanaal en ziet ze dus allemaal;
-    # een agent-sleutel ziet alleen waar die agent lid van is. Gemeten 2026-09-07:
-    # orchestrator 15/15 kanalen, de hub 4/15, assistent 8/15. Eerder stond hier
-    # "de coordinator, anders de eerste agent" — na de hernoeming naar odin viel
-    # dat stil terug op assistent en verdween meer dan de helft uit beeld.
+    # Reader = de ORCHESTRATOR: die bezit elk kanaal en ziet ze dus allemaal.
+    # Gemeten 2026-09-07: orchestrator 15/15, assistent 8/15, de hub 4/15.
     read_nsec = os.environ.get("NSEC_ORCHESTRATOR", "").strip()
     if not read_nsec:
-        raise SystemExit("[listener] NSEC_ORCHESTRATOR ontbreekt — de reader moet de "
-                         "orchestrator zijn (ziet alle kanalen). Zie agents/run.sh.")
+        raise SystemExit("[listener] NSEC_ORCHESTRATOR ontbreekt (zie agents/run.sh)")
     run = buzz_run(read_nsec)  # relay-I/O voor topology (kanalen + leden)
     # pubkeys van agents, om niet op agents te reageren
     name2pub = {h: p for p, h in PUB2NAME.items()}
