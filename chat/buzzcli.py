@@ -74,10 +74,30 @@ NAMES = {
 ME = "a05339f005904935da71e0498f3d542ac223e8cdfac920c6152a743f91640769"
 
 
-def buzz(args, stdin=None, timeout=25):
+# Kanaal-BEHEER (maken, verwijderen, leden) tekent als de orchestrator — een
+# agent — en niet als `mark`. Zo zijn nieuwe kanalen agent-owned en hoeft de
+# mens-sleutel nooit voor beheer gebruikt te worden (impersonatie-adjacent).
+# Leeg = beheer uit: fail-closed met een duidelijke melding, NOOIT stil
+# terugvallen op marks sleutel. Zie change reown-channels-to-orchestrator.
+ORCH_KEY = os.environ.get("BUZZ_ORCHESTRATOR_KEY", "").strip()
+ADMIN_OFF = "kanaalbeheer staat uit: BUZZ_ORCHESTRATOR_KEY ontbreekt op de server"
+
+
+def buzz(args, stdin=None, timeout=25, key=None):
+    """`key` overschrijft de ondertekenende sleutel (BUZZ_PRIVATE_KEY) voor deze
+    ene aanroep. Zonder `key` tekent de procesidentiteit (mark) — dat blijft het
+    pad voor berichten."""
+    env = dict(os.environ, BUZZ_PRIVATE_KEY=key) if key else None
     p = subprocess.run([BUZZ, *args], capture_output=True, text=True,
-                       input=stdin, timeout=timeout)
+                       input=stdin, timeout=timeout, env=env)
     return p.returncode, p.stdout, p.stderr
+
+
+def buzz_admin(args, stdin=None, timeout=25):
+    """Kanaalbeheer als orchestrator. Geeft (None, ...) als er geen sleutel is."""
+    if not ORCH_KEY:
+        return None, "", ADMIN_OFF
+    return buzz(args, stdin=stdin, timeout=timeout, key=ORCH_KEY)
 
 
 def author(pubkey):

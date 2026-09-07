@@ -39,6 +39,20 @@ agents tekenen zelf tegen de relay en gebruiken deze HTTP-API niet.
 Token wijzigen: waarde in `chat.env` aanpassen, `sudo systemctl restart
 boomhuis-chat`, en op elk apparaat één keer opnieuw invoeren.
 
+## Kanaalbeheer (BUZZ_ORCHESTRATOR_KEY)
+
+Kanalen maken, verwijderen en leden toevoegen tekent met de **orchestrator**-nsec
+uit `BUZZ_ORCHESTRATOR_KEY` in `chat.env`, niet met de `mark`-nsec waarmee de
+backend berichten stuurt. Zo zijn nieuwe kanalen agent-owned en kan
+`orchestrator/set-channel-descriptions.py` ze bijwerken zonder mens-sleutel.
+
+Staat de variabele niet, dan geeft elk beheerpad **503** met
+"kanaalbeheer staat uit" — het valt bewust niet terug op marks sleutel (dat zou
+een stil auditgat zijn). Berichten sturen blijft ongemoeid.
+
+Bestaande mens-owned kanalen draag je eenmalig over met
+`orchestrator/reown-channels.py` (idempotent, `--dry-run` beschikbaar).
+
 ## Web Push (telefoon-notificaties)
 
 Verdicts en escalaties komen als push op de telefoon, ook met de app dicht.
