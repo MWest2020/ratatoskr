@@ -129,9 +129,10 @@ async function refresh(force){
     const row=document.createElement("div");
     row.className="row"+(m.mine?" mine":"");
     const cls = m.author==="mark"?"author-mark":(m.author==="orchestrator"?"author-orchestrator":"");
-    row.innerHTML=`<div class="meta"><span class="${cls}">${m.author}</span> · ${fmtTime(m.ts)}</div>`+
-      `<div class="bubble"></div>`;
-    row.querySelector(".bubble").textContent=m.content;
+    // Afzendernaam via textContent: hij valt terug op "npub:"+8 tekens uit de
+    // relay-payload, en die is niet van ons.
+    add(row, add(el("div","meta"), el("span",cls,m.author), " · "+fmtTime(m.ts)),
+             el("div","bubble", m.content));
     box.appendChild(row);
   }
   if(force||near) box.scrollTop=box.scrollHeight;
