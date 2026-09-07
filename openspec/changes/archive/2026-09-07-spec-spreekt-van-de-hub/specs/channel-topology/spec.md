@@ -1,4 +1,12 @@
-## MODIFIED Requirements
+## REMOVED Requirements
+
+### Requirement: Coordinator standaard lid bij nieuw kanaal
+
+**Reden:** de requirement koppelde het beleid aan één agent bij NAAM. Die
+koppeling brak toen de hub `coordinator` → `odin` werd; vervangen door een
+requirement die de hub op rol bepaalt.
+
+## ADDED Requirements
 
 ### Requirement: Hub standaard lid bij nieuw kanaal
 

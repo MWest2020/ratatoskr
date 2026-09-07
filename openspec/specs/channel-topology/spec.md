@@ -55,22 +55,6 @@ Elk vast kanaal SHALL een native relay-beschrijving hebben die overeenkomt met z
 - **THEN** zet het script de beschrijving opnieuw op elk kanaal (als eigenaar),
   zodat de beschrijving die de app toont overeenkomt met channels.yml
 
-### Requirement: Coordinator standaard lid bij nieuw kanaal
-
-Een kanaal dat via de webchat wordt aangemaakt SHALL de coordinator (meta-agent) standaard als lid toegevoegd krijgen bij het aanmaken (best-effort — het kanaal bestaat ook als de add faalt; de respons meldt dit via `coordinator_added`). Bestaande kanalen vallen BUITEN deze change: de webchat maakt of muteert lidmaatschap van al-bestaande kanalen niet vanzelf, dus die worden los, operationeel op het beleid gebracht (de operator voegt coordinator eenmalig als lid toe). Deze change dekt alleen het aanmaak-pad.
-
-Dit is een lidmaatschaps-beleid (coordinator ís lid, zodat een @coordinator-mention niet op "geen lid" faalt). Of coordinator er ook ANTWOORDT hangt van de listener af (aparte change: listener op lidmaatschap i.p.v. alleen def-kanalen).
-
-#### Scenario: Nieuw kanaal krijgt coordinator als lid
-
-- **WHEN** een kanaal via de app wordt aangemaakt
-- **THEN** wordt coordinator standaard als lid toegevoegd
-
-#### Scenario: Add faalt maar kanaal blijft bestaan
-
-- **WHEN** het aanmaken lukt maar het toevoegen van coordinator faalt (relay-fout)
-- **THEN** bestaat het kanaal nog steeds en meldt de respons `coordinator_added: false`
-
 ### Requirement: Kanaalbeheer tekent als agent, nooit als de mens
 
 Kanalen maken, verwijderen en leden toevoegen SHALL ondertekend worden met de
@@ -103,4 +87,34 @@ te maken, met behoud van id, leden en geschiedenis.
 - **WHEN** het overdrachtsscript draait op een kanaal waarvan de mens eigenaar is
 - **THEN** is de orchestrator daarna eigenaar, geverifieerd tegen de relay, en
   laat een tweede run het kanaal ongemoeid
+
+### Requirement: Hub standaard lid bij nieuw kanaal
+
+Een kanaal dat via de webchat wordt aangemaakt SHALL de **hub-agent** standaard
+als lid toegevoegd krijgen (best-effort — het kanaal bestaat ook als de add
+faalt; de respons meldt dit via `hub_added`). De hub SHALL op **rol** worden
+bepaald (de actieve identiteit met rol `meta-agent`), niet op naam: de hub is
+hernoembaar, en een naam-koppeling faalt dan stil. Bestaande kanalen vallen
+hierbuiten; die worden operationeel op het beleid gebracht.
+
+Dit is een lidmaatschaps-beleid: de hub ís lid, zodat een mention niet op "geen
+lid" faalt. Of de hub ook ANTWOORDT hangt van de listener af.
+
+#### Scenario: Nieuw kanaal krijgt de hub als lid
+
+- **WHEN** een kanaal via de app wordt aangemaakt
+- **THEN** wordt de hub-agent standaard als lid toegevoegd en meldt de respons
+  `hub_added: true`
+
+#### Scenario: Add faalt maar kanaal blijft bestaan
+
+- **WHEN** het aanmaken lukt maar het toevoegen van de hub faalt (relay-fout, of
+  er is geen actieve meta-agent)
+- **THEN** bestaat het kanaal nog steeds en meldt de respons `hub_added: false`
+
+#### Scenario: De hub is hernoemd
+
+- **WHEN** de hub-identiteit een andere naam krijgt in de registry
+- **THEN** blijft het toevoegen werken zonder codewijziging, omdat de hub op rol
+  wordt gevonden
 
