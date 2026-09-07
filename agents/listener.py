@@ -20,6 +20,7 @@ import time
 
 import bootstrap
 import prompts
+import notify
 import providers
 import reporting
 import topology
@@ -34,6 +35,7 @@ MAX_CTX = 8
 
 CHANNELS = bootstrap.load_channels(ROOT)
 NPUBS, PUB2NAME = bootstrap.load_identity_npubs(ROOT)
+ME_NAME = os.environ.get("BOOMHUIS_HUMAN", "mark")  # eigen berichten pushen niet
 CFG = bootstrap.load_yaml(os.path.join(HERE, "agents.yml"))
 BASE = CFG["registry_base"]
 
@@ -143,6 +145,11 @@ def main():
                 if not mid or mid in seen:  # id-loos bericht overslaan (niet dedup-baar)
                     continue
                 seen.add(mid)
+                # Melden vóór de agent-filter: juist een agent-ANTWOORD is waar
+                # een mens op wacht. Wat níet meldt, beslist notify.wil_melden.
+                schrijver = PUB2NAME.get(m.get("pubkey"), "?")
+                if notify.wil_melden(cname, schrijver, m.get("content", ""), ME_NAME):
+                    notify.push(cname, schrijver, m.get("content", ""))
                 if m.get("pubkey") in AGENT_PUBS:
                     continue
                 content = m.get("content", "")
