@@ -39,7 +39,7 @@ identities:
     aangemaakt: '2026-08-27'
   coordinator:
     rol: meta-agent
-    status: actief
+    status: ingetrokken
     pubkey_hex: c14d1cdd1931061af176392f39fd17303591af0cef17d37e2aadf4bc2b36a8dc
     npub: npub1c9x3ehgexyrp4utk8yhnnlghxq6ertcvautaxl324h6tc2ek4rwqxf6nvn
     aangemaakt: '2026-08-29'
@@ -61,7 +61,7 @@ identities:
     pubkey_hex: cc6a57f2dc4886b2a62d775ba2e2a61e30d7330a1dc8a595b46f9754e668a318
     npub: npub1e3490ukufzrt9f3dwad69c4xrccdwvc2rhy2t9d5d7t4feng5vvqj6nz9w
     aangemaakt: '2026-09-02'
-  versum:
+  odin-worker:
     rol: sessie
     status: actief
     pubkey_hex: 3c9d7c6370738600512fb3be7bb2ed539dd7827a9bfc504d66c2bdb31bc18792
@@ -86,7 +86,7 @@ identities:
     npub: npub1yud808js04yljt6z7pnyw70mz90m4ddftm4lt6e70mkc52qhdy8s2rzkex
     aangemaakt: '2026-09-06'
   odin:
-    rol: sessie
+    rol: meta-agent
     status: actief
     pubkey_hex: b0e20b3080ca3a7d922800deb43c90b48ee0bd1f16cd546b87ccea7473b93ece
     npub: npub1kr3qkvyqega8my3gqr0tg0yskj8wp0glzmx4g6u8en48guae8m8q3mt0ak

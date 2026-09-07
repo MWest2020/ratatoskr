@@ -16,7 +16,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 # python3 -c: het programma staat in de arg (vast, geen shell-interpolatie), IDENT
 # en ROOT gaan via env (geen injectie), en stdin blijft vrij voor de sops-pipe.
-NPUB=$(IDENT="$IDENT" ROOT="$ROOT" python3 -c '
+NPUB=$(IDENT="$IDENT" ROOT="$ROOT" CHAN="$CHAN" python3 -c '
 import os, sys, yaml
 ident, root = os.environ["IDENT"], os.environ["ROOT"]
 e = yaml.safe_load(open(root + "/identities.yml"))["identities"].get(ident)
@@ -26,6 +26,12 @@ if e.get("rol") == "mens":
     sys.stderr.write("IDENT %r is de mens-identiteit — niet toegestaan via ping.sh\n" % ident); sys.exit(4)
 if e.get("status") != "actief":
     sys.stderr.write("IDENT %r is niet actief (status=%s)\n" % (ident, e.get("status"))); sys.exit(5)
+# #general is het hub-kanaal: daar praat Mark met odin, en met odin alleen
+# (besluit Mark 2026-09-07). Een sessie rapporteert in het projectkanaal, of in
+# #escalatie als er een besluit nodig is — niet in de hub.
+if e.get("rol") == "sessie" and os.environ.get("CHAN", "general") == "general":
+    sys.stderr.write("IDENT %r is een sessie: #general is hub-only (odin). "
+                     "Kies CHAN=<projectkanaal> of CHAN=escalatie.\n" % ident); sys.exit(8)
 print(e["npub"])')
 CID=$(CHAN="$CHAN" ROOT="$ROOT" python3 -c '
 import os, sys, yaml
