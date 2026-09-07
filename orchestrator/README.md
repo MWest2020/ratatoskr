@@ -28,3 +28,16 @@ De cage-fire blijft onder Marks hand:
 
 Deel A (findings-terug) is een aparte, uitgaande stap (geen kooi-amendement) —
 zie de change tasks.
+
+## add-member.py — pubkey als kanaallid
+
+    python3 orchestrator/add-member.py --chan escalatie --name odin-worker
+
+Lost kanaal en identiteit op uit `channels.yml` / `identities.yml`, zodat er geen
+UUID of pubkey op de commandline hoeft (die breken in een terminal over meerdere
+regels en falen dan stil-verkeerd). `--all-channels` voegt in één keer overal toe,
+idempotent — "al lid" is geen fout.
+
+Tekent standaard als **orchestrator**, conform `reown-channels-to-orchestrator`.
+Is een kanaal nog mens-owned, dan `IDENT=mark` ervoor tot `reown-channels.py`
+gedraaid heeft.
