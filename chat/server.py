@@ -12,7 +12,7 @@ from urllib.parse import urlparse, parse_qs
 
 import github  # GitHub-leeslaag (repo/PR-view + pinned-context)
 import push    # Web Push — subscription-opslag + VAPID-public-key
-from buzzcli import (buzz, list_channels, list_channels_meta, valid_cid, author,
+from buzzcli import (buzz, buzz_admin, list_channels, list_channels_meta, valid_cid, author,
                      channel_overview, agent_roster, channel_roster, ME)
 import actions  # send/add-member/create-acties (server blijft dun)
 import auth     # schrijf-token (uit BOOMHUIS_APP_TOKEN; leeg = uit)
@@ -169,7 +169,10 @@ class H(BaseHTTPRequestHandler):
             cid = body.get("channel")
             if not valid_cid(cid):
                 return self._send(400, json.dumps({"error": "onbekend kanaal"}))
-            rc, out, err = buzz(["channels", "delete", "--channel", cid])
+            # Verwijderen is kanaalbeheer: tekent als orchestrator, niet als mark.
+            rc, out, err = buzz_admin(["channels", "delete", "--channel", cid])
+            if rc is None:
+                return self._send(503, json.dumps({"error": err}))
             if rc != 0:
                 return self._send(502, json.dumps({"error": err.strip()[:200]}))
             return self._send(200, json.dumps({"ok": True}))

@@ -7,7 +7,7 @@ import re
 import sys
 
 import roster
-from buzzcli import buzz, channel_member_pubkeys, valid_cid
+from buzzcli import ADMIN_OFF, buzz, buzz_admin, channel_member_pubkeys, valid_cid
 
 _NAME_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,30}$")
 _MENTION_ERR = re.compile(r"mention '@([A-Za-z0-9_-]+)' does not match")
@@ -33,8 +33,10 @@ def add_agent(cid, name):
     pk = roster.agent_pubkey(name)
     if not pk:
         return 404, {"error": f"'{name}' is geen agent (sessies/mark voeg je niet zo toe)"}
-    rc, out, err = buzz(["channels", "add-member", "--channel", cid,
-                         "--pubkey", pk, "--role", "bot"])
+    rc, out, err = buzz_admin(["channels", "add-member", "--channel", cid,
+                               "--pubkey", pk, "--role", "bot"])
+    if rc is None:
+        return 503, {"error": ADMIN_OFF}
     if rc != 0:
         return 502, {"error": (err or out).strip()[:200]}
     return 200, {"ok": True, "name": name}
@@ -82,9 +84,9 @@ def _add_coordinator(create_out):
         if not (cid and co):
             sys.stderr.write("[create] coordinator-add overgeslagen: geen cid/pubkey\n")
             return False
-        ar, _o, ae = buzz(["channels", "add-member", "--channel", cid,
-                           "--pubkey", co, "--role", "bot"])
-        if ar != 0:
+        ar, _o, ae = buzz_admin(["channels", "add-member", "--channel", cid,
+                                 "--pubkey", co, "--role", "bot"])
+        if ar is None or ar != 0:
             sys.stderr.write(f"[create] coordinator-add faalde: {(ae or _o).strip()[:120]}\n")
         return ar == 0
     except Exception as e:  # noqa: BLE001 — create is al geslaagd; add is bijzaak
@@ -98,8 +100,10 @@ def create_channel(name):
     name = (name or "").strip().lower()
     if not _NAME_RE.match(name):
         return 400, {"error": "naam: a-z 0-9 _ - (max 31)"}
-    rc, out, err = buzz(["channels", "create", "--name", name,
-                         "--type", "stream", "--visibility", "open"])
+    rc, out, err = buzz_admin(["channels", "create", "--name", name,
+                               "--type", "stream", "--visibility", "open"])
+    if rc is None:
+        return 503, {"error": ADMIN_OFF}
     if rc != 0:
         return 502, {"error": err.strip()[:200]}
     return 200, {"ok": True, "name": name, "coordinator_added": _add_coordinator(out)}
