@@ -69,3 +69,31 @@ class AdminKeyTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class HubLookupTest(unittest.TestCase):
+    """De hub wordt op ROL gevonden, niet op naam — anders breekt elke hernoeming
+    het toevoegen van de hub aan een nieuw kanaal, en wel STIL (de add is
+    best-effort). Precies dat gebeurde na coordinator -> odin."""
+
+    def _map(self, text):
+        import roster
+        return roster._parse_identities(text)
+
+    REG = (
+        "identities:\n"
+        "  mark:\n    rol: mens\n    status: actief\n    pubkey_hex: aa\n"
+        "  coordinator:\n    rol: meta-agent\n    status: ingetrokken\n    pubkey_hex: bb\n"
+        "  odin:\n    rol: meta-agent\n    status: actief\n    pubkey_hex: cc\n"
+    )
+
+    def test_ingetrokken_hub_telt_niet_mee(self):
+        m = self._map(self.REG)
+        metas = [pk for pk, i in m.items() if i.get("rol") == "meta-agent"]
+        self.assertEqual(metas, ["cc"])          # odin, niet de ingetrokken coordinator
+
+    def test_hernoeming_breekt_de_lookup_niet(self):
+        # zelfde registry, andere naam voor dezelfde rol
+        m = self._map(self.REG.replace("  odin:", "  wodan:"))
+        metas = [i["name"] for i in m.values() if i.get("rol") == "meta-agent"]
+        self.assertEqual(metas, ["wodan"])
