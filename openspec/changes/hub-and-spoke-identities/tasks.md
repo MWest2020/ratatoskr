@@ -19,5 +19,9 @@
       wijzigen): de bestaande sessies zijn nog geen lid van #escalatie. Voor
       odin-worker:
       `python3 ~/boomhuis/orchestrator/add-member.py --channel c1a0db51-3c96-46f9-9afa-1f03acfd87a3 --pubkey 3c9d7c6370738600512fb3be7bb2ed539dd7827a9bfc504d66c2bdb31bc18792 --role member`
-- [ ] 1.8 **Besluit Mark**: `archivaris` had alleen #general — eigen kanaal of
-      geen chat-facet meer?
+- [x] 1.8 `archivaris` vervalt (besluit Mark): definitie verwijderd in
+      handbook#15. Geen draaiende functionaliteit geraakt — hij had geen
+      identiteit en stond niet in de run-lijst.
+- [ ] 1.11 **Losse bevinding**: `_live.md` toonde archivaris als draaiende
+      chat-agent terwijl hij nergens draaide. De liveness leest de
+      handbook-registry i.p.v. wat de listener spawnt; eigen change waard.

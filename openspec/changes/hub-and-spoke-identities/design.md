@@ -31,8 +31,15 @@ lost het lawaai óók op, maar kost het audit-argument van `add-session-identiti
 identiteit = sleutelpaar, elk bericht toewijsbaar aan de echte afzender. Sessies
 mogen best praten — alleen niet in het kanaal dat voor de mens en zijn hub is.
 
-## Besluit 3 — `archivaris` blijft ongemoeid
+## Besluit 3 — `archivaris` vervalt
 
-Die had als enige uitsluitend `#general`. Hem daaruit halen laat hem zonder
-kanaal achter, en dat is een besluit (eigen kanaal, of geen chat-facet meer) en
-geen bijvangst. Staat open bij Mark.
+Die had als enige uitsluitend `#general`. Besluit Mark, 2026-09-07: *"archivaris
+mag weg, geen chat-facet meer."* Omdat zijn chat-facet zijn énige facet was
+(`executie: null`), valt "geen chat-facet" hier samen met "geen agent"; de
+definitie is verwijderd (handbook#15).
+
+Dat kostte niets aan draaiende functionaliteit: hij had geen entry in
+`identities.yml`, stond niet in de listener-run-lijst, en `chat/roster.py`
+noteerde al dat hij nergens draaide. `_live.md` toonde hem wél als draaiende
+chat-agent — die lijst leest de handbook-registry en niet wat de listener
+werkelijk spawnt. Dat gat blijft bestaan en is een eigen change waard.
