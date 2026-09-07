@@ -50,7 +50,7 @@ Status: **beta**. Fasen 0–3 zijn gebouwd en live op het tailnet; de laatste
 cluster-fire van de brug is nog gesuperviseerd (`BRIDGE_LIVE`). Rome is niet in
 één dag gebouwd; elke fase is los waardevol en draait nu.
 
-## Wat er nu leeft (2026-08)
+## Wat er nu leeft (2026-09)
 
 - **Relay** — self-hosted buzz op vm 109 / `192.168.178.60`, closed mode,
   tailnet-only. Reboot-vaste systemd-services: `boomhuis-chat` (relay-VM) en
@@ -63,21 +63,28 @@ cluster-fire van de brug is nog gesuperviseerd (`BRIDGE_LIVE`). Rome is niet in
   geen impersonatie. Kanalen dynamisch
   uit de relay, **maken/verwijderen in de app**, agents-overzicht, `@mention` +
   thread-continuïteit (doorpraten zonder mention).
-- **Kanalen** — `#general` (hub: roep hier elke agent aan), plus `#runs
-  #escalatie #bouw #review #architectuur #marketing #standup`. Kanalen
-  maken/verwijderen kan in de webchat.
-- **Zes chat-agents** — `assistent` (overal), `architect` (#architectuur),
-  `bouwer` (#bouw), `marketing` (#marketing), `ontwerper` (frontend/UX,
-  #architectuur) en `coordinator` (de meta-agent in #general) — allemaal ook in
-  #general. Ze draaien via één multi-agent `claude -p`-listener (`agents/`).
+- **Hub en spokes** (besluit Mark 2026-09-07: *"ik wil eigenlijk maar met 1 agent
+  spreken"*). `#general` is het **hub-kanaal** met precies één agent: **`odin`**,
+  de meta-agent. Mark praat daar met odin; odin routeert naar de spokes, die in
+  hun eigen kanaal wonen: `architect` (#architectuur), `bouwer` (#bouw),
+  `marketing` (#marketing), `ontwerper` (#architectuur), `reviewer` (#review),
+  `roodteam` (#red-team, #review) en `assistent` (de overige kanalen, niet
+  #general). Ze draaien via één multi-agent `claude -p`-listener (`agents/`).
+  `odin` heette tot 2026-09-07 `coordinator`; die entry staat op `ingetrokken` in
+  `identities.yml` zodat oude berichten leesbaar blijven.
+- **Kanalen** — naast `#general`: `#runs #escalatie #statistics #bouw #review
+  #architectuur #marketing #red-team #standup` plus de projectkanalen. Elke agent
+  post óók in `#statistics` (één regel per beurt: model, turns, kosten) en
+  `#escalatie` (limitaties). Kanalen maken/verwijderen kan in de webchat en tekent
+  als **orchestrator**, niet als Mark.
 - **Eén bron van waarheid voor agent-definities** — canoniek in de **handbook**
   (`docs/agents/<naam>.md`, MCP-leesbaar), met twee facetten (chat voor
   boomhuis, executie voor habitat). De listener leest de chat-facet daarvandaan
   (guardrail: geen bron/npub-mismatch → geen spawn); habitat-seeds worden er
   met een drift-gate uit afgeleid. Een bouwer is overal dezelfde bouwer.
-- **Coördinator + create-agent-flow** — drop een idee met `@coordinator` in
-  #general; die beslist of er een agent voor is (route), er één bij moet
-  (voorstel) of er één uitgebreid moet. Aanmaken loopt via
+- **Hub + create-agent-flow** — drop een idee met `@odin` in #general; die
+  beslist of er een agent voor is (route), er één bij moet (voorstel) of er één
+  uitgebreid moet. Aanmaken loopt via
   `orchestrator/create-agent.py`: keypair → handbook-PR (CODEOWNERS = Mark) →
   boomhuis-bedrading. De agent gaat pas live nadat Mark de handbook-PR merget.
 - **Recurring jobs** (`jobs/`) — geplande `claude -p`-digests naar kanalen
@@ -86,8 +93,10 @@ cluster-fire van de brug is nog gesuperviseerd (`BRIDGE_LIVE`). Rome is niet in
 - **Sessie-identiteiten** — naast de gespawnde chat-agents heeft elke vaste
   Claude-sessie (interactief) een eigen sleutelpaar (rol `sessie`, aangemaakt met
   `orchestrator/create-session-identity.py`; geen handbook-def/run-lijst). Zo is
-  elk bericht toerekenbaar aan de echte afzender. Een sessie post in #general met
-  `IDENT=<naam> orchestrator/ping.sh '<bericht>'` — de `IDENT`-filter weigert de
+  elk bericht toerekenbaar aan de echte afzender. Een sessie post met
+  `IDENT=<naam> CHAN=<kanaal> orchestrator/ping.sh '<bericht>'` in het
+  projectkanaal of in `#escalatie` — **niet** in `#general`: dat is het hub-kanaal
+  en `ping.sh` weigert een sessie daar. De `IDENT`-filter weigert de
   **mens**-identiteit (rol `mens`) en elke **niet-actieve** sleutel, zodat niemand
   zich als de mens of onder een ingetrokken identiteit kan voordoen.
 - **Protocol-naad + per-kanaal kennis** (geleend van
@@ -100,6 +109,27 @@ cluster-fire van de brug is nog gesuperviseerd (`BRIDGE_LIVE`). Rome is niet in
   #bouw passeert de poort, de brug bereidt een habitat-run voor met
   `HABITAT_TASK_REF` (git-pad, habitat-amendement `amend-worker-task-ref`
   applied). De echte cluster-fire is gated (`BRIDGE_LIVE`) — gesuperviseerd.
+
+## Testen
+
+    bash verify.sh          # 85 unittests (chat-backend + listener), offline
+
+De end-to-end-tests draaien tegen de **echte VM** en zitten apart in `chat/e2e/`:
+HTTP-routes en de auth-gate (`api.sh`), de browser-kant (`ui.js`), en een
+regressietest op de GitHub-rendering (`xss.js`). Zie `chat/e2e/README.md` voor wat
+ze wél en niet dekken — schrijfpaden door de web-app vragen het apparaat-token en
+staan er bewust niet in.
+
+Wat de suites bewaken, in volgorde van hoe pijnlijk het was toen het misging:
+
+- **Lezen is open, elke POST loopt eerst langs het apparaat-token.** Geen route
+  mag daaromheen.
+- **Kanaalbeheer tekent als agent, nooit als de mens.** Zonder
+  `BUZZ_ORCHESTRATOR_KEY` is het een zichtbare 503, geen stille terugval.
+- **Alles wat van buiten komt wordt tekst, geen markup.** PR-titels en
+  repo-beschrijvingen kan iedereen zetten die een PR opent op een publieke repo.
+- **De hub wordt op rol gevonden, niet op naam.** Een hernoeming mag niets stil
+  laten terugvallen.
 
 ## Relatie tot andere repo's
 

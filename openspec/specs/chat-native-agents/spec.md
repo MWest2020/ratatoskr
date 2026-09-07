@@ -53,7 +53,7 @@ identiteiten bestaan niet.
 De listener SHALL een chat-agent laten reageren op een `@handle`-mention in kanaal C
 wanneer de agent handbook-gescopt is op C (`chat.channels`) OF relay-LID is van C.
 Relay-lidmaatschap is een additieve reden om te reageren; het VERVANGT de handbook-
-scope niet. Zo wordt een agent die lid wordt (via de webchat-pop-up, de coordinator-
+scope niet. Zo wordt een agent die lid wordt (via de webchat-pop-up, de hub-
 default, of de operator-backfill) daadwerkelijk aanspreekbaar zonder handbook-wijziging.
 
 Alleen de MENTION-tak wordt zo verbreed. Het thread-vervolg (de laatst-actieve agent
