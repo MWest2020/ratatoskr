@@ -6,6 +6,7 @@ als callable binnen (de listener bezit de buzz-omgeving en de sleutels); dit
 bestand kent alleen het format en het beleid.
 """
 import prompts
+import providers
 
 
 def report_run(send, channels, handle, cname, cfg, r):
@@ -34,11 +35,22 @@ def report_run(send, channels, handle, cname, cfg, r):
             return
         tools = sorted({d.get("tool_name") or d.get("tool") or "?" for d in denials
                         if isinstance(d, dict)})
+        # Advies volgt de OORZAAK. Stond hier eerst altijd "rol verruimen", ook bij
+        # een time-out — en dan wijst de melding naar een knop die niets oplost.
+        if denials or limit:
+            advies = ("beslissen: rol verruimen in de handbook-def "
+                      f"({', '.join(tools) if tools else 'de gemelde tool'}), of laten staan.")
+        elif err == "timeout":
+            advies = (f"beslissen: de vraag was te groot voor één beurt "
+                      f"({providers.MAX_TURN_S}s). Opknippen, of als dit vaker gebeurt "
+                      f"het zware werk als habitat-run doen — dat heeft 30 minuten.")
+        else:
+            advies = "beslissen: storing bekijken in het listener-log; geen rolkwestie."
         msg = (f"limitatie · {handle} in #{cname} · model {r.get('model') or '?'}\n"
                + (f"zelf gemeld: {limit}\n" if limit else "")
                + (f"geweigerd: {', '.join(tools)} ({len(denials)}x)\n" if denials else "")
                + (f"storing: {err}\n" if err else "")
-               + "beslissen: rol verruimen in de handbook-def, of laten staan.")
+               + advies)
         send(esc, msg, cfg["nsec"], cfg["npub"])
     except Exception as e:
         print(f"[listener] melden mislukt ({handle}): {e}", flush=True)
