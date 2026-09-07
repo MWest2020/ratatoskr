@@ -9,10 +9,12 @@ import time
 
 import prompts
 import providers
+import topology
 
 # Hoeveel tussenstanden per beurt, en minimaal hoeveel seconden ertussen.
 PROGRESS_MAX = 4
 PROGRESS_GAP = 20
+
 
 
 def progress_poster(send, cid, cfg, handle):
@@ -86,3 +88,17 @@ def report_run(send, channels, handle, cname, cfg, r):
         send(esc, msg, cfg["nsec"], cfg["npub"])
     except Exception as e:
         print(f"[listener] melden mislukt ({handle}): {e}", flush=True)
+
+
+def report_missing_memberships(run, agents, channels, pub2name):
+    """Meld bij het opstarten welke agent-lidmaatschappen ontbreken. Geen exit: een
+    agent die niet in #statistics zit moet nog steeds antwoorden. Wél luid, want de
+    send faalt anders alleen in het log — waargenomen 2026-09-07, toen de
+    escalatieketen voor vijf van de acht agents in de praktijk dood was."""
+    name2pub = {h: p for p, h in pub2name.items()}
+    mis = topology.missing_memberships(
+        agents, channels, name2pub, lambda cid: topology.members(run, cid))
+    for handle, cname in mis:
+        print(f"[listener] LIDMAATSCHAP ONTBREEKT: @{handle} post in #{cname} maar is "
+              f"geen lid — die send zal falen (bash ~/bh/members.sh --yes)", flush=True)
+    return mis

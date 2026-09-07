@@ -99,3 +99,26 @@ def is_scoped(def_channels, cname, agent_pub, member_pubs_fn):
     callable — LUI: alleen aangeroepen als de handbook-scope de vraag niet al
     beantwoordt, zodat we geen members-fetch doen voor een def-gescopt kanaal."""
     return cname in def_channels or agent_pub in member_pubs_fn()
+
+
+# Kanalen waar ELKE agent in post, ongeacht zijn eigen scope: de statistiekregel
+# per beurt en de limitatie-melding. Zonder lidmaatschap faalt die send, en wel
+# stil — alleen zichtbaar in het listener-log. Waargenomen 2026-09-07: odin zat
+# niet in #statistics en vijf agents niet in #escalatie, dus de escalatieketen
+# waar Mark om vroeg was in de praktijk dood.
+REPORT_CHANNELS = ("statistics", "escalatie")
+
+
+def missing_memberships(agents, channels, name2pub, member_pubs_fn):
+    """[(handle, kanaalnaam)] voor elk kanaal waar een agent in post maar geen lid
+    van is. Puur op de meegegeven lookups, zodat het testbaar is zonder relay."""
+    out = []
+    for handle, cfg in agents.items():
+        pub = name2pub.get(handle)
+        if not pub:
+            continue
+        for cname in dict.fromkeys(list(cfg.get("channels") or []) + list(REPORT_CHANNELS)):
+            cid = channels.get(cname)
+            if cid and pub not in member_pubs_fn(cid):
+                out.append((handle, cname))
+    return out
