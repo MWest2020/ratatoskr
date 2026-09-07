@@ -35,6 +35,7 @@ MAX_CTX = 8
 
 CHANNELS = bootstrap.load_channels(ROOT)
 NPUBS, PUB2NAME = bootstrap.load_identity_npubs(ROOT)
+HUB = bootstrap.hub_handle(ROOT)   # rol meta-agent; None = geen hub gespawnd
 ME_NAME = os.environ.get("BOOMHUIS_HUMAN", "mark")  # eigen berichten pushen niet
 CFG = bootstrap.load_yaml(os.path.join(HERE, "agents.yml"))
 BASE = CFG["registry_base"]
@@ -102,12 +103,15 @@ def buzz_run(nsec):
 def main():
     if not AGENTS:
         raise SystemExit("geen agents gespawnd (geen bron/nsec/npub-match)")
-    # Reader = coordinator (lid van elk kanaal via default+backfill) zodat list/
-    # members/messages álle kanalen zien; één agent-sleutel mist private kanalen.
-    if "coordinator" not in AGENTS:
-        print("[listener] LET OP: geen coordinator gespawnd — reader valt terug op "
-              f"{next(iter(AGENTS))}, mogelijk smallere kanaal-zichtbaarheid", flush=True)
-    read_nsec = (AGENTS.get("coordinator") or next(iter(AGENTS.values())))["nsec"]
+    # Reader = de ORCHESTRATOR. Die bezit elk kanaal en ziet ze dus allemaal;
+    # een agent-sleutel ziet alleen waar die agent lid van is. Gemeten 2026-09-07:
+    # orchestrator 15/15 kanalen, de hub 4/15, assistent 8/15. Eerder stond hier
+    # "de coordinator, anders de eerste agent" — na de hernoeming naar odin viel
+    # dat stil terug op assistent en verdween meer dan de helft uit beeld.
+    read_nsec = os.environ.get("NSEC_ORCHESTRATOR", "").strip()
+    if not read_nsec:
+        raise SystemExit("[listener] NSEC_ORCHESTRATOR ontbreekt — de reader moet de "
+                         "orchestrator zijn (ziet alle kanalen). Zie agents/run.sh.")
     run = buzz_run(read_nsec)  # relay-I/O voor topology (kanalen + leden)
     # pubkeys van agents, om niet op agents te reageren
     name2pub = {h: p for p, h in PUB2NAME.items()}
@@ -175,8 +179,8 @@ def main():
                     know = prompts.channel_knowledge(ROOT, cname)
                     if know:
                         p = f"Kanaal-kennis (#{cname}):\n{know}\n\n" + p
-                    if handle == "coordinator":
-                        p = prompts.roster_text(AGENTS) + "\n\n" + p
+                    if handle == HUB:
+                        p = prompts.roster_text(AGENTS, HUB) + "\n\n" + p
                         lt = prompts.live_text(ROOT)
                         if lt:
                             p = lt + "\n\n" + p
