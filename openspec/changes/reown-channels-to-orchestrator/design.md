@@ -1,11 +1,19 @@
 # Design: reown-channels-to-orchestrator
 
-## Besluit 1 — her-eigenaren, niet recreëren
+## Besluit 1 — mede-eigenaarschap, niet recreëren
 
 De proposal hield beide open ("relay-ondersteuning uitzoeken; anders recreëren +
-leden opnieuw"). Uitgezocht: `buzz channels add-member --role owner` bestaat, dus
-de zittende eigenaar kan het eigenaarschap doorgeven zonder het kanaal opnieuw te
-maken.
+leden opnieuw"). Uitgezocht en live gemeten: `buzz channels add-member --role
+owner` werkt, en de relay staat **meerdere eigenaren** toe. Een "overdracht" is
+dus een *toevoeging*: mark blijft eigenaar, de orchestrator komt erbij.
+
+Dat is precies genoeg voor het doel. Het doel was nooit "mark mag er niet meer
+bij", maar "geautomatiseerd kanaalbeheer heeft de mens-sleutel niet nodig".
+Bewijs: `set-channel-descriptions.py` zet nu met de orchestrator-sleutel de
+beschrijving op **alle vijftien** kanalen, ook op de vijf die eerder faalden.
+
+Mark als eigenaar wegnemen is bewust niet gedaan: dat zou hem admin-rechten op
+zijn eigen kanalen kosten, zonder dat er een probleem mee opgelost wordt.
 
 **Verworpen: recreëren.** Dat kost de geschiedenis van het kanaal (#red-team en
 #netnl hebben inhoudelijke overdracht), vergt het opnieuw toevoegen van alle

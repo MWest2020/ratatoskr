@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: EUPL-1.2
-"""Draag het eigenaarschap van mens-owned kanalen over aan de orchestrator.
+"""Geef de orchestrator mede-eigenaarschap van mens-owned kanalen.
 
 Waarom: de web-chat tekende kanaal-aanmaak als `mark` (de mens), dus die kanalen
 zijn mens-owned. Alleen een eigenaar mag een kanaal beheren (beschrijving, topic,
@@ -42,8 +42,11 @@ def _buzz(args, nsec):
                           env=dict(os.environ, BUZZ_PRIVATE_KEY=nsec, BUZZ_RELAY_URL=RELAY))
 
 
-def _owner_of(cid, nsec):
-    """pubkey_hex van de eigenaar, of None als de ledenlijst niet leesbaar is."""
+def _owners_of(cid, nsec):
+    """Alle pubkeys met rol `owner`. De relay staat MEERDERE eigenaren toe: een
+    overdracht voegt een eigenaar toe, hij vervangt er geen. Een eerdere versie
+    las hier "de" eigenaar (de eerste in de lijst) en meldde daardoor mislukt
+    terwijl de orchestrator er allang bij stond."""
     p = _buzz(["channels", "members", "--channel", cid], nsec)
     if p.returncode != 0:
         return None
@@ -52,7 +55,7 @@ def _owner_of(cid, nsec):
     except ValueError:
         return None
     members = d if isinstance(d, list) else d.get("members", [])
-    return next((m.get("pubkey") for m in members if m.get("role") == "owner"), None)
+    return {m.get("pubkey") for m in members if m.get("role") == "owner"}
 
 
 def main():
@@ -67,12 +70,16 @@ def main():
         cid = c.get("id")
         if not cid:
             continue
-        owner = _owner_of(cid, secrets["orchestrator"]["nsec"])
-        if owner == orch:
+        owners = _owners_of(cid, secrets["orchestrator"]["nsec"])
+        if owners is None:
+            failed.append((name, "ledenlijst niet leesbaar"))
+            print(f"[reown] #{name}: ledenlijst niet leesbaar")
+            continue
+        if orch in owners:
             print(f"[reown] #{name}: al orchestrator-owned")
             continue
-        if owner != mark:
-            print(f"[reown] #{name}: eigenaar {str(owner)[:8]} — niet mark, overgeslagen")
+        if mark not in owners:
+            print(f"[reown] #{name}: geen mens-eigenaar gevonden, overgeslagen")
             continue
         if dry:
             print(f"[reown] #{name}: ZOU overdragen mark -> orchestrator")
@@ -84,9 +91,9 @@ def main():
             failed.append((name, (p.stderr or p.stdout).strip()[:160]))
             print(f"[reown] #{name}: FOUT — {failed[-1][1]}")
             continue
-        now = _owner_of(cid, secrets["orchestrator"]["nsec"])
-        ok = now == orch
-        print(f"[reown] #{name}: overgedragen -> {'orchestrator' if ok else str(now)[:8]}")
+        now = _owners_of(cid, secrets["orchestrator"]["nsec"]) or set()
+        ok = orch in now
+        print(f"[reown] #{name}: {'orchestrator is nu mede-eigenaar' if ok else 'NIET doorgevoerd'}")
         if not ok:
             failed.append((name, "rol niet doorgevoerd op de relay"))
 
