@@ -147,6 +147,9 @@ async function _postSend(text, cid, force, added){
   } catch(e){ toast("netwerkfout — bericht niet verstuurd"); return false; }
   const j = await r.json().catch(()=>({}));
   if(r.ok && !j.error) return true;
+  // 401 apart: dat is geen storing maar een ontbrekend apparaat-token, en die
+  // verwarring was precies het probleem.
+  if(r.status===401){ toast("schrijf-token nodig — voer 'm in om te kunnen posten"); return false; }
   if(j.missing_agent){
     const who=j.missing_agent, tgt=j.channel||cid;
     const tc=(typeof channels!=="undefined")&&channels.find(x=>x.id===tgt);
