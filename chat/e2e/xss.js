@@ -1,3 +1,5 @@
+// Playwright hoeft niet in deze repo te staan; wijs er met NODE_PATH naar:
+//   NODE_PATH=<pad>/node_modules node chat/e2e/xss.js
 const { chromium, devices } = require('playwright');
 const fs=require('fs');
 const D=require('path').join(__dirname,'..')+'/';   // de werkkopie van chat/
@@ -5,7 +7,8 @@ const EXE='/home/agent/.cache/ms-playwright/chromium-1234/chrome-linux64/chrome'
 const PAYLOAD = '<img src=x onerror="window.__XSS=1"><script>window.__XSS=1</script>';
 (async()=>{
   const b=await chromium.launch({executablePath:EXE,args:['--ignore-certificate-errors']});
-  for (const [tag, dir] of [['GEPATCHT', D], ['(controle) main', null]]) {
+  let fail = 0;
+  for (const [tag, dir] of [['werkkopie', D]]) {
     const ctx=await b.newContext({...devices['iPhone 13'],ignoreHTTPSErrors:true,serviceWorkers:'block'});
     if (dir) for (const f of ['app.js','app-ui.js','app-modal.js','app-repos.js','index.html'])
       await ctx.route('**/'+f, r=>{ try{ r.fulfill({status:200,
@@ -29,20 +32,31 @@ const PAYLOAD = '<img src=x onerror="window.__XSS=1"><script>window.__XSS=1</scr
     await p.goto('https://boomhuis-relay.tail8f7877.ts.net/',{waitUntil:'load',timeout:45000});
     await p.waitForTimeout(4000);
     await p.click('#reposBtn'); await p.waitForTimeout(2000);
-    const n1=await p.evaluate(()=>document.querySelectorAll('.rrow').length);
+
     await p.evaluate(()=>document.querySelectorAll('.rrow')[0]?.click()); await p.waitForTimeout(2000);
-    const n2=await p.evaluate(()=>document.querySelectorAll('.rrow').length);
+
     await p.evaluate(()=>document.querySelectorAll('.rrow')[0]?.click()); await p.waitForTimeout(2000);
-    console.log(`   navigatie: ${n1} repo-rijen -> ${n2} pr-rijen -> detail=${await p.evaluate(()=>!!document.querySelector('.prdet'))}`);
-    console.log('   repoView:', JSON.stringify((await p.evaluate(()=>document.querySelector('#repoView').textContent)).slice(0,140)));
+    if (!await p.evaluate(()=>!!document.querySelector('.prdet'))) {
+      console.log('  FAIL kon niet tot het PR-detail navigeren — test heeft niets gemeten');
+      fail++;
+    }
     const r = await p.evaluate(()=>({
       xss: !!window.__XSS,
       imgs: document.querySelectorAll('#reposDrawer img').length,
       href: (document.querySelector('.gh')||{}).href || '(geen)',
       titelTekst: (document.querySelector('.rn')||{}).textContent || '(geen)'}));
-    console.log(`${tag}: XSS uitgevoerd=${r.xss} | geinjecteerde <img>=${r.imgs} | href=${String(r.href).slice(0,40)}`);
-    console.log(`   titel gerenderd als tekst: ${JSON.stringify(String(r.titelTekst).slice(0,60))}`);
+    const tekstOk = /img src=x/.test(String(r.titelTekst));   // payload zichtbaar ALS TEKST
+    if (r.xss)            { fail++; console.log(`  FAIL ${tag}: de payload is UITGEVOERD`); }
+    else                    console.log(`  ok   ${tag}: payload niet uitgevoerd`);
+    if (r.imgs)           { fail++; console.log(`  FAIL ${tag}: ${r.imgs} element(en) uit de payload gerenderd`); }
+    else                    console.log(`  ok   ${tag}: geen elementen uit de payload`);
+    if (/^javascript:/.test(String(r.href))) { fail++; console.log(`  FAIL ${tag}: javascript:-href klikbaar`); }
+    else                    console.log(`  ok   ${tag}: href = ${String(r.href).slice(0,30)}`);
+    if (!tekstOk)         { fail++; console.log(`  FAIL ${tag}: titel niet leesbaar weergegeven`); }
+    else                    console.log(`  ok   ${tag}: titel leesbaar als tekst`);
     await ctx.close();
   }
   await b.close();
+  console.log(fail ? `\nmislukt=${fail}` : "\nalle checks geslaagd");
+  process.exit(fail ? 1 : 0);
 })();

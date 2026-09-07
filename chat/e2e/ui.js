@@ -1,3 +1,5 @@
+// Playwright hoeft niet in deze repo te staan; wijs er met NODE_PATH naar:
+//   NODE_PATH=<pad>/node_modules node chat/e2e/ui.js
 const { chromium, devices } = require('playwright');
 const EXE='/home/agent/.cache/ms-playwright/chromium-1234/chrome-linux64/chrome';
 const URL='https://boomhuis-relay.tail8f7877.ts.net/';
@@ -9,7 +11,9 @@ const t=(naam,cond,extra='')=>{ if(cond){ok++;console.log(`  ok   ${naam}`);} el
   const ctx=await b.newContext({...devices['iPhone 13'],ignoreHTTPSErrors:true});
   const p=await ctx.newPage();
   const errs=[]; p.on('pageerror',e=>errs.push(e.message));
-  p.on('console',m=>{ if(m.type()==='error') errs.push('console: '+m.text()); });
+  // Een 401 op een schrijfpoging is verwacht (de token-test hieronder); die telt
+  // dus niet als JS-fout, anders faalt de suite op haar eigen scenario.
+  p.on('console',m=>{ if(m.type()==='error' && !/401/.test(m.text())) errs.push('console: '+m.text()); });
   await p.goto(URL,{waitUntil:'load',timeout:45000});
   await p.waitForTimeout(7000);
 
@@ -40,9 +44,12 @@ const t=(naam,cond,extra='')=>{ if(cond){ok++;console.log(`  ok   ${naam}`);} el
   await p.evaluate(()=>[...document.querySelectorAll('.chan')].find(x=>x.querySelector('.cn')?.textContent==='general').click());
   await p.waitForTimeout(4000);
   const msgs=await p.evaluate(()=>({n:document.querySelectorAll('#msgs > *').length,
-     namen:[...document.querySelectorAll('#msgs .who,#msgs .author,#msgs b')].slice(-6).map(e=>e.textContent.trim())}));
+     namen:[...document.querySelectorAll('#msgs .meta > span')].slice(-6).map(e=>e.textContent.trim()),
+     // markup in een naam of inhoud mag NOOIT een element worden
+     geinjecteerd: document.querySelectorAll('#msgs img,#msgs script').length}));
   t('berichten gerenderd', msgs.n>3, JSON.stringify(msgs).slice(0,120));
   t('afzendernamen zichtbaar', msgs.namen.length>0, JSON.stringify(msgs.namen));
+  t('geen markup uit berichten gerenderd', msgs.geinjecteerd===0);
 
   console.log('— agents-lade');
   await p.click('#agentsBtn'); await p.waitForTimeout(2500);

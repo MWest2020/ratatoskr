@@ -8,8 +8,13 @@ en of de laag eronder ook echt aan staat.
     node chat/e2e/ui.js         # browser: shell, kanalen, laden, token-modal
     node chat/e2e/xss.js        # regressietest op de GitHub-rendering
 
-`ui.js` en `xss.js` hebben Playwright nodig (`npm i playwright`) en een Chromium.
-Zet `executablePath` bovenaan als je browser elders staat.
+`ui.js` en `xss.js` hebben Playwright nodig en een Chromium. Staat Playwright
+elders, wijs er dan met `NODE_PATH` naar; `executablePath` bovenaan het script
+wijst naar de browser.
+
+    NODE_PATH=~/ergens/node_modules node chat/e2e/ui.js
+
+Alle drie geven exitcode 0 bij succes, dus ze zijn te ketenen.
 
 ## Waarom `xss.js` bestaat
 
@@ -19,9 +24,22 @@ openen op een publieke repo. Tot 2026-09-07 gingen ze via `innerHTML`; gemeten m
 een nagebootste payload voerde dat script uit in de PWA — waar het apparaat-token
 in `localStorage` staat — en werd `javascript:…` een klikbare link.
 
-De test draait de payload twee keer: tegen de werkkopie en tegen `main`. Hij hoort
-`XSS uitgevoerd=false` te geven voor de werkkopie. Blijft de controle-run op `true`
-staan nadat de fix in main zit, dan meet de test niet meer wat hij denkt te meten.
+De test voert de payload op de werkkopie uit en controleert vier dingen: het script
+draait niet, er komt geen element uit de payload in de DOM, een `javascript:`-URL
+wordt geen klikbare href, en de titel is nog steeds **leesbaar als tekst** — een
+fix die de weergave sloopt is ook fout.
+
+Bij het vinden draaide dezelfde payload één keer tegen het toen kwetsbare `main`,
+ter bewijs dat het geen theorie was:
+
+| | main (toen) | gepatcht |
+|---|---|---|
+| script uitgevoerd | ja | nee |
+| geïnjecteerde `<img>` | 4 | 0 |
+| link-href | `javascript:window.__XSS=1` | `https://github.com/` |
+
+Die controle-run zit niet meer in het script: nu de fix in main staat, zou hij
+altijd slagen en dus niets meer meten.
 
 ## Wat ze NIET dekken
 
