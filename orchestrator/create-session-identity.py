@@ -14,7 +14,7 @@ schrijven (identiteit = sleutelpaar), zodat ping.sh onder eigen sleutel post.
 Fail-closed: de plaintext-secret komt in een gitignored temp (secrets/_*.yaml,
 mode 0600) die altijd wordt opgeruimd; er wordt pas naar het git-getrackte
 secrets/identities.yaml geschreven als de SOPS-output geverifieerd versleuteld is.
-De secret gaat vóór de publieke registry-entry, en het #general-lidmaatschap moet
+De secret gaat vóór de publieke registry-entry, en het #escalatie-lidmaatschap moet
 lukken (anders exit != 0) — geen halve staat.
 """
 import argparse
@@ -38,8 +38,12 @@ def run(cmd, env=None, inp=None):
     return subprocess.run(cmd, env=env, input=inp, capture_output=True, text=True)
 
 
-def general_id():
-    return yaml.safe_load(open(os.path.join(BOOMHUIS, "channels.yml")))["channels"]["general"]["id"]
+def report_channel_id():
+    """#escalatie, niet #general: #general is het hub-kanaal van odin en een
+    sessie mag daar niet posten (ping.sh weigert het). Een sessie meldt in het
+    projectkanaal, en in #escalatie wanneer Mark moet beslissen — dus is dat het
+    ene lidmaatschap dat elke sessie nodig heeft."""
+    return yaml.safe_load(open(os.path.join(BOOMHUIS, "channels.yml")))["channels"]["escalatie"]["id"]
 
 
 def npub_nsec():
@@ -76,7 +80,7 @@ def main():
     name = a.name.lower()
     env = dict(os.environ, SOPS_AGE_KEY_FILE=os.path.expanduser("~/.config/sops/age/keys.txt"))
     buzz = os.path.expanduser("~/.local/bin/buzz")
-    general = general_id()
+    report_chan = report_channel_id()
 
     idp = os.path.join(BOOMHUIS, "identities.yml")
     d = yaml.safe_load(open(idp))
@@ -101,7 +105,7 @@ def main():
     open(idp, "w").write("# Publieke identiteitsregistry van het boomhuis (spec: identity-registry).\n"
                          + yaml.safe_dump(d, default_flow_style=False, sort_keys=False))
 
-    # 3) relay-lid + #general-lid (als mark); returncodes gecheckt.
+    # 3) relay-lid + #escalatie-lid (als mark); returncodes gecheckt.
     mark_nsec = sd["identities"]["mark"]["nsec"]
     rm = run(["ssh", "-o", "BatchMode=yes", "buzz-relay",
               f"cd /opt/buzz-relay && docker compose exec -T relay buzz-admin add-member --pubkey {pub} --role member"])
@@ -110,7 +114,7 @@ def main():
     time.sleep(2)  # relay-lidmaatschap laten propageren
     benv = dict(os.environ, BUZZ_PRIVATE_KEY=mark_nsec, BUZZ_RELAY_URL=RELAY)
     # --role member (niet 'bot'): een sessie is een deelnemer, geen listener-bot.
-    r = run([buzz, "channels", "add-member", "--channel", general, "--pubkey", pub, "--role", "member"], env=benv)
+    r = run([buzz, "channels", "add-member", "--channel", report_chan, "--pubkey", pub, "--role", "member"], env=benv)
     ok = False
     if r.returncode == 0:
         try:
@@ -118,9 +122,9 @@ def main():
         except (ValueError, AttributeError):
             ok = False
     if not ok:
-        sys.exit(f"[session-id] #general-lidmaatschap MISLUKT: {(r.stdout or r.stderr)[:160]} — "
+        sys.exit(f"[session-id] #escalatie-lidmaatschap MISLUKT: {(r.stdout or r.stderr)[:160]} — "
                  "registry/secret staan al, maar de identiteit kan nog niet posten; check de relay.")
-    print("[session-id] #general-lid: ok")
+    print("[session-id] #escalatie-lid: ok")
 
     # 4) profielnaam
     run([buzz, "users", "set-profile", "--name", name, "--about", f"Claude-sessie {name}"],
