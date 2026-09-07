@@ -32,18 +32,19 @@ def channel_knowledge(root, cname):
 
 def live_text(root):
     """Wat er nu draait (knowledge/_live.md, door orchestrator/live.py gegenereerd)
-    — liveness-context voor de coordinator. Leeg = onbekend."""
+    — liveness-context voor de hub. Leeg = onbekend."""
     try:
         return open(os.path.join(root, "knowledge", "_live.md")).read().strip()[:4000]
     except OSError:
         return ""
 
 
-def roster_text(agents):
-    """Korte samenvatting van de huidige vloot — context voor de coordinator."""
+def roster_text(agents, hub=None):
+    """Korte samenvatting van de huidige vloot — context voor de hub. `hub` valt
+    buiten de lijst: die leest over zichzelf niets nieuws."""
     lines = ["Huidige agent-vloot (uit de handbook-registry):"]
     for h, c in agents.items():
-        if h == "coordinator":
+        if h == hub:
             continue
         first = (c.get("system", "").strip().split("\n", 1)[0])[:110]
         lines.append(f"- @{h} (kanalen: {','.join(c['channels'])}) — {first}")

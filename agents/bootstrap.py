@@ -23,6 +23,18 @@ def load_identity_npubs(root):
     return {h: v.get("npub") for h, v in d.items()}, {v["pubkey_hex"]: h for h, v in d.items()}
 
 
+def hub_handle(root):
+    """De hub-agent: de ACTIEVE identiteit met rol `meta-agent`, of None.
+
+    Op rol en niet op naam. De hub heette tot 2026-09-07 `coordinator` en heet nu
+    `odin`; drie plekken in de listener stonden op de oude naam en vielen daardoor
+    stil terug op een andere agent. De rol is de stabiele eigenschap, en een
+    ingetrokken sleutel telt niet mee."""
+    d = load_yaml(os.path.join(root, "identities.yml"))["identities"]
+    return next((h for h, v in d.items()
+                 if v.get("rol") == "meta-agent" and v.get("status") == "actief"), None)
+
+
 def fetch_def(base, handle):
     """Haal de canonieke definitie uit de handbook. Return {npub, channels,
     system, provider} of None bij falen (fail-closed)."""

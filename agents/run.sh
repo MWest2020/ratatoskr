@@ -9,9 +9,12 @@ export BUZZ_RELAY_URL="${BUZZ_RELAY_URL:-ws://192.168.178.60:3000}"
 export BUZZ_BIN="${BUZZ_BIN:-$HOME/.local/bin/buzz}"
 export CLAUDE_BIN="${CLAUDE_BIN:-$(command -v claude)}"
 
+# De reader-identiteit: de orchestrator ziet elk kanaal (hij bezit ze), een
+# agent-sleutel alleen waar die agent lid van is. Apart van de run-lijst, want de
+# orchestrator is geen chat-agent en wordt niet gespawnd.
 # nsecs exporteren: NSEC_<HANDLE> voor elke agent in agents.yml
 dec="$(sops -d secrets/identities.yaml)"
-for h in $(python3 -c "import yaml; print(' '.join(yaml.safe_load(open('agents/agents.yml'))['run']))"); do
+for h in orchestrator $(python3 -c "import yaml; print(' '.join(yaml.safe_load(open('agents/agents.yml'))['run']))"); do
   nsec="$(printf '%s' "$dec" | awk "/  $h:/{f=1} f&&/nsec:/{print \$2; exit}")"
   export "NSEC_${h^^}=$nsec"
 done
