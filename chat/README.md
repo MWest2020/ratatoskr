@@ -5,8 +5,30 @@ vanaf de telefoonbrowser over het tailnet. De backend is opgesplitst (elk bestan
 ≤200 regels): `buzzcli.py` (stdlib) is de relay-datalaag, `roster.py` de
 identiteits-/ledenlogica, `actions.py` de send/add/create-acties, en `server.py`
 doet alleen de HTTP-routing + serveert de PWA-shell (`index.html` +
-`app.css`/`app.js`/`app-auth.js`/`app-modal.js`/`app-ui.js`/`app-push.js`). De nsec (identiteit
-`mark`) zit in de procesomgeving, nóóit in de browser. Tailnet-only.
+`app.css`/`app.js`/`app-auth.js`/`app-modal.js`/`app-repos.js`/`app-ui.js`/`app-push.js`).
+De nsec (identiteit `mark`) zit in de procesomgeving, nóóit in de browser.
+Tailnet-only.
+
+**Volgorde van de scripts is inhoudelijk.** `app-modal.js` levert `el()`/`add()`
+en moet vóór `app.js`; `app-repos.js` moet vóór `app-ui.js`, want die bindt de
+Repos-knop bij het laden (andersom: `openRepos is not defined`).
+
+## Alles van buiten wordt tekst
+
+`el(tag, class, tekst)` zet tekst via `textContent`, nooit via `innerHTML`. Dat is
+geen stijlkeuze. De Repos-lade toont repo-beschrijvingen, PR-titels, branchnamen,
+bestandsnamen en de PR-URL, en die kan **iedereen** zetten door een PR te openen
+op een publieke repo. Tot 2026-09-07 ging dat via `innerHTML`; gemeten voerde een
+payload in een PR-titel script uit in de PWA — waar het apparaat-token in
+`localStorage` staat — en werd `javascript:…` een klikbare link. De regressietest
+staat in `e2e/xss.js`.
+
+## Testen
+
+    bash ../verify.sh       # unittests, offline
+    bash e2e/api.sh         # routes + auth-gate tegen de VM
+    node e2e/ui.js          # browser-kant tegen de VM
+    node e2e/xss.js         # regressietest op de GitHub-rendering
 
 ## Draaien (op de relay-VM)
 

@@ -32,3 +32,27 @@ Draaien: `bash agents/run.sh` (op agent-lxc; claude+buzz+age-key aanwezig).
 - systemd-service (nu nohup, niet reboot-vast).
 - habitat-seeds afleiden van de executie-facet + drift-gate (aparte
   habitat-change, proposal-first).
+
+## De hub, en waarom op rol
+
+Eén agent in `#general`: de **hub**, gevonden als de actieve identiteit met rol
+`meta-agent` in `identities.yml` (`bootstrap.hub_handle`). Niet op naam — de hub
+heette tot 2026-09-07 `coordinator` en heet nu `odin`, en drie plekken die de naam
+hardgecodeerd hadden vielen daardoor stil terug: de reader, de roster/liveness-
+context van de hub, en de vlootlijst.
+
+## De reader is de orchestrator
+
+De listener leest kanalen en leden met `NSEC_ORCHESTRATOR`, niet met een
+agent-sleutel. De orchestrator bezit elk kanaal en ziet ze dus allemaal; gemeten
+op 2026-09-07 zag de orchestrator 15/15 kanalen, `assistent` 8/15 en de hub zelf
+4/15. Ontbreekt die sleutel, dan **start de listener niet** — verschralen mag niet
+stil gebeuren. `run.sh` exporteert hem naast de agent-sleutels; de orchestrator
+wordt niet gespawnd.
+
+## Lidmaatschap is een voorwaarde, geen detail
+
+Elke agent post óók in `#statistics` (statistiek per beurt) en `#escalatie`
+(limitaties), ongeacht zijn eigen kanaal-scope. Zonder lidmaatschap faalt die send
+— en wel stil, alleen zichtbaar in het log. Daarom meldt de listener bij het
+opstarten welke lidmaatschappen ontbreken. Herstellen: `bash ~/bh/members.sh --yes`.
