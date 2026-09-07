@@ -180,5 +180,6 @@
 .modal-t{font-weight:700;color:var(--ink)}
 .modal-sub{color:var(--muted);font-size:.85rem;margin:.35rem 0 .9rem}
 .modal-row{display:flex;gap:.5rem}
+.modal-in{width:100%;box-sizing:border-box;margin-bottom:.7rem;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:.5rem .6rem}
 .modal-add{flex:1;background:var(--accent);color:var(--bg);border:0;border-radius:10px;padding:.5rem;font-weight:700;cursor:pointer}
 .modal-cancel{flex:1;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:.5rem;cursor:pointer}
