@@ -1,0 +1,97 @@
+# SPDX-License-Identifier: EUPL-1.2
+"""Web-Push-opslag: de poort en de begrenzing.
+
+De subscribe-route is onbeschermd achter het apparaat-token: elk tailnet-apparaat
+kan hem aanroepen. Wat hier misgaat, groeit dus stil in een bestand op de VM.
+"""
+import importlib
+import json
+import os
+import stat
+import tempfile
+import unittest
+
+
+class PushTest(unittest.TestCase):
+    def setUp(self):
+        self.dir = tempfile.mkdtemp()
+        os.environ["PUSH_SUBS_PATH"] = os.path.join(self.dir, "diep", "subs.json")
+        os.environ["PUSH_MAX_SUBS"] = "3"
+        import push
+        self.push = importlib.reload(push)
+
+    def tearDown(self):
+        os.environ.pop("PUSH_SUBS_PATH", None)
+        os.environ.pop("PUSH_MAX_SUBS", None)
+
+    def sub(self, ep="https://push.example/abc", p="p" * 10, a="a" * 10):
+        return {"endpoint": ep, "keys": {"p256dh": p, "auth": a}}
+
+    # --- poort ---
+    def test_geldige_subscription_wordt_opgeslagen(self):
+        self.assertTrue(self.push.add_subscription(self.sub()))
+        self.assertEqual(len(self.push.load_subscriptions()), 1)
+
+    def test_alleen_https_endpoints(self):
+        for ep in ("http://push.example/x", "ftp://x", "javascript:x", ""):
+            self.assertFalse(self.push.add_subscription(self.sub(ep=ep)), ep)
+
+    def test_vorm_wordt_afgedwongen(self):
+        for bad in (None, "tekst", [], {}, {"endpoint": "https://x"},
+                    {"endpoint": "https://x", "keys": "geen-dict"},
+                    {"endpoint": "https://x", "keys": {"p256dh": "p"}}):
+            self.assertFalse(self.push.add_subscription(bad), repr(bad))
+
+    def test_te_lange_velden_worden_geweigerd(self):
+        self.assertFalse(self.push.add_subscription(self.sub(ep="https://x/" + "y" * 2000)))
+        self.assertFalse(self.push.add_subscription(self.sub(p="p" * 300)))
+
+    def test_extra_velden_worden_niet_bewaard(self):
+        s = self.sub(); s["stiekem"] = "x" * 100; s["keys"]["extra"] = "y"
+        self.assertTrue(self.push.add_subscription(s))
+        bewaard = self.push.load_subscriptions()[0]
+        self.assertEqual(set(bewaard), {"endpoint", "keys"})
+        self.assertEqual(set(bewaard["keys"]), {"p256dh", "auth"})
+
+    # --- begrenzing en duurzaamheid ---
+    def test_dedup_op_endpoint(self):
+        self.push.add_subscription(self.sub(p="eerst"))
+        self.push.add_subscription(self.sub(p="tweede"))
+        subs = self.push.load_subscriptions()
+        self.assertEqual(len(subs), 1)
+        self.assertEqual(subs[0]["keys"]["p256dh"], "tweede")   # nieuwste wint
+
+    def test_cap_gooit_de_oudste_eruit(self):
+        for i in range(5):
+            self.push.add_subscription(self.sub(ep=f"https://push.example/{i}"))
+        subs = self.push.load_subscriptions()
+        self.assertEqual(len(subs), 3)                          # PUSH_MAX_SUBS
+        self.assertEqual([s["endpoint"][-1] for s in subs], ["2", "3", "4"])
+
+    def test_state_dir_wordt_aangemaakt(self):
+        # Verse VM zonder de mkdir-stap: dit mag geen FileNotFoundError door
+        # do_POST heen gooien (traceback zonder HTTP-antwoord).
+        self.assertTrue(self.push.add_subscription(self.sub()))
+        self.assertTrue(os.path.exists(self.push.SUBS_PATH))
+
+    def test_bestand_is_0600(self):
+        self.push.add_subscription(self.sub())
+        mode = stat.S_IMODE(os.stat(self.push.SUBS_PATH).st_mode)
+        self.assertEqual(mode, 0o600, oct(mode))   # push-tokens per apparaat
+
+    def test_kapot_bestand_geeft_lege_lijst(self):
+        os.makedirs(os.path.dirname(self.push.SUBS_PATH), exist_ok=True)
+        with open(self.push.SUBS_PATH, "w") as f:
+            f.write("{geen json")
+        self.assertEqual(self.push.load_subscriptions(), [])
+        self.assertTrue(self.push.add_subscription(self.sub()))   # herstelt
+
+    def test_json_dat_geen_lijst_is_geeft_lege_lijst(self):
+        os.makedirs(os.path.dirname(self.push.SUBS_PATH), exist_ok=True)
+        with open(self.push.SUBS_PATH, "w") as f:
+            json.dump({"niet": "een lijst"}, f)
+        self.assertEqual(self.push.load_subscriptions(), [])
+
+
+if __name__ == "__main__":
+    unittest.main()
