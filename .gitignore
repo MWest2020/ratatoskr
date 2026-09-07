@@ -18,3 +18,7 @@ run-report.json
 .habitat/audit.jsonl
 .habitat/run-output-*.md
 .habitat/run-report-*.html
+
+# Runtime-logs van de listener horen niet in git.
+listener.log
+listener.log.*
