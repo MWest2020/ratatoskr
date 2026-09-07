@@ -2,7 +2,7 @@
 <html lang="nl">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
 <meta name="theme-color" content="#15130f">
 <title>Boomhuis</title>
 <link rel="manifest" href="/manifest.webmanifest">
@@ -58,6 +58,23 @@
 
   <div class="toast" id="toast"></div>
 
+<script>
+// Toetsenbord vs. invoerbalk. Op iOS verkleint het toetsenbord de VISUELE
+// viewport, maar `100dvh` is een LAYOUT-eenheid en beweegt niet mee: de shell
+// blijft even hoog, de invoerbalk zakt onder het toetsenbord en is weg. Mark,
+// 2026-09-07: "invoerveld weer weg". Daarom spiegelen we visualViewport.height
+// naar --app-h; de body gebruikt die als hoogte en krimpt dus wél mee.
+// Ondergrens 200px: een onzinnige meting mag de shell nooit dichtklappen.
+(function(){
+  const vv = window.visualViewport;
+  if(!vv) return;                                   // geen support -> 100dvh blijft
+  const sync = ()=>{ const h = vv.height;
+    if(h > 200) document.documentElement.style.setProperty("--app-h", h + "px"); };
+  vv.addEventListener("resize", sync);
+  vv.addEventListener("scroll", sync);
+  sync();
+})();
+</script>
 <script src="/app-auth.js"></script>
 <script src="/app-modal.js"></script>
 <script src="/app.js"></script>

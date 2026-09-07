@@ -10,7 +10,10 @@
   body{
     background:var(--bg); color:var(--ink);
     font-family:"Public Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-    display:flex; flex-direction:column; height:100dvh; overflow:hidden;
+    display:flex; flex-direction:column; overflow:hidden;
+    /* --app-h spiegelt visualViewport (app-ui.js). Zonder JS, of op een
+       browser zonder visualViewport, blijft 100dvh het gedrag. */
+    height:100dvh; height:var(--app-h, 100dvh);
   }
   header{
     display:flex; align-items:center; gap:.6rem; padding:.7rem .9rem;
