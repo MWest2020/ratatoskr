@@ -8,6 +8,7 @@ gedeclareerd (besluit Mark 2026-09-06: "afdwingen, niet yolo free for all").
 import json
 import os
 import subprocess
+import time
 
 CLAUDE = os.environ.get("CLAUDE_BIN", "claude")
 MAX_TURN_S = 150
@@ -30,12 +31,22 @@ def scoped(tools):
     return [f"{t}(./**)" if t in PATH_TOOLS else t for t in (tools or [])]
 
 
+def _target(inp):
+    """Het interessante deel van een tool-aanroep, kort: een pad of een commando."""
+    for k in ("file_path", "path", "pattern", "command", "url"):
+        v = inp.get(k)
+        if v:
+            v = str(v)
+            return (v[-48:] if len(v) > 48 else v)
+    return ""
+
+
 def agent_env():
     """Alleen wat de CLI nodig heeft — geen sleutels, geen tokens."""
     return {k: v for k, v in os.environ.items() if k in ENV_KEEP}
 
 
-def run(provider, system, prompt, model=None, allow=None, deny=None):
+def run(provider, system, prompt, model=None, allow=None, deny=None, progress=None):
     """Draai één beurt. Return {answer, model, cost, turns, denials, error}.
 
     `denials` = de tool-aanroepen die de permissielaag heeft geweigerd; de
@@ -63,20 +74,44 @@ def run(provider, system, prompt, model=None, allow=None, deny=None):
     # Prompt via stdin, niet als argument: --allowedTools/--disallowedTools zijn
     # variadisch (`<tools...>`) en slikken een daaropvolgend positioneel argument op
     # ("Input must be provided either through stdin or as a prompt argument").
+    # Streamen i.p.v. wachten: met stream-json komt elke stap binnen zodra hij
+    # gebeurt, zodat de listener kan laten zien WAT de agent doet in plaats van
+    # anderhalve minuut stilte. `progress` krijgt korte regels ("Read providers.py").
+    cmd += ["--output-format", "stream-json", "--verbose"]
+    t0 = time.time()
     try:
-        p = subprocess.run(cmd, input=prompt, capture_output=True, text=True,
-                           timeout=MAX_TURN_S, env=agent_env())
-    except subprocess.TimeoutExpired:
-        return {"answer": "(time-out)", "model": model or "", "cost": 0.0,
-                "turns": 0, "denials": [], "error": "timeout"}
+        proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE, text=True, env=agent_env())
+    except OSError as e:
+        return {"answer": f"(kan {CLAUDE} niet starten)", "model": model or "", "cost": 0.0,
+                "turns": 0, "denials": [], "error": str(e)[:120]}
     try:
-        d = json.loads(p.stdout or "{}")
-    except json.JSONDecodeError:
-        # Geen JSON = de CLI is gestruikeld vóór het eindobject; stdout is dan het
-        # enige spoor. Niet stil slikken: de listener meldt dit als storing.
-        return {"answer": (p.stdout or "").strip() or "(geen antwoord)",
-                "model": model or "", "cost": 0.0, "turns": 0, "denials": [],
-                "error": (p.stderr or "").strip()[:200] or "geen json"}
+        proc.stdin.write(prompt)
+        proc.stdin.close()
+    except BrokenPipeError:
+        pass
+
+    d = {}
+    for line in proc.stdout:
+        if time.time() - t0 > MAX_TURN_S:
+            proc.kill()
+            return {"answer": "(time-out)", "model": model or "", "cost": 0.0,
+                    "turns": 0, "denials": [], "error": "timeout"}
+        try:
+            ev = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if ev.get("type") == "result":
+            d = ev
+        elif ev.get("type") == "assistant" and progress:
+            for c in (ev.get("message") or {}).get("content", []):
+                if c.get("type") == "tool_use":
+                    progress(f"{c.get('name')} {_target(c.get('input') or {})}".strip())
+    proc.wait(timeout=10)
+    if not d:
+        err = (proc.stderr.read() or "").strip()[:200]
+        return {"answer": "(geen antwoord)", "model": model or "", "cost": 0.0,
+                "turns": 0, "denials": [], "error": err or "geen resultaat-event"}
 
     used = list(d.get("modelUsage") or {})
     return {"answer": (d.get("result") or "").strip() or "(geen antwoord)",

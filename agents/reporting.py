@@ -5,8 +5,40 @@ Apart van listener.py zodat die onder de ≤200-regel-conventie blijft. `send` k
 als callable binnen (de listener bezit de buzz-omgeving en de sleutels); dit
 bestand kent alleen het format en het beleid.
 """
+import time
+
 import prompts
 import providers
+
+# Hoeveel tussenstanden per beurt, en minimaal hoeveel seconden ertussen.
+PROGRESS_MAX = 4
+PROGRESS_GAP = 20
+
+
+def progress_poster(send, cid, cfg, handle):
+    """Geeft een callback die tussentijds laat zien WAT de agent doet.
+
+    Waarom: een beurt duurt tot 150s en tot nu toe was dat pure stilte — Mark zag
+    niets tot het antwoord er was. Eerste stap gaat er meteen uit, daarna hoogstens
+    elke PROGRESS_GAP seconden één regel, met een harde bovengrens. Melden mag de
+    beurt nooit vertragen of laten klappen, dus alles in een try.
+    """
+    state = {"n": 0, "t": 0.0}
+
+    def progress(what):
+        now = time.time()
+        if state["n"] >= PROGRESS_MAX:
+            return
+        if state["n"] and now - state["t"] < PROGRESS_GAP:
+            return
+        state["n"] += 1
+        state["t"] = now
+        try:
+            send(cid, f"⋯ {handle}: {what}", cfg["nsec"], cfg["npub"])
+        except Exception:
+            pass
+
+    return progress
 
 
 def report_run(send, channels, handle, cname, cfg, r):
