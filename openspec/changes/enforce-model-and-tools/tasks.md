@@ -22,5 +22,13 @@
 
 - [x] 4.1 `python3 -m unittest test_topology` groen (13 tests).
 - [x] 4.2 Bestandsgrenzen: listener 190, bootstrap 84, reporting 44, providers 57.
-- [ ] 4.3 Na merge van handbook#12: listener herstarten en één echte beurt
-      controleren in `#statistics`.
+- [x] 4.3 Listener herstart op de verse registry en één echte beurt nagemeten in
+      `#statistics` (2026-09-08 08:55):
+      `odin · #general · sonnet→claude-sonnet-5 · 1 turns · $0.10`.
+      Het gedeclareerde model wordt dus afgedwongen.
+
+      De beurt daarvóór meldde `claude-haiku-4-5-20251001` en leek een
+      handhavingsgat. Dat was de RAPPORTAGE: die nam de eerste sleutel uit
+      `modelUsage`, en een run raakt soms meerdere modellen aan. De regel toont nu
+      `gevraagd→gedraaid` met een vlag bij een mismatch — anders is dit getal niet
+      te vertrouwen als bewijs.

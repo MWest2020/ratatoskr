@@ -8,6 +8,7 @@ gemeld, zodat de coordinator niet doet alsof hij het weet. Draai periodiek
 (systemd-timer) of on-demand.
 """
 import glob
+import subprocess
 import os
 import re
 import subprocess
@@ -73,8 +74,44 @@ def habitat_jobs():
         return f"(kubectl-fout: {e})"
 
 
+def checkout_staat():
+    """Waar komt dit bestand vandaan? Een liveness-bestand dat uit een achterlopende
+    of vuile werkkopie komt, meldt werk dat niet bestaat en agents die niet draaien.
+    Dat gebeurde: `~/boomhuis` stond 52 commits achter met ongecommitte
+    wijzigingen, en `_live.md` toonde daardoor @archivaris als draaiend en een
+    change als open die allang gearchiveerd was. Geen `git fetch` hier — dit draait
+    op een timer; we vergelijken met wat de checkout al van origin weet."""
+    def git(*a):
+        try:
+            return subprocess.run(["git", "-C", ROOT, *a], capture_output=True,
+                                  text=True, timeout=10).stdout.strip()
+        except Exception:
+            return ""
+    branch = git("rev-parse", "--abbrev-ref", "HEAD") or "?"
+    sha = git("rev-parse", "--short", "HEAD") or "?"
+    achter = git("rev-list", "--count", "HEAD..origin/main") or "?"
+    vuil = len([r for r in git("status", "--porcelain").splitlines() if r.strip()])
+    regel = f"_bron: {branch}@{sha}"
+    waarschuwingen = []
+    if branch != "main":
+        waarschuwingen.append(f"niet op main ({branch})")
+    if achter not in ("0", "?"):
+        waarschuwingen.append(f"{achter} commits achter origin/main")
+    if vuil:
+        waarschuwingen.append(f"{vuil} ongecommitte wijziging(en)")
+    if waarschuwingen:
+        return ("> ⚠ **Dit overzicht komt uit een afwijkende werkkopie**: "
+                + ", ".join(waarschuwingen)
+                + ". Wat hier staat kan werk melden dat niet bestaat, of agents "
+                  "die niet draaien.\n", regel + " — AFWIJKEND_")
+    return ("", regel + "_")
+
+
 def main():
+    waarschuwing, bron = checkout_staat()
     L = ["# Wat er nu draait (gegenereerd — niet handmatig bewerken)", ""]
+    if waarschuwing:
+        L += [waarschuwing]
     L += ["## Draaiende chat-agents (listener)"]
     L += [f"- @{h}" for h in chat_agents()]
     L += ["", "## Open werk (backlog — altijd oppakken)"]
@@ -89,6 +126,7 @@ def main():
     L += ["", "## Habitat-Jobs"]
     j = habitat_jobs()
     L += [j] if j else ["- (cluster niet gekoppeld — env KUBECTL niet gezet)"]
+    L += ["", bron]
     open(os.path.join(ROOT, "knowledge", "_live.md"), "w").write("\n".join(L) + "\n")
     print("knowledge/_live.md geschreven")
 
