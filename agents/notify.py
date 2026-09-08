@@ -51,8 +51,11 @@ def push(cname, author, content):
         body += f"  (+{gemist} eerder)"
     _last[cname] = (now, 0)
     try:
+        # Kanaal in de URL: een melding over #bouw hoorde je in #bouw te zetten,
+        # niet op de app-root (= het eerste kanaal). Als HASH, want die gaat niet
+        # naar de server en geeft dus geen tweede cache-entry in de sw.
         subprocess.run(["uv", "run", SENDER, "--title", f"#{cname} · {author}",
-                        "--url", "/", "--body", body],
+                        "--url", f"/#{cname}", "--body", body],
                        cwd=ROOT, capture_output=True, text=True, timeout=30)
         return True
     except Exception as e:                 # sender weg, netwerk stuk, uv ontbreekt

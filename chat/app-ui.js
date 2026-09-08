@@ -105,14 +105,24 @@ input.addEventListener("keydown",e=>{
   if(e.key==="Enter"&&!e.shiftKey){ e.preventDefault(); $("#composer").requestSubmit(); }
 });
 
+// Kanaal uit de hash (#bouw), bv. via een push-melding. Onbekende naam → het
+// eerste kanaal, zoals voorheen.
+function kanaalUitHash(){
+  const naam = decodeURIComponent((location.hash || "").slice(1)).toLowerCase();
+  return channels.find(c => c.name === naam) || null;
+}
+
 (async function init(){
   await loadChannels();
-  selectChannel(channels[0]);
+  selectChannel(kanaalUitHash() || channels[0]);
   await loadChannels();
   loadOverview();
   pollTimer=setInterval(()=>refresh(false), 4000);
   setInterval(loadOverview, 12000);
   document.addEventListener("visibilitychange",()=>{ if(!document.hidden){ refresh(false); loadOverview(); } });
+  // Al open venster dat door een melding naar #kanaal wordt gestuurd: een
+  // hash-wijziging herlaadt de pagina niet, dus hier zelf op reageren.
+  window.addEventListener("hashchange",()=>{ const c=kanaalUitHash(); if(c) selectChannel(c); });
 })();
 
 // --- PWA: service worker + installeer-knop ---

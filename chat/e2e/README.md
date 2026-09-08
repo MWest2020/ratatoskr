@@ -7,6 +7,7 @@ en of de laag eronder ook echt aan staat.
     bash chat/e2e/api.sh        # HTTP: routes, auth-gate, body-grens
     node chat/e2e/ui.js         # browser: shell, kanalen, laden, token-modal
     node chat/e2e/xss.js        # regressietest op de GitHub-rendering
+    node chat/e2e/deeplink.js   # melding -> juiste kanaal
 
 `ui.js` en `xss.js` hebben Playwright nodig en een Chromium. Staat Playwright
 elders, wijs er dan met `NODE_PATH` naar; `executablePath` bovenaan het script
@@ -40,6 +41,18 @@ ter bewijs dat het geen theorie was:
 
 Die controle-run zit niet meer in het script: nu de fix in main staat, zou hij
 altijd slagen en dus niets meer meten.
+
+## Waarom `deeplink.js` bestaat
+
+De push-melding wist het kanaal wel (de titel is `#kanaal · auteur`) maar gooide
+het weg in de link: `--url "/"`. Elke melding landde dus op de app-root, en dat is
+het eerste kanaal. Het kanaal zit nu in de **hash** — die gaat niet naar de server
+en geeft dus geen tweede cache-entry in de service worker.
+
+De test dekt de vier gevallen die uit elkaar lopen: verse start met hash, een al
+open venster dat een hash-wijziging krijgt (geen herlaad, dus `hashchange`),
+handmatig wisselen dat de hash meeschrijft, en een onbekende hash — die laat een
+open venster staan maar valt bij een verse start terug op het eerste kanaal.
 
 ## Wat ze NIET dekken
 
