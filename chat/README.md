@@ -92,6 +92,14 @@ Wat waar staat en terug moet na een redeploy of host-herstel:
 - **`secrets/vapid.yaml`** (deze repo, SOPS+age) — VAPID-private + subject. Alleen
   de sender op agent-lxc decrypt 'm; de VM heeft de private nooit nodig.
 
+**"1/1 verstuurd" is geen aflevering.** De sender noemt nu per abonnee de
+push-service en de statuscode. HTTP 201 betekent dat FCM of Apple het bericht
+heeft aangenomen; of een toestel het toont, is van buitenaf niet te zien. De
+endpoint-host zegt wél welk soort toestel er achter zit:
+`fcm.googleapis.com` = Chrome (Android of desktop), `web.push.apple.com` =
+Safari/iOS. Zie je alleen een FCM-abonnee terwijl je een melding op een iPhone
+verwacht, dan is dat toestel simpelweg niet aangemeld.
+
 Versturen (vanaf agent-lxc): `uv run orchestrator/push-notify.py --title … --url /
 --body "…"` (met `SOPS_AGE_KEY_FILE` gezet). De sender leest de subs via `sudo` op
 de VM en ruimt verlopen subscriptions (404/410) op. Automatisch afgevuurd door

@@ -83,13 +83,26 @@ def main():
     if not subs:
         print("[push] geen subscriptions — niets te versturen."); return
     payload = json.dumps({"title": a.title, "body": body[:300], "url": a.url})
+    # Per abonnee de push-service noemen. "1/1 verstuurd" zegt niets over WELK
+    # toestel; een fcm.googleapis.com-endpoint is Chrome (Android of desktop),
+    # web.push.apple.com is Safari/iOS. Waargenomen 2026-09-08: één abonnement,
+    # FCM, HTTP 201 — en toch niets op de iPhone, want die had zich nooit
+    # aangemeld. Zonder deze regel is dat onzichtbaar.
+    for s_ in subs:
+        host = (s_.get("endpoint") or "").split("/")[2:3]
+        print(f"[push] abonnee: {host[0] if host else '?'}")
     sent = 0
     dead = []
     for s in subs:
         ep = s.get("endpoint") or ""
         try:
-            webpush(subscription_info=s, data=payload, vapid_private_key=v["private"],
-                    vapid_claims={"sub": v.get("subject", "mailto:boomhuis@localhost")})
+            r = webpush(subscription_info=s, data=payload, vapid_private_key=v["private"],
+                        vapid_claims={"sub": v.get("subject", "mailto:boomhuis@localhost")})
+            # De statuscode erbij: 201 betekent "de push-service heeft 'm
+            # aangenomen", NIET "het toestel heeft 'm getoond". Dat onderscheid
+            # kostte een half uur zoeken.
+            print(f"[push] {ep.split('/')[2]}: HTTP {getattr(r, 'status_code', '?')} (aangenomen "
+                  f"door de push-service; aflevering is niet te bevestigen)")
             sent += 1
         except WebPushException as e:
             # 404/410 = de push-service kent dit endpoint niet meer → weg ermee.
