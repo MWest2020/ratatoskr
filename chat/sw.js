@@ -5,7 +5,7 @@
 //   loopt na een timeout dóór en ververst de cache alsnog (waitUntil).
 // - Statics (iconen, manifest): cache-eerst met achtergrond-update.
 // - /api/*: NOOIT cachen (chat is realtime, git is waarheid).
-const CACHE = "boomhuis-shell-v7";  // v7: app-repos.js (veilige GitHub-rendering)
+const CACHE = "boomhuis-shell-v8";  // v8: melding linkt naar zijn kanaal (#hash)
 const NET_TIMEOUT = 3000;
 const SHELL = [
   "/",

@@ -83,7 +83,13 @@ async function createChannel(name){
   return true;
 }
 function selectChannel(c){
+  if(current && current.id===c.id) return;      // geen herlaad-lus via hashchange
   current=c; lastCount=0; $("#chanName").textContent=c.name;
+  // Hash meeschrijven: een herstart van de PWA (iOS bevriest hem op de
+  // achtergrond) brengt je terug in het kanaal waar je was, en een melding kan
+  // hierheen linken.
+  if(decodeURIComponent(location.hash.slice(1))!==c.name)
+    history.replaceState(null,"","#"+encodeURIComponent(c.name));
   $("#msgs").innerHTML='<div class="empty">laden…</div>';
   loadPinned(c.name);
   refresh(true);
