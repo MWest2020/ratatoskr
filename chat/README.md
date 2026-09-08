@@ -92,6 +92,12 @@ Wat waar staat en terug moet na een redeploy of host-herstel:
 - **`secrets/vapid.yaml`** (deze repo, SOPS+age) — VAPID-private + subject. Alleen
   de sender op agent-lxc decrypt 'm; de VM heeft de private nooit nodig.
 
+Meldingen gaan met **`Urgency: high` en TTL 3600**. Zonder Urgency-header geldt
+een push als "normal" en mag de push-service hem vasthouden tot het toestel uit
+doze komt — waargenomen 2026-09-08: twee pushes kwamen veel later en tegelijk aan
+op een Android-toestel. Voor een chatbericht is te laat hetzelfde als niet. De TTL
+begrenst de andere kant: een melding van gisteren wil je niet alsnog.
+
 **"1/1 verstuurd" is geen aflevering.** De sender noemt nu per abonnee de
 push-service en de statuscode. HTTP 201 betekent dat FCM of Apple het bericht
 heeft aangenomen; of een toestel het toont, is van buitenaf niet te zien. De

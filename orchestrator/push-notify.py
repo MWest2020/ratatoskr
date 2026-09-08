@@ -96,8 +96,16 @@ def main():
     for s in subs:
         ep = s.get("endpoint") or ""
         try:
+            # Urgency high + een TTL van een uur. Waargenomen 2026-09-08: twee
+            # pushes kwamen pas veel later en tegelijk aan op een Android-toestel.
+            # Zonder Urgency-header behandelt de push-service een bericht als
+            # "normal" en mag hij het vasthouden tot het toestel uit doze komt.
+            # Voor een chatbericht is dat het verkeerde gedrag: te laat is hier
+            # hetzelfde als niet. De TTL begrenst de andere kant — een melding van
+            # gisteren wil je niet alsnog.
             r = webpush(subscription_info=s, data=payload, vapid_private_key=v["private"],
-                        vapid_claims={"sub": v.get("subject", "mailto:boomhuis@localhost")})
+                        vapid_claims={"sub": v.get("subject", "mailto:boomhuis@localhost")},
+                        ttl=3600, headers={"Urgency": "high"})
             # De statuscode erbij: 201 betekent "de push-service heeft 'm
             # aangenomen", NIET "het toestel heeft 'm getoond". Dat onderscheid
             # kostte een half uur zoeken.
