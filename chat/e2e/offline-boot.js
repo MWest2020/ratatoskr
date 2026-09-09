@@ -55,6 +55,15 @@ async function until(page, fn, ms = 15000) {
   t('blijft niet stil op "laden…" staan',
     !/^laden…$/.test(await p.evaluate(msgsText)),
     await p.evaluate(msgsText));
+  // De melding moet bruikbaar zijn: welk adres, welke fout, en een uitweg.
+  t('melding noemt het adres', (await p.evaluate(msgsText)).includes(await p.evaluate(() => location.origin)),
+    await p.evaluate(msgsText));
+  t('knop "opnieuw proberen" staat er',
+    await p.evaluate(() => [...document.querySelectorAll('#msgs button')]
+      .some(b => /opnieuw proberen/i.test(b.textContent))));
+  t('knop "app verversen" staat er',
+    await p.evaluate(() => [...document.querySelectorAll('#msgs button')]
+      .some(b => /app verversen/i.test(b.textContent))));
 
   console.log('— netwerk komt op');
   apiDown = false;
@@ -67,6 +76,33 @@ async function until(page, fn, ms = 15000) {
   t('geen verbindingsmelding meer',
     !/verbinding/i.test(await p.evaluate(msgsText)),
     await p.evaluate(msgsText));
+
+  console.log('— de uitweg');
+  // Verversen moet een geregistreerde service worker en gevulde caches echt
+  // opruimen; dat is het enige wat een vastgelopen PWA loskrijgt.
+  // Een oude cache erbij zetten is de eerlijke test: na het verversen laadt de
+  // app opnieuw en registreert hij zijn worker weer (dat hoort), dus tellen
+  // zegt niets — of de OUDE troep weg is, wel.
+  const voor = await p.evaluate(async () => {
+    await caches.open('boomhuis-shell-oud');
+    return {
+      sw: (await navigator.serviceWorker.getRegistrations()).length,
+      oud: (await caches.keys()).includes('boomhuis-shell-oud'),
+    };
+  });
+  t('service worker draaide en er stond een oude cache', voor.sw > 0 && voor.oud,
+    JSON.stringify(voor));
+
+  await p.evaluate(() => verversApp());
+  await p.waitForTimeout(5000);
+  const na = await p.evaluate(async () => ({
+    oud: (await caches.keys()).includes('boomhuis-shell-oud'),
+    url: location.search,
+  }));
+  t('verversen wist de oude cache en herlaadt', na.oud === false && /vers=/.test(na.url),
+    JSON.stringify(na));
+  t('de app werkt na het verversen', await until(p, () =>
+    document.querySelectorAll('.chan').length > 5, 15000));
 
   await b.close();
   console.log(`\n${ok} ok, ${fail} fail`);

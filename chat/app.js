@@ -40,7 +40,7 @@ async function loadOverview(){
 async function loadChannels(){
   let data;
   try{ data = await (await fetch("/api/channels")).json(); }
-  catch(e){ return false; }
+  catch(e){ noteerVerbindingsfout(e); return false; }
   if(!Array.isArray(data)) return false;
   channels = data;
   const wrap = $("#chanList"); wrap.innerHTML="";
@@ -106,21 +106,12 @@ function selectChannel(c){
 const fmtTime = ts => { const d=new Date(ts*1000);
   return d.toLocaleString("nl-NL",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}); };
 
-// Een scherm dat "laden…" blijft zeggen is niet te onderscheiden van een
-// kapotte app. Al gerenderde berichten blijven staan — die zijn nog waar.
-function meldGeenVerbinding(){
-  const box=$("#msgs");
-  if(box.querySelector(".row")) return;
-  box.innerHTML='<div class="empty">geen verbinding met het boomhuis — '+
-    'opnieuw proberen…</div>';
-}
-
 async function refresh(force){
   if(!current) return;
   let data;
   try{ data = await (await fetch("/api/messages?channel="+current.id)).json(); }
-  catch(e){ meldGeenVerbinding(); return; }
-  if(data.error){ meldGeenVerbinding(); return; }
+  catch(e){ noteerVerbindingsfout(e); meldGeenVerbinding(); return; }
+  if(data.error){ noteerVerbindingsfout(data.error); meldGeenVerbinding(); return; }
   const box=$("#msgs");
   const near = box.scrollHeight - box.scrollTop - box.clientHeight < 120;
   const msgs=data.messages||[];
