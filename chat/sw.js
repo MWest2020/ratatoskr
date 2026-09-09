@@ -5,7 +5,7 @@
 //   loopt na een timeout dóór en ververst de cache alsnog (waitUntil).
 // - Statics (iconen, manifest): cache-eerst met achtergrond-update.
 // - /api/*: NOOIT cachen (chat is realtime, git is waarheid).
-const CACHE = "boomhuis-shell-v10";  // v10: app-verbinding.js (uitweg uit een bevroren PWA)
+const CACHE = "boomhuis-shell-v11";  // v11: verbindingsmelding noemt het tailnet
 // Een versiebump wist bij `activate` elke oudere cache. Dat is het enige wat
 // een geïnstalleerde PWA die op de oude JS vastzit gegarandeerd loskrijgt:
 // netwerk-eerst helpt pas als de app draait, en dit was nu juist de bug
