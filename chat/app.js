@@ -94,6 +94,7 @@ async function createChannel(name){
 function selectChannel(c){
   if(current && current.id===c.id) return;      // geen herlaad-lus via hashchange
   current=c; lastCount=0; $("#chanName").textContent=c.name;
+  bewaarLaatsteKanaal(c);   // zodat offline bekend is wat er open stond
   // Hash meeschrijven: een herstart van de PWA (iOS bevriest hem op de
   // achtergrond) brengt je terug in het kanaal waar je was, en een melding kan
   // hierheen linken.
@@ -112,12 +113,19 @@ async function refresh(force){
   try{ data = await (await fetch("/api/messages?channel="+current.id)).json(); }
   catch(e){ noteerVerbindingsfout(e); meldGeenVerbinding(); return; }
   if(data.error){ noteerVerbindingsfout(data.error); meldGeenVerbinding(); return; }
-  const box=$("#msgs");
-  const near = box.scrollHeight - box.scrollTop - box.clientHeight < 120;
   const msgs=data.messages||[];
   if(!force && msgs.length===lastCount) return;
   lastCount=msgs.length;
   if(current){ markSeen(current.id, msgs.length); renderBadges(); }
+  bewaarSnapshot(current.id, msgs);   // voor als er straks geen verbinding is
+  renderBerichten(msgs, force);
+}
+
+// Ook gebruikt door de offline-weergave, die dezelfde berichten toont maar
+// met een gedateerde balk erboven.
+function renderBerichten(msgs, force){
+  const box=$("#msgs");
+  const near = box.scrollHeight - box.scrollTop - box.clientHeight < 120;
   if(msgs.length===0){ box.innerHTML='<div class="empty">Nog geen berichten — begin het gesprek.</div>'; return; }
   box.innerHTML="";
   for(const m of msgs){

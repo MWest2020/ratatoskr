@@ -60,6 +60,7 @@ class H(BaseHTTPRequestHandler):
         static = {
             "/app.css": ("app.css", "text/css"),
             "/app.js": ("app.js", "text/javascript"),
+            "/app-cache.js": ("app-cache.js", "text/javascript"),
             "/app-verbinding.js": ("app-verbinding.js", "text/javascript"),
             "/app-auth.js": ("app-auth.js", "text/javascript"),
             "/app-modal.js": ("app-modal.js", "text/javascript"),

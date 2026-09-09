@@ -21,7 +21,11 @@ function noteerVerbindingsfout(e){
 function meldGeenVerbinding(){
   const box = document.querySelector("#msgs");
   if(!box || box.querySelector(".row")) return;
-  box.innerHTML = "";
+
+  // Is er een momentopname van dit kanaal, toon die dan met zijn datum: bijna
+  // altijd nuttiger dan een leeg scherm, en de knoppen komen eronder.
+  const metSnapshot = (typeof toonLaatstBekend === "function" && toonLaatstBekend());
+  if(!metSnapshot) box.innerHTML = "";
 
   const wrap = document.createElement("div");
   wrap.className = "empty";
@@ -30,7 +34,9 @@ function meldGeenVerbinding(){
   // Het boomhuis staat alleen op het tailnet. Verreweg de vaakste oorzaak
   // van "geen verbinding" is dat Tailscale op het toestel uit staat — dus
   // die staat in de melding zelf, niet in iemands hoofd.
-  kop.textContent = "geen verbinding met het boomhuis — staat Tailscale aan?";
+  kop.textContent = metSnapshot
+    ? "geen verbinding — staat Tailscale aan?"
+    : "geen verbinding met het boomhuis — staat Tailscale aan?";
   wrap.appendChild(kop);
 
   const waar = document.createElement("div");
@@ -53,7 +59,7 @@ function meldGeenVerbinding(){
   knoppen.appendChild(vers);
 
   wrap.appendChild(knoppen);
-  box.appendChild(wrap);
+  box.appendChild(wrap);   // onder de berichten, niet erboven
 }
 
 // De enige handeling die een vastgelopen PWA gegarandeerd loskrijgt zonder

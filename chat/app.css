@@ -75,6 +75,11 @@
   .author-mark{color:var(--accent)}
   .author-orchestrator{color:var(--accent2)}
   .empty{color:var(--muted); text-align:center; margin:auto; font-size:.9rem}
+  /* balk boven berichten die uit de momentopname komen: zonder datum is
+     oude tekst niet van verse te onderscheiden, en dat is erger dan niets */
+  .gedateerd{position:sticky; top:0; z-index:1; text-align:center;
+    font-size:.75rem; color:var(--muted); background:var(--bg);
+    border-bottom:1px solid var(--muted); padding:.35rem .5rem; margin-bottom:.4rem}
   /* knoppen onder een verbindingsmelding: opnieuw proberen, en de
      noodgreep die de service worker en de caches wist */
   .verbindknoppen{display:flex; gap:.5rem; justify-content:center;
