@@ -7,6 +7,7 @@ Hier alleen het serveren van de PWA-shell en de /api/*-routes.
 import json
 import os
 import re
+from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
 
@@ -29,9 +30,25 @@ class H(BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
         self.wfile.write(data)
+        self._log_toegang(code)
 
-    def log_message(self, *a):  # stil
+    def log_message(self, *a):  # stil: de eigen regel hieronder is genoeg
         pass
+
+    def _log_toegang(self, code):
+        """Eén regel per verzoek naar stdout (journald), als BOOMHUIS_ACCESSLOG
+        aanstaat.
+
+        Bestaat om één vraag te kunnen beantwoorden die van buiten niet te zien
+        is: haalt een geïnstalleerde PWA de nieuwe bestanden eigenlijk wel op?
+        Alleen methode, pad, status en een afgeknot user-agent — geen headers,
+        geen tokens, geen bodies.
+        """
+        if os.environ.get("BOOMHUIS_ACCESSLOG", "") not in ("1", "true", "yes"):
+            return
+        ua = (self.headers.get("User-Agent") or "-")[:80].replace("\n", " ")
+        print(f"{datetime.now(timezone.utc).isoformat(timespec='seconds')} "
+              f"{self.command} {self.path[:120]} {code} \"{ua}\"", flush=True)
 
     def do_GET(self):
         u = urlparse(self.path)
