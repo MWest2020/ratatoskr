@@ -75,6 +75,14 @@
   .author-mark{color:var(--accent)}
   .author-orchestrator{color:var(--accent2)}
   .empty{color:var(--muted); text-align:center; margin:auto; font-size:.9rem}
+  /* knoppen onder een verbindingsmelding: opnieuw proberen, en de
+     noodgreep die de service worker en de caches wist */
+  .verbindknoppen{display:flex; gap:.5rem; justify-content:center;
+    margin-top:.7rem; flex-wrap:wrap}
+  .verbindknoppen button{background:transparent; color:var(--muted);
+    border:1px solid var(--muted); border-radius:6px; padding:.35rem .7rem;
+    font-size:.8rem; cursor:pointer}
+  .verbindknoppen button:disabled{opacity:.5}
   /* agents-lade */
   #agentsDrawer{position:absolute; inset:0; background:rgba(0,0,0,.55); z-index:20;
     display:none; opacity:0; transition:opacity .15s}

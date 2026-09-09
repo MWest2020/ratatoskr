@@ -174,7 +174,9 @@ async function laadWatErIs(){
 
 // --- PWA: service worker + installeer-knop ---
 if("serviceWorker" in navigator){
-  navigator.serviceWorker.register("/sw.js").catch(()=>{});
+  // updateViaCache "none": het sw-script zelf nooit uit de HTTP-cache, anders
+  // kan een apparaat een oude worker blijven herregistreren.
+  navigator.serviceWorker.register("/sw.js",{updateViaCache:"none"}).catch(()=>{});
 }
 let deferredPrompt=null;
 window.addEventListener("beforeinstallprompt", e=>{
