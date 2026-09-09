@@ -4,12 +4,13 @@ Draaien tegen de **echte VM**, niet tegen een mock. Ze vervangen de unittests ni
 ze vangen wat unittests per definitie missen: uitrol, service worker, viewport,
 en of de laag eronder ook echt aan staat.
 
-    bash chat/e2e/api.sh        # HTTP: routes, auth-gate, body-grens
-    node chat/e2e/ui.js         # browser: shell, kanalen, laden, token-modal
-    node chat/e2e/xss.js        # regressietest op de GitHub-rendering
-    node chat/e2e/deeplink.js   # melding -> juiste kanaal
+    bash chat/e2e/api.sh          # HTTP: routes, auth-gate, body-grens
+    node chat/e2e/ui.js           # browser: shell, kanalen, laden, token-modal
+    node chat/e2e/xss.js          # regressietest op de GitHub-rendering
+    node chat/e2e/deeplink.js     # melding -> juiste kanaal
+    node chat/e2e/offline-boot.js # koude start zonder tunnel, en herstel
 
-`ui.js` en `xss.js` hebben Playwright nodig en een Chromium. Staat Playwright
+`ui.js`, `xss.js`, `deeplink.js` en `offline-boot.js` hebben Playwright nodig en een Chromium. Staat Playwright
 elders, wijs er dan met `NODE_PATH` naar; `executablePath` bovenaan het script
 wijst naar de browser.
 
@@ -60,3 +61,13 @@ open venster staan maar valt bij een verse start terug op het eerste kanaal.
   niet in een test te staan. De 401-gate wordt wel getest, de kant erachter via
   `chat/test_admin_key.py` en een handmatige smoke.
 - Web Push: vraagt een echt toestel en toestemming.
+
+## Waarom `offline-boot.js` bestaat
+
+Omdat de app maandenlang kon hangen op "laden…" zonder dat iets dat merkte.
+De service worker serveert bij een koude start (tunnel nog niet op) bewust de
+gecachete shell; de app begon dan te draaien zonder netwerk, sneuvelde op zijn
+eerste fetch, en zette daardoor nooit de poll-timer die hem had kunnen laten
+herstellen. Alle andere e2e-tests draaien tegen een gezonde API en zien dat
+dus niet. Deze blokkeert `/api/*`, laat de app starten, deblokkeert, en meet
+dat hij zichzelf herstelt — zonder herlaad.
