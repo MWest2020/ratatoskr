@@ -35,8 +35,14 @@ async function loadOverview(){
   }catch(e){}
 }
 
+// Geeft false terug als de kanalen niet te halen zijn (koude start vóór de
+// tunnel op is). Niet gooien: de aanroeper hangt de hele app eraan op.
 async function loadChannels(){
-  channels = await (await fetch("/api/channels")).json();
+  let data;
+  try{ data = await (await fetch("/api/channels")).json(); }
+  catch(e){ return false; }
+  if(!Array.isArray(data)) return false;
+  channels = data;
   const wrap = $("#chanList"); wrap.innerHTML="";
   for(const c of channels){
     const row=document.createElement("div");
@@ -72,7 +78,9 @@ async function loadChannels(){
     let ch=false; for(const k of Object.keys(sm)){ if(!ids.has(k)){ delete sm[k]; ch=true; } }
     if(ch) localStorage.setItem("bh_seen", JSON.stringify(sm)); }catch(e){} }
   renderBadges();
+  return true;
 }
+
 async function createChannel(name){
   const r=await postJSON("/api/channels/create",{name});
   const j=await r.json().catch(()=>({}));
@@ -82,6 +90,7 @@ async function createChannel(name){
   const c=channels.find(x=>x.name===name); if(c) selectChannel(c);
   return true;
 }
+
 function selectChannel(c){
   if(current && current.id===c.id) return;      // geen herlaad-lus via hashchange
   current=c; lastCount=0; $("#chanName").textContent=c.name;
@@ -94,35 +103,24 @@ function selectChannel(c){
   loadPinned(c.name);
   refresh(true);
 }
-async function loadPinned(name){
-  const el=$("#pinned");
-  let content="";
-  try{ const d=await (await fetch("/api/pinned?channel="+encodeURIComponent(name))).json();
-    content=(d.content||"").trim(); }catch(e){ content=""; }
-  if(!content){ el.hidden=true; el.innerHTML=""; return; }
-  const lines=content.split("\n");
-  let title="Vastgezette context", body=content;
-  if(lines[0] && lines[0].startsWith("#")){
-    title=lines[0].replace(/^#+\s*/,"").replace(/^📌\s*/,"");
-    body=lines.slice(1).join("\n").replace(/^>.*$/gm,"").trim();
-  }
-  el.hidden=false; el.classList.add("collapsed");
-  el.innerHTML='<div class="head"><span class="pin">📌</span><span class="ttl"></span>'+
-    '<span class="caret">▸</span></div><div class="body"></div>';
-  el.querySelector(".ttl").textContent=title;
-  el.querySelector(".body").textContent=body;
-  el.querySelector(".head").onclick=()=>{ el.classList.toggle("collapsed");
-    el.querySelector(".caret").textContent=el.classList.contains("collapsed")?"▸":"▾"; };
-}
 const fmtTime = ts => { const d=new Date(ts*1000);
   return d.toLocaleString("nl-NL",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}); };
+
+// Een scherm dat "laden…" blijft zeggen is niet te onderscheiden van een
+// kapotte app. Al gerenderde berichten blijven staan — die zijn nog waar.
+function meldGeenVerbinding(){
+  const box=$("#msgs");
+  if(box.querySelector(".row")) return;
+  box.innerHTML='<div class="empty">geen verbinding met het boomhuis — '+
+    'opnieuw proberen…</div>';
+}
 
 async function refresh(force){
   if(!current) return;
   let data;
   try{ data = await (await fetch("/api/messages?channel="+current.id)).json(); }
-  catch(e){ return; }
-  if(data.error){ return; }
+  catch(e){ meldGeenVerbinding(); return; }
+  if(data.error){ meldGeenVerbinding(); return; }
   const box=$("#msgs");
   const near = box.scrollHeight - box.scrollTop - box.clientHeight < 120;
   const msgs=data.messages||[];

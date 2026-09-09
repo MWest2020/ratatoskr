@@ -105,6 +105,29 @@ input.addEventListener("keydown",e=>{
   if(e.key==="Enter"&&!e.shiftKey){ e.preventDefault(); $("#composer").requestSubmit(); }
 });
 
+// De vastgezette context boven het kanaal — presentatie, dus hier en niet
+// in app.js (die bleef anders boven de 200 regels uit CLAUDE.md).
+async function loadPinned(name){
+  const el=$("#pinned");
+  let content="";
+  try{ const d=await (await fetch("/api/pinned?channel="+encodeURIComponent(name))).json();
+    content=(d.content||"").trim(); }catch(e){ content=""; }
+  if(!content){ el.hidden=true; el.innerHTML=""; return; }
+  const lines=content.split("\n");
+  let title="Vastgezette context", body=content;
+  if(lines[0] && lines[0].startsWith("#")){
+    title=lines[0].replace(/^#+\s*/,"").replace(/^📌\s*/,"");
+    body=lines.slice(1).join("\n").replace(/^>.*$/gm,"").trim();
+  }
+  el.hidden=false; el.classList.add("collapsed");
+  el.innerHTML='<div class="head"><span class="pin">📌</span><span class="ttl"></span>'+
+    '<span class="caret">▸</span></div><div class="body"></div>';
+  el.querySelector(".ttl").textContent=title;
+  el.querySelector(".body").textContent=body;
+  el.querySelector(".head").onclick=()=>{ el.classList.toggle("collapsed");
+    el.querySelector(".caret").textContent=el.classList.contains("collapsed")?"▸":"▾"; };
+}
+
 // Kanaal uit de hash (#bouw), bv. via een push-melding. Onbekende naam → het
 // eerste kanaal, zoals voorheen.
 function kanaalUitHash(){
@@ -112,17 +135,41 @@ function kanaalUitHash(){
   return channels.find(c => c.name === naam) || null;
 }
 
-(async function init(){
-  await loadChannels();
-  selectChannel(kanaalUitHash() || channels[0]);
-  await loadChannels();
+// Blijft proberen tot de kanalen binnen zijn. Op een telefoon komt de
+// tailnet-tunnel later op dan de app: de service worker serveert dan de
+// gecachete shell en de eerste fetch faalt. Zonder deze herhaling bleef het
+// scherm daarna voorgoed op "laden…" staan, ook nadat het netwerk terug was.
+let kanalenBinnen=false, herkansing=null;
+async function laadWatErIs(){
+  if(!kanalenBinnen){
+    if(!await loadChannels()){
+      meldGeenVerbinding();
+      if(!herkansing) herkansing=setTimeout(()=>{ herkansing=null; laadWatErIs(); }, 3000);
+      return;
+    }
+    kanalenBinnen=true;
+    if(herkansing){ clearTimeout(herkansing); herkansing=null; }
+    selectChannel(kanaalUitHash() || channels[0]);
+    await loadChannels();   // nogmaals: nu met de actieve markering
+  }
+  refresh(false);
   loadOverview();
+}
+
+(async function init(){
+  // Timers en luisteraars staan vóór de eerste netwerkaanroep: die aanroep
+  // faalde bij een koude start, nam init() mee, en daarmee de poll die de app
+  // had kunnen laten herstellen.
   pollTimer=setInterval(()=>refresh(false), 4000);
   setInterval(loadOverview, 12000);
-  document.addEventListener("visibilitychange",()=>{ if(!document.hidden){ refresh(false); loadOverview(); } });
+  document.addEventListener("visibilitychange",()=>{ if(!document.hidden) laadWatErIs(); });
+  // Het moment waarop de tunnel opkomt, in plaats van de volgende poll afwachten.
+  window.addEventListener("online", laadWatErIs);
   // Al open venster dat door een melding naar #kanaal wordt gestuurd: een
   // hash-wijziging herlaadt de pagina niet, dus hier zelf op reageren.
   window.addEventListener("hashchange",()=>{ const c=kanaalUitHash(); if(c) selectChannel(c); });
+
+  laadWatErIs();
 })();
 
 // --- PWA: service worker + installeer-knop ---
