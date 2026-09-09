@@ -5,10 +5,10 @@ last_reviewed: 2026-09-09
 
 # Van PoC naar product — wat er dan breekt
 
-*Ontwerpstuk, geen change. Er staan drie beslissingen open die alleen Mark kan
-nemen; die staan onderaan. Zodra die genomen zijn valt dit uiteen in vijf
-OpenSpec-changes, en dán pas is er iets te bouwen. Bewust nog geen change:
-zonder die drie antwoorden zijn er ook geen spec-deltas te schrijven.*
+*Ontwerpstuk, geen change. De drie beslissingen zijn genomen (2026-09-09):
+self-hosted, de klant brengt zijn eigen modeltoegang, één team per installatie.
+Daaruit volgen vijf changes; `inloggen-per-persoon` is de eerste, want zonder
+authenticatie heeft de rest geen fundament.*
 
 ## Waarom dit stuk bestaat
 
@@ -66,21 +66,35 @@ Klein gehouden, want "in weken":
   interessant is, agents lezen dat en stellen voor wat opgepakt wordt. Dat is
   een echte integratie, geen doorverwijzing.
 
-## Open beslissingen
+## Beslissingen (genomen 2026-09-09)
 
-**A. Self-hosted of gehost?** Aanbeveling: **self-hosted** voor de MVP — een
+**A. Self-hosted.** Een stack die de klant zelf draait. "Geen publieke
+voordeur" blijft daarmee hun keuze in plaats van onze belofte.
+
+**B. De klant brengt zijn eigen modeltoegang.** Abonnement per gebruiker of een
+eigen API-sleutel; wij dragen geen modelkosten.
+
+**C. Eén team per installatie.** Iedereen ziet alles; de grens is de
+installatie. Rechten per persoon zijn een latere change.
+
+De eerste change die eruit volgt is `inloggen-per-persoon` — zonder
+authenticatie heeft de rest geen fundament.
+
+## De afweging destijds
+
+**A. Self-hosted of gehost?** Aanbeveling was **self-hosted** voor de MVP — een
 compose-stack of ExApp die de klant zelf draait. Dan blijft "geen publieke
 voordeur" hun keuze in plaats van onze belofte, en het past bij hoe de rest
 van het portfolio geleverd wordt (Wanderer-ExApp, habitat). Gehost betekent
 een dienst met accounts, betalingen, verwerkersafspraken en 24/7 — dat is een
 bedrijf, geen MVP.
 
-**B. Wie levert de modeltoegang?** Aanbeveling: **de klant brengt zijn eigen**
+**B. Wie levert de modeltoegang?** Aanbeveling was **de klant brengt zijn eigen**
 — een Claude-abonnement per gebruiker (de `claude -p`-weg die hier al draait)
 of een API-sleutel van de klant. Zelf modelkosten dragen maakt elke gratis
 proefinstallatie een rekening.
 
-**C. Eén team per installatie, of meteen rechten?** Aanbeveling: **één team**.
+**C. Eén team per installatie, of meteen rechten?** Aanbeveling was **één team**.
 De grens is dan de installatie, en dat is uitlegbaar.
 
 ## Impact
