@@ -27,7 +27,10 @@ function meldGeenVerbinding(){
   wrap.className = "empty";
 
   const kop = document.createElement("div");
-  kop.textContent = "geen verbinding met het boomhuis — opnieuw proberen…";
+  // Het boomhuis staat alleen op het tailnet. Verreweg de vaakste oorzaak
+  // van "geen verbinding" is dat Tailscale op het toestel uit staat — dus
+  // die staat in de melding zelf, niet in iemands hoofd.
+  kop.textContent = "geen verbinding met het boomhuis — staat Tailscale aan?";
   wrap.appendChild(kop);
 
   const waar = document.createElement("div");
