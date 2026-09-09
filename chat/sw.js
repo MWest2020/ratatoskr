@@ -5,7 +5,7 @@
 //   loopt na een timeout dóór en ververst de cache alsnog (waitUntil).
 // - Statics (iconen, manifest): cache-eerst met achtergrond-update.
 // - /api/*: NOOIT cachen (chat is realtime, git is waarheid).
-const CACHE = "boomhuis-shell-v11";  // v11: verbindingsmelding noemt het tailnet
+const CACHE = "boomhuis-shell-v12";  // v12: laatst bekende berichten offline
 // Een versiebump wist bij `activate` elke oudere cache. Dat is het enige wat
 // een geïnstalleerde PWA die op de oude JS vastzit gegarandeerd loskrijgt:
 // netwerk-eerst helpt pas als de app draait, en dit was nu juist de bug
@@ -16,6 +16,7 @@ const SHELL = [
   "/index.html",
   "/app.css",
   "/app.js",
+  "/app-cache.js",
   "/app-verbinding.js",
   "/app-auth.js",
   "/app-modal.js",
@@ -95,7 +96,7 @@ function networkFirst(e, isNav) {
 // De app-shell (HTML + app.css + app.js + app-ui.js) is netwerk-eerst zodat een
 // herlaad de laatste versie toont; sinds de JS/CSS losse assets zijn moeten die
 // dezelfde freshness krijgen als de pagina. Iconen/manifest blijven cache-eerst.
-const FRESH_ASSETS = new Set(["/app.css", "/app.js", "/app-verbinding.js", "/app-auth.js", "/app-modal.js", "/app-ui.js", "/app-repos.js", "/app-push.js"]);
+const FRESH_ASSETS = new Set(["/app.css", "/app.js", "/app-cache.js", "/app-verbinding.js", "/app-auth.js", "/app-modal.js", "/app-ui.js", "/app-repos.js", "/app-push.js"]);
 
 // Web Push: toon een notificatie bij een binnenkomende push.
 self.addEventListener("push", (e) => {

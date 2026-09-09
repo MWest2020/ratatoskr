@@ -77,6 +77,30 @@ async function until(page, fn, ms = 15000) {
     !/verbinding/i.test(await p.evaluate(msgsText)),
     await p.evaluate(msgsText));
 
+  console.log('— laatst bekende berichten');
+  // Nu is er verse data opgehaald (dus een momentopname). Blokkeer de API
+  // opnieuw en herlaad: de berichten horen er nog te staan, gedateerd.
+  apiDown = true;
+  await p.reload({ waitUntil: 'load', timeout: 45000 });
+  await p.waitForTimeout(5000);
+  t('berichten blijven staan zonder verbinding',
+    (await p.evaluate(() => document.querySelectorAll('#msgs .row').length)) > 0,
+    await p.evaluate(msgsText));
+  t('en ze zijn zichtbaar gedateerd',
+    /laatst bijgewerkt/i.test(await p.evaluate(msgsText)),
+    await p.evaluate(msgsText));
+  t('met de knoppen er nog onder',
+    await p.evaluate(() => [...document.querySelectorAll('#msgs button')]
+      .some(b => /app verversen/i.test(b.textContent))));
+
+  apiDown = false;
+  t('verse berichten verdringen de datering',
+    await until(p, () => {
+      const s = document.querySelector('#msgs')?.textContent || '';
+      return document.querySelectorAll('#msgs .row').length > 0 && !/laatst bijgewerkt/i.test(s);
+    }, 20000),
+    await p.evaluate(msgsText));
+
   console.log('— de uitweg');
   // Verversen moet een geregistreerde service worker en gevulde caches echt
   // opruimen; dat is het enige wat een vastgelopen PWA loskrijgt.
