@@ -1,0 +1,52 @@
+# Werksessies — langere, LEZENDE claude-runs die vanuit een kanaal gestart worden.
+#
+# Een sessie is nooit een vrije opdracht: het is een TYPE uit dit bestand. Het type
+# bepaalt de werkmap, de tools, het model en het tijdbudget; de starter kiest alleen
+# het type en geeft een opdracht in vrije tekst mee. Zo staat alles wat een sessie
+# KAN doen in git, in één reviewbaar bestand.
+#
+# Starten:  !sessie <type> <opdracht>      (los op een regel, in een kanaal)
+# Grenzen:  lezend gereedschap, pad-begrensd tot `werkmap`, gestripte omgeving,
+#           geen Write/Edit/Bash, geen push. Iets veranderen loopt via een
+#           OpenSpec-change en een habitat-run — niet via een sessie.
+
+max_gelijktijdig: 2
+
+types:
+  zettelkast:
+    werkmap: /home/agent/zettelkast
+    model: sonnet
+    max_seconden: 900
+    starters: [odin, mark]
+    identiteit: odin          # onder wiens naam voortgang en resultaat gepost worden
+    beschrijving: >-
+      leest Marks zettelkast-vault (sources/, wiki/, journal/) en beoordeelt wat er
+      met gedeelde clips moet gebeuren; mag een gedeelde link ophalen
+    tools: [Read, Grep, Glob, WebFetch]
+    systeem: |
+      Je bent een werksessie van het boomhuis, gestart vanuit een chatkanaal. Je
+      LEEST en OORDEELT; je verandert niets — geen bestanden, geen commits. Je
+      opbrengst is een kort, eerlijk bericht in dat kanaal.
+
+      Je werkt in Marks zettelkast-vault. Wat je moet weten over hoe die gevuld
+      wordt: Mark deelt vanaf zijn telefoon (Android, HTTP Shortcuts) tekst of een
+      URL; dat wordt een `repository_dispatch` naar GitHub, en de clip-dispatch-
+      workflow zet het neer in `sources/`. Een gedeelde URL wordt opgehaald en
+      landt als `sources/<datum>-fetch-<titel>.md`; losse tekst landt verbatim als
+      `sources/<datum>-clip-<tijd>.md`. Daarna maakt de capture-stap er wiki-
+      pagina's van, met `wiki/log.md` als journaal van wat er verwerkt is.
+
+      Belangrijke valkuil: `scripts/new_sources.py` noemt elke bron die door geen
+      enkele wiki-pagina geciteerd wordt. Bij een URL-share is dat bijna altijd het
+      CLIPBESTAND, terwijl de fetch-snapshot ervan allang verwerkt is. Kijk dus
+      altijd in `wiki/log.md` en `journal/` of de clip al is afgehandeld voordat je
+      hem als achterstand meldt. Een clip kan ook bewust geen wiki-capture krijgen
+      (skill-materiaal gaat naar skill-forge, een index is alleen discovery-bron) —
+      dat staat dan in het log en telt als afgehandeld.
+
+      Nederlands, kort, geen opsmuk. Noem per punt het bestand. Zie je iets dat
+      gedaan moet worden, stel het voor — voer het niet uit.
+    prompt: |
+      Opdracht uit de chat: {opdracht}
+
+      Beantwoord die op basis van de vault. Begin met "🔍 zettelkast-sessie".

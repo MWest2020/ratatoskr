@@ -11,14 +11,16 @@ handbook geladen kan worden en (b) de npub daarin overeenkomt met de identiteit
 in identities.yml. Geen bron → geen spawn (fail-closed). De closed relay is de
 achtervang op identiteitsniveau.
 
-Invariant: conversatie-only. Geen shell/repo/dispatch vanuit hier.
+Invariant: geen shell, geen repo-schrijfrecht, geen dispatch vanuit hier. Een
+`!sessie`-marker start wél een LEZENDE werksessie (zie sessies.py) — die verandert
+niets en levert tekst in het kanaal.
 """
-import json
 import os
-import subprocess
 import time
 
 import bootstrap
+import relay
+import sessies
 import prompts
 import notify
 import providers
@@ -27,7 +29,6 @@ import topology
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
-BUZZ = os.environ.get("BUZZ_BIN", "buzz")
 RELAY = os.environ["BUZZ_RELAY_URL"]
 POLL = int(os.environ.get("POLL_SECONDS", "5"))
 MAX_CTX = 8
@@ -46,60 +47,6 @@ AGENTS = bootstrap.build_agents(CFG, BASE, NPUBS)
 AGENT_PUBS = set()  # gevuld met pubkeys van agents (uit identities via naam)
 
 
-def buzz_env(nsec):
-    e = dict(os.environ)
-    e["BUZZ_PRIVATE_KEY"] = nsec
-    e["BUZZ_RELAY_URL"] = RELAY
-    return e
-
-
-def get_messages(cid, nsec):
-    """Berichten oplopend gesorteerd. None bij een MISLUKTE read (rc!=0/timeout/
-    onparsebaar), [] bij een echt LEEG kanaal — niet verwarren (anders wordt een
-    gefaalde read 'geseed' en volgt historie-spam)."""
-    try:
-        p = subprocess.run([BUZZ, "messages", "get", "--channel", cid],
-                           env=buzz_env(nsec), capture_output=True, text=True, timeout=25)
-    except Exception:  # timeout/OSError = mislukte read (None), mag de daemon niet doden
-        return None
-    if p.returncode != 0:
-        return None
-    try:
-        d = json.loads(p.stdout)
-    except Exception:
-        return None
-    msgs = d if isinstance(d, list) else d.get("messages", [])
-    return sorted(msgs, key=lambda m: m.get("created_at", 0))
-
-
-def send(cid, content, nsec, self_npub):
-    """Post een antwoord (eigen npub als --mention → @woorden blijven presentation-
-    only). True bij succes; een geweigerde send loggen we (geen valse 'antwoordde')."""
-    try:
-        p = subprocess.run([BUZZ, "messages", "send", "--channel", cid, "--content", "-",
-                            "--mention", self_npub],
-                           env=buzz_env(nsec), input=content, capture_output=True, text=True, timeout=25)
-    except Exception as e:  # timeout/OSError mag de daemon niet doden
-        print(f"[listener] send-fout in {cid}: {e}", flush=True)
-        return False
-    if p.returncode != 0:
-        print(f"[listener] send FAALDE in {cid}: {(p.stderr or p.stdout).strip()[:120]}", flush=True)
-    return p.returncode == 0
-
-
-def buzz_run(nsec):
-    """`run(args) -> stdout|""`-callable voor topology.py (buzz-env van deze agent;
-    faalt de call → lege string, topology valt dan terug)."""
-    def run(args):
-        try:
-            p = subprocess.run([BUZZ, *args], env=buzz_env(nsec),
-                               capture_output=True, text=True, timeout=25)
-        except Exception:  # timeout/OSError → lege string (belofte houdt, poll crasht niet)
-            return ""
-        return p.stdout if p.returncode == 0 else ""
-    return run
-
-
 def main():
     if not AGENTS:
         raise SystemExit("geen agents gespawnd (geen bron/nsec/npub-match)")
@@ -108,7 +55,34 @@ def main():
     read_nsec = os.environ.get("NSEC_ORCHESTRATOR", "").strip()
     if not read_nsec:
         raise SystemExit("[listener] NSEC_ORCHESTRATOR ontbreekt (zie agents/run.sh)")
-    run = buzz_run(read_nsec)  # relay-I/O voor topology
+    send = relay.sender(RELAY)
+    haal = lambda cid: relay.get_messages(cid, read_nsec, RELAY)  # noqa: E731
+    run = relay.runner(read_nsec, RELAY)  # relay-I/O voor topology
+    reg = sessies.Register(sessies.laad(HERE))
+
+    def sessie_post(s, tekst):
+        """Voortgang/resultaat onder de identiteit die het TYPE declareert."""
+        c = AGENTS.get(s["identiteit"])
+        if c:
+            send(s["cid"], tekst, c["nsec"], c["npub"])
+
+    def probeer_sessie(tekst, wie, cname, cid):
+        """Een `!sessie`-marker uitvoeren. Weigeringen worden gemeld, niet
+        ingeslikt — een stille weigering lijkt op een sessie die niets vond."""
+        mk = sessies.lees_marker(tekst)
+        if not mk:
+            return
+        typ, opdracht = mk
+        s, reden = reg.start(typ, opdracht, wie, cname, cid)
+        if not s:
+            print(f"[listener] sessie geweigerd ({wie}/{typ}): {reden}", flush=True)
+            c = AGENTS.get(HUB) or next(iter(AGENTS.values()))
+            send(cid, f"⛔ geen sessie: {reden}", c["nsec"], c["npub"])
+            return
+        print(f"[listener] sessie {typ} gestart door {wie} in #{cname}", flush=True)
+        sessie_post(s, f"▶️ sessie `{typ}` gestart (max {s['max_s'] // 60} min) — "
+                       f"opdracht: {opdracht[:120] or '(geen)'}")
+
     reporting.report_missing_memberships(run, AGENTS, CHANNELS, PUB2NAME)
     name2pub = {h: p for p, h in PUB2NAME.items()}   # om niet op agents te reageren
     for h in AGENTS:
@@ -128,13 +102,13 @@ def main():
         seeded.add(cid)
 
     for cid in topology.poll_channels(run, CHANNELS).values():
-        msgs = get_messages(cid, read_nsec)
+        msgs = haal(cid)
         if msgs is not None:
             seed(cid, msgs)
     print(f"[listener] actief; agents uit handbook: {', '.join(AGENTS)}", flush=True)
     while True:
         for cname, cid in topology.poll_channels(run, CHANNELS).items():
-            msgs = get_messages(cid, read_nsec)
+            msgs = haal(cid)
             if msgs is None:      # mislukte read → overslaan, volgende tick opnieuw
                 continue
             if cid not in seeded:  # kanaal net in de poll-set: historie als 'gezien'
@@ -153,6 +127,7 @@ def main():
                 if m.get("pubkey") in AGENT_PUBS:
                     continue
                 content = m.get("content", "")
+                probeer_sessie(content, schrijver, cname, cid)   # mens start er zelf een
                 # (a) @mentions van hier-gescopte/relay-lid-agents; (b) anders: vervolg.
                 targets = [h for h in AGENTS
                            if prompts.mentioned(content, h) and scoped(h, cname, cid)]
@@ -182,7 +157,8 @@ def main():
                             p = lt + "\n\n" + p
                     try:
                         r = providers.run(cfg.get("provider"),
-                                          cfg["system"] + prompts.LIMIT_CLAUSE, p,
+                                          cfg["system"] + prompts.LIMIT_CLAUSE
+                                          + prompts.sessie_clausule(reg.cfg, handle), p,
                                           model=cfg.get("model"), allow=cfg.get("allow"),
                                           deny=cfg.get("deny"),
                                           progress=reporting.progress_poster(
@@ -190,9 +166,14 @@ def main():
                     except Exception as e:  # incl. time-out: de beurt mag nooit klappen
                         r = {"answer": f"(fout: {e})", "error": str(e)[:120]}
                     ans = r.get("answer", "(geen antwoord)")
-                    if send(cid, ans, cfg["nsec"], cfg["npub"]):
+                    mk = sessies.lees_marker(ans)
+                    tekst = sessies.knip_marker(ans) if mk else ans
+                    if tekst and send(cid, tekst, cfg["nsec"], cfg["npub"]):
                         print(f"[listener] {handle} antwoordde in #{cname} ({reason})", flush=True)
+                    if mk:
+                        probeer_sessie(ans, handle, cname, cid)
                     reporting.report_run(send, CHANNELS, handle, cname, cfg, r)
+        reg.tick(sessie_post)   # voortgang/afronding van lopende werksessies
         time.sleep(POLL)
 
 

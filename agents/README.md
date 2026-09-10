@@ -17,6 +17,13 @@ in de **handbook** — single source of truth: `MWest2020/handbook` →
 - `prompts.py` — context/prompt-bouwers + `mentioned` (woordgrens-match).
 - `providers.py` — provider-naad (`claude -p`; een nieuw backend = één tak).
 - `test_topology.py` — offline unittests (`cd agents && python3 -m unittest test_topology`).
+- `relay.py` — buzz-I/O (lezen/posten/topologie-calls); een storing doodt de
+  daemon nooit maar wordt ook nooit als "leeg" verkocht.
+- `sessies.py` + `sessies.yml` — **werksessies**: een langere, LEZENDE claude-run
+  die vanuit een kanaal start met `!sessie <type> <opdracht>`. Het type (werkmap,
+  tools, model, tijdbudget, wie mag starten) staat in `sessies.yml`, niet in de
+  prompt. Zie [docs/how-to/werksessies.md](../docs/how-to/werksessies.md).
+- `test_sessies.py` — offline unittests voor marker, machtiging en grenzen.
 - `run.sh` — exporteert NSEC_<HANDLE> uit SOPS en start de listener.
 
 De backend is bewust opgesplitst zodat elk bestand ≤200 regels blijft.
@@ -25,6 +32,8 @@ Draaien: `bash agents/run.sh` (op agent-lxc; claude+buzz+age-key aanwezig).
 
 ## Guardrails
 - Identiteit: closed relay (alleen registry-npubs doen mee).
+- Werksessies zijn lezend: geen Write/Edit/Bash, pad-begrensd tot de werkmap,
+  gestripte omgeving. Iets veranderen loopt via een change + een habitat-run.
 - Definitie: runtime-read uit de handbook → geen lokale kopie om te driften;
   npub-cross-check; `docs/agents/` in de handbook onder CODEOWNERS.
 

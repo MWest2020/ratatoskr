@@ -51,6 +51,31 @@ def roster_text(agents, hub=None):
     return "\n".join(lines)
 
 
+def sessie_clausule(cfg, handle):
+    """Wat deze agent zelf kan starten, verteld in zijn systemprompt.
+
+    Zonder deze regel weet een agent niet dat werksessies bestaan: odin meldde
+    2026-09-09 in #general (terecht) "ik heb geen tool-toegang tot een tmux-sessie
+    op agent@agent-lxc". Dit vertelt hem wat hij WEL heeft. Het verruimt geen
+    mandaat — wie welk type mag starten staat in sessies.yml en wordt daar
+    afgedwongen; dit is alleen de aankondiging."""
+    types = {n: t for n, t in ((cfg or {}).get("types") or {}).items()
+             if handle in (t.get("starters") or [])}
+    if not types:
+        return ""
+    regels = "\n".join(f"- `{n}` — {t.get('beschrijving') or t.get('werkmap', '')}"
+                        for n, t in sorted(types.items()))
+    return ("\n\nJe kunt zelf een WERKSESSIE starten: een langere, LEZENDE claude-run "
+            "met eigen gereedschap en eigen werkmap, die zijn resultaat in dit kanaal "
+            "post. Zet daarvoor als LAATSTE regel van je antwoord precies:\n"
+            "!sessie <type> <opdracht in een zin>\n"
+            f"Beschikbare types:\n{regels}\n"
+            "Doe dat alleen als het gevraagde werk echt uitzoeken vergt — voor een "
+            "gesprek antwoord je zelf. Hoogstens één sessie per antwoord, en zeg in "
+            "je eigen woorden dat je 'm start. Een sessie leest en stelt voor; hij "
+            "verandert niets.")
+
+
 def build_prompt(handle, chan, recent, trigger, pub2name):
     lines = [f"Kanaal #{chan}. Recente berichten:"]
     for m in recent:
