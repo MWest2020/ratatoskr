@@ -17,9 +17,9 @@
 - [x] 3.1 `agents/test_sessies.py`: marker-parsing, knippen, machtiging,
       gelijktijdigheid, budget — offline
 - [x] 3.2 Volledige unittests groen (`agents`)
-- [ ] 3.3 Live: `!sessie zettelkast …` in #general → voortgang + resultaat,
+- [x] 3.3 Live: `!sessie zettelkast …` in #general → voortgang + resultaat,
       met de echte vault als werkmap
-- [ ] 3.4 Meten dat een gewone mention in een ander kanaal doorloopt terwijl
+- [x] 3.4 Meten dat een gewone mention in een ander kanaal doorloopt terwijl
       de sessie draait
 
 ## 4. Vastleggen
