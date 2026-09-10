@@ -29,6 +29,20 @@ const t=(n,c,x='')=>{ if(c){ok++;console.log('  ok   '+n);} else {fail++;console
   await p.waitForTimeout(4000);
   t('de app stuurt naar inloggen', /\/login/.test(p.url()), p.url());
 
+  console.log('— het formulier toont alleen wat nodig is');
+  // Het hidden-attribuut verliest van elke eigen display-regel; zonder de
+  // [hidden]-regel in app.css stonden "Code uit je app" en "Setup-token"
+  // gewoon in beeld. Daarom een test op wat er ECHT zichtbaar is, niet op
+  // het attribuut.
+  await p.goto(URL_+'/login', {waitUntil:'load', timeout:45000});
+  await p.waitForTimeout(2000);
+  const zichtbaar = await p.evaluate(() =>
+    [...document.querySelectorAll('.veld')].filter(v => v.offsetParent !== null)
+      .map(v => v.querySelector('span').textContent));
+  t('alleen naam en wachtwoord op het inlogscherm',
+    JSON.stringify(zichtbaar) === JSON.stringify(['Naam','Wachtwoord']),
+    JSON.stringify(zichtbaar));
+
   console.log('— eerste account via de setup-link');
   await p.goto(URL_+'/login?setup='+SETUP, {waitUntil:'load', timeout:45000});
   await p.waitForTimeout(1500);

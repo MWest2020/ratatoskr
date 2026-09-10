@@ -5,7 +5,7 @@
 //   loopt na een timeout dóór en ververst de cache alsnog (waitUntil).
 // - Statics (iconen, manifest): cache-eerst met achtergrond-update.
 // - /api/*: NOOIT cachen (chat is realtime, git is waarheid).
-const CACHE = "boomhuis-shell-v14";  // v14: wachtwoord wijzigen in de app
+const CACHE = "boomhuis-shell-v15";  // v15: verborgen velden blijven verborgen
 // Een versiebump wist bij `activate` elke oudere cache. Dat is het enige wat
 // een geïnstalleerde PWA die op de oude JS vastzit gegarandeerd loskrijgt:
 // netwerk-eerst helpt pas als de app draait, en dit was nu juist de bug
