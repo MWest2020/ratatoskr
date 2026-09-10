@@ -2,6 +2,7 @@
 // Meldingen linken naar hun kanaal: /#bouw opent #bouw. Zonder dit landde elke
 // melding op de app-root, dus op het eerste kanaal.
 // NODE_PATH=<pad>/node_modules node chat/e2e/deeplink.js
+const { logIn } = require('./inlog');
 const { chromium, devices } = require('playwright');
 const fs=require('fs');
 const D=require('path').join(__dirname,'..')+'/';   // de werkkopie van chat/
@@ -19,6 +20,7 @@ let ok=0,fail=0; const t=(n,c,e='')=>{c?(ok++,console.log('  ok   '+n)):(fail++,
   const p=await ctx.newPage();
   p.on('pageerror',e=>console.log('  PAGEERROR:',e.message));
 
+  await logIn(p);
   await p.goto('https://boomhuis-relay.tail8f7877.ts.net/#bouw',{waitUntil:'load',timeout:45000});
   await p.waitForTimeout(5000);
   t('melding naar #bouw opent #bouw', await p.evaluate(()=>document.querySelector('#chanName').textContent==='bouw'),

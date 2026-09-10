@@ -3,9 +3,14 @@
 gestubd. Geen mock van de handler zelf, want juist de routing en de volgorde van
 de checks zijn wat hier misging.
 
-De invariant die deze tests bewaken: **lezen is open, elke POST loopt eerst langs
-het apparaat-token**, en er komt nooit een rauwe upstream-fout terug op een
-invoerfout van de gebruiker.
+De invariant die deze tests bewaken: **niets is open behalve de inlogroutes en
+de shell; elk verzoek onder /api/ vereist een sessie, en elke POST daarbovenop
+een sessiegebonden token**. En er komt nooit een rauwe upstream-fout terug op
+een invoerfout van de gebruiker.
+
+Lezen was ooit open omdat het tailnet het afschermde. Sinds
+`inloggen-per-persoon` niet meer: in die routes staan kanaalnamen, berichten en
+agent-verkeer.
 """
 import json
 import os
@@ -15,9 +20,14 @@ import urllib.error
 import urllib.request
 from http.server import ThreadingHTTPServer
 
-os.environ["BOOMHUIS_APP_TOKEN"] = "geheim"
+import tempfile
 
-import buzzcli   # noqa: E402  — na het zetten van de env
+os.environ["BOOMHUIS_AUTH_DB"] = os.path.join(tempfile.mkdtemp(), "auth.db")
+os.environ.pop("BOOMHUIS_APP_TOKEN", None)
+
+import auth      # noqa: E402  — na het zetten van de env
+import auth_store as store  # noqa: E402
+import buzzcli   # noqa: E402
 import github    # noqa: E402
 import push      # noqa: E402
 import server    # noqa: E402
@@ -56,31 +66,57 @@ class ServerTest(unittest.TestCase):
         cls.srv = ThreadingHTTPServer(("127.0.0.1", 0), server.H)
         cls.base = "http://127.0.0.1:%d" % cls.srv.server_address[1]
         threading.Thread(target=cls.srv.serve_forever, daemon=True).start()
+        pid = store.maak_persoon("tester", auth.hash_wachtwoord("een goed wachtwoord"))
+        cls.sessie, cls.csrf = auth.start_sessie(pid)
 
     @classmethod
     def tearDownClass(cls):
         cls.srv.shutdown()
 
-    def call(self, pad, data=None, token=None, raw=None):
+    def call(self, pad, data=None, raw=None, sessie=True, csrf=True):
+        """`sessie=False` doet alsof je niet ingelogd bent, `csrf=False` alsof
+        het sessietoken ontbreekt — de twee manieren waarop een verzoek hoort
+        te stranden."""
         body = raw if raw is not None else (json.dumps(data).encode() if data is not None else None)
         req = urllib.request.Request(self.base + pad, data=body,
                                      method="POST" if body is not None else "GET")
         if body is not None:
             req.add_header("Content-Type", "application/json")
-        if token:
-            req.add_header("X-App-Token", token)
+        if sessie:
+            req.add_header("Cookie", "{}={}".format(auth.COOKIE, self.sessie))
+        if body is not None and csrf:
+            req.add_header(auth.CSRF_HEADER, self.csrf)
         try:
             with urllib.request.urlopen(req, timeout=10) as r:
                 return r.status, r.read().decode()
         except urllib.error.HTTPError as e:
             return e.code, e.read().decode()
 
-    # --- lezen is open ---
-    def test_leesroutes_zonder_token(self):
-        for pad in ("/api/channels", "/api/agents", "/api/channel-members",
-                    "/api/push/vapid", "/api/overview", "/api/repos",
-                    f"/api/messages?channel={CID}", "/api/pinned?channel=general"):
+    # --- lezen zit achter de sessie ---
+    LEESROUTES = ("/api/channels", "/api/agents", "/api/channel-members",
+                  "/api/push/vapid", "/api/overview", "/api/repos",
+                  f"/api/messages?channel={CID}", "/api/pinned?channel=general")
+
+    def test_leesroutes_met_sessie(self):
+        for pad in self.LEESROUTES:
             self.assertEqual(self.call(pad)[0], 200, pad)
+
+    def test_leesroutes_zonder_sessie_zijn_401(self):
+        for pad in self.LEESROUTES:
+            code, body = self.call(pad, sessie=False)
+            self.assertEqual(code, 401, pad)
+            self.assertNotIn("general", body, pad)   # geen gegevens in het antwoord
+
+    def test_de_shell_blijft_open(self):
+        """De pagina en zijn scripts bevatten niets geheims, en de inlogpagina
+        moet zonder sessie te laden zijn — anders kun je nooit inloggen."""
+        for pad in ("/", "/login", "/app.js", "/login.js", "/sw.js"):
+            self.assertEqual(self.call(pad, sessie=False)[0], 200, pad)
+
+    def test_status_zegt_alleen_of_er_al_iemand_is(self):
+        code, body = self.call("/api/status", sessie=False)
+        self.assertEqual(code, 200)
+        self.assertEqual(sorted(json.loads(body)), ["personen"])
 
     def test_shell_wordt_geserveerd(self):
         for pad in ("/", "/index.html", "/app.js", "/app-repos.js", "/sw.js"):
@@ -110,31 +146,43 @@ class ServerTest(unittest.TestCase):
         self.assertEqual((code, json.loads(body)), (200, {"content": ""}))
 
     # --- schrijven gaat eerst langs de poort ---
-    def test_elke_post_zonder_token_is_401(self):
-        for pad in ("/api/send", "/api/channels/create", "/api/channels/delete",
-                    "/api/channel/add-member", "/api/push/subscribe", "/api/onbekend"):
-            code, body = self.call(pad, data={})
+    SCHRIJFROUTES = ("/api/send", "/api/channels/create", "/api/channels/delete",
+                     "/api/channel/add-member", "/api/push/subscribe", "/api/onbekend")
+
+    def test_elke_post_zonder_sessie_is_401(self):
+        for pad in self.SCHRIJFROUTES:
+            code, body = self.call(pad, data={}, sessie=False)
             self.assertEqual(code, 401, pad)
-            self.assertIn("apparaat-token", body)
+            self.assertIn("inloggen", body, pad)
 
-    def test_verkeerd_token_is_ook_401(self):
-        self.assertEqual(self.call("/api/send", data={}, token="fout")[0], 401)
+    def test_elke_post_zonder_sessietoken_is_403(self):
+        for pad in self.SCHRIJFROUTES:
+            code, _ = self.call(pad, data={}, csrf=False)
+            self.assertEqual(code, 403, pad)
 
-    def test_met_token_komt_de_route_wel_aan_bod(self):
-        code, _ = self.call("/api/send", data={"channel": CID, "content": "hoi"}, token="geheim")
+    def test_met_sessie_komt_de_route_wel_aan_bod(self):
+        code, _ = self.call("/api/send", data={"channel": CID, "content": "hoi"})
         self.assertEqual(code, 200)
 
-    def test_onbekende_postroute_met_token_is_404(self):
-        self.assertEqual(self.call("/api/onbekend", data={}, token="geheim")[0], 404)
+    def test_onbekende_postroute_is_404(self):
+        self.assertEqual(self.call("/api/onbekend", data={})[0], 404)
+
+    def test_inloggen_kan_zonder_sessie(self):
+        code, body = self.call("/api/login", data={"naam": "tester",
+                                                   "wachtwoord": "fout"}, sessie=False)
+        self.assertEqual(code, 401)
+        self.assertIn("mislukt", body)
 
     def test_te_grote_body_wordt_geweigerd(self):
-        self.assertEqual(self.call("/api/send", raw=b"x" * 20000, token="geheim")[0], 413)
+        self.assertEqual(self.call("/api/send", raw=b"x" * 20000)[0], 413)
 
     def test_kapotte_json_is_400_geen_traceback(self):
-        self.assertEqual(self.call("/api/send", raw=b"{geen json", token="geheim")[0], 400)
+        self.assertEqual(self.call("/api/send", raw=b"{geen json")[0], 400)
 
     def test_antwoorden_worden_niet_gecachet(self):
-        with urllib.request.urlopen(self.base + "/api/channels", timeout=10) as r:
+        req = urllib.request.Request(self.base + "/api/channels")
+        req.add_header("Cookie", "{}={}".format(auth.COOKIE, self.sessie))
+        with urllib.request.urlopen(req, timeout=10) as r:
             self.assertEqual(r.headers.get("Cache-Control"), "no-store")
 
 

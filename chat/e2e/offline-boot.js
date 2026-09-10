@@ -11,6 +11,7 @@
 //
 //   NODE_PATH=<pad>/node_modules node chat/e2e/offline-boot.js
 const { chromium, devices } = require('playwright');
+const { logIn } = require('./inlog');
 const EXE = process.env.PW_CHROME
   || '/home/agent/.cache/ms-playwright/chromium-1234/chrome-linux64/chrome';
 const URL = process.env.BOOMHUIS_URL || 'https://boomhuis-relay.tail8f7877.ts.net/';
@@ -34,6 +35,10 @@ async function until(page, fn, ms = 15000) {
   const b = await chromium.launch({ executablePath: EXE, args: ['--ignore-certificate-errors'] });
   const ctx = await b.newContext({ ...devices['iPhone 13'], ignoreHTTPSErrors: true });
   const p = await ctx.newPage();
+
+  // Eerst inloggen — mét netwerk, want zonder sessie is er geen app om offline
+  // te krijgen.
+  await logIn(p);
 
   // De storing: alles behalve /api/ mag laden (dat is wat de service worker
   // uit de cache zou serveren); de API is er niet.

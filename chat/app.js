@@ -38,8 +38,11 @@ async function loadOverview(){
 // Geeft false terug als de kanalen niet te halen zijn (koude start vóór de
 // tunnel op is). Niet gooien: de aanroeper hangt de hele app eraan op.
 async function loadChannels(){
-  let data;
-  try{ data = await (await fetch("/api/channels")).json(); }
+  let antwoord, data;
+  try{ antwoord = await fetch("/api/channels"); }
+  catch(e){ noteerVerbindingsfout(e); return false; }
+  if(antwoord.status === 401){ afgemeld(); return false; }
+  try{ data = await antwoord.json(); }
   catch(e){ noteerVerbindingsfout(e); return false; }
   if(!Array.isArray(data)) return false;
   channels = data;
@@ -109,8 +112,13 @@ const fmtTime = ts => { const d=new Date(ts*1000);
 
 async function refresh(force){
   if(!current) return;
-  let data;
-  try{ data = await (await fetch("/api/messages?channel="+current.id)).json(); }
+  let antwoord, data;
+  try{ antwoord = await fetch("/api/messages?channel="+current.id); }
+  catch(e){ noteerVerbindingsfout(e); meldGeenVerbinding(); return; }
+  // 401 is geen verbindingsprobleem maar een uitlog: naar inloggen, en wat er
+  // lokaal bewaard staat gaat weg.
+  if(antwoord.status === 401){ afgemeld(); return; }
+  try{ data = await antwoord.json(); }
   catch(e){ noteerVerbindingsfout(e); meldGeenVerbinding(); return; }
   if(data.error){ noteerVerbindingsfout(data.error); meldGeenVerbinding(); return; }
   const msgs=data.messages||[];

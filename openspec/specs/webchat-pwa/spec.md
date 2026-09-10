@@ -130,54 +130,6 @@ Wanneer een bericht een `@naam` bevat die geen lid van het kanaal is, SHALL de a
 - **WHEN** het @woord geen bekende agent is (bv. `@here` of een sessie/mark)
 - **THEN** krijgt Mark "toch versturen?"; bij bevestigen gaat het bericht met een lid-mention zodat de @-tekst presentation-only blijft, zonder toevoeg-optie
 
-### Requirement: Schrijven vereist een apparaat-token wanneer de deployment er een zet
-
-De comms-API SHALL een schrijf-token kennen dat per deployment gezet wordt
-(`BOOMHUIS_APP_TOKEN`, buiten git). Is er geen token gezet, dan SHALL het gedrag
-ongewijzigd zijn en blijft de netwerklaag de enige control. Is er wél een token
-gezet, dan SHALL elk statuswijzigend verzoek (bericht sturen, kanaal aanmaken of
-verwijderen, een agent aan een kanaal toevoegen, een push-registratie opslaan)
-een gelijk token meesturen; ontbreekt het of wijkt
-het af, dan SHALL het verzoek geweigerd worden zonder dat de actie plaatsvindt.
-De vergelijking SHALL constant-time zijn en het token SHALL nooit in een log,
-foutmelding of response verschijnen. Leesverzoeken SHALL ongemoeid blijven.
-
-#### Scenario: Zonder ingesteld token verandert er niets
-
-- **WHEN** de deployment geen schrijf-token zet en een client een bericht stuurt
-  zonder token
-- **THEN** wordt het bericht verstuurd, precies als voorheen
-
-#### Scenario: Met ingesteld token is een tokenloos schrijfverzoek geweigerd
-
-- **WHEN** de deployment een schrijf-token zet en een client een bericht stuurt
-  zonder token of met een afwijkend token
-- **THEN** wordt het verzoek geweigerd, verschijnt er geen bericht in het kanaal
-  en staat het juiste token nergens in het antwoord
-
-#### Scenario: Lezen blijft open
-
-- **WHEN** de deployment een schrijf-token zet en een client kanalen of berichten
-  opvraagt zonder token
-- **THEN** krijgt hij die gewoon te zien
-
-### Requirement: De PWA vraagt het token één keer per apparaat
-
-De PWA SHALL het schrijf-token per apparaat lokaal onthouden en het bij elk
-schrijfverzoek meesturen. Wordt een schrijfverzoek geweigerd omdat het token
-ontbreekt of niet klopt, dan SHALL de PWA de gebruiker om het token vragen en
-het verzoek daarna herhalen. De server SHALL het token nooit zelf in de
-geserveerde pagina of scripts zetten — een token dat met de pagina meekomt, is
-leesbaar voor iedereen die de pagina kan ophalen en beschermt dus niet tegen de
-node waartegen het bedoeld is.
-
-#### Scenario: Eerste keer op een nieuw apparaat
-
-- **WHEN** de gebruiker op een apparaat zonder opgeslagen token een bericht
-  probeert te sturen terwijl de deployment een token eist
-- **THEN** vraagt de app om het token, bewaart het op dit apparaat en verstuurt
-  het bericht alsnog, zonder dat de gebruiker het opnieuw hoeft te typen
-
 ### Requirement: De hele kanaalrij is het klikdoel
 
 Een rij in de kanaallade SHALL over haar volledige oppervlak het kanaal openen
@@ -296,3 +248,41 @@ momentopname is van de app, die weet wanneer hij hem ophaalde.
 - **WHEN** de gebruiker zonder verbinding een bericht probeert te sturen
 - **THEN** meldt de app dat het niet gelukt is
 - **AND** zet het bericht niet in een wachtrij voor later
+
+### Requirement: De app stuurt je naar inloggen wanneer de sessie ontbreekt
+
+Krijgt de app een 401, dan SHALL hij naar de inlogpagina gaan en na een
+geslaagde login terugkeren naar waar de gebruiker was — hetzelfde kanaal, niet
+de voorpagina.
+
+Een 401 SHALL onderscheiden worden van een netwerkfout: het eerste betekent
+"jij mag hier niet (meer)", het tweede "ik kan er niet bij". Ze verdienen een
+ander antwoord op het scherm.
+
+#### Scenario: Verlopen sessie tijdens gebruik
+
+- **GIVEN** een geopende app waarvan de sessie is verlopen
+- **WHEN** de app zijn berichten ophaalt
+- **THEN** gaat hij naar de inlogpagina
+- **AND** staat de gebruiker na het inloggen weer in hetzelfde kanaal
+
+#### Scenario: Netwerkfout is geen uitlog
+
+- **WHEN** de app zijn berichten niet kan ophalen omdat er geen verbinding is
+- **THEN** blijft hij ingelogd en toont hij de verbindingsmelding, niet de
+  inlogpagina
+
+### Requirement: Een 401 wist de lokaal bewaarde berichten
+
+Blijkt de sessie ongeldig, dan SHALL de app zijn lokale momentopnamen wissen.
+Zonder dat leest de volgende persoon op hetzelfde apparaat de berichten van de
+vorige — de momentopname is er voor "geen verbinding", niet voor "geen
+toegang".
+
+Een netwerkfout SHALL de momentopnamen juist laten staan.
+
+#### Scenario: Uitgelogd op een gedeeld apparaat
+
+- **GIVEN** een apparaat met bewaarde berichten van een vorige gebruiker
+- **WHEN** de app een 401 krijgt
+- **THEN** zijn die berichten weg voordat de inlogpagina verschijnt

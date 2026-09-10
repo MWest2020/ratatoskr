@@ -2,7 +2,10 @@
 //   NODE_PATH=<pad>/node_modules node chat/e2e/ui.js
 const { chromium, devices } = require('playwright');
 const EXE='/home/agent/.cache/ms-playwright/chromium-1234/chrome-linux64/chrome';
-const URL='https://boomhuis-relay.tail8f7877.ts.net/';
+const URL=process.env.BOOMHUIS_URL || 'https://boomhuis-relay.tail8f7877.ts.net/';
+// Sinds `inloggen-per-persoon` komt er zonder sessie geen app in beeld. Geef een
+// account mee; zonder dat kan deze suite niets bewijzen en zegt hij dat.
+const NAAM=process.env.BOOMHUIS_NAAM, WW=process.env.BOOMHUIS_WW;
 let ok=0, fail=0;
 const t=(naam,cond,extra='')=>{ if(cond){ok++;console.log(`  ok   ${naam}`);} else {fail++;console.log(`  FAIL ${naam} ${extra}`);} };
 
@@ -14,7 +17,13 @@ const t=(naam,cond,extra='')=>{ if(cond){ok++;console.log(`  ok   ${naam}`);} el
   // Een 401 op een schrijfpoging is verwacht (de token-test hieronder); die telt
   // dus niet als JS-fout, anders faalt de suite op haar eigen scenario.
   p.on('console',m=>{ if(m.type()==='error' && !/401/.test(m.text())) errs.push('console: '+m.text()); });
-  await p.goto(URL,{waitUntil:'load',timeout:45000});
+  if(!NAAM || !WW){
+    console.log('BOOMHUIS_NAAM/BOOMHUIS_WW ontbreken — inloggen kan niet, suite gestopt.');
+    await b.close(); process.exit(2);
+  }
+  await p.goto(URL+'login',{waitUntil:'load',timeout:45000});
+  await p.fill('#naam',NAAM); await p.fill('#wachtwoord',WW);
+  await p.click('#knop');
   await p.waitForTimeout(7000);
 
   console.log('— shell');
@@ -68,15 +77,14 @@ const t=(naam,cond,extra='')=>{ if(cond){ok++;console.log(`  ok   ${naam}`);} el
   await p.click('#reposClose'); await p.waitForTimeout(600);
   t('sluitknop werkt', await p.evaluate(()=>!document.querySelector('#reposDrawer').classList.contains('open')));
 
-  console.log('— schrijven zonder token');
-  await p.fill('#input','e2e-test-mag-niet-verzonden-worden');
-  await p.click('#send'); await p.waitForTimeout(2500);
-  t('401 geeft de token-modal (geen prompt-crash)', (await p.locator('.modal-ov').count())>0);
-  await p.evaluate(()=>document.querySelector('.modal-cancel')?.click());
-  await p.waitForTimeout(1500);
-  t('annuleren laat een leesbare melding zien', await p.evaluate(()=>{
-      const t=document.querySelector('#toast'); return !!t && /token/i.test(t.textContent);}),
-      await p.evaluate(()=>document.querySelector('#toast')?.textContent||'(leeg)'));
+  console.log('— ingelogd');
+  // Geen testbericht versturen: dat landt in een echt kanaal. Wat hier telt is
+  // dat de app wéét wie je bent en dat de uitweg zichtbaar is.
+  await p.click('#switch'); await p.waitForTimeout(800);
+  t('de lade noemt wie je bent',
+    /ingelogd als/i.test(await p.locator('#wieBenJe').textContent().catch(()=>'')),
+    await p.locator('#wieBenJe').textContent().catch(()=>'(leeg)'));
+  t('uitlogknop staat er', (await p.locator('#uitlogBtn').count())>0);
 
   console.log(`\ngeslaagd=${ok} mislukt=${fail}`);
   if(errs.length) console.log('JS-fouten:', errs.slice(0,4));

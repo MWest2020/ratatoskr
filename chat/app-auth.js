@@ -1,60 +1,92 @@
 // SPDX-License-Identifier: EUPL-1.2
-// Schrijf-token per apparaat. De server zet het NOOIT in de pagina: wie de
-// pagina kan ophalen (elke tailnet-node) zou het dan kunnen lezen, en juist
-// daartegen is het bedoeld. Dus: de gebruiker voert het één keer in, het blijft
-// in localStorage van dít apparaat, en elke schrijf-fetch loopt hierlangs.
-const TOKEN_KEY = "boomhuis.appToken";
+// Sessie in plaats van apparaat-token. De server zet een HttpOnly-cookie, dus
+// JavaScript ziet die niet en kan hem ook niet lekken; wat de app wél nodig
+// heeft is het sessiegebonden token dat bij elk statuswijzigend verzoek mee moet.
+//
+// Een 401 betekent "jij mag hier niet (meer)" en is iets anders dan een
+// netwerkfout, die "ik kan er niet bij" betekent. Ze verdienen een ander
+// antwoord: het eerste stuurt naar inloggen (en wist wat er lokaal bewaard is,
+// zodat de volgende persoon op dit apparaat niets van de vorige leest), het
+// tweede laat de app staan waar hij staat.
 
-function appToken(){ try { return localStorage.getItem(TOKEN_KEY) || ""; } catch(e){ return ""; } }
-function setAppToken(t){ try { localStorage.setItem(TOKEN_KEY, t); } catch(e){} }
+let csrfToken = "";
 
-// Invoer via een eigen pop-up, NIET via window.prompt: in een geïnstalleerde PWA
-// (standalone) blokkeren browsers prompt(), en de aanroep klapt. Het gevolg was een
-// misleidende "netwerkfout" terwijl er niets met het netwerk mis was — waargenomen
-// 2026-09-06 op Marks toestel, waar helemaal geen invoervenster verscheen.
-function askToken(){
-  return new Promise(resolve=>{
-    const ov=document.createElement("div"); ov.className="modal-ov";
-    const box=document.createElement("div"); box.className="modal";
-    const t=document.createElement("div"); t.className="modal-t";
-    t.textContent="Schrijf-token voor dit apparaat";
-    const sub=document.createElement("div"); sub.className="modal-sub";
-    sub.textContent="Lezen kan zonder. Voor versturen vraagt de server eenmalig een token; "
-                  + "het blijft daarna op dit apparaat staan.";
-    const inp=document.createElement("input"); inp.className="modal-in"; inp.type="password";
-    inp.autocomplete="off"; inp.placeholder="token";
-    const row=document.createElement("div"); row.className="modal-row";
-    const ok=document.createElement("button"); ok.className="modal-add"; ok.textContent="Opslaan";
-    const cancel=document.createElement("button"); cancel.className="modal-cancel";
-    cancel.textContent="Annuleren";
-    const done=v=>{ ov.remove(); resolve(v); };
-    cancel.onclick=()=>done("");
-    ov.onclick=e=>{ if(e.target===ov) done(""); };
-    ok.onclick=()=>done((inp.value||"").trim());
-    inp.onkeydown=e=>{ if(e.key==="Enter") ok.click(); };
-    row.append(ok, cancel); box.append(t, sub, inp, row); ov.append(box);
-    document.body.append(ov); setTimeout(()=>inp.focus(), 50);
-  });
+/** De sessie, of `null` bij een 401 (echt uitgelogd), of `undefined` als we er
+    niet bij konden. Dat onderscheid is de hele grap: uitgelogd stuurt naar
+    inloggen, geen netwerk laat de app staan waar hij staat. */
+async function sessieOphalen(){
+  let r;
+  try{ r = await fetch("/api/sessie", { headers: { "Accept": "application/json" } }); }
+  catch(e){ return undefined; }
+  if(r.status === 401) return null;
+  if(!r.ok) return undefined;
+  try{
+    const s = await r.json();
+    csrfToken = s.csrf || "";
+    return s;
+  }catch(e){ return undefined; }
 }
 
-// POST met token; bij 401 één keer om het token vragen en opnieuw proberen.
+/** Naar de inlogpagina, met een verwijzing terug naar waar je was. */
+function naarInloggen(){
+  if(typeof wisSnapshots === "function") wisSnapshots();
+  const terug = location.pathname + location.search + location.hash;
+  location.replace("/login?terug=" + encodeURIComponent(terug));
+}
+
+/** Alleen aanroepen bij een échte 401, niet bij een netwerkfout. */
+function afgemeld(){
+  naarInloggen();
+}
+
 async function postJSON(path, body){
-  const send = () => fetch(path, {
+  const r = await fetch(path, {
     method: "POST",
-    headers: Object.assign({"Content-Type": "application/json"},
-                           appToken() ? {"X-App-Token": appToken()} : {}),
+    headers: {
+      "Content-Type": "application/json",
+      ...(csrfToken ? { "X-CSRF-Token": csrfToken } : {}),
+    },
     body: JSON.stringify(body),
   });
-  let r = await send();
-  if (r.status !== 401) return r;
-  const t = await askToken();
-  if (!t) return r;                 // geannuleerd: 401 teruggeven, de beller meldt het
-  setAppToken(t);
-  r = await send();
-  // Push-registratie faalt stil zolang er geen token was; nu er wel een is,
-  // meteen zelfherstellen zodat meldingen niet stiekem uit blijven.
-  if (r.ok && typeof ensurePushSubscription === "function") {
-    ensurePushSubscription().catch(() => {});
+  if(r.status === 401){ afgemeld(); }
+  if(r.status === 403 && !csrfToken){
+    // Sessietoken kwijt (bijvoorbeeld na een herstart van de app): ophalen en
+    // één keer opnieuw. Lukt dat niet, dan is de sessie echt weg.
+    const s = await sessieOphalen();
+    if(s){
+      return await fetch(path, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
+        body: JSON.stringify(body),
+      });
+    }
+    afgemeld();
   }
   return r;
+}
+
+async function uitloggen(overal){
+  try{ await postJSON("/api/uitloggen", { overal: !!overal }); }catch(e){}
+  if(typeof wisSnapshots === "function") wisSnapshots();
+  location.replace("/login");
+}
+
+// Wie ben je, en mag je uitnodigen — de eigenaar wel, de rest niet.
+function toonWieJeBent(sessie){
+  const wie = $("#wieBenJe");
+  if(wie && sessie && sessie.naam) wie.textContent = "ingelogd als " + sessie.naam;
+  const uitnodig = $("#uitnodigBtn");
+  if(uitnodig && sessie && sessie.eigenaar){
+    uitnodig.hidden = false;
+    uitnodig.onclick = async () => {
+      const r = await postJSON("/api/uitnodiging", {});
+      const d = await r.json().catch(() => ({}));
+      if(!r.ok || !d.pad){ toast(d.error || "uitnodigen mislukte"); return; }
+      const link = location.origin + d.pad;
+      try{ await navigator.clipboard.writeText(link); toast("uitnodiging gekopieerd"); }
+      catch(e){ toast(link); }   // geen klembord: dan maar tonen
+    };
+  }
+  const uit = $("#uitlogBtn");
+  if(uit) uit.onclick = () => uitloggen(false);
 }

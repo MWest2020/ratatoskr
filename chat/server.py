@@ -16,7 +16,10 @@ import push    # Web Push — subscription-opslag + VAPID-public-key
 from buzzcli import (buzz, buzz_admin, list_channels, list_channels_meta, valid_cid, author,
                      channel_overview, agent_roster, channel_roster, ME)
 import actions  # send/add-member/create-acties (server blijft dun)
-import auth     # schrijf-token (uit BOOMHUIS_APP_TOKEN; leeg = uit)
+import auth          # sessies, wachtwoorden, TOTP
+import auth_admin    # uitnodigen en tweede factor (achter de sessie)
+import auth_routes   # inloggen, setup, uitnodiging gebruiken, en de gate
+import statics       # de allowlist van bestanden die we serveren
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
@@ -52,35 +55,26 @@ class H(BaseHTTPRequestHandler):
 
     def do_GET(self):
         u = urlparse(self.path)
+        # De inlogpagina staat vóór de gate: anders kun je nooit inloggen.
+        if u.path == "/login":
+            with open(os.path.join(HERE, "login.html"), "rb") as f:
+                return self._send(200, f.read(), "text/html; charset=utf-8")
         if u.path in ("/", "/index.html"):
             with open(os.path.join(HERE, "index.html"), "rb") as f:
                 return self._send(200, f.read(), "text/html; charset=utf-8")
-        # PWA-assets (app-shell). sw.js op root-scope zodat de worker de hele
-        # app kan controleren.
-        static = {
-            "/app.css": ("app.css", "text/css"),
-            "/app.js": ("app.js", "text/javascript"),
-            "/app-cache.js": ("app-cache.js", "text/javascript"),
-            "/app-verbinding.js": ("app-verbinding.js", "text/javascript"),
-            "/app-auth.js": ("app-auth.js", "text/javascript"),
-            "/app-modal.js": ("app-modal.js", "text/javascript"),
-            "/app-ui.js": ("app-ui.js", "text/javascript"),
-            "/app-repos.js": ("app-repos.js", "text/javascript"),
-            "/app-push.js": ("app-push.js", "text/javascript"),
-            "/manifest.webmanifest": ("manifest.webmanifest", "application/manifest+json"),
-            "/sw.js": ("sw.js", "text/javascript"),
-            "/icon.svg": ("icon.svg", "image/svg+xml"),
-            "/icon-192.png": ("icon-192.png", "image/png"),
-            "/icon-512.png": ("icon-512.png", "image/png"),
-            "/apple-touch-icon.png": ("apple-touch-icon.png", "image/png"),
-        }
-        if u.path in static:
-            fname, ctype = static[u.path]
-            try:
-                with open(os.path.join(HERE, fname), "rb") as f:
-                    return self._send(200, f.read(), ctype)
-            except OSError:
-                return self._send(404, json.dumps({"error": "asset weg"}))
+        if statics.serveer(self, u.path):
+            return None
+        if u.path.startswith("/api/"):
+            # Lezen zit óók achter de sessie: in deze routes staan kanaalnamen,
+            # berichten en agent-verkeer. Zonder tailnet ervoor betekent "lezen
+            # is open" simpelweg "alles is openbaar".
+            if u.path == "/api/status":
+                return auth_routes.status(self)
+            if u.path == "/api/sessie":
+                return auth_routes.sessie_info(self)
+            if auth_routes.gate(self, u.path, schrijft=False) is None:
+                return None
+
         if u.path == "/api/channels":
             return self._send(200, json.dumps(list_channels_meta()))
         if u.path == "/api/agents":
@@ -169,12 +163,20 @@ class H(BaseHTTPRequestHandler):
         except Exception:
             return self._send(400, json.dumps({"error": "bad json"}))
 
-        # Elke POST wijzigt state (bericht, kanaal, lid, push-registratie), dus
-        # één check vóór de routing i.p.v. per pad. Body is al gelezen zodat de
-        # verbinding bruikbaar blijft; lezen (do_GET) blijft ongemoeid.
-        if not auth.write_allowed(self.headers):
-            return self._send(401, json.dumps(
-                {"error": "schrijven vereist een geldig apparaat-token"}))
+        # Inloggen, setup en een uitnodiging gebruiken kunnen per definitie geen
+        # sessie hebben; die gaan vóór de gate.
+        if auth_routes.open_route(self, u.path, body):
+            return None
+        if u.path == "/api/uitloggen":
+            return auth_routes.uitloggen(self, body)
+
+        # Al het andere: sessie plus een sessiegebonden token, want elke POST
+        # wijzigt iets (bericht, kanaal, lid, push-registratie, uitnodiging).
+        sessie = auth_routes.gate(self, u.path, schrijft=True)
+        if sessie is None:
+            return None
+        if auth_admin.route(self, u.path, sessie, body):
+            return None
 
         if u.path == "/api/push/subscribe":
             if push.add_subscription(body):
@@ -214,5 +216,6 @@ if __name__ == "__main__":
     # relay-VM zetten we BIND_HOST op het tailnet-IP (100.x) zodat de poort niet
     # op de LAN-interface luistert — dan kan alleen een tailnet-node posten.
     host = os.environ.get("BIND_HOST", "0.0.0.0")
+    auth_routes.setup_link_bij_start()
     print(f"[chat] luistert op {host}:{port}", flush=True)
     ThreadingHTTPServer((host, port), H).serve_forever()

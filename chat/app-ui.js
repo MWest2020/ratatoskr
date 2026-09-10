@@ -157,6 +157,13 @@ async function laadWatErIs(){
 }
 
 (async function init(){
+  // Eerst weten wie je bent. Alleen een echte 401 stuurt naar inloggen; kunnen
+  // we de server niet bereiken, dan gaat de app gewoon door en doet de
+  // offline-weergave zijn werk.
+  const sessie = await sessieOphalen();
+  if(sessie === null){ naarInloggen(); return; }
+  toonWieJeBent(sessie);
+
   // Timers en luisteraars staan vóór de eerste netwerkaanroep: die aanroep
   // faalde bij een koude start, nam init() mee, en daarmee de poll die de app
   // had kunnen laten herstellen.

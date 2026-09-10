@@ -4,13 +4,14 @@ Draaien tegen de **echte VM**, niet tegen een mock. Ze vervangen de unittests ni
 ze vangen wat unittests per definitie missen: uitrol, service worker, viewport,
 en of de laag eronder ook echt aan staat.
 
-    bash chat/e2e/api.sh          # HTTP: routes, auth-gate, body-grens
+    bash chat/e2e/api.sh          # HTTP: wat een vreemde NIET mag
+    node chat/e2e/inloggen.js     # browser: inloggen, sessie, uitloggen
     node chat/e2e/ui.js           # browser: shell, kanalen, laden, token-modal
     node chat/e2e/xss.js          # regressietest op de GitHub-rendering
     node chat/e2e/deeplink.js     # melding -> juiste kanaal
     node chat/e2e/offline-boot.js # koude start zonder tunnel, en herstel
 
-`ui.js`, `xss.js`, `deeplink.js` en `offline-boot.js` hebben Playwright nodig en een Chromium. Staat Playwright
+`ui.js`, `xss.js`, `deeplink.js`, `offline-boot.js` en `inloggen.js` hebben Playwright nodig en een Chromium. Staat Playwright
 elders, wijs er dan met `NODE_PATH` naar; `executablePath` bovenaan het script
 wijst naar de browser.
 
@@ -71,3 +72,10 @@ eerste fetch, en zette daardoor nooit de poll-timer die hem had kunnen laten
 herstellen. Alle andere e2e-tests draaien tegen een gezonde API en zien dat
 dus niet. Deze blokkeert `/api/*`, laat de app starten, deblokkeert, en meet
 dat hij zichzelf herstelt — zonder herlaad.
+
+## Waarom `inloggen.js` een verse installatie wil
+
+De setup-link maakt de eigenaar en werkt daarna niet meer — dat is precies wat
+hij moet doen. Draai hem dus tegen een testinstallatie, of leeg `auth.db` en
+herstart; de server drukt dan een nieuwe link af. `api.sh` heeft dat niet nodig:
+die kant bewijst juist wat er zónder sessie gebeurt.
