@@ -90,3 +90,13 @@ function toonLaatstBekend(){
   if(kop && !kop.textContent) kop.textContent = c.name || "";
   return true;
 }
+
+/** Alles wissen — na een 401, zodat de volgende persoon op dit apparaat niets
+    van de vorige leest. Bij een netwerkfout juist NIET aanroepen. */
+function wisSnapshots(){
+  try{
+    for(const k of Object.keys(localStorage)){
+      if(k.startsWith(SNAPSHOT_PREFIX) || k === LAATSTE_KANAAL) localStorage.removeItem(k);
+    }
+  }catch(e){ /* niets aan te doen */ }
+}

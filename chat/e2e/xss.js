@@ -1,5 +1,6 @@
 // Playwright hoeft niet in deze repo te staan; wijs er met NODE_PATH naar:
 //   NODE_PATH=<pad>/node_modules node chat/e2e/xss.js
+const { logIn } = require('./inlog');
 const { chromium, devices } = require('playwright');
 const fs=require('fs');
 const D=require('path').join(__dirname,'..')+'/';   // de werkkopie van chat/
@@ -29,6 +30,7 @@ const PAYLOAD = '<img src=x onerror="window.__XSS=1"><script>window.__XSS=1</scr
     const p=await ctx.newPage();
     p.on('pageerror',e=>console.log('   PAGEERROR:',e.message));
     p.on('console',m=>{if(m.type()==='error')console.log('   console:',m.text().slice(0,120));});
+    await logIn(p);
     await p.goto('https://boomhuis-relay.tail8f7877.ts.net/',{waitUntil:'load',timeout:45000});
     await p.waitForTimeout(4000);
     await p.click('#reposBtn'); await p.waitForTimeout(2000);
