@@ -8,7 +8,22 @@ last_reviewed: 2026-09-10
 Sinds `inloggen-per-persoon` hoort elke aanroep bij een persoon — ook lezen.
 Het gedeelde schrijf-token is weg.
 
-## De eerste keer
+## De eerste keer — vanaf de host, zonder browser
+
+De kortste weg, en de weg die het altijd doet: op de machine waar de
+installatie draait.
+
+    cd /opt/buzz-build/chat
+    sudo python3 adminctl.py eigenaar <jouw-naam>
+
+Hij vraagt je wachtwoord twee keer, zichtbaar noch in je shell-geschiedenis.
+Daarna log je in op `/login`.
+
+Meer opdrachten: `personen` (wie er zijn), `uitnodiging` (link voor iemand
+anders), `wachtwoord <naam>` (nieuw wachtwoord, trekt alle sessies van die
+persoon in), `verwijder <naam>`.
+
+## De eerste keer — via de browser
 
 Bij een installatie zonder accounts drukt de server bij het starten een
 eenmalige link af:
@@ -44,14 +59,14 @@ overgetypt geheim je uit je eigen account. Uitzetten kan met
 
 ## Jezelf buitengesloten
 
-Er is nog geen wachtwoord-vergeten en geen wachtwoord-wijzigen; dat is bewust
-buiten deze eerste change gehouden en staat als eerste op de lijst voor de
-volgende. Tot die er is, is dit de weg terug — op de VM, als root:
+In de app zit nog geen wachtwoord-vergeten; vanaf de host wel:
 
-    sudo sqlite3 /var/lib/boomhuis/auth.db "DELETE FROM personen; DELETE FROM sessies;"
-    sudo systemctl restart boomhuis-chat
-    sudo journalctl -u boomhuis-chat | grep setup=
+    cd /opt/buzz-build/chat
+    sudo python3 adminctl.py wachtwoord <naam>
 
-Dat maakt de installatie weer leeg: de server drukt een nieuwe setup-link af en
-je maakt de eigenaar opnieuw aan. Kanalen en berichten staan op de relay en
-raak je hiermee niet kwijt — accounts zijn het enige dat in dit bestand staat.
+Dat zet een nieuw wachtwoord en trekt alle sessies van die persoon in — wie het
+oude had, is eruit.
+
+Helemaal opnieuw beginnen kan ook: `verwijder <naam>` voor iedereen, daarna
+`eigenaar <naam>`. Kanalen en berichten staan op de relay en raak je daarmee
+niet kwijt; accounts zijn het enige dat in `auth.db` staat.
