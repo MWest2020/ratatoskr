@@ -19,6 +19,9 @@ types:
     max_seconden: 900
     starters: [odin, mark]
     identiteit: odin          # onder wiens naam voortgang en resultaat gepost worden
+    beschrijving: >-
+      leest Marks zettelkast-vault (sources/, wiki/, journal/) en beoordeelt wat er
+      met gedeelde clips moet gebeuren; mag een gedeelde link ophalen
     tools: [Read, Grep, Glob, WebFetch]
     systeem: |
       Je bent een werksessie van het boomhuis, gestart vanuit een chatkanaal. Je

@@ -10,6 +10,7 @@ import tempfile
 import time
 import unittest
 
+import prompts
 import sessies
 
 CFG = {
@@ -78,6 +79,21 @@ class Machtiging(unittest.TestCase):
 
     def test_mag_wel(self):
         self.assertEqual(sessies.mag_starten(CFG, "zettelkast", "odin", []), (True, ""))
+
+
+class Clausule(unittest.TestCase):
+    """Een agent die geen starter is, hoort niet te lezen dat hij sessies kan starten."""
+
+    def test_starter_krijgt_de_types(self):
+        t = prompts.sessie_clausule(CFG, "odin")
+        self.assertIn("!sessie", t)
+        self.assertIn("zettelkast", t)
+
+    def test_niet_starter_krijgt_niets(self):
+        self.assertEqual(prompts.sessie_clausule(CFG, "roodteam"), "")
+
+    def test_geen_types_geen_clausule(self):
+        self.assertEqual(prompts.sessie_clausule({"types": {}}, "odin"), "")
 
 
 class Grenzen(unittest.TestCase):

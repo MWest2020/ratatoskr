@@ -157,7 +157,8 @@ def main():
                             p = lt + "\n\n" + p
                     try:
                         r = providers.run(cfg.get("provider"),
-                                          cfg["system"] + prompts.LIMIT_CLAUSE, p,
+                                          cfg["system"] + prompts.LIMIT_CLAUSE
+                                          + prompts.sessie_clausule(reg.cfg, handle), p,
                                           model=cfg.get("model"), allow=cfg.get("allow"),
                                           deny=cfg.get("deny"),
                                           progress=reporting.progress_poster(
