@@ -31,6 +31,27 @@ def uitnodigingen_intrekken(h, sessie):
     return _json(h, 200, {"status": "ingetrokken"})
 
 
+def wachtwoord_wijzigen(h, sessie, body):
+    """Je eigen wachtwoord. Het huidige moet mee: anders is een geleende
+    sessie genoeg om iemand permanent buiten te sluiten.
+
+    Alle sessies gaan eruit, ook deze — en er komt meteen een nieuwe voor dit
+    apparaat terug. Wie het oude wachtwoord had, is dus overal weg, en jij hoeft
+    niet opnieuw in te loggen."""
+    p = _persoon(sessie)
+    huidig = body.get("huidig") or ""
+    nieuw = body.get("nieuw") or ""
+    if not auth.wachtwoord_klopt(huidig, p["hash"]):
+        return _json(h, 403, {"error": "het huidige wachtwoord klopt niet"})
+    if len(nieuw) < 12:
+        return _json(h, 400, {"error": "nieuw wachtwoord minstens 12 tekens"})
+    store.zet_hash(p["id"], auth.hash_wachtwoord(nieuw))
+    store.trek_alle_sessies_in(p["id"])
+    token, csrf = auth.start_sessie(p["id"])
+    return _json(h, 200, {"status": "gewijzigd", "csrf": csrf},
+                 [("Set-Cookie", auth.cookie_kop(token, h.headers.get("Host", "")))])
+
+
 def totp_starten(h, sessie):
     """Geef een geheim terug; het gaat pas aan als er een kloppende code komt.
     Anders sluit een verkeerd overgetypt geheim je uit je eigen account."""
@@ -66,6 +87,8 @@ def route(h, pad, sessie, body=None):
         return uitnodigen(h, sessie)
     if pad == "/api/uitnodiging/intrekken":
         return uitnodigingen_intrekken(h, sessie)
+    if pad == "/api/wachtwoord":
+        return wachtwoord_wijzigen(h, sessie, body)
     if pad == "/api/totp/start":
         return totp_starten(h, sessie)
     if pad == "/api/totp/aan":

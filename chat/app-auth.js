@@ -87,6 +87,45 @@ function toonWieJeBent(sessie){
       catch(e){ toast(link); }   // geen klembord: dan maar tonen
     };
   }
+  const ww = $("#wwBtn");
+  if(ww) ww.onclick = wachtwoordWijzigen;
   const uit = $("#uitlogBtn");
   if(uit) uit.onclick = () => uitloggen(false);
+}
+
+/** Wachtwoord wijzigen. Twee velden in een pop-up; window.prompt kan niet, dat
+    blokkeren browsers in een geïnstalleerde PWA. */
+function wachtwoordWijzigen(){
+  const ov = el("div", "modal-ov");
+  const box = el("div", "modal");
+  const huidig = el("input", "modal-in"); huidig.type = "password";
+  huidig.placeholder = "huidig wachtwoord"; huidig.autocomplete = "current-password";
+  const nieuw = el("input", "modal-in"); nieuw.type = "password";
+  nieuw.placeholder = "nieuw wachtwoord (min. 12 tekens)";
+  nieuw.autocomplete = "new-password";
+  const rij = el("div", "modal-row");
+  const ok = el("button", "modal-add", "Wijzigen");
+  const annuleer = el("button", "modal-cancel", "Annuleren");
+  const sluit = () => ov.remove();
+  annuleer.onclick = sluit;
+  ov.onclick = (e) => { if(e.target === ov) sluit(); };
+  ok.onclick = async () => {
+    ok.disabled = true;
+    const r = await postJSON("/api/wachtwoord",
+      { huidig: huidig.value, nieuw: nieuw.value });
+    const d = await r.json().catch(() => ({}));
+    ok.disabled = false;
+    if(!r.ok){ toast(d.error || "wijzigen mislukte"); return; }
+    // De server gaf een nieuwe sessie; die zit al in de cookie, het token hier.
+    if(d.csrf) csrfToken = d.csrf;
+    sluit();
+    toast("wachtwoord gewijzigd — andere apparaten zijn uitgelogd");
+  };
+  add(rij, ok, annuleer);
+  add(box, el("div", "modal-t", "Wachtwoord wijzigen"),
+      el("div", "modal-sub", "Alle andere apparaten worden uitgelogd."),
+      huidig, nieuw, rij);
+  add(ov, box);
+  document.body.append(ov);
+  setTimeout(() => huidig.focus(), 50);
 }

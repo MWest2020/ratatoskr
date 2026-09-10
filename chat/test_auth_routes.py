@@ -149,3 +149,45 @@ class Uitnodigen(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class WachtwoordWijzigen(unittest.TestCase):
+    """Je eigen wachtwoord, mét het huidige erbij: anders is een geleende
+    sessie genoeg om iemand permanent buiten te sluiten."""
+
+    def setUp(self):
+        import auth_admin
+        self.admin = auth_admin
+        self.naam = "ww-" + os.urandom(4).hex()
+        self.pid = store.maak_persoon(self.naam, auth.hash_wachtwoord("het oude wachtwoord"))
+        self.token, self.csrf = auth.start_sessie(self.pid)
+        self.sessie = auth.sessie_uit_cookie(
+            {"Cookie": "{}={}".format(auth.COOKIE, self.token)})
+
+    def _wijzig(self, huidig, nieuw):
+        h = _Handler()
+        self.admin.wachtwoord_wijzigen(h, self.sessie, {"huidig": huidig, "nieuw": nieuw})
+        return h
+
+    def test_zonder_het_huidige_wachtwoord_niet(self):
+        h = self._wijzig("iets anders", "een nieuw lang wachtwoord")
+        self.assertEqual(h.code, 403)
+        self.assertTrue(auth.wachtwoord_klopt("het oude wachtwoord",
+                                              store.persoon(self.pid)["hash"]))
+
+    def test_te_kort_nieuw_wachtwoord_niet(self):
+        h = self._wijzig("het oude wachtwoord", "kort")
+        self.assertEqual(h.code, 400)
+
+    def test_wijzigen_trekt_alle_sessies_in_en_geeft_een_nieuwe(self):
+        tweede, _ = auth.start_sessie(self.pid)     # ander apparaat
+        h = self._wijzig("het oude wachtwoord", "een nieuw lang wachtwoord")
+        self.assertEqual(h.code, 200)
+        self.assertTrue(auth.wachtwoord_klopt("een nieuw lang wachtwoord",
+                                              store.persoon(self.pid)["hash"]))
+        # het andere apparaat is eruit
+        self.assertIsNone(auth.sessie_uit_cookie(
+            {"Cookie": "{}={}".format(auth.COOKIE, tweede)}))
+        # en dit apparaat kreeg een verse sessie mee
+        self.assertTrue(h.set_cookie and auth.COOKIE in h.set_cookie[0])
+        self.assertIn("csrf", h.payload)
