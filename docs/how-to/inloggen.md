@@ -57,9 +57,17 @@ code zet hem aan. Hij gaat pas aan ná die code — anders sluit een verkeerd
 overgetypt geheim je uit je eigen account. Uitzetten kan met
 `POST /api/totp/uit`.
 
+## Wachtwoord wijzigen
+
+In de app: kanalen-lade → *Wachtwoord*. Je huidige wachtwoord moet mee — anders
+is een geleende sessie genoeg om iemand permanent buiten te sluiten. Alle andere
+apparaten worden uitgelogd; dit apparaat krijgt meteen een verse sessie, dus je
+hoeft niet opnieuw in te loggen.
+
 ## Jezelf buitengesloten
 
-In de app zit nog geen wachtwoord-vergeten; vanaf de host wel:
+Wachtwoord-vergeten zit niet in de app (daar heb je per definitie geen sessie
+voor); vanaf de host wel:
 
     cd /opt/buzz-build/chat
     sudo python3 adminctl.py wachtwoord <naam>
