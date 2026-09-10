@@ -206,6 +206,12 @@
   .inlogkaart{width:min(24rem,100%); display:flex; flex-direction:column; gap:.6rem}
   .inlogkaart h1{margin:0; font-size:1.3rem}
   .inlogkaart form{display:flex; flex-direction:column; gap:.6rem; padding:0}
+  /* Het hidden-attribuut verliest van elke eigen display-regel: de browser
+     zet display:none zonder !important, en .veld hieronder zet display:flex.
+     Zonder deze regel stonden "Code uit je app" en "Setup-token" altijd in
+     beeld op de inlogpagina, terwijl ze pas horen te verschijnen als ze nodig
+     zijn. Geldt voor de hele app, niet alleen hier. */
+  [hidden]{display:none !important}
   .veld{display:flex; flex-direction:column; gap:.25rem; font-size:.8rem;
     color:var(--muted)}
   .veld input{padding:.6rem .7rem; border-radius:8px; border:1px solid var(--muted);
