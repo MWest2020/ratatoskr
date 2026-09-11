@@ -48,6 +48,11 @@ AGENT_PUBS = set()  # gevuld met pubkeys van agents (uit identities via naam)
 
 
 def main():
+    # Vasthouden zolang de listener leeft: sluiten geeft het slot vrij.
+    slot = bootstrap.alleen_ik()          # noqa: F841 — de referentie ís de functie
+    if slot is None:
+        raise SystemExit("[listener] er draait al een listener op deze host — "
+                         "gestopt (twee listeners = elk bericht dubbel)")
     if not AGENTS:
         raise SystemExit("geen agents gespawnd (geen bron/nsec/npub-match)")
     # Reader = de ORCHESTRATOR: die bezit elk kanaal en ziet ze dus allemaal

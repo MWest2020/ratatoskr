@@ -3,11 +3,33 @@
 zodat listener.py onder de ≤200-regel-conventie blijft. Puur: paden en urls komen
 als parameters binnen, geen module-globals van de listener.
 """
+import fcntl
 import os
 import re
 import urllib.request
 
 import yaml
+
+
+def alleen_ik(pad="/tmp/boomhuis-listener.lock"):
+    """Eén listener per host, of niets. Geeft het open lock-bestand terug (dat moet
+    je vasthouden) of None als er al een draait.
+
+    Waarom: twee listeners beantwoorden elk bericht twee keer en starten elke
+    werksessie twee keer. Gemeten 2026-09-11 — één `!sessie`-marker in
+    #architectuur, twee sessies. Oorzaak was een herstart die maar één van de
+    twee processen doodde; dit maakt dat onmogelijk in plaats van onwaarschijnlijk.
+    Het slot valt vanzelf weg als het proces stopt (flock, geen pidfile die na
+    een kill blijft liggen)."""
+    f = open(pad, "w")
+    try:
+        fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        f.close()
+        return None
+    f.write(str(os.getpid()) + "\n")
+    f.flush()
+    return f
 
 
 def load_yaml(path):
