@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: EUPL-1.2
+[Unit]
+Description=Ververs het werk-overzicht elke 10 minuten
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=10min
+# Niet Persistent: een gemiste run haalt niets in wat de volgende niet ook doet —
+# dit is een momentopname, geen gebeurtenis.
+Persistent=false
+
+[Install]
+WantedBy=timers.target

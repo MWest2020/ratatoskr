@@ -15,6 +15,7 @@ agent-verkeer.
 import json
 import os
 import threading
+import time
 import unittest
 import urllib.error
 import urllib.request
@@ -51,6 +52,12 @@ def _stub():
     server.actions.buzz = server.buzz
     server.actions.buzz_admin = server.buzz_admin
     server.actions.valid_cid = buzzcli.valid_cid
+    # Een momentopname van het werk-overzicht, zodat /api/board echt iets serveert
+    # in plaats van de 404 die een verse installatie geeft.
+    pad = os.path.join(tempfile.mkdtemp(), "board.json")
+    with open(pad, "w") as f:
+        json.dump({"generated_at": time.time(), "columns": [], "cards": []}, f)
+    server.board.PATH = pad
     github.list_repos = lambda limit=30: [{"full_name": "MWest2020/x"}]
     github.list_prs = lambda full: [{"number": 1}]
     github.get_pr = lambda full, n: {"number": n}
@@ -92,6 +99,18 @@ class ServerTest(unittest.TestCase):
         except urllib.error.HTTPError as e:
             return e.code, e.read().decode()
 
+    # --- werk-overzicht ---
+    def test_board_zonder_momentopname_is_404_met_uitleg(self):
+        """Een leeg bord moet te onderscheiden zijn van een kapotte producent."""
+        oud = server.board.PATH
+        server.board.PATH = "/bestaat/niet/board.json"
+        try:
+            code, body = self.call("/api/board")
+        finally:
+            server.board.PATH = oud
+        self.assertEqual(code, 404)
+        self.assertIn("hint", body)
+
     # --- Android-app ---
     def test_assetlinks_is_open(self):
         """Chrome haalt dit op vóór er een gebruiker is; achter de sessie zou de
@@ -121,7 +140,7 @@ class ServerTest(unittest.TestCase):
 
     # --- lezen zit achter de sessie ---
     LEESROUTES = ("/api/channels", "/api/agents", "/api/channel-members",
-                  "/api/push/vapid", "/api/overview", "/api/repos",
+                  "/api/push/vapid", "/api/overview", "/api/repos", "/api/board",
                   f"/api/messages?channel={CID}", "/api/pinned?channel=general")
 
     def test_leesroutes_met_sessie(self):
