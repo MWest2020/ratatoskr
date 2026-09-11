@@ -5,7 +5,7 @@ Description=Dagelijkse ochtend-standup (open werk + blokkades)
 [Timer]
 OnCalendar=*-*-* 08:00
 Persistent=true
-Unit=boomhuis-job@standup.service
+Unit=ratatoskr-job@standup.service
 
 [Install]
 WantedBy=timers.target

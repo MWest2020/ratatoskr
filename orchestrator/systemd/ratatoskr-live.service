@@ -1,9 +1,9 @@
 [Unit]
-Description=Boomhuis liveness — genereert knowledge/_live.md voor de coordinator
+Description=Ratatoskr liveness — genereert knowledge/_live.md voor de coordinator
 
 [Service]
 Type=oneshot
-WorkingDirectory=/home/agent/boomhuis
+WorkingDirectory=/home/agent/ratatoskr
 Environment=KUBECTL=ssh jumpy kubectl
 Environment=HABITAT_NS=agents
 ExecStart=/usr/bin/python3 orchestrator/live.py

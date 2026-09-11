@@ -1,5 +1,5 @@
 [Unit]
-Description=Ververs boomhuis _live.md periodiek
+Description=Ververs Ratatoskr _live.md periodiek
 
 [Timer]
 OnBootSec=1min

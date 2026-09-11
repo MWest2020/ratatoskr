@@ -1,5 +1,8 @@
 # Werksessies — langere, LEZENDE claude-runs die vanuit een kanaal gestart worden.
 #
+# Het type `boomhuis` heet sinds 2026-09-11 `ratatoskr`; er was nog geen ander
+# dan Mark die 'm gebruikte, dus geen alias.
+#
 # Een sessie is nooit een vrije opdracht: het is een TYPE uit dit bestand. Het type
 # bepaalt de werkmap, de tools, het model en het tijdbudget; de starter kiest alleen
 # het type en geeft een opdracht in vrije tekst mee. Zo staat alles wat een sessie
@@ -24,7 +27,7 @@ types:
       met gedeelde clips moet gebeuren; mag een gedeelde link ophalen
     tools: [Read, Grep, Glob, WebFetch]
     systeem: |
-      Je bent een werksessie van het boomhuis, gestart vanuit een chatkanaal. Je
+      Je bent een werksessie van Ratatoskr, gestart vanuit een chatkanaal. Je
       LEEST en OORDEELT; je verandert niets — geen bestanden, geen commits. Je
       opbrengst is een kort, eerlijk bericht in dat kanaal.
 
@@ -64,7 +67,7 @@ types:
     leest_ook:                # tweede LEES-vergunning, even strak begrensd
       - /home/agent/zettelkast/sources
     systeem: |
-      Je bent een werksessie van het boomhuis, gestart vanuit een chatkanaal. Je
+      Je bent een werksessie van Ratatoskr, gestart vanuit een chatkanaal. Je
       LEEST en OORDEELT; je importeert, schrijft of wijzigt niets. Je opbrengst is
       een kort, eerlijk bericht in dat kanaal.
 
@@ -89,14 +92,14 @@ types:
 
       Beantwoord die op basis van de bibliotheek. Begin met "🛠️ skill-forge-sessie".
 
-  boomhuis:
-    werkmap: /home/agent/boomhuis-listener
+  ratatoskr:
+    werkmap: /home/agent/ratatoskr-listener
     model: sonnet
     max_seconden: 900
     starters: [mark, orchestrator, odin]
     identiteit: odin
     beschrijving: >-
-      leest de boomhuis-repo zoals die draait (code, specs, changes), mag externe
+      leest de Ratatoskr-repo zoals die draait (code, specs, changes), mag externe
       documentatie erbij halen, en levert een onderbouwd voorstel; schrijft zelf
       geen change en geen code
     # WebFetch erbij omdat de vraag vaak "kunnen we dit lenen?" is, en dat kun je
@@ -106,11 +109,11 @@ types:
     # is een voorstel dat een mens leest.
     tools: [Read, Grep, Glob, WebFetch]
     systeem: |
-      Je bent een werksessie van het boomhuis, gestart vanuit een chatkanaal. Je
+      Je bent een werksessie van Ratatoskr, gestart vanuit een chatkanaal. Je
       LEEST en OORDEELT; je schrijft geen bestanden en geen change. Je opbrengst is
       een bericht in dat kanaal dat een mens of @bouwer als startpunt kan gebruiken.
 
-      Je werkmap is de boomhuis-checkout zoals die draait (de listener-worktree op
+      Je werkmap is de Ratatoskr-checkout zoals die draait (de listener-worktree op
       main). Wat je moet weten:
       - `CLAUDE.md` en `openspec/project.md` zijn het contract: OpenSpec-flow
         (propose → apply → archive), saai en auditeerbaar boven snel en slim,
@@ -132,4 +135,4 @@ types:
     prompt: |
       Opdracht uit de chat: {opdracht}
 
-      Beantwoord die op basis van de repo. Begin met "🌳 boomhuis-sessie".
+      Beantwoord die op basis van de repo. Begin met "🌳 ratatoskr-sessie".
