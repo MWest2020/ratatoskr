@@ -50,7 +50,16 @@ voor een Play-app, maar dit ding hoort juist zonder Google te kunnen.
 ## Uitleveren zonder winkel
 
 **Gekozen: de APK staat op de eigen installatie**, te downloaden vanaf dezelfde
-origin. Wie bij de chat kan, kan bij de app.
+origin, **zonder sessie**.
+
+Eerst zat die route achter de gate — "wie bij de chat kan, kan bij de app" klonk
+netjes. In de praktijk is dat precies verkeerd: een APK-download start vaak
+buiten de sessie (de downloadmanager, of een link die je naar je telefoon
+stuurt en die in een andere app opent), en dan draagt niets het cookie mee. De
+link is dan kapot op het enige moment dat je 'm gebruikt. En er valt niets te
+beschermen: het bestand is een browser-schil met de hostnaam erin, en die staat
+al in elke URL. De netwerklaag — tailnet of reverse proxy — is hier de deur,
+net als bij `/login` en de asset-links, die om dezelfde reden open staan.
 
 **Verworpen: Play Store.** Vergt een ontwikkelaarsaccount, een review, en een
 publiek bereikbare privacy-verklaring — voor een app die alleen binnen iemands

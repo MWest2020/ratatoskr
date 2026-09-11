@@ -14,8 +14,11 @@ host verandert.
 ## Installeren op een toestel
 
 1. Open de chat in de browser en log in.
-2. Ga naar `<jouw-url>/ratatoskr.apk`. Die download zit achter de sessie: wie bij
-   de chat kan, kan bij de app.
+2. Ga naar `<jouw-url>/ratatoskr.apk`. Die link werkt zónder in te loggen — een
+   APK-download start vaak buiten de sessie (de downloadmanager of een
+   doorgestuurde link draagt het cookie niet mee), en het bestand bevat niets
+   geheims: het is een browser-schil met de hostnaam erin. De netwerklaag
+   (tailnet of je proxy) is hier de deur.
 3. Android vraagt om installatie uit een onbekende bron toe te staan. Dat hoort:
    deze app komt niet uit de Play Store en dat is de bedoeling.
 4. Had je de PWA als snelkoppeling staan? Haal die weg. Android hernoemt een
@@ -65,8 +68,8 @@ bij de installatie, niet bij de code. Hij komt in het datavolume:
     sudo cp android/ratatoskr-<versie>.apk "$vol/apk/ratatoskr.apk"
     sudo chown -R 10001:10001 "$vol/apk"
 
-Daarna is hij te downloaden op `/ratatoskr.apk`. Staat er niets, dan geeft die
-route een nette 404 — geen app geïnstalleerd op deze server.
+Daarna is hij te downloaden op `/ratatoskr.apk`, zonder sessie. Staat er niets,
+dan geeft die route een nette 404 — geen app geïnstalleerd op deze server.
 
 ## Wat je nooit weggooit
 
