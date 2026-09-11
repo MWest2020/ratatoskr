@@ -148,7 +148,7 @@ EUPL-1.2.
 
 ## Namen
 
-Sinds 2026-09-11 heeft de app een eigen naam: **Ratatoskr** — in de Noorse mythe
+Deze repo heet **ratatoskr**. De app heet **Ratatoskr** — in de Noorse mythe
 de eekhoorn die boodschappen op en neer draagt langs de wereldboom, tussen de
 adelaar in de kroon en de slang bij de wortels. Dat is letterlijk wat deze laag
 doet: berichten dragen tussen de mens en de vloot.
@@ -160,7 +160,9 @@ daarom bij het ecosysteem als verhaal, niet als productnaam van een component;
 zie de sessie-analyse in `#architectuur` (2026-09-11) voor waarom we hun techniek
 ook niet lenen.
 
-`boomhuis` blijft voorlopig de technische naam: repo, image
-(`ghcr.io/mwest2020/boomhuis-chat`), volumes (`buzz-prod_boomhuis-chat-data`) en
-de `BOOMHUIS_*`-omgevingsvariabelen. Die hernoemen raakt gepubliceerde paden en
-draaiende data, en is een aparte, bewuste stap.
+Sinds 2026-09-11 volgt de techniek de naam: repo `MWest2020/ratatoskr`, image
+`ghcr.io/mwest2020/ratatoskr-chat`, volume `ratatoskr-chat-data`, instellingen
+`RATATOSKR_*`. De oude namen blijven werken waar het telt — `BOOMHUIS_*` wordt
+nog gelezen als terugval, en het pakket `boomhuis-chat` blijft staan omdat
+installaties daarop gepind kunnen zijn. De relay heet nog steeds `buzz`: dat is
+software van iemand anders.

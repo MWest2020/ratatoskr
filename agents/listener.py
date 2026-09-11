@@ -37,7 +37,8 @@ MAX_CTX = 8
 CHANNELS = bootstrap.load_channels(ROOT)
 NPUBS, PUB2NAME = bootstrap.load_identity_npubs(ROOT)
 HUB = bootstrap.hub_handle(ROOT)   # rol meta-agent; None = geen hub gespawnd
-ME_NAME = os.environ.get("BOOMHUIS_HUMAN", "mark")  # eigen berichten pushen niet
+ME_NAME = (os.environ.get("RATATOSKR_HUMAN")
+           or os.environ.get("BOOMHUIS_HUMAN", "mark"))  # eigen berichten pushen niet
 CFG = bootstrap.load_yaml(os.path.join(HERE, "agents.yml"))
 BASE = CFG["registry_base"]
 

@@ -14,7 +14,7 @@ const { chromium, devices } = require('playwright');
 const { logIn } = require('./inlog');
 const EXE = process.env.PW_CHROME
   || '/home/agent/.cache/ms-playwright/chromium-1234/chrome-linux64/chrome';
-const URL = (process.env.BOOMHUIS_URL || 'https://boomhuis-relay.tail8f7877.ts.net').replace(/\/+$/,'');
+const URL = ((process.env.RATATOSKR_URL || process.env.BOOMHUIS_URL) || 'https://boomhuis-relay.tail8f7877.ts.net').replace(/\/+$/,'');
 let ok = 0, fail = 0;
 const t = (naam, cond, extra = '') => {
   if (cond) { ok++; console.log(`  ok   ${naam}`); }

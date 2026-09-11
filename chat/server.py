@@ -19,6 +19,7 @@ import actions  # send/add-member/create-acties (server blijft dun)
 import auth          # sessies, wachtwoorden, TOTP
 import auth_admin    # uitnodigen en tweede factor (achter de sessie)
 import auth_routes   # inloggen, setup, uitnodiging gebruiken, en de gate
+import instellingen  # RATATOSKR_*/BOOMHUIS_* uit de omgeving
 import statics       # de allowlist van bestanden die we serveren
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -39,7 +40,7 @@ class H(BaseHTTPRequestHandler):
         pass
 
     def _log_toegang(self, code):
-        """Eén regel per verzoek naar stdout (journald), als BOOMHUIS_ACCESSLOG
+        """Eén regel per verzoek naar stdout (journald), als RATATOSKR_ACCESSLOG
         aanstaat.
 
         Bestaat om één vraag te kunnen beantwoorden die van buiten niet te zien
@@ -47,7 +48,7 @@ class H(BaseHTTPRequestHandler):
         Alleen methode, pad, status en een afgeknot user-agent — geen headers,
         geen tokens, geen bodies.
         """
-        if os.environ.get("BOOMHUIS_ACCESSLOG", "") not in ("1", "true", "yes"):
+        if instellingen.lees("ACCESSLOG") not in ("1", "true", "yes"):
             return
         ua = (self.headers.get("User-Agent") or "-")[:80].replace("\n", " ")
         print(f"{datetime.now(timezone.utc).isoformat(timespec='seconds')} "

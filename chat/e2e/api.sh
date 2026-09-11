@@ -5,7 +5,7 @@
 # daarom bewust ZONDER cookie: hij bewijst dat er niets uitlekt aan wie niet
 # ingelogd is. De ingelogde kant zit in chat/e2e/inloggen.js, want daar heb je
 # een browser voor nodig.
-H=${BOOMHUIS_URL:-https://boomhuis-relay.tail8f7877.ts.net}
+H=${RATATOSKR_URL:-${BOOMHUIS_URL:-https://boomhuis-relay.tail8f7877.ts.net}}
 ok=0; fail=0
 t(){ # naam, verwachte code, curl-args...
   local naam=$1 verw=$2; shift 2

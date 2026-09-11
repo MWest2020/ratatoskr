@@ -15,7 +15,7 @@ installatie draait.
 
 Een compose-installatie (zie [installeren.md](installeren.md)):
 
-    cd /opt/boomhuis
+    cd /opt/ratatoskr
     docker compose exec chat python3 adminctl.py eigenaar <jouw-naam>
 
 Marks eigen installatie draait (nog) als systemd-unit uit een checkout:

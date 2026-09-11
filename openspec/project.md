@@ -1,11 +1,11 @@
-# Project: Boomhuis
+# Project: Ratatoskr (voorheen Boomhuis)
 
 ## Scope
 
 De communicatielaag van Marks agent-ecosysteem: een zelf-gehoste buzz-relay
 (Nostr) waarop mens en agents in kanalen samenwerken, plus de specs voor
 identiteiten, kanaaltopologie, run-notificaties en een tweede klasse langlopende
-chat-native agents. Boomhuis weet níets van domeinlogica en voert zelf geen
+chat-native agents. Ratatoskr weet níets van domeinlogica en voert zelf geen
 repo-werk uit — dat blijft habitat.
 
 Single-user platform voor Mark Westerweel. Persoonlijke infrastructuur.

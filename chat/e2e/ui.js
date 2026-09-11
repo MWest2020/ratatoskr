@@ -2,10 +2,10 @@
 //   NODE_PATH=<pad>/node_modules node chat/e2e/ui.js
 const { chromium, devices } = require('playwright');
 const EXE='/home/agent/.cache/ms-playwright/chromium-1234/chrome-linux64/chrome';
-const URL=(process.env.BOOMHUIS_URL || 'https://boomhuis-relay.tail8f7877.ts.net').replace(/\/+$/,'');
+const URL=((process.env.RATATOSKR_URL || process.env.BOOMHUIS_URL) || 'https://boomhuis-relay.tail8f7877.ts.net').replace(/\/+$/,'');
 // Sinds `inloggen-per-persoon` komt er zonder sessie geen app in beeld. Geef een
 // account mee; zonder dat kan deze suite niets bewijzen en zegt hij dat.
-const NAAM=process.env.BOOMHUIS_NAAM, WW=process.env.BOOMHUIS_WW;
+const NAAM=(process.env.RATATOSKR_NAAM || process.env.BOOMHUIS_NAAM), WW=(process.env.RATATOSKR_WW || process.env.BOOMHUIS_WW);
 let ok=0, fail=0;
 const t=(naam,cond,extra='')=>{ if(cond){ok++;console.log(`  ok   ${naam}`);} else {fail++;console.log(`  FAIL ${naam} ${extra}`);} };
 

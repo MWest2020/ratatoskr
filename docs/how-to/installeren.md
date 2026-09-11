@@ -3,7 +3,7 @@ status: current
 last_reviewed: 2026-09-11
 ---
 
-# Boomhuis installeren
+# Ratatoskr installeren
 
 Van een lege machine naar ingelogd. Je hebt nodig: een Linux-machine met docker
 en docker compose, en tien minuten. Verder niets — geen checkout, geen buildstap,
@@ -12,9 +12,9 @@ geen contact met ons.
 ## 1. De bestanden
 
 ```bash
-mkdir -p /opt/boomhuis && cd /opt/boomhuis
-curl -fsSLO https://raw.githubusercontent.com/MWest2020/boomhuis/main/deploy/docker-compose.yml
-curl -fsSL  https://raw.githubusercontent.com/MWest2020/boomhuis/main/deploy/.env.example -o .env
+mkdir -p /opt/ratatoskr && cd /opt/ratatoskr
+curl -fsSLO https://raw.githubusercontent.com/MWest2020/ratatoskr/main/deploy/docker-compose.yml
+curl -fsSL  https://raw.githubusercontent.com/MWest2020/ratatoskr/main/deploy/.env.example -o .env
 chmod 600 .env
 ```
 
@@ -30,9 +30,9 @@ openssl rand -hex 32     # per secret één keer draaien
 Drie dingen die je écht goed moet zetten:
 
 - **`CHAT_IMAGE`** — een gepinde versie. Nooit `latest`: je wilt kunnen zeggen
-  wélke boomhuis er draait.
+  wélke Ratatoskr er draait.
 - **`RELAY_OWNER_PUBKEY`** — de Nostr-pubkey (64 hex) van de eigenaar.
-- **`BOOMHUIS_URL`** — de URL waarop mensen de chat straks openen. Uitnodigings-
+- **`RATATOSKR_URL`** — de URL waarop mensen de chat straks openen. Uitnodigings-
   en setup-links worden hiermee gebouwd; staat hier iets anders dan wat mensen
   in hun browser hebben, dan wijzen die links nergens heen.
 
@@ -53,7 +53,7 @@ docker compose exec chat python3 adminctl.py eigenaar <naam>
 ```
 
 Dat vraagt tweemaal om een wachtwoord en zet de eigenaar in de database. Daarna
-open je `BOOMHUIS_URL`, log je in, en nodig je de rest uit vanuit de app
+open je `RATATOSKR_URL`, log je in, en nodig je de rest uit vanuit de app
 (kanalenlade → *Iemand uitnodigen*). Zie [inloggen.md](inloggen.md).
 
 ## Waar is dit bereikbaar?
@@ -75,7 +75,7 @@ dezelfde machine. Zorg dat de proxy `X-Forwarded-For` zet: de snelheidsrem in de
 inlogroute gebruikt die om per bron te tellen, en zonder die header telt hij
 alle verkeer als één bron.
 
-`BOOMHUIS_URL` is dan je `https://`-adres. De app zet zijn sessiecookie als
+`RATATOSKR_URL` is dan je `https://`-adres. De app zet zijn sessiecookie als
 `Secure` zodra hij niet op localhost draait, dus **zonder TLS blijf je uitgelogd
 in een lus** — dat is geen bug maar de bedoeling.
 
@@ -96,7 +96,7 @@ je vertrouwt, niet op een kantoornet en zeker niet op een publiek IP.
 ## Wat waar blijft staan
 
 De staat (`auth.db` met personen en sessies, de push-abonnees) staat in het named
-volume `boomhuis-chat-data`, niet in de map waar je dit bestand neerzette. Dus:
+volume `ratatoskr-chat-data`, niet in de map waar je dit bestand neerzette. Dus:
 
 - `docker compose down` en weer `up` — alles is er nog, ook na een image-upgrade.
 - `docker compose down -v` — **weg**, inclusief personen en wachtwoorden.
@@ -109,7 +109,7 @@ zet de oude tag terug: de vorige image bestaat nog steeds, want hij was gepind.
 - `docker compose ps` toont `unhealthy` bij **chat**: kijk met
   `docker compose logs chat`. Meestal een leeg `BUZZ_PRIVATE_KEY` of een relay
   die nog niet klaar is.
-- Inloggen lukt niet en je ziet geen foutmelding: check `BOOMHUIS_URL` en of je
+- Inloggen lukt niet en je ziet geen foutmelding: check `RATATOSKR_URL` en of je
   via `https` binnenkomt (zie de cookie-opmerking hierboven).
 - De app laadt maar toont geen kanalen: de chat praat met de relay over het
   interne netwerk. `docker compose logs relay` — staat die `healthy`?

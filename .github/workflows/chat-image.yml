@@ -1,4 +1,4 @@
-# Publiceert de boomhuis-chat als image. Eén trigger: een tag `chat-v<versie>`.
+# Publiceert de ratatoskr-chat als image. Eén trigger: een tag `chat-v<versie>`.
 #
 # Waarom geen build op elke push naar main: een image dat vanzelf verschijnt
 # verleidt tot `:latest`, en dan weet een installatie niet meer wélke boomhuis er
@@ -57,18 +57,18 @@ jobs:
           # Geen `latest`. Twee tags: de versie, en de commit — zodat je van een
           # draaiende container altijd terug kunt naar de broncode.
           tags: |
-            ghcr.io/${{ steps.v.outputs.eigenaar }}/boomhuis-chat:${{ steps.v.outputs.versie }}
-            ghcr.io/${{ steps.v.outputs.eigenaar }}/boomhuis-chat:sha-${{ github.sha }}
+            ghcr.io/${{ steps.v.outputs.eigenaar }}/ratatoskr-chat:${{ steps.v.outputs.versie }}
+            ghcr.io/${{ steps.v.outputs.eigenaar }}/ratatoskr-chat:sha-${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
       - name: Samenvatting
         run: |
           {
-            echo "### boomhuis-chat ${{ steps.v.outputs.versie }}"
+            echo "### ratatoskr-chat ${{ steps.v.outputs.versie }}"
             echo
             echo '```'
-            echo "CHAT_IMAGE=ghcr.io/${{ steps.v.outputs.eigenaar }}/boomhuis-chat:${{ steps.v.outputs.versie }}"
+            echo "CHAT_IMAGE=ghcr.io/${{ steps.v.outputs.eigenaar }}/ratatoskr-chat:${{ steps.v.outputs.versie }}"
             echo "digest: ${{ steps.build.outputs.digest }}"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"

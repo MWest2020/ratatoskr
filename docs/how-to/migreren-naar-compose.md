@@ -20,7 +20,7 @@ zet zijn chat een paar minuten stil en verplaatst zijn accountdatabase.
 | `/opt/buzz-build/chat/` (scp-kopie) | image `CHAT_IMAGE`, gepinde tag |
 | `boomhuis-chat.service` (systemd) | service `chat` in de compose-stack |
 | `/opt/buzz-build/chat/chat.env` (root:600) | `.env` naast het compose-bestand |
-| `/var/lib/boomhuis/auth.db` (+ `-wal`, `-shm`) | volume `boomhuis-chat-data` |
+| `/var/lib/boomhuis/auth.db` (+ `-wal`, `-shm`) | volume `ratatoskr-chat-data` |
 | `/var/lib/boomhuis/push_subs.json` | hetzelfde volume |
 
 De relay, postgres, redis en seaweedfs blijven staan waar ze staan, met hun
@@ -43,8 +43,8 @@ publiceert straks op dezelfde poort, alleen uit een container.
    `boomhuis` en staat de relay ineens leeg.
 
 3. **`.env` aanvullen** met de chat-regels uit `chat.env` (`BUZZ_PRIVATE_KEY`,
-   `BUZZ_ORCHESTRATOR_KEY`, `VAPID_PUBLIC`, `GITHUB_TOKEN`, `BOOMHUIS_URL`) en
-   `CHAT_IMAGE`. `BOOMHUIS_APP_TOKEN` gaat **niet** mee: dat is dood sinds
+   `BUZZ_ORCHESTRATOR_KEY`, `VAPID_PUBLIC`, `GITHUB_TOKEN`, `RATATOSKR_URL`) en
+   `CHAT_IMAGE`. Het oude `APP_TOKEN` gaat **niet** mee: dat is dood sinds
    `inloggen-per-persoon`.
 
    Let op de twee bind-knoppen, want ze staan hier niet gelijk:
@@ -74,7 +74,7 @@ publiceert straks op dezelfde poort, alleen uit een container.
 
        docker compose ps -a        # staat er iets op 'Created'?
        docker compose up -d        # zet alles weer aan
-       vol=$(docker volume inspect -f '{{.Mountpoint}}' buzz-prod_boomhuis-chat-data)
+       vol=$(docker volume inspect -f '{{.Mountpoint}}' buzz-prod_ratatoskr-chat-data)
        sudo cp -a /var/lib/boomhuis/auth.db* /var/lib/boomhuis/push_subs.json "$vol"/
        sudo chown -R 10001:10001 "$vol"
 
@@ -92,7 +92,7 @@ publiceert straks op dezelfde poort, alleen uit een container.
 
 7. **Nameten.** Inloggen in de PWA, een kanaal openen, een bericht sturen. En:
 
-       BOOMHUIS_URL=https://boomhuis-relay.tail8f7877.ts.net bash chat/e2e/api.sh
+       RATATOSKR_URL=https://boomhuis-relay.tail8f7877.ts.net bash chat/e2e/api.sh
 
 ## Terug als het misgaat
 
@@ -104,3 +104,19 @@ De oude weg staat er nog:
 De systemd-unit leest nog steeds `/var/lib/boomhuis/auth.db` — dat bestand is
 gekopieerd, niet verplaatst. Ruim het pas op als de compose-kant een paar dagen
 staat.
+
+
+## Kwam je van een installatie die al in compose draaide?
+
+Dan heet het volume nog `…_boomhuis-chat-data` en het pad in de container nog
+`/var/lib/boomhuis`. Kopiëren, niet verplaatsen — het oude volume is je weg terug:
+
+    docker compose create chat        # maakt het nieuwe volume
+    oud=$(docker volume inspect -f '{{.Mountpoint}}' <project>_boomhuis-chat-data)
+    nieuw=$(docker volume inspect -f '{{.Mountpoint}}' <project>_ratatoskr-chat-data)
+    sudo cp -a "$oud"/. "$nieuw"/
+    sudo chown -R 10001:10001 "$nieuw"
+    docker compose up -d              # niet alleen `up -d chat`, zie stap 5
+
+Je `.env` mag de oude `BOOMHUIS_*`-namen houden: de app leest eerst
+`RATATOSKR_*` en valt daarop terug. Hernoemen mag, hoeft niet, en kan later.

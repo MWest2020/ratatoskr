@@ -1,11 +1,11 @@
-# Boomhuis — de hele installatie in één bestand.
+# Ratatoskr — de hele installatie in één bestand.
 #
 # Herkomst: vendored van block/buzz deploy/compose/compose.yml @ 4baccd53
 # (2026-08-22, https://github.com/block/buzz), met drie gesanctioneerde
 # afwijkingen:
 #   1. seaweedfs i.p.v. minio (openspec 2026-08-27-buzz-relay-minio-seaweedfs —
 #      MinIO OSS is gearchiveerd sinds 2026-04-25);
-#   2. de boomhuis-chat als extra service (openspec uitrol-voor-derden);
+#   2. de Ratatoskr-chat als extra service (openspec uitrol-voor-derden);
 #   3. elke gepubliceerde poort krijgt een EXPLICIET bind-adres, standaard
 #      127.0.0.1. Upstream publiceert "3000:3000" — dat is 0.0.0.0, gemeten met
 #      `ss -ltnp` op de VM. Twee knoppen, want twee soorten publiek: BIND_ADDR
@@ -166,12 +166,12 @@ services:
       BIND_HOST: 0.0.0.0            # binnen de container; publiceren doet `ports`
       PORT: "8090"
       BUZZ_RELAY_URL: ws://relay:3000
-      BOOMHUIS_AUTH_DB: /var/lib/boomhuis/auth.db
-      PUSH_SUBS_PATH: /var/lib/boomhuis/push_subs.json
+      RATATOSKR_AUTH_DB: /var/lib/ratatoskr/auth.db
+      PUSH_SUBS_PATH: /var/lib/ratatoskr/push_subs.json
     ports:
       - "${BIND_ADDR:-127.0.0.1}:${CHAT_HTTP_PORT:-8090}:8090"
     volumes:
-      - boomhuis-chat-data:/var/lib/boomhuis
+      - ratatoskr-chat-data:/var/lib/ratatoskr
     depends_on:
       relay:
         condition: service_healthy
@@ -182,9 +182,9 @@ services:
 volumes:
   # Staat overleeft een herinstallatie: dit zijn named volumes, geen hostpaden.
   # `docker compose down` laat ze staan; alleen `down -v` gooit ze weg.
-  boomhuis-chat-data:
+  ratatoskr-chat-data:
     labels:
-      com.buzz.volume: boomhuis-chat
+      com.buzz.volume: ratatoskr-chat
   buzz-postgres-data:
     labels:
       com.buzz.volume: postgres
