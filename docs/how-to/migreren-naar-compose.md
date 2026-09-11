@@ -65,6 +65,15 @@ publiceert straks op dezelfde poort, alleen uit een container.
    het maken en kopieer erin:
 
        docker compose create chat
+
+   **Let op:** `create` raakt niet alleen de chat. Elke service waarvan de config
+   veranderde wordt óók opnieuw aangemaakt — en blijft dan in `Created` staan,
+   dus gestopt. De relay valt daaronder (zijn `ports` kreeg een expliciet
+   bind-adres). Gemeten 2026-09-11: de relay lag daardoor ruim een minuut plat en
+   alle agents waren los. Controleer direct na deze stap:
+
+       docker compose ps -a        # staat er iets op 'Created'?
+       docker compose up -d        # zet alles weer aan
        vol=$(docker volume inspect -f '{{.Mountpoint}}' buzz-prod_boomhuis-chat-data)
        sudo cp -a /var/lib/boomhuis/auth.db* /var/lib/boomhuis/push_subs.json "$vol"/
        sudo chown -R 10001:10001 "$vol"
@@ -75,7 +84,7 @@ publiceert straks op dezelfde poort, alleen uit een container.
 
 6. **Starten en kijken:**
 
-       docker compose up -d chat
+       docker compose up -d          # niet alleen `up -d chat`, zie stap 5
        docker compose logs -f chat
 
    Verwacht `[chat] luistert op 0.0.0.0:8090` en géén setup-link — die verschijnt

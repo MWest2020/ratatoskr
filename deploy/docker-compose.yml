@@ -8,8 +8,10 @@
 #   2. de boomhuis-chat als extra service (openspec uitrol-voor-derden);
 #   3. elke gepubliceerde poort krijgt een EXPLICIET bind-adres, standaard
 #      127.0.0.1. Upstream publiceert "3000:3000" — dat is 0.0.0.0, gemeten met
-#      `ss -ltnp` op de VM. Wie het verder wil openzetten, zet BIND_ADDR; dat is
-#      een keuze van de beheerder, geen bijwerking van de default.
+#      `ss -ltnp` op de VM. Twee knoppen, want twee soorten publiek: BIND_ADDR
+#      (chat, hoort achter een proxy of tunnel) en RELAY_BIND_ADDR (relay, waar
+#      agents en andere machines rechtstreeks mee praten). Openzetten is een
+#      keuze van de beheerder, geen bijwerking van de default.
 # Bij een upstream-upgrade: nieuwe kopie nemen en deze drie opnieuw aanbrengen.
 #
 # Alles instelbaars staat in .env (zie .env.example). Images zijn gepind — nooit
