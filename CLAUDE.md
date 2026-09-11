@@ -32,7 +32,10 @@ zelf niets uit — executie is habitat, kennis is handbook.
 
 ## Conventies
 
-- Nederlands in proza; technisch jargon en citaten blijven Engels.
+- **Code is Engels, proza is Nederlands** — inclusief de commentaren, want die
+  leggen uit *waarom* iets zo is. Zie [ADR-0001](docs/adr/0001-code-in-het-engels.md)
+  voor wat er precies onder "code" valt en wat niet. Bestaande Nederlandse
+  identifiers worden in één aparte change omgezet, niet gaandeweg.
 - Python via `uv`, nooit `pip`. Bestanden ≤ 200 regels. Bare scripts, geen
   ceremonie.
 - Immutable images: `BUZZ_IMAGE` gepind per SHA of semver-tag, nooit `:main` of
