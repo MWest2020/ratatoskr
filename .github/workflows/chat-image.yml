@@ -1,0 +1,70 @@
+# Publiceert de boomhuis-chat als image. Eén trigger: een tag `chat-v<versie>`.
+#
+# Waarom geen build op elke push naar main: een image dat vanzelf verschijnt
+# verleidt tot `:latest`, en dan weet een installatie niet meer wélke boomhuis er
+# draait. Een tag is een bewuste handeling en levert precies één onveranderlijke
+# versie. De digest staat in de run-samenvatting; die hoort in .env, niet de tag,
+# als je het echt vast wilt nagelen.
+name: chat-image
+
+on:
+  push:
+    tags: ["chat-v*"]
+  workflow_dispatch:
+    inputs:
+      versie:
+        description: "versie zonder chat-v-prefix, bv. 0.1.0-rc1"
+        required: true
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Versie bepalen
+        id: v
+        run: |
+          if [ -n "${{ inputs.versie }}" ]; then
+            echo "versie=${{ inputs.versie }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "versie=${GITHUB_REF_NAME#chat-v}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Bouwen en publiceren
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: chat/Dockerfile
+          push: true
+          # Geen `latest`. Twee tags: de versie, en de commit — zodat je van een
+          # draaiende container altijd terug kunt naar de broncode.
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/boomhuis-chat:${{ steps.v.outputs.versie }}
+            ghcr.io/${{ github.repository_owner }}/boomhuis-chat:sha-${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Samenvatting
+        run: |
+          {
+            echo "### boomhuis-chat ${{ steps.v.outputs.versie }}"
+            echo
+            echo '```'
+            echo "CHAT_IMAGE=ghcr.io/${{ github.repository_owner }}/boomhuis-chat:${{ steps.v.outputs.versie }}"
+            echo "digest: ${{ steps.build.outputs.digest }}"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

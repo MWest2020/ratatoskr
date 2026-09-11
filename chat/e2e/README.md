@@ -19,6 +19,26 @@ wijst naar de browser.
 
 Alle drie geven exitcode 0 bij succes, dus ze zijn te ketenen.
 
+`BOOMHUIS_URL` mag mét of zonder slash aan het eind — de scripts strippen 'm.
+
+## Wat wél en niet tegen een VERSE installatie draait
+
+Gemeten 2026-09-11 tegen een schone VM (change `uitrol-voor-derden`):
+
+- `api.sh` — **draait**, 38/38 groen. Hij test wat een vreemde niet mag, en dat
+  hangt niet van inhoud af.
+- `inloggen.js` — **draait voor het installatie-deel**: setup-link, eerste
+  account, in de app, CSRF, uitloggen, opnieuw inloggen. De assertions die
+  kanalen of berichten nodig hebben falen, want een verse relay heeft die niet.
+- `ui.js`, `deeplink.js`, `offline-boot.js`, `xss.js` — **draaien niet**: ze zijn
+  geschreven tegen Marks installatie (meer dan vijf kanalen, een kanaal dat
+  `bouw` heet, een kanaal `general`, GitHub-PR-inhoud). Op een verse installatie
+  is dat geen falende test maar een ontbrekende fixture.
+
+Wie deze suites tegen een verse installatie wil draaien, heeft eerst een
+gezaaide fixture nodig (kanalen + berichten). Dat is eigen werk, geen bijwerking
+van een uitrol-change.
+
 ## Waarom `xss.js` bestaat
 
 De Repos-lade rendert repo-beschrijvingen, PR-titels, branchnamen, bestandsnamen

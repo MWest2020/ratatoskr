@@ -13,6 +13,13 @@ Het gedeelde schrijf-token is weg.
 De kortste weg, en de weg die het altijd doet: op de machine waar de
 installatie draait.
 
+Een compose-installatie (zie [installeren.md](installeren.md)):
+
+    cd /opt/boomhuis
+    docker compose exec chat python3 adminctl.py eigenaar <jouw-naam>
+
+Marks eigen installatie draait (nog) als systemd-unit uit een checkout:
+
     cd /opt/buzz-build/chat
     sudo python3 adminctl.py eigenaar <jouw-naam>
 
@@ -69,8 +76,8 @@ hoeft niet opnieuw in te loggen.
 Wachtwoord-vergeten zit niet in de app (daar heb je per definitie geen sessie
 voor); vanaf de host wel:
 
-    cd /opt/buzz-build/chat
-    sudo python3 adminctl.py wachtwoord <naam>
+    docker compose exec chat python3 adminctl.py wachtwoord <naam>   # compose
+    cd /opt/buzz-build/chat && sudo python3 adminctl.py wachtwoord <naam>
 
 Dat zet een nieuw wachtwoord en trekt alle sessies van die persoon in — wie het
 oude had, is eruit.

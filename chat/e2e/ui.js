@@ -2,7 +2,7 @@
 //   NODE_PATH=<pad>/node_modules node chat/e2e/ui.js
 const { chromium, devices } = require('playwright');
 const EXE='/home/agent/.cache/ms-playwright/chromium-1234/chrome-linux64/chrome';
-const URL=process.env.BOOMHUIS_URL || 'https://boomhuis-relay.tail8f7877.ts.net/';
+const URL=(process.env.BOOMHUIS_URL || 'https://boomhuis-relay.tail8f7877.ts.net').replace(/\/+$/,'');
 // Sinds `inloggen-per-persoon` komt er zonder sessie geen app in beeld. Geef een
 // account mee; zonder dat kan deze suite niets bewijzen en zegt hij dat.
 const NAAM=process.env.BOOMHUIS_NAAM, WW=process.env.BOOMHUIS_WW;
@@ -21,7 +21,7 @@ const t=(naam,cond,extra='')=>{ if(cond){ok++;console.log(`  ok   ${naam}`);} el
     console.log('BOOMHUIS_NAAM/BOOMHUIS_WW ontbreken — inloggen kan niet, suite gestopt.');
     await b.close(); process.exit(2);
   }
-  await p.goto(URL+'login',{waitUntil:'load',timeout:45000});
+  await p.goto(URL+'/login',{waitUntil:'load',timeout:45000});
   await p.fill('#naam',NAAM); await p.fill('#wachtwoord',WW);
   await p.click('#knop');
   await p.waitForTimeout(7000);
