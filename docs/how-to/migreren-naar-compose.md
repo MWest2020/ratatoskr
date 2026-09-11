@@ -90,9 +90,13 @@ publiceert straks op dezelfde poort, alleen uit een container.
    Verwacht `[chat] luistert op 0.0.0.0:8090` en géén setup-link — die verschijnt
    alleen als er nog geen account is, dus als je hem ziet, is stap 5 misgegaan.
 
-7. **Nameten.** Inloggen in de PWA, een kanaal openen, een bericht sturen. En:
+7. **Nameten.** Niet met één suite maar met alle drie — een uitrol is pas groen
+   als ook een echte browser 'm ziet werken:
 
-       RATATOSKR_URL=https://boomhuis-relay.tail8f7877.ts.net bash chat/e2e/api.sh
+       NAAM=… WW=… RATATOSKR_URL=https://… bash chat/e2e/na-uitrol.sh
+
+   Waarom drie lagen: `api.sh` alleen gaf op 11 september een halve dag 38/38
+   groen terwijl de app stilstond. Zie `chat/e2e/README.md`.
 
 ## Terug als het misgaat
 
