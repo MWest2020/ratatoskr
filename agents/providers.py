@@ -26,9 +26,22 @@ ENV_KEEP = ("PATH", "HOME", "LANG", "LC_ALL", "TZ", "TERM",
 PATH_TOOLS = {"Read", "Grep", "Glob", "Edit", "Write", "NotebookEdit"}
 
 
-def scoped(tools):
-    """Pad-tools krijgen een werkboom-scope; de rest blijft zoals hij is."""
-    return [f"{t}(./**)" if t in PATH_TOOLS else t for t in (tools or [])]
+# Alleen deze drie mogen een tweede pad krijgen: lezen buiten de werkboom is
+# soms nodig (een skill-forge-oordeel over een clip die in de zettelkast ligt),
+# schrijven buiten de werkboom nooit.
+LEES_TOOLS = ("Read", "Grep", "Glob")
+
+
+def scoped(tools, extra=None):
+    """Pad-tools krijgen een werkboom-scope; de rest blijft zoals hij is.
+
+    `extra` = expliciet gedeclareerde EXTRA leespaden (per sessietype in
+    sessies.yml). Elk pad wordt een eigen, even strakke scope — niet een
+    verruiming van de werkboom-scope, maar een tweede vergunning ernaast."""
+    uit = [f"{t}(./**)" if t in PATH_TOOLS else t for t in (tools or [])]
+    for pad in (extra or []):
+        uit += [f"{t}({pad.rstrip('/')}/**)" for t in LEES_TOOLS if t in (tools or [])]
+    return uit
 
 
 def _target(inp):

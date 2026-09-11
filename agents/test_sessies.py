@@ -11,6 +11,7 @@ import time
 import unittest
 
 import prompts
+import providers
 import sessies
 
 CFG = {
@@ -94,6 +95,23 @@ class Clausule(unittest.TestCase):
 
     def test_geen_types_geen_clausule(self):
         self.assertEqual(prompts.sessie_clausule({"types": {}}, "odin"), "")
+
+
+class ExtraPaden(unittest.TestCase):
+    """Een tweede leespad is een tweede vergunning, geen verruiming van de eerste."""
+
+    def test_leespaden_krijgen_een_eigen_scope(self):
+        uit = providers.scoped(["Read", "Grep", "WebFetch"], ["/data/bron/"])
+        self.assertIn("Read(./**)", uit)
+        self.assertIn("Read(/data/bron/**)", uit)
+        self.assertNotIn("Read", uit)
+
+    def test_schrijftools_krijgen_nooit_een_extra_pad(self):
+        uit = providers.scoped(["Read", "Write"], ["/data/bron"])
+        self.assertNotIn("Write(/data/bron/**)", uit)
+
+    def test_zonder_extra_blijft_het_zoals_het_was(self):
+        self.assertEqual(providers.scoped(["Read", "Bash"]), ["Read(./**)", "Bash"])
 
 
 class Grenzen(unittest.TestCase):

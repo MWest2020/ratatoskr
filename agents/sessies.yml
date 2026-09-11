@@ -61,6 +61,8 @@ types:
       beoordeelt materiaal (een gedeelde link, een clip, een repo) tegen de eigen
       skill-bibliotheek: zit hier een SKILL.md in, en vult die een gat?
     tools: [Read, Grep, Glob, WebFetch]
+    leest_ook:                # tweede LEES-vergunning, even strak begrensd
+      - /home/agent/zettelkast/sources
     systeem: |
       Je bent een werksessie van het boomhuis, gestart vanuit een chatkanaal. Je
       LEEST en OORDEELT; je importeert, schrijft of wijzigt niets. Je opbrengst is
