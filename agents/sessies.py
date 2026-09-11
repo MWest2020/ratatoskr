@@ -12,17 +12,21 @@ kwartier de chat niet.
 """
 import json
 import os
-import re
 import signal
 import subprocess
 import time
 
 import bootstrap
 import providers
+import session_gate
 
 CLAUDE = os.environ.get("CLAUDE_BIN", "claude")
 RUNS = os.environ.get("SESSIE_RUNS", "/tmp/boomhuis-sessies")
-MARKER = re.compile(r"^[ \t]*!sessie[ \t]+([a-z0-9_-]+)[ \t]*(.*)$", re.M | re.I)
+# Marker lezen/knippen en de machtiging staan in session_gate.py (puur, Engels);
+# hier blijft alleen wat processen en bestanden aanraakt.
+lees_marker = session_gate.read_marker
+knip_marker = session_gate.strip_marker
+
 # Nooit aan een sessie, ook niet als een type ze per ongeluk in `tools` zet.
 VERBODEN = ["Write", "Edit", "NotebookEdit", "Bash", "Task", "KillShell"]
 PROGRESS_MAX, PROGRESS_GAP = 6, 25
@@ -36,36 +40,6 @@ def laad(here):
         return {"types": {}}
 
 
-def lees_marker(tekst):
-    """(type, opdracht) van de EERSTE `!sessie`-regel, of None. Alleen de eerste:
-    één bericht zet hoogstens één sessie in gang."""
-    m = MARKER.search(tekst or "")
-    return (m.group(1).lower(), m.group(2).strip()) if m else None
-
-
-def knip_marker(tekst):
-    """De marker uit een te posten antwoord halen. Een geposte `!sessie`-regel zou
-    later opnieuw gelezen kunnen worden; knippen maakt er een instructie van die
-    precies één keer telt."""
-    return MARKER.sub("", tekst or "", count=1).strip()
-
-
-def mag_starten(cfg, typ, wie, lopend):
-    """(ok, reden). Weigeren zonder reden bestaat niet: een stille weigering is
-    niet te onderscheiden van een sessie die niets vond."""
-    types = (cfg or {}).get("types") or {}
-    if typ not in types:
-        namen = ", ".join(sorted(types)) or "(geen)"
-        return False, f"onbekend sessietype '{typ}' — beschikbaar: {namen}"
-    if wie not in (types[typ].get("starters") or []):
-        return False, f"@{wie} mag het type '{typ}' niet starten"
-    if any(s["wie"] == wie for s in lopend):
-        return False, f"@{wie} heeft al een sessie lopen — die eerst afwachten"
-    if len(lopend) >= int(cfg.get("max_gelijktijdig") or 2):
-        return False, "er lopen al maximaal sessies — later opnieuw"
-    return True, ""
-
-
 class Register:
     """De lopende sessies. Het runbestand ís de status; er is geen aparte wachtrij."""
 
@@ -75,9 +49,12 @@ class Register:
         self.lopend = []
         os.makedirs(runs, exist_ok=True)
 
-    def start(self, typ, opdracht, wie, cname, cid):
-        """Start losgekoppeld. Return (sessie, "") of (None, reden)."""
-        ok, reden = mag_starten(self.cfg, typ, wie, self.lopend)
+    def start(self, typ, opdracht, starter, requester, cname, cid, bericht_id=""):
+        """Start losgekoppeld. Return (sessie, "") of (None, reden).
+
+        `starter` schreef de marker, `requester` is degene namens wie het gaat —
+        bij een mens die zelf typt zijn ze gelijk."""
+        ok, reden = session_gate.may_start(self.cfg, typ, starter, requester, self.lopend)
         if not ok:
             return None, reden
         t = self.cfg["types"][typ]
@@ -92,10 +69,20 @@ class Register:
                "--disallowedTools", ",".join(VERBODEN)]
         if t.get("model"):
             cmd += ["--model", t["model"]]
-        pad = os.path.join(self.runs, f"{typ}-{wie}-{int(time.time())}.jsonl")
+        # Bestandsnaam op de REQUESTER: anders heet elke door odin gestarte sessie
+        # odin, en is achteraf niet te zien voor wie hij liep.
+        pad = os.path.join(self.runs, f"{typ}-{requester}-{int(time.time())}.jsonl")
         prompt = (t.get("prompt") or "{opdracht}").replace("{opdracht}", opdracht)
         try:
             uit = open(pad, "w")
+            # Eerste regel: wie, namens wie, waar. Vóór het proces start, zodat de
+            # herkomst er ook staat als de sessie meteen sneuvelt. De oogst slaat
+            # onbekende types over, dus dit stoort niets.
+            json.dump({"type": "boomhuis_sessie", "sessietype": typ, "starter": starter,
+                       "requester": requester, "kanaal": cname, "bericht": bericht_id,
+                       "gestart": int(time.time())}, uit)
+            uit.write("\n")
+            uit.flush()
             proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=uit,
                                     stderr=subprocess.DEVNULL, text=True,
                                     cwd=werkmap, env=providers.agent_env(),
@@ -107,9 +94,10 @@ class Register:
             proc.stdin.close()
         except BrokenPipeError:
             pass
-        s = {"typ": typ, "wie": wie, "cid": cid, "cname": cname, "proc": proc,
+        s = {"typ": typ, "starter": starter, "requester": requester,
+             "cid": cid, "cname": cname, "proc": proc,
              "pad": pad, "uit": uit, "offset": 0, "t0": time.time(),
-             "identiteit": t.get("identiteit") or wie, "n": 0, "tp": 0.0,
+             "identiteit": t.get("identiteit") or starter, "n": 0, "tp": 0.0,
              "max_s": int(t.get("max_seconden") or 900), "res": None}
         self.lopend.append(s)
         return s, ""

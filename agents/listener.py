@@ -76,21 +76,26 @@ def main():
         if c:
             send(s["cid"], tekst, c["nsec"], c["npub"])
 
-    def probeer_sessie(tekst, wie, cname, cid):
-        """Een `!sessie`-marker uitvoeren. Weigeringen worden gemeld, niet
-        ingeslikt — een stille weigering lijkt op een sessie die niets vond."""
+    def probeer_sessie(tekst, starter, requester, cname, cid, bericht_id=""):
+        """Een `!sessie`-marker uitvoeren. `starter` schreef de marker, `requester`
+        is degene namens wie het gaat. Weigeringen worden gemeld, niet ingeslikt —
+        een stille weigering lijkt op een sessie die niets vond."""
         mk = sessies.lees_marker(tekst)
         if not mk:
             return
         typ, opdracht = mk
-        s, reden = reg.start(typ, opdracht, wie, cname, cid)
+        s, reden = reg.start(typ, opdracht, starter, requester, cname, cid, bericht_id)
         if not s:
-            print(f"[listener] sessie geweigerd ({wie}/{typ}): {reden}", flush=True)
+            print(f"[listener] sessie geweigerd ({starter}→{requester}/{typ}): {reden}",
+                  flush=True)
             c = AGENTS.get(HUB) or next(iter(AGENTS.values()))
             send(cid, f"⛔ geen sessie: {reden}", c["nsec"], c["npub"])
             return
-        print(f"[listener] sessie {typ} gestart door {wie} in #{cname}", flush=True)
-        sessie_post(s, f"▶️ sessie `{typ}` gestart (max {s['max_s'] // 60} min) — "
+        namens = "" if starter == requester else f" namens @{requester}"
+        print(f"[listener] sessie {typ} gestart door {starter}{namens} in #{cname}",
+              flush=True)
+        sessie_post(s, f"▶️ sessie `{typ}` gestart door @{starter}{namens} "
+                       f"(max {s['max_s'] // 60} min) — "
                        f"opdracht: {opdracht[:120] or '(geen)'}")
 
     reporting.report_missing_memberships(run, AGENTS, CHANNELS, PUB2NAME)
@@ -137,7 +142,8 @@ def main():
                 if m.get("pubkey") in AGENT_PUBS:
                     continue
                 content = m.get("content", "")
-                probeer_sessie(content, schrijver, cname, cid)   # mens start er zelf een
+                # Mens typt de marker zelf: starter en requester zijn gelijk.
+                probeer_sessie(content, schrijver, schrijver, cname, cid, mid)
                 # (a) @mentions van hier-gescopte/relay-lid-agents; (b) anders: vervolg.
                 targets = [h for h in AGENTS
                            if prompts.mentioned(content, h) and scoped(h, cname, cid)]
@@ -168,7 +174,8 @@ def main():
                     try:
                         r = providers.run(cfg.get("provider"),
                                           cfg["system"] + prompts.LIMIT_CLAUSE
-                                          + prompts.sessie_clausule(reg.cfg, handle), p,
+                                          + prompts.sessie_clausule(reg.cfg, handle,
+                                                                    schrijver), p,
                                           model=cfg.get("model"), allow=cfg.get("allow"),
                                           deny=cfg.get("deny"),
                                           progress=reporting.progress_poster(
@@ -181,7 +188,8 @@ def main():
                     if tekst and send(cid, tekst, cfg["nsec"], cfg["npub"]):
                         print(f"[listener] {handle} antwoordde in #{cname} ({reason})", flush=True)
                     if mk:
-                        probeer_sessie(ans, handle, cname, cid)
+                        # Odin schreef de marker, maar de vraag kwam van `schrijver`.
+                        probeer_sessie(ans, handle, schrijver, cname, cid, mid)
                     reporting.report_run(send, CHANNELS, handle, cname, cfg, r)
         reg.tick(sessie_post)   # voortgang/afronding van lopende werksessies
         time.sleep(POLL)

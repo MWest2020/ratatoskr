@@ -30,6 +30,20 @@ Een agent kan het ook zelf: schrijft odin de marker in zijn antwoord, dan wordt
 die regel uit het geposte bericht geknipt en start de sessie. Zo kun je vragen
 "odin, laat een sessie hiernaar kijken" in plaats van het commando zelf te typen.
 
+**Wie start, en namens wie.** Een sessie kent twee rollen. De *starter* schreef de
+marker; de *aanvrager* is wie het bericht stuurde dat die beurt in gang zette.
+Typ je 'm zelf, dan zijn ze gelijk. Vraagt odin er een voor jou, dan staat er
+"gestart door @odin namens @mark", en het runbestand heet ook naar jou — anders
+heet elke door odin gestarte sessie odin en is achteraf niet te zien voor wie hij
+liep. Beide moeten bij het type op `starters` staan; de limiet van één lopende
+sessie geldt **per aanvrager**, zodat twee mensen tegelijk iets aan odin kunnen
+vragen.
+
+`orchestrator` staat bewust op `starters` (besluit Mark, 2026-09-11). Wat dat
+kost: die sleutel wordt gedeeld door dispatch, jobs en terminal-sessies, dus bij
+een sessie met `orchestrator` als aanvrager stopt de herleiding bij
+"automatisering op agent-lxc" en niet bij een persoon.
+
 De chat blijft gewoon werken terwijl een sessie loopt — hij draait losgekoppeld.
 
 ## Wat een sessie mag
@@ -57,7 +71,7 @@ prompt-truc.
 
 - **Tijdbudget** per type (`zettelkast`: 15 min). Erover → de sessie wordt
   gestopt en meldt dát, met wat er tot dan gedaan is.
-- **Hoogstens twee sessies tegelijk**, en één per starter. Vraag je een tweede
+- **Hoogstens twee sessies tegelijk**, en één per aanvrager. Vraag je een tweede
   terwijl de eerste loopt, dan krijg je dat te horen.
 - **Een stille sessie bestaat niet.** Faalt hij, of komt hij leeg terug, dan
   staat de reden in het kanaal. Anders leest een storing als "niets gevonden".

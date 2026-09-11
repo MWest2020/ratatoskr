@@ -105,7 +105,7 @@ def gh_json(args):
     return json.loads(p.stdout or "[]")
 
 
-def pr_cards(owner, merged_days, now):
+def pr_cards(owner, merged_days, now, ignore=()):
     velden = "repository,number,title,url,isDraft,updatedAt,author"
     rows = gh_json(["search", "prs", f"--owner={owner}", "--state=open",
                     "--limit", "40", "--json", velden])
@@ -115,6 +115,8 @@ def pr_cards(owner, merged_days, now):
          "--limit", "40", "--json", velden])]
     cards = []
     for r in rows:
+        if r["repository"]["name"] in ignore:
+            continue
         pr = {"merged": r.get("merged", False), "draft": r.get("isDraft")}
         ts = time.mktime(time.strptime(r["updatedAt"][:19], "%Y-%m-%dT%H:%M:%S"))
         cards.append({"id": f"pr:{r['repository']['name']}:{r['number']}",
@@ -155,7 +157,8 @@ def build(cfg, now=None):
     cards, errors = [], []
     cards += openspec_cards(src["openspec_glob"], now)
     try:
-        cards += pr_cards(src["github_owner"], src.get("merged_days", 3), now)
+        cards += pr_cards(src["github_owner"], src.get("merged_days", 3), now,
+                          set(src.get("ignore_repos") or ()))
     except Exception as e:
         errors.append(f"PR's niet opgehaald: {e}")
     try:

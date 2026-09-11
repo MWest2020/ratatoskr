@@ -11,26 +11,26 @@
 
 ## 1. Werksessies: aanleiding
 
-- [ ] 1.1 `bootstrap.py`: `rol` per identiteit uit `identities.yml` beschikbaar
+- [x] 1.1 `bootstrap.py`: `rol` per identiteit uit `identities.yml` beschikbaar
       voor de listener.
-- [ ] 1.2 `sessies.mag_starten`: starter én aanleiding op `starters`, aanleiding
+- [x] 1.2 `sessies.mag_starten`: starter én aanleiding op `starters`, aanleiding
       `rol: mens`, limiet per aanleiding. Een weigering noemt welke voorwaarde
       faalde.
-- [ ] 1.3 `Register.start`: runbestand `{typ}-{aanleiding}-{ts}.jsonl`, met als
+- [x] 1.3 `Register.start`: runbestand `{typ}-{aanleiding}-{ts}.jsonl`, met als
       eerste regel starter, aanleiding, bericht-id en kanaal.
-- [ ] 1.4 `listener.py`: bij een agent-antwoord schrijver en id van het
+- [x] 1.4 `listener.py`: bij een agent-antwoord schrijver en id van het
       aansturende bericht doorgeven; startpost en logregel "gestart door
       @starter namens @aanleiding".
-- [ ] 1.5 `prompts.sessie_clausule`: alleen types die voor deze aanleiding
+- [x] 1.5 `prompts.sessie_clausule`: alleen types die voor deze aanleiding
       startbaar zijn.
-- [ ] 1.6 `sessies.yml`: `orchestrator` blijft op `starters` (besluit Mark
+- [x] 1.6 `sessies.yml`: `orchestrator` blijft op `starters` (besluit Mark
       2026-09-11) — geen wijziging, wel vastleggen in de how-to waaróm, en wat
       het kost voor de herleiding.
-- [ ] 1.7 Tests: agent namens niet-starter geweigerd; aanleiding `orchestrator`
+- [x] 1.7 Tests: agent namens niet-starter geweigerd; aanleiding `orchestrator`
       toegestaan (staat op `starters`); twee mensen via odin tegelijk toegestaan;
       tweede sessie van dezelfde persoon via odin geweigerd; meta-regel wordt
       door de oogst overgeslagen; bestandsnaam.
-- [ ] 1.8 `docs/how-to/werksessies.md`: aanleiding, limiet per persoon, en de
+- [x] 1.8 `docs/how-to/werksessies.md`: aanleiding, limiet per persoon, en de
       grens dat webchat-berichten als `mark` tekenen.
 - [ ] 1.9 Live: odin start op Marks verzoek een sessie; runbestand en startpost
       noemen `mark` als aanleiding.
