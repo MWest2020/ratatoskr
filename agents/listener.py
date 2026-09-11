@@ -52,8 +52,12 @@ def main():
     # Vasthouden zolang de listener leeft: sluiten geeft het slot vrij.
     slot = bootstrap.alleen_ik()          # noqa: F841 — de referentie ís de functie
     if slot is None:
-        raise SystemExit("[listener] er draait al een listener op deze host — "
-                         "gestopt (twee listeners = elk bericht dubbel)")
+        # Exitcode 0, geen fout: onder systemd met `Restart=on-failure` zou een
+        # niet-nul exit een herstartlus van 10 seconden opleveren tegen een slot
+        # dat nooit vrijkomt. "Er draait er al een" is de gewenste uitkomst.
+        print("[listener] er draait al een listener op deze host — gestopt "
+              "(twee listeners = elk bericht dubbel)", flush=True)
+        return
     if not AGENTS:
         raise SystemExit("geen agents gespawnd (geen bron/nsec/npub-match)")
     # Reader = de ORCHESTRATOR: die bezit elk kanaal en ziet ze dus allemaal

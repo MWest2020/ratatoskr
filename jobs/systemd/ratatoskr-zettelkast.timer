@@ -9,7 +9,7 @@ OnCalendar=*-*-* 09:00
 # Persistent: een gemiste run haalt bij boot in en toont dán de actuele stand —
 # nog steeds bruikbaar, anders dan de datum-relatieve 'gedaan'-terugblik.
 Persistent=true
-Unit=boomhuis-job@zettelkast_dagelijks.service
+Unit=ratatoskr-job@zettelkast_dagelijks.service
 
 [Install]
 WantedBy=timers.target

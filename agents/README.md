@@ -28,7 +28,9 @@ in de **handbook** — single source of truth: `MWest2020/handbook` →
 
 De backend is bewust opgesplitst zodat elk bestand ≤200 regels blijft.
 
-Draaien: `bash agents/run.sh` (op agent-lxc; claude+buzz+age-key aanwezig).
+Draaien: `systemctl --user start ratatoskr-agents` (unit in `agents/systemd/`).
+Met de hand kan ook: `bash agents/run.sh`. Er draait er hoogstens één — een
+tweede instantie stopt met een melding en exitcode 0 (flock).
 
 ## Guardrails
 - Identiteit: closed relay (alleen registry-npubs doen mee).

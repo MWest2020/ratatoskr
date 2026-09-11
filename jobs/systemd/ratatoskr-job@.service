@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: EUPL-1.2
 [Unit]
-Description=Boomhuis recurring job %i
+Description=Ratatoskr recurring job %i
 
 [Service]
 Type=oneshot
@@ -9,5 +9,5 @@ Environment=SOPS_AGE_KEY_FILE=/home/agent/.config/sops/age/keys.txt
 Environment=BUZZ_RELAY_URL=ws://192.168.178.60:3000
 Environment=BUZZ_BIN=/home/agent/.local/bin/buzz
 Environment=CLAUDE_BIN=/home/agent/.npm-global/bin/claude
-WorkingDirectory=/home/agent/boomhuis
-ExecStart=/usr/bin/bash /home/agent/boomhuis/jobs/run-jobs.sh %i
+WorkingDirectory=/home/agent/ratatoskr
+ExecStart=/usr/bin/bash /home/agent/ratatoskr/jobs/run-jobs.sh %i

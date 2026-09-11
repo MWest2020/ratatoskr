@@ -1,0 +1,28 @@
+# SPDX-License-Identifier: EUPL-1.2
+# De chat-agent-listener als service. Stond tot 2026-09-11 alleen op de host; nu
+# in git, want een unit die nergens staat is een unit die niemand kan herstellen.
+#
+#   cp agents/systemd/ratatoskr-agents.service ~/.config/systemd/user/
+#   systemctl --user daemon-reload && systemctl --user enable --now ratatoskr-agents
+#
+# Eén listener per host wordt afgedwongen met een flock (agents/bootstrap.py):
+# een tweede instantie stopt met exitcode 0, zodat Restart=on-failure daar geen
+# herstartlus van maakt.
+[Unit]
+Description=Ratatoskr chat-agents listener (claude -p, definities uit handbook)
+After=network-online.target
+
+[Service]
+Type=simple
+Environment=PATH=/home/agent/.local/bin:/home/agent/.npm-global/bin:/usr/local/bin:/usr/bin:/bin
+Environment=SOPS_AGE_KEY_FILE=/home/agent/.config/sops/age/keys.txt
+Environment=BUZZ_RELAY_URL=ws://192.168.178.60:3000
+Environment=BUZZ_BIN=/home/agent/.local/bin/buzz
+Environment=CLAUDE_BIN=/home/agent/.npm-global/bin/claude
+WorkingDirectory=/home/agent/ratatoskr-listener
+ExecStart=/usr/bin/bash /home/agent/ratatoskr-listener/agents/run.sh
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=default.target

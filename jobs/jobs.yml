@@ -47,8 +47,8 @@ jobs:
       met "🏗️ Technical-depth check".
     context_cmd: |
       git -C /home/agent/zettelkast log --oneline -10 2>/dev/null
-      echo '--- boomhuis recente commits ---'
-      git -C /home/agent/boomhuis log --oneline -8 2>/dev/null
+      echo '--- ratatoskr recente commits ---'
+      git -C /home/agent/ratatoskr log --oneline -8 2>/dev/null
 
   standup:
     channel: bd75be15-28ad-4243-8d2a-a15ed50826e6
@@ -60,7 +60,7 @@ jobs:
       5-7 concrete punten, Nederlands, geen opsmuk. Begin met "☀️ Standup".
     context_cmd: |
       export BUZZ_PRIVATE_KEY="${NSEC_ORCHESTRATOR:-}"   # eigen sleutel, alleen om te LEZEN; gaat niet naar de output
-      cid() { python3 -c "import yaml,sys;print(yaml.safe_load(open('/home/agent/boomhuis/channels.yml'))['channels']['$1']['id'])" 2>/dev/null; }
+      cid() { python3 -c "import yaml,sys;print(yaml.safe_load(open('/home/agent/ratatoskr/channels.yml'))['channels']['$1']['id'])" 2>/dev/null; }
       # Een LEESFOUT (relay/auth/gh weg, of een onverwachte respons-shape) moet
       # ZICHTBAAR zijn, niet stil als "leeg" doorgaan — anders leest claude -p het
       # als "geen blokkades" (false-clear). Sorteer op created_at vóór de laatste N.
