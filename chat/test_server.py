@@ -92,6 +92,28 @@ class ServerTest(unittest.TestCase):
         except urllib.error.HTTPError as e:
             return e.code, e.read().decode()
 
+    # --- Android-app ---
+    def test_assetlinks_is_open(self):
+        """Chrome haalt dit op vóór er een gebruiker is; achter de sessie zou de
+        app altijd met een adresbalk starten."""
+        code, body = self.call("/.well-known/assetlinks.json", sessie=False)
+        self.assertEqual(code, 200)
+        d = json.loads(body)
+        self.assertEqual(d[0]["target"]["namespace"], "android_app")
+        self.assertTrue(d[0]["target"]["sha256_cert_fingerprints"][0].count(":") == 31,
+                        "vingerafdruk hoort 32 hex-paren te zijn")
+
+    def test_apk_zit_achter_de_sessie(self):
+        code, _ = self.call("/ratatoskr.apk", sessie=False)
+        self.assertEqual(code, 401)
+
+    def test_apk_zonder_bestand_is_404_geen_500(self):
+        """Een installatie zonder app hoort netjes te zeggen dat hij er niet is."""
+        code, body = self.call("/ratatoskr.apk")
+        self.assertIn(code, (200, 404))
+        if code == 404:
+            self.assertIn("geen app", body)
+
     # --- lezen zit achter de sessie ---
     LEESROUTES = ("/api/channels", "/api/agents", "/api/channel-members",
                   "/api/push/vapid", "/api/overview", "/api/repos",

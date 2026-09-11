@@ -12,7 +12,14 @@ sw.js staat op root-scope zodat de service worker de hele app kan controleren.
 import json
 import os
 
+import instellingen
+
 HERE = os.path.dirname(os.path.abspath(__file__))
+# Waar de Android-app staat. NIET in de image: een APK is per installatie
+# (hij is ondertekend voor één origin), dus hij hoort bij de staat, niet bij de
+# code. Leeg of leeg gebleven map = de route bestaat gewoon niet.
+APK_DIR = instellingen.lees("APK_DIR", "/var/lib/ratatoskr/apk")
+APK_NAAM = "ratatoskr.apk"
 
 BESTANDEN = {
     "/app.css": ("app.css", "text/css"),
@@ -31,7 +38,27 @@ BESTANDEN = {
     "/icon-192.png": ("icon-192.png", "image/png"),
     "/icon-512.png": ("icon-512.png", "image/png"),
     "/apple-touch-icon.png": ("apple-touch-icon.png", "image/png"),
+    # Android-app: Chrome haalt dit op VÓÓR er een gebruiker is. Statics staan
+    # in server.py vóór de sessie-gate en dit pad begint niet met /api/, dus het
+    # is open — en dat moet ook. Klopt de vingerafdruk niet met de sleutel
+    # waarmee de APK ondertekend is, dan start de app mét adresbalk: zichtbaar
+    # fout, niet stil.
+    "/.well-known/assetlinks.json": ("well-known/assetlinks.json", "application/json"),
 }
+
+
+def serveer_apk(h):
+    """De Android-app aanbieden. Achter de sessie: wie bij de chat kan, kan bij
+    de app — en een APK is precies het soort bestand dat je niet aan vreemden
+    geeft. Return True als er iets verstuurd is."""
+    pad = os.path.join(APK_DIR, APK_NAAM)
+    try:
+        with open(pad, "rb") as f:
+            inhoud = f.read()
+    except OSError:
+        return h._send(404, json.dumps({"error": "geen app geïnstalleerd op deze server"})) or True
+    h._send(200, inhoud, "application/vnd.android.package-archive")
+    return True
 
 
 def serveer(h, pad):

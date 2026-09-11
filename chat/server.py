@@ -65,6 +65,10 @@ class H(BaseHTTPRequestHandler):
                 return self._send(200, f.read(), "text/html; charset=utf-8")
         if statics.serveer(self, u.path):
             return None
+        if u.path == "/ratatoskr.apk":
+            if auth_routes.gate(self, u.path, schrijft=False) is None:
+                return None
+            return statics.serveer_apk(self) and None
         if u.path.startswith("/api/"):
             # Lezen zit óók achter de sessie: in deze routes staan kanaalnamen,
             # berichten en agent-verkeer. Zonder tailnet ervoor betekent "lezen
