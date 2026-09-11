@@ -82,6 +82,22 @@ class Machtiging(unittest.TestCase):
         self.assertEqual(sessies.mag_starten(CFG, "zettelkast", "odin", []), (True, ""))
 
 
+class EenListener(unittest.TestCase):
+    """Twee listeners = elk bericht dubbel beantwoord en elke sessie dubbel
+    gestart. Gemeten 2026-09-11 in #architectuur: één marker, twee sessies."""
+
+    def test_tweede_instantie_krijgt_niets(self):
+        import bootstrap
+        pad = os.path.join(tempfile.mkdtemp(), "slot")
+        eerste = bootstrap.alleen_ik(pad)
+        self.assertIsNotNone(eerste)
+        self.assertIsNone(bootstrap.alleen_ik(pad))
+        eerste.close()                      # slot vrij
+        tweede = bootstrap.alleen_ik(pad)
+        self.assertIsNotNone(tweede)
+        tweede.close()
+
+
 class Clausule(unittest.TestCase):
     """Een agent die geen starter is, hoort niet te lezen dat hij sessies kan starten."""
 
