@@ -11,11 +11,11 @@
 - [x] 2.3 `.env.example` en de how-to's op de nieuwe namen
 
 ## 3. De draaiende installatie
-- [ ] 3.1 Kopieerpad voor het volume in `migreren-naar-compose.md`
-- [ ] 3.2 Uitvoeren: nieuw image, volume gekopieerd, inloggen werkt nog
+- [x] 3.1 Kopieerpad voor het volume in `migreren-naar-compose.md`
+- [x] 3.2 Uitvoeren: nieuw image, volume gekopieerd, inloggen werkt nog
 - [x] 3.3 systemd-units en checkout-map op agent-lxc
 
 ## 4. Repo
 - [x] 4.1 GitHub-repo hernoemen; remotes bijwerken
 - [x] 4.2 README, `CLAUDE.md`, `openspec/project.md`
-- [ ] 4.3 Change archiveren
+- [x] 4.3 Change archiveren
