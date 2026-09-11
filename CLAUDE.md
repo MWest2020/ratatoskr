@@ -1,13 +1,13 @@
-# Werken in de Boomhuis-repo
+# Werken in de Ratatoskr-repo
 
-Dit is het conventie-bestand voor wie in *deze* repo (`MWest2020/boomhuis`) werkt.
+Dit is het conventie-bestand voor wie in *deze* repo (`MWest2020/ratatoskr`) werkt.
 Mandaten voor chat-native agents zijn iets anders en landen per agent onder
 `agents/` (change `add-chat-native-agents`).
 
-## Wat Boomhuis is
+## Wat Ratatoskr is
 
-De communicatielaag van het ecosysteem: een zelf-gehoste buzz-relay plus de
-specs voor kanalen, identiteiten, notificaties en chat-native agents. Boomhuis voert
+De communicatielaag van het ecosysteem (Yggdrasil): een zelf-gehoste buzz-relay plus de
+specs voor kanalen, identiteiten, notificaties en chat-native agents. Ratatoskr voert
 zelf niets uit — executie is habitat, kennis is handbook.
 
 ## Werkwijze

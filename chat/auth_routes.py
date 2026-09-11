@@ -14,6 +14,7 @@ import os
 import auth
 import auth_rem as rem
 import auth_store as store
+import instellingen
 
 MISLUKT = {"error": "inloggen mislukt"}
 
@@ -180,9 +181,9 @@ def setup_link_bij_start():
         return
     store.trek_uitnodigingen_in("setup")
     token = auth.nieuwe_uitnodiging("setup")
-    basis = os.environ.get("BOOMHUIS_URL", "").rstrip("/")
+    basis = instellingen.lees("URL").rstrip("/")
     print("[chat] nog geen account. Maak de eigenaar aan via:", flush=True)
     print("[chat]   {}/login?setup={}".format(basis or "<jouw boomhuis-url>", token),
           flush=True)
-    if os.environ.get("BOOMHUIS_APP_TOKEN", "").strip():
-        print("[chat]   (of eenmalig met het oude BOOMHUIS_APP_TOKEN)", flush=True)
+    if instellingen.lees("APP_TOKEN").strip():
+        print("[chat]   (of eenmalig met het oude APP_TOKEN)", flush=True)

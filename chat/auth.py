@@ -19,6 +19,7 @@ import struct
 import time
 
 import auth_store as store
+import instellingen
 
 COOKIE = "bh_session"
 CSRF_HEADER = "X-CSRF-Token"
@@ -197,7 +198,7 @@ def gebruik_uitnodiging(token):
 def setup_token_geldig(token):
     """Migratiepad: zolang er niemand is, mag het oude gedeelde schrijf-token
     de eigenaar aanmaken. Daarna nooit meer — er is dan een persoon."""
-    oud = os.environ.get("BOOMHUIS_APP_TOKEN", "").strip()
+    oud = instellingen.lees("APP_TOKEN").strip()
     if not oud or store.aantal_personen() > 0:
         return False
     return hmac.compare_digest(token or "", oud)

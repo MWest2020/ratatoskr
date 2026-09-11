@@ -16,7 +16,9 @@ import os
 import sqlite3
 import time
 
-PAD = os.environ.get("BOOMHUIS_AUTH_DB", "/var/lib/boomhuis/auth.db")
+import instellingen
+
+PAD = instellingen.lees("AUTH_DB", "/var/lib/ratatoskr/auth.db")
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS personen (

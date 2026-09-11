@@ -13,18 +13,28 @@ machine waar de installatie staat — wie daar bij kan, kan sowieso alles.
     sudo -E python3 adminctl.py verwijder gast
 
 Het wachtwoord wordt gevraagd (twee keer, niet zichtbaar) en staat nergens in
-je shell-geschiedenis. `-E` zodat BOOMHUIS_AUTH_DB en BOOMHUIS_URL uit de
+je shell-geschiedenis. `-E` zodat RATATOSKR_AUTH_DB en RATATOSKR_URL uit de
 omgeving meekomen; zonder die eerste pakt hij het standaardpad.
 """
 import getpass
 import os
 import sys
 
+import instellingen
+
 
 def _uit_env_bestand(sleutel):
     """De service leest zijn instellingen uit chat.env; dit script draait
-    ernaast en zou anders het standaardpad en `<jouw boomhuis-url>` pakken
-    terwijl beide gewoon naast hem liggen."""
+    ernaast en zou anders het standaardpad en `<jouw url>` pakken terwijl beide
+    gewoon naast hem liggen. Beide naamgevingen, nieuw eerst."""
+    for naam in (instellingen.NIEUW + sleutel, instellingen.OUD + sleutel):
+        waarde = _uit_bestand(naam)
+        if waarde:
+            return waarde
+    return ""
+
+
+def _uit_bestand(sleutel):
     pad = os.path.join(os.path.dirname(os.path.abspath(__file__)), "chat.env")
     try:
         with open(pad) as f:
@@ -38,10 +48,10 @@ def _uit_env_bestand(sleutel):
 
 
 # Vóór het importeren van auth_store: die leest het pad bij het laden.
-if not os.environ.get("BOOMHUIS_AUTH_DB"):
-    uit_bestand = _uit_env_bestand("BOOMHUIS_AUTH_DB")
+if not instellingen.gezet("AUTH_DB"):
+    uit_bestand = _uit_env_bestand("AUTH_DB")
     if uit_bestand:
-        os.environ["BOOMHUIS_AUTH_DB"] = uit_bestand
+        instellingen.zet("AUTH_DB", uit_bestand)
 
 import auth  # noqa: E402
 import auth_store as store  # noqa: E402
@@ -77,7 +87,7 @@ def _vraag_wachtwoord(naam):
 
 
 def _basis():
-    uit_omgeving = os.environ.get("BOOMHUIS_URL", "") or _uit_env_bestand("BOOMHUIS_URL")
+    uit_omgeving = instellingen.lees("URL") or _uit_env_bestand("URL")
     return uit_omgeving.rstrip("/") or "<jouw boomhuis-url>"
 
 
