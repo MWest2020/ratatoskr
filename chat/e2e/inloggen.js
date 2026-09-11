@@ -12,7 +12,7 @@
 const { chromium, devices } = require('playwright');
 const EXE=process.env.PW_CHROME
   || '/home/agent/.cache/ms-playwright/chromium-1234/chrome-linux64/chrome';
-const URL_=process.env.BOOMHUIS_URL || 'https://boomhuis-relay.tail8f7877.ts.net';
+const URL_=(process.env.BOOMHUIS_URL || 'https://boomhuis-relay.tail8f7877.ts.net').replace(/\/+$/,'');
 const SETUP=process.env.SETUP_TOKEN;
 if(!SETUP){ console.error('SETUP_TOKEN ontbreekt — zie de serveruitvoer bij een verse installatie'); process.exit(2); }
 const WW='een tijdelijk testwachtwoord';

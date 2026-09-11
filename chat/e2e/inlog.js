@@ -2,7 +2,7 @@
 // Inloggen voor de e2e-suites die de app zelf nodig hebben. Sinds
 // `inloggen-per-persoon` komt er zonder sessie geen app in beeld, en drie keer
 // hetzelfde formulier invullen in drie scripts is drie keer onderhoud.
-const BASIS = process.env.BOOMHUIS_URL || 'https://boomhuis-relay.tail8f7877.ts.net';
+const BASIS = (process.env.BOOMHUIS_URL || 'https://boomhuis-relay.tail8f7877.ts.net').replace(/\/+$/,'');
 
 async function logIn(page){
   const naam = process.env.BOOMHUIS_NAAM, ww = process.env.BOOMHUIS_WW;

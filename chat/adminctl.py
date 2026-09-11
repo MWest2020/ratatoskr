@@ -50,6 +50,24 @@ MIN_LENGTE = 12
 
 
 def _vraag_wachtwoord(naam):
+    # Geen terminal — `docker compose exec -T`, een installatiescript, een
+    # ansible-taak: dan komt het wachtwoord van stdin. Zonder deze tak eindigt
+    # `adminctl eigenaar` daar in een EOFError, en dat is precies het moment
+    # waarop een verse installatie zijn eerste account moet krijgen.
+    # Één regel, niet twee: de herhaalvraag is een typefout-vangnet voor mensen.
+    if not sys.stdin.isatty():
+        eerste = sys.stdin.readline().rstrip("\n")
+        if not eerste:
+            sys.exit("geen wachtwoord op stdin (en geen terminal om het te vragen)")
+        if len(eerste) < MIN_LENGTE:
+            sys.exit("wachtwoord moet minstens {} tekens zijn".format(MIN_LENGTE))
+        # Staat er een tweede regel, dan is dat een bevestiging en moet hij
+        # kloppen (zo werkte het altijd al bij aanleveren via een pipe). Eén
+        # regel is óók goed: een installatiescript maakt geen typefouten.
+        tweede = sys.stdin.readline().rstrip("\n")
+        if tweede and tweede != eerste:
+            sys.exit("de twee wachtwoorden verschillen")
+        return eerste
     eerste = getpass.getpass("Wachtwoord voor {}: ".format(naam))
     if len(eerste) < MIN_LENGTE:
         sys.exit("wachtwoord moet minstens {} tekens zijn".format(MIN_LENGTE))

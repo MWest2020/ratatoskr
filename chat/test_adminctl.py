@@ -41,6 +41,15 @@ class Adminctl(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("al een account", uit)
 
+    def test_een_regel_is_genoeg_zonder_terminal(self):
+        """`docker compose exec -T chat python3 adminctl.py eigenaar mark` heeft
+        geen terminal; zonder deze tak strandt een verse installatie in een
+        EOFError precies wanneer hij zijn eerste account moet krijgen."""
+        code, uit = self.run_ctl("eigenaar", "mies", invoer=WW)
+        self.assertEqual(code, 0, uit)
+        _, lijst = self.run_ctl("personen")
+        self.assertIn("mies", lijst)
+
     def test_wachtwoorden_moeten_gelijk_zijn(self):
         code, uit = self.run_ctl("eigenaar", "mark",
                                  invoer=WW + "iets heel anders hier\n")
