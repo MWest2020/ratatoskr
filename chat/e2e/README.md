@@ -4,8 +4,10 @@ Draaien tegen de **echte VM**, niet tegen een mock. Ze vervangen de unittests ni
 ze vangen wat unittests per definitie missen: uitrol, service worker, viewport,
 en of de laag eronder ook echt aan staat.
 
+    NAAM=… WW=… bash chat/e2e/na-uitrol.sh    # DE drie lagen, na elke uitrol
     bash chat/e2e/api.sh          # HTTP: wat een vreemde NIET mag
     NAAM=… WW=… bash chat/e2e/verbinding.sh   # INGELOGD: praat de chat met de relay?
+    NAAM=… WW=… node chat/e2e/rook.js         # BROWSER: doet de app het echt?
     node chat/e2e/inloggen.js     # browser: inloggen, sessie, uitloggen
     node chat/e2e/ui.js           # browser: shell, kanalen, laden, token-modal
     node chat/e2e/xss.js          # regressietest op de GitHub-rendering
@@ -22,6 +24,30 @@ Alle drie geven exitcode 0 bij succes, dus ze zijn te ketenen.
 
 `BOOMHUIS_URL` mag mét of zonder slash aan het eind — de scripts strippen 'm.
 
+## Na elke uitrol: `na-uitrol.sh`
+
+Drie lagen, in oplopende echtheid — en je hebt ze alle drie nodig:
+
+| laag | ziet | ziet NIET |
+|---|---|---|
+| `api.sh` | de gate, zonder sessie | alles wat achter inloggen zit, en de relay |
+| `verbinding.sh` | de relay-kant, ingelogd | of de JS in de browser leeft |
+| `rook.js` | wat een mens ziet | — |
+
+Op 2026-09-11 gaf laag 1 een halve dag 38/38 groen terwijl de app stilstond.
+Eén laag is geen test van een uitrol.
+
+Je hebt een testaccount nodig. Maak er een met een uitnodiging en gooi 'm daarna
+weg — een staand account dat alles kan lezen is een tweede sleutel die je niet
+nodig hebt:
+
+    docker compose exec -T chat python3 adminctl.py uitnodiging
+    # link gebruiken, dan:
+    docker compose exec -T chat python3 adminctl.py verwijder <naam>
+
+Dit draait **niet** in CI: de installatie zit achter een tailnet of een proxy,
+en een runner van GitHub komt daar niet. Het is een uitrol-stap, geen push-stap.
+
 ## Waarom `verbinding.sh` bestaat
 
 `api.sh` draait bewust zónder sessie en raakt daardoor geen enkele regel code die
@@ -34,6 +60,18 @@ stond op "laden…" en crashte op `Cannot read properties of undefined`.
 `verbinding.sh` logt wél in en eist dat de kanaallijst NIET leeg is: een lege
 lijst is precies hoe een onbereikbare relay eruitziet. Bewezen dat hij vangt wat
 api.sh miste: met de kapotte instelling faalt hij op 2 van 7.
+
+## Waarom `rook.js` bestaat
+
+Omdat ook `verbinding.sh` niet ziet wat een mens ziet. De storing van 11
+september eindigde in de browser: `PAGEERROR: Cannot read properties of
+undefined (reading 'name')`, nul kanalen in de lade, `#msgs` op "laden…". Precies
+die drie dingen eist `rook.js`, plus dat de app blijft pollen — want een app die
+er goed uitziet maar niets meer vraagt, is dood.
+
+Bewezen tegen de échte storing: met de kapotte relay-instelling faalt hij op
+3 van 6, met dezelfde foutmelding als toen. Met de goede instelling 6 van 6
+groen.
 
 ## Wat wél en niet tegen een VERSE installatie draait
 
