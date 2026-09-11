@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: EUPL-1.2
+[Unit]
+Description=Wekelijkse technical-depth-check
+
+[Timer]
+OnCalendar=Fri *-*-* 16:00
+Persistent=true
+Unit=ratatoskr-job@technical_debt.service
+
+[Install]
+WantedBy=timers.target
