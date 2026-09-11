@@ -46,8 +46,17 @@ besluit droeg. Dat is proza, het is het waardevolste wat er staat, en Mark
 schrijft en leest het in het Nederlands. Een codebase met Engelse namen en
 Nederlandse uitleg is normaal in Nederland; het omgekeerde is dat niet.
 
-Strings die een **gebruiker** ziet (foutmeldingen in de chat, teksten in de PWA,
-de uitvoer van `adminctl`) blijven Nederlands: dat is interface, geen code.
+Strings die een **gebruiker** ziet zijn **standaard Engels**, met Nederlands als
+optie. Dat is een herziening: de eerste versie van deze ADR zette de interface op
+Nederlands omdat het toen één gebruiker bediende. Mark, 2026-09-11: *"interface
+moet toch ook engels ondersteunen. niet over nagedacht eerder, maar eigenlijk
+default engels."* Ratatoskr gaat naar derden, en een installatie die je alleen in
+het Nederlands kunt bedienen is daar onbruikbaar.
+
+Gevolg: **nieuwe interfaceteksten zijn meteen Engels.** De bestaande Nederlandse
+teksten gaan in één aparte change over naar een taallaag met `en` als default en
+`nl` ernaast — zelfde redenering als bij de identifiers: half omgezet is
+slechter dan niet omgezet.
 
 ## Gevolgen
 
@@ -73,6 +82,9 @@ de uitvoer van `adminctl`) blijven Nederlands: dat is interface, geen code.
 - **Alles Nederlands, zoals het gegroeid was.** Intern verdedigbaar zolang één
   persoon het leest. Onhoudbaar zodra er een derde installeert of meebouwt, en
   dat is expliciet de richting.
+- **Interface alleen Nederlands** (de eerste versie van deze ADR). Herzien: zie
+  hierboven. Eén taal in de interface is een keuze die je maakt vóór je klanten
+  hebt, en dan nooit meer goedkoop kunt terugdraaien.
 - **Geen regel, per bestand kiezen.** Dat is wat we tot vandaag hadden, en het
   levert een codebase waarin je per bestand moet raden.
 - **Bestaande code gaandeweg omzetten.** Klinkt zachter, maar levert jaren van

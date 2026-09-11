@@ -67,6 +67,21 @@ const t = (naam, cond, extra = '') => {
   t('berichten geladen (niet op "laden…")', !/^laden/.test(st.msgs), JSON.stringify(st.msgs));
   t('service worker actief', st.sw);
 
+  console.log('— het bord');
+  await p.click('#boardBtn');
+  await p.waitForTimeout(3000);
+  const bord = await p.evaluate(() => ({
+    open: document.querySelector('#boardDrawer').classList.contains('open'),
+    kolommen: document.querySelectorAll('.bcol').length,
+    tekst: (document.querySelector('#boardView') || {}).textContent.slice(0, 80),
+  }));
+  t('bord opent', bord.open);
+  // Vier kolommen, ook als er niets in staat: een lege kolom hoort zichtbaar
+  // leeg te zijn, niet afwezig.
+  t('vier kolommen', bord.kolommen === 4, `${bord.kolommen} kolommen: ${bord.tekst}`);
+  await p.click('#boardClose');
+  await p.waitForTimeout(500);
+
   console.log('— leeft de app (polt hij?)');
   const voor = apiCalls;
   await p.waitForTimeout(20000);

@@ -76,6 +76,8 @@ $("#switch").onclick=()=>$("#drawer").classList.add("open");
 $("#agentsBtn").onclick=()=>{ $("#channelMembers").dataset.loaded=""; showAgentTab("agents"); $("#agentsDrawer").classList.add("open"); };
 $("#tabAgents").onclick=()=>showAgentTab("agents");
 $("#tabChannels").onclick=()=>showAgentTab("channels");
+$("#boardBtn").onclick=openBoard;
+$("#boardClose").onclick=closeBoard;
 $("#reposBtn").onclick=openRepos;
 $("#reposClose").onclick=closeRepos;
 $("#reposDrawer").onclick=e=>{ if(e.target.id==="reposDrawer") closeRepos(); };

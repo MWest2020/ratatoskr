@@ -22,6 +22,8 @@ tailnet.
 - How-to's: [de app op je telefoon zetten](how-to/pwa-installeren.md) en
   [relay-herstel](how-to/relay-herstel.md).
 
+- [Het werk-overzicht](how-to/werk-overzicht.md)
+
 ## Besluiten (ADR)
 
 - [ADR-0001 — Code in het Engels, proza in het Nederlands](adr/0001-code-in-het-engels.md)

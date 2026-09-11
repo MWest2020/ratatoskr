@@ -17,6 +17,7 @@ from buzzcli import (buzz, buzz_admin, list_channels, list_channels_meta, valid_
                      channel_overview, agent_roster, channel_roster, ME)
 import actions  # send/add-member/create-acties (server blijft dun)
 import auth          # sessies, wachtwoorden, TOTP
+import board         # werk-overzicht (momentopname van jobs/board.py)
 import auth_admin    # uitnodigen en tweede factor (achter de sessie)
 import auth_routes   # inloggen, setup, uitnodiging gebruiken, en de gate
 import instellingen  # RATATOSKR_*/BOOMHUIS_* uit de omgeving
@@ -97,6 +98,9 @@ class H(BaseHTTPRequestHandler):
                 return self._send(502, json.dumps({"error": str(e)[:200]}))
         if u.path == "/api/push/vapid":
             return self._send(200, json.dumps({"key": push.vapid_public()}))
+        if u.path == "/api/board":
+            payload, code = board.read()
+            return self._send(code, json.dumps(payload))
         if u.path == "/api/overview":
             try:
                 return self._send(200, json.dumps({"channels": channel_overview()}))

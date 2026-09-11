@@ -1,0 +1,32 @@
+# Werk-overzicht: wat beweegt er, en wat zit vast.
+#
+# Drempels staan hier en niet in de code: hoe lang iets "te lang" in een kolom
+# staat is een oordeel dat verandert, geen logica. Ouderdom is het signaal —
+# dat er twaalf dingen open staan wist je al.
+
+# Kolommen, in volgorde. `stale_days` = hierboven is het te lang blijven liggen.
+# De titels zijn wat de GEBRUIKER ziet en dus Engels (ADR-0001).
+columns:
+  - key: proposal
+    title: proposal
+    stale_days: 14
+  - key: building
+    title: building
+    stale_days: 3
+  - key: review
+    title: review
+    stale_days: 2
+  - key: merged
+    title: merged
+    stale_days: 0        # 0 = nooit muf; dit is de uitgang
+
+# Waar de producent kijkt.
+sources:
+  # Clones op de host; elke niet-gearchiveerde change is een voorstel.
+  openspec_glob: /home/agent/*/openspec/changes/*/proposal.md
+  # GitHub-eigenaar voor open en recent gemergede PR's.
+  github_owner: MWest2020
+  # Runbestanden van werksessies (zie agents/sessies.py).
+  session_runs: /tmp/boomhuis-sessies
+  # Hoeveel dagen terug "gemerged" nog getoond wordt.
+  merged_days: 3

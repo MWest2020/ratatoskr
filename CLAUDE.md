@@ -36,6 +36,8 @@ zelf niets uit — executie is habitat, kennis is handbook.
   leggen uit *waarom* iets zo is. Zie [ADR-0001](docs/adr/0001-code-in-het-engels.md)
   voor wat er precies onder "code" valt en wat niet. Bestaande Nederlandse
   identifiers worden in één aparte change omgezet, niet gaandeweg.
+- **Interfaceteksten zijn standaard Engels**, met Nederlands als optie. Nieuwe
+  teksten meteen Engels; de bestaande gaan in één change naar een taallaag.
 - Python via `uv`, nooit `pip`. Bestanden ≤ 200 regels. Bare scripts, geen
   ceremonie.
 - Immutable images: `BUZZ_IMAGE` gepind per SHA of semver-tag, nooit `:main` of

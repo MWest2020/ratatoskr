@@ -18,6 +18,7 @@
   <header>
     <span class="bee">🐝</span>
     <h1><span class="hash">#</span><span id="chanName">runs</span></h1>
+    <button id="boardBtn">📋 Board</button>
     <button id="reposBtn">📦 Repos</button>
     <button id="agentsBtn">🤖 Agents</button>
     <button id="switch">Kanalen</button>
@@ -46,6 +47,11 @@
     <div id="channelMembers" hidden></div>
     <div class="agenthint">Noem een agent met <b>@naam</b> in een kanaal om te praten.
       "Per kanaal" toont wie er echt in een kanaal zit (agents én sessies).</div>
+  </div></div>
+
+  <div id="boardDrawer"><div class="sheet">
+    <div class="dhead"><span class="title">Work in progress</span><button class="dclose" id="boardClose" title="close">✕</button></div>
+    <div id="boardView"><div class="agenthint">loading…</div></div>
   </div></div>
 
   <div id="reposDrawer"><div class="sheet">
@@ -87,6 +93,7 @@
 <script src="/app-modal.js"></script>
 <script src="/app.js"></script>
 <script src="/app-repos.js"></script>
+<script src="/app-board.js"></script>
 <script src="/app-ui.js"></script>
 <script src="/app-push.js"></script>
 </body>

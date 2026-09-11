@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: EUPL-1.2
+[Unit]
+Description=Ratatoskr werk-overzicht (momentopname voor het bord)
+
+[Service]
+Type=oneshot
+Environment=PATH=/home/agent/.local/bin:/home/agent/.npm-global/bin:/usr/local/bin:/usr/bin:/bin
+Environment=BOARD_SSH=buzz-relay
+Environment=BOARD_VOLUME=buzz-prod_ratatoskr-chat-data
+WorkingDirectory=/home/agent/ratatoskr
+ExecStart=/usr/bin/bash /home/agent/ratatoskr/jobs/publish-board.sh
