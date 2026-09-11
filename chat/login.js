@@ -29,7 +29,7 @@ async function bepaalModus(){
 
 function toon(){
   const titels = {
-    inloggen: ["Inloggen", "Boomhuis is alleen voor mensen met een account."],
+    inloggen: ["Inloggen", "Ratatoskr is alleen voor mensen met een account."],
     setup: ["Eerste account", "Dit boomhuis heeft nog niemand. Maak de eigenaar aan."],
     uitnodiging: ["Welkom", "Kies een naam en een wachtwoord van minstens 12 tekens."],
   };

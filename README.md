@@ -145,3 +145,22 @@ Wat de suites bewaken, in volgorde van hoe pijnlijk het was toen het misging:
 
 Deze repo is privé (bevat indirect homelab-context; fail-closed). Licentie:
 EUPL-1.2.
+
+## Namen
+
+Sinds 2026-09-11 heeft de app een eigen naam: **Ratatoskr** — in de Noorse mythe
+de eekhoorn die boodschappen op en neer draagt langs de wereldboom, tussen de
+adelaar in de kroon en de slang bij de wortels. Dat is letterlijk wat deze laag
+doet: berichten dragen tussen de mens en de vloot.
+
+De boom zelf is het geheel — relay, habitat, handbook, zettelkast — en die heet
+**Yggdrasil**. Let op: *Yggdrasil Network* (`yggdrasil-network/yggdrasil-go`) is
+een bestaand, bekend overlay-netwerkproject in precies onze buurt. De naam past
+daarom bij het ecosysteem als verhaal, niet als productnaam van een component;
+zie de sessie-analyse in `#architectuur` (2026-09-11) voor waarom we hun techniek
+ook niet lenen.
+
+`boomhuis` blijft voorlopig de technische naam: repo, image
+(`ghcr.io/mwest2020/boomhuis-chat`), volumes (`buzz-prod_boomhuis-chat-data`) en
+de `BOOMHUIS_*`-omgevingsvariabelen. Die hernoemen raakt gepubliceerde paden en
+draaiende data, en is een aparte, bewuste stap.

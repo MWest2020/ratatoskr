@@ -5,7 +5,7 @@
 //   loopt na een timeout dóór en ververst de cache alsnog (waitUntil).
 // - Statics (iconen, manifest): cache-eerst met achtergrond-update.
 // - /api/*: NOOIT cachen (chat is realtime, git is waarheid).
-const CACHE = "boomhuis-shell-v15";  // v15: verborgen velden blijven verborgen
+const CACHE = "boomhuis-shell-v16";  // v16: de app heet Ratatoskr
 // Een versiebump wist bij `activate` elke oudere cache. Dat is het enige wat
 // een geïnstalleerde PWA die op de oude JS vastzit gegarandeerd loskrijgt:
 // netwerk-eerst helpt pas als de app draait, en dit was nu juist de bug
@@ -101,7 +101,7 @@ const FRESH_ASSETS = new Set(["/app.css", "/app.js", "/app-cache.js", "/app-verb
 
 // Web Push: toon een notificatie bij een binnenkomende push.
 self.addEventListener("push", (e) => {
-  let d = { title: "Boomhuis", body: "" };
+  let d = { title: "Ratatoskr", body: "" };
   try { if (e.data) d = e.data.json(); } catch (_) { if (e.data) d.body = e.data.text(); }
   // GEEN vaste tag: met een constante tag wist elke nieuwe melding de vorige
   // (verdict B overschrijft verdict A). Alleen groeperen als de payload expliciet
@@ -109,7 +109,7 @@ self.addEventListener("push", (e) => {
   const opts = { body: d.body || "", icon: "/icon-192.png", badge: "/icon-192.png",
                  data: { url: d.url || "/" } };
   if (d.tag) { opts.tag = d.tag; opts.renotify = true; }
-  e.waitUntil(self.registration.showNotification(d.title || "Boomhuis", opts));
+  e.waitUntil(self.registration.showNotification(d.title || "Ratatoskr", opts));
 });
 // Klik op de notificatie: focus een open venster of open de app.
 self.addEventListener("notificationclick", (e) => {
