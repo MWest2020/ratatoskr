@@ -35,3 +35,24 @@ systemd user-timers (linger).
 4. `systemctl --user daemon-reload && systemctl --user enable --now boomhuis-<x>.timer`.
 
 Handmatig draaien/testen: `bash jobs/run-jobs.sh <naam>`.
+
+## Timers
+
+Alle timers staan in `jobs/systemd/` — óók de wekelijkse. Ze stonden tot
+2026-09-11 alleen op de host, en dat is precies zo lang onzichtbaar als het
+goed gaat. Installeren:
+
+    cp jobs/systemd/ratatoskr-*.timer jobs/systemd/ratatoskr-job@.service ~/.config/systemd/user/
+    systemctl --user daemon-reload
+    for t in standup gedaan zettelkast news proposals techdepth; do
+      systemctl --user enable --now "ratatoskr-$t.timer"
+    done
+
+| timer | wanneer | job |
+|---|---|---|
+| standup | dagelijks 08:00 | standup |
+| zettelkast | dagelijks 09:00 | zettelkast_dagelijks |
+| gedaan | dagelijks 18:00 | gedaan |
+| news | maandag 09:00 | news_from_zettelkast |
+| proposals | maandag 09:15 | proposals |
+| techdepth | vrijdag 16:00 | technical_debt |
