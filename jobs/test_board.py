@@ -64,6 +64,18 @@ class Stale(unittest.TestCase):
         self.assertFalse(board.is_stale({"column": "x", "age_days": 999}, COLUMNS))
 
 
+class Ignore(unittest.TestCase):
+    def test_ignored_repo_is_dropped(self):
+        """Een PR op een repo waar je niet meer aan werkt is de oudste kaart, en
+        schreeuwt daarom elke dag het hardst. Niet elk open ding is werk."""
+        rows = [{"repository": {"name": "oud-project"}, "number": 1, "title": "x",
+                 "updatedAt": "2026-01-01T00:00:00Z", "url": "", "isDraft": False,
+                 "author": {"login": "a"}}]
+        board.gh_json = lambda args: rows if "--state=open" in args else []
+        self.assertEqual(board.pr_cards("owner", 3, time.time(), {"oud-project"}), [])
+        self.assertEqual(len(board.pr_cards("owner", 3, time.time(), set())), 1)
+
+
 class Summary(unittest.TestCase):
     def test_counts_and_stale(self):
         cards = [{"column": "review", "stale": True}, {"column": "review", "stale": False},

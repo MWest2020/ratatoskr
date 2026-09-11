@@ -51,16 +51,21 @@ def roster_text(agents, hub=None):
     return "\n".join(lines)
 
 
-def sessie_clausule(cfg, handle):
+def sessie_clausule(cfg, handle, requester=None):
     """Wat deze agent zelf kan starten, verteld in zijn systemprompt.
 
     Zonder deze regel weet een agent niet dat werksessies bestaan: odin meldde
     2026-09-09 in #general (terecht) "ik heb geen tool-toegang tot een tmux-sessie
     op agent@agent-lxc". Dit vertelt hem wat hij WEL heeft. Het verruimt geen
     mandaat — wie welk type mag starten staat in sessies.yml en wordt daar
-    afgedwongen; dit is alleen de aankondiging."""
-    types = {n: t for n, t in ((cfg or {}).get("types") or {}).items()
-             if handle in (t.get("starters") or [])}
+    afgedwongen; dit is alleen de aankondiging. `requester` = degene namens wie
+    de agent zou starten; types die diegene niet mag, noemen we niet."""
+    starters = (cfg or {}).get("types") or {}
+    types = {n: t for n, t in starters.items()
+             if handle in (t.get("starters") or [])
+             # Ook de vrager moet het type mogen starten — anders kondigt de agent
+             # een sessie aan die meteen een ⛔ krijgt.
+             and (requester is None or requester in (t.get("starters") or []))}
     if not types:
         return ""
     regels = "\n".join(f"- `{n}` — {t.get('beschrijving') or t.get('werkmap', '')}"
