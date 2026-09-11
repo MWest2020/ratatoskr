@@ -105,3 +105,39 @@ jobs:
       gh search prs --owner=MWest2020 "merged:>=$(date +%F)" --limit 20 --json repository,number,title \
         --jq '.[] | "[\(.repository.name)] #\(.number) \(.title)"' 2>/dev/null \
         || echo "(LEESFOUT: kon merges niet ophalen — gh/netwerk?)"
+
+  zettelkast_dagelijks:
+    channel: 1c0566f6-a6ae-485f-8920-81767f09b350
+    identity: orchestrator
+    prompt: |
+      Meld kort wat er vandaag met Marks gedeelde clips is gebeurd, op basis van
+      de context. Drie stukjes, in deze volgorde:
+      1. VERWERKT vandaag — wat is er gecaptured, naar welke pagina.
+      2. OPEN — welke bronnen staan écht nog open (de context noemt ze los van de
+         al afgehandelde), en wat zou ermee moeten.
+      3. Eén zin: valt er iets op (een patroon, een share die niet ophaalde)?
+      Staat er een LEESFOUT in de context, meld die dan expliciet — lees 'm NIET
+      als "niets te doen". Is er vandaag niets verwerkt én niets open, geef dan
+      een leeg antwoord (dan post er niks). Nederlands, kort, geen opsmuk.
+      Begin met "📥 Zettelkast vandaag".
+    context_cmd: |
+      Z=/home/agent/zettelkast
+      cd "$Z" 2>/dev/null || { echo "(LEESFOUT: zettelkast-clone niet gevonden)"; exit 0; }
+      echo '== logregels van vandaag =='
+      grep "^$(date +%F)" wiki/log.md 2>/dev/null | cut -c1-300 || true
+      echo '== commits van vandaag =='
+      git log --oneline --since=midnight 2>/dev/null | head -20         || echo "(LEESFOUT: git log mislukt)"
+      # new_sources.py noemt elke ongeciteerde bron. Bij een URL-share is dat
+      # bijna altijd het CLIPbestand terwijl de fetch-snapshot ervan allang
+      # verwerkt is. Zonder deze splitsing meldt de job elke dag dezelfde
+      # niet-bestaande achterstand.
+      echo '== bronnen: afgehandeld vs open =='
+      lijst=$(python3 scripts/new_sources.py 2>/dev/null) ||         { echo "(LEESFOUT: new_sources.py faalde)"; exit 0; }
+      for f in $lijst; do
+        b=$(basename "$f" .md)
+        if grep -qr "$b" wiki/log.md journal/ 2>/dev/null; then
+          echo "AFGEHANDELD $f"
+        else
+          echo "OPEN        $f :: $(grep -ohEm1 'https?://[^ ]+' "$f" 2>/dev/null | cut -c1-80)"
+        fi
+      done

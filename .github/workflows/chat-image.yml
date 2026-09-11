@@ -26,7 +26,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Versie bepalen
+      - name: Versie en naam bepalen
         id: v
         run: |
           if [ -n "${{ inputs.versie }}" ]; then
@@ -34,6 +34,10 @@ jobs:
           else
             echo "versie=${GITHUB_REF_NAME#chat-v}" >> "$GITHUB_OUTPUT"
           fi
+          # Een image-repository MOET kleine letters zijn; de eigenaar heet
+          # MWest2020. Zonder deze regel faalt de build op "repository name must
+          # be lowercase" — gemeten bij de eerste publicatie.
+          echo "eigenaar=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
 
       - uses: docker/setup-buildx-action@v3
 
@@ -53,8 +57,8 @@ jobs:
           # Geen `latest`. Twee tags: de versie, en de commit — zodat je van een
           # draaiende container altijd terug kunt naar de broncode.
           tags: |
-            ghcr.io/${{ github.repository_owner }}/boomhuis-chat:${{ steps.v.outputs.versie }}
-            ghcr.io/${{ github.repository_owner }}/boomhuis-chat:sha-${{ github.sha }}
+            ghcr.io/${{ steps.v.outputs.eigenaar }}/boomhuis-chat:${{ steps.v.outputs.versie }}
+            ghcr.io/${{ steps.v.outputs.eigenaar }}/boomhuis-chat:sha-${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -64,7 +68,7 @@ jobs:
             echo "### boomhuis-chat ${{ steps.v.outputs.versie }}"
             echo
             echo '```'
-            echo "CHAT_IMAGE=ghcr.io/${{ github.repository_owner }}/boomhuis-chat:${{ steps.v.outputs.versie }}"
+            echo "CHAT_IMAGE=ghcr.io/${{ steps.v.outputs.eigenaar }}/boomhuis-chat:${{ steps.v.outputs.versie }}"
             echo "digest: ${{ steps.build.outputs.digest }}"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"

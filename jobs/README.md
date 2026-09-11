@@ -17,6 +17,11 @@ systemd user-timers (linger).
   funding-memo), post als orchestrator.
 - **proposals** (ma 09:15) — open OpenSpec-proposals uit het ecosysteem.
 - **technical_debt** (vr 16:00) — architect reflecteert op technische schuld.
+- **zettelkast_dagelijks** (dagelijks 09:00) — wat is er vandaag met Marks
+  gedeelde clips gebeurd, wat staat er nog open. Draait ná de capture-run van de
+  zettelkast (`zettelkast-daily.timer`, 06:00). De context splitst afgehandeld
+  van open: een clip waarvan de fetch-snapshot al gecaptured is, is klaar — ook
+  al citeert geen enkele wiki-pagina het clipbestand zelf.
 - **standup** (dagelijks 08:00) — open werk (PR's/OpenSpec) + blokkades (#escalatie/#review).
 - **gedaan** (dagelijks 18:00) — wat is er vandaag af (commits + gemergede PR's).
 
