@@ -5,6 +5,7 @@ ze vangen wat unittests per definitie missen: uitrol, service worker, viewport,
 en of de laag eronder ook echt aan staat.
 
     bash chat/e2e/api.sh          # HTTP: wat een vreemde NIET mag
+    NAAM=… WW=… bash chat/e2e/verbinding.sh   # INGELOGD: praat de chat met de relay?
     node chat/e2e/inloggen.js     # browser: inloggen, sessie, uitloggen
     node chat/e2e/ui.js           # browser: shell, kanalen, laden, token-modal
     node chat/e2e/xss.js          # regressietest op de GitHub-rendering
@@ -20,6 +21,19 @@ wijst naar de browser.
 Alle drie geven exitcode 0 bij succes, dus ze zijn te ketenen.
 
 `BOOMHUIS_URL` mag mét of zonder slash aan het eind — de scripts strippen 'm.
+
+## Waarom `verbinding.sh` bestaat
+
+`api.sh` draait bewust zónder sessie en raakt daardoor geen enkele regel code die
+met de relay praat. Op 2026-09-11 draaide Marks installatie een halve dag met een
+chat die de relay niet kon bereiken — de container sprak `relay:3000` aan terwijl
+de community van die relay op een andere host staat ("404: no community is
+configured for this host") — en `api.sh` gaf al die tijd 38/38 groen. De app
+stond op "laden…" en crashte op `Cannot read properties of undefined`.
+
+`verbinding.sh` logt wél in en eist dat de kanaallijst NIET leeg is: een lege
+lijst is precies hoe een onbereikbare relay eruitziet. Bewezen dat hij vangt wat
+api.sh miste: met de kapotte instelling faalt hij op 2 van 7.
 
 ## Wat wél en niet tegen een VERSE installatie draait
 
