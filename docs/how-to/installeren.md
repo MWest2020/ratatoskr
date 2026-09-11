@@ -58,8 +58,14 @@ open je `BOOMHUIS_URL`, log je in, en nodig je de rest uit vanuit de app
 
 ## Waar is dit bereikbaar?
 
-Standaard: **alleen op de machine zelf** (`BIND_ADDR=127.0.0.1`). Dat is bewust —
-tot jij kiest, is er van buiten niets te bereiken. Drie manieren om te kiezen:
+Standaard: **alleen op de machine zelf** — `BIND_ADDR` voor de chat,
+`RELAY_BIND_ADDR` voor de relay. Twee knoppen, want twee soorten publiek: mensen
+komen bij de chat (via een proxy of tunnel), terwijl agents en andere machines
+rechtstreeks met de relay praten. Draaien je agents op dezelfde machine, dan
+blijven beide op `127.0.0.1`. Draaien ze elders, dan zet je alleen
+`RELAY_BIND_ADDR` open — niet de chat.
+
+Tot jij kiest, is er van buiten niets te bereiken. Drie manieren om te kiezen:
 
 ### Reverse proxy met TLS (het gewone geval)
 

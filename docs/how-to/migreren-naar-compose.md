@@ -44,9 +44,18 @@ publiceert straks op dezelfde poort, alleen uit een container.
 
 3. **`.env` aanvullen** met de chat-regels uit `chat.env` (`BUZZ_PRIVATE_KEY`,
    `BUZZ_ORCHESTRATOR_KEY`, `VAPID_PUBLIC`, `GITHUB_TOKEN`, `BOOMHUIS_URL`) en
-   `CHAT_IMAGE`. `BIND_ADDR` blijft `127.0.0.1` — de tailscale-tunnel zit ervoor.
-   `BOOMHUIS_APP_TOKEN` gaat **niet** mee: dat is dood sinds
+   `CHAT_IMAGE`. `BOOMHUIS_APP_TOKEN` gaat **niet** mee: dat is dood sinds
    `inloggen-per-persoon`.
+
+   Let op de twee bind-knoppen, want ze staan hier niet gelijk:
+
+       BIND_ADDR=127.0.0.1        # chat — tailscale serve zit ervoor
+       RELAY_BIND_ADDR=0.0.0.0    # relay — agent-lxc praat er over het LAN mee
+
+   Zet je de relay óók op loopback, dan verliezen de listener, de jobs en
+   `ping.sh` op agent-lxc hun verbinding. Dit is precies zoals het vandaag al
+   staat (`ss -ltnp`: chat op 127.0.0.1:8090, relay op 0.0.0.0:3000) — de
+   migratie verandert de blootstelling niet.
 
 4. **Chat stilzetten** (nu pas, zodat de database niet meer beweegt):
 
