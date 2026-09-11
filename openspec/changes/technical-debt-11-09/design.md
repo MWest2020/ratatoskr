@@ -100,7 +100,8 @@ Het moment kiest Mark (de chat ligt enkele minuten stil); óf het gebeurt is nie
 langer optioneel. `uitrol-voor-derden` is pas archiveerbaar als Marks chat uit
 het image draait.
 
-**Gekozen: de pin staat letterlijk in het compose-bestand.** Elk `image:` in
+**Gekozen: de pin staat letterlijk in het compose-bestand** (bevestigd door
+Mark, 2026-09-11: *"pins in compose ok"*). Elk `image:` in
 `deploy/docker-compose.yml` is een letterlijke waarde, zonder variabele of
 fallback. `.env` bevat secrets, bind-adressen en de projectnaam, geen images.
 Toegestaan: een commit-SHA (`sha-…`), een digest, of een versie met minstens
