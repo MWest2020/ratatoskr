@@ -8,13 +8,14 @@
 
 ## 2. Asset-links
 - [x] 2.1 `/.well-known/assetlinks.json` serveren (open route, geen sessie)
-- [ ] 2.2 Meten dat de app zonder adresbalk start — **op Marks toestel**;
+- [x] 2.2 Meten dat de app zonder adresbalk start — bevestigd door Mark op zijn
+      toestel (2026-09-11): "geen adresbalk, werkt"
       serverzijde is klaar (assetlinks open + vingerafdruk gelijk aan de APK)
 
 ## 3. Uitleveren
 - [x] 3.1 De APK downloadbaar vanaf de eigen installatie
-- [ ] 3.2 Op Marks telefoon installeren en gebruiken — aan hem
+- [x] 3.2 Op Marks telefoon installeren en gebruiken — gedaan
 
 ## 4. Vastleggen
 - [x] 4.1 `docs/how-to/android-app.md`: bouwen, bumpen, en wat je nooit weggooit
-- [ ] 4.2 Change archiveren
+- [x] 4.2 Change archiveren
