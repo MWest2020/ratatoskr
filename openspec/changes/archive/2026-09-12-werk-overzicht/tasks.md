@@ -24,7 +24,7 @@ Nieuwe code is Engels (ADR-0001); commentaar en docs blijven Nederlands.
 
 ## 4. Vastleggen
 - [x] 4.1 `docs/how-to/werk-overzicht.md`
-- [ ] 4.2 Change archiveren
+- [x] 4.2 Change archiveren
 
 ## Later (niet in deze change)
 - Graafweergave over dezelfde `board.json`
