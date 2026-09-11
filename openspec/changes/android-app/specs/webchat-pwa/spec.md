@@ -15,6 +15,13 @@ zonder sessie — Chrome haalt het op vóór er een gebruiker is. Ontbreekt het 
 klopt de vingerafdruk niet, dan start de app met een adresbalk; dat is een
 zichtbare fout, geen stille.
 
+De installatie SHALL de APK aanbieden op een vaste route (`/ratatoskr.apk`)
+ZONDER sessie. Een APK-download start vaak buiten de sessie — de
+downloadmanager of een doorgestuurde link draagt het sessiecookie niet mee —
+dus achter de gate is de link onbruikbaar precies wanneer je 'm nodig hebt. Het
+bestand bevat niets geheims: het is een browser-schil met de hostnaam erin. De
+netwerklaag is hier de deur.
+
 De ondertekensleutel SHALL als secret bewaard worden (SOPS+age in deze repo),
 omdat Android de identiteit van een app aan die sleutel ontleent.
 
@@ -28,6 +35,12 @@ omdat Android de identiteit van een app aan die sleutel ontleent.
 - **WHEN** het toestel de origin niet kan bereiken (geen tailnet)
 - **THEN** faalt de verificatie zichtbaar en niet stil — en de chat werkt sowieso
   niet zonder verbinding
+
+#### Scenario: Link doorgestuurd naar een toestel
+
+- **WHEN** iemand de download-link opent zonder ingelogde sessie, op een toestel
+  dat de origin kan bereiken
+- **THEN** krijgt hij de APK, en niet een 401
 
 #### Scenario: Nieuwe versie van de chat
 

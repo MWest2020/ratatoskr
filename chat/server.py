@@ -66,8 +66,14 @@ class H(BaseHTTPRequestHandler):
         if statics.serveer(self, u.path):
             return None
         if u.path == "/ratatoskr.apk":
-            if auth_routes.gate(self, u.path, schrijft=False) is None:
-                return None
+            # Open, net als /login en de asset-links. Twee redenen, allebei
+            # praktisch: (a) een APK-download start vaak buiten de sessie — een
+            # link die je doorstuurt opent in een andere app of in de
+            # downloadmanager, en die draagt het cookie niet mee, dus achter de
+            # gate is de link onbruikbaar precies wanneer je 'm nodig hebt;
+            # (b) het bestand bevat niets geheims: het is een browser-schil met
+            # de hostnaam erin, en die staat al in elke URL. De netwerklaag
+            # (tailnet of proxy) is hier de deur.
             return statics.serveer_apk(self) and None
         if u.path.startswith("/api/"):
             # Lezen zit óók achter de sessie: in deze routes staan kanaalnamen,

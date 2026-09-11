@@ -48,9 +48,8 @@ BESTANDEN = {
 
 
 def serveer_apk(h):
-    """De Android-app aanbieden. Achter de sessie: wie bij de chat kan, kan bij
-    de app — en een APK is precies het soort bestand dat je niet aan vreemden
-    geeft. Return True als er iets verstuurd is."""
+    """De Android-app aanbieden — zonder sessie, zie server.py voor waarom.
+    Return True als er iets verstuurd is."""
     pad = os.path.join(APK_DIR, APK_NAAM)
     try:
         with open(pad, "rb") as f:

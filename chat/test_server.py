@@ -103,9 +103,14 @@ class ServerTest(unittest.TestCase):
         self.assertTrue(d[0]["target"]["sha256_cert_fingerprints"][0].count(":") == 31,
                         "vingerafdruk hoort 32 hex-paren te zijn")
 
-    def test_apk_zit_achter_de_sessie(self):
+    def test_apk_is_open(self):
+        """Een APK-download start vaak buiten de sessie (downloadmanager, een
+        doorgestuurde link in een andere app) en draagt het cookie dan niet mee.
+        Achter de gate is de link onbruikbaar precies wanneer je 'm nodig hebt;
+        het bestand bevat niets geheims."""
         code, _ = self.call("/ratatoskr.apk", sessie=False)
-        self.assertEqual(code, 401)
+        self.assertIn(code, (200, 404))
+        self.assertNotEqual(code, 401)
 
     def test_apk_zonder_bestand_is_404_geen_500(self):
         """Een installatie zonder app hoort netjes te zeggen dat hij er niet is."""
