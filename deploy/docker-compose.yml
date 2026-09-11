@@ -165,7 +165,13 @@ services:
     environment:
       BIND_HOST: 0.0.0.0            # binnen de container; publiceren doet `ports`
       PORT: "8090"
-      BUZZ_RELAY_URL: ws://relay:3000
+      # De relay bedient communities PER HOST: een verbinding met een andere
+      # Host-header dan waarop de community geconfigureerd is krijgt
+      # "404 no community is configured for this host". Bij een verse installatie
+      # bootstrapt de relay een community voor `relay:3000` en klopt de default.
+      # Bestond de relay al (Marks installatie), dan hoort hier de host waarop
+      # díe community staat — daarom instelbaar.
+      BUZZ_RELAY_URL: ${BUZZ_RELAY_URL:-ws://relay:3000}
       RATATOSKR_AUTH_DB: /var/lib/ratatoskr/auth.db
       PUSH_SUBS_PATH: /var/lib/ratatoskr/push_subs.json
     ports:
