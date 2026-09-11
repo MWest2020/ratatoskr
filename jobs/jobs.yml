@@ -124,7 +124,7 @@ jobs:
       Z=/home/agent/zettelkast
       cd "$Z" 2>/dev/null || { echo "(LEESFOUT: zettelkast-clone niet gevonden)"; exit 0; }
       echo '== logregels van vandaag =='
-      grep "^$(date +%F)" wiki/log.md 2>/dev/null | cut -c1-300 || true
+      grep "^$(date +%F)" wiki/log.md 2>/dev/null | cut -c1-450 || true
       echo '== commits van vandaag =='
       git log --oneline --since=midnight 2>/dev/null | head -20         || echo "(LEESFOUT: git log mislukt)"
       # new_sources.py noemt elke ongeciteerde bron. Bij een URL-share is dat
@@ -135,7 +135,13 @@ jobs:
       lijst=$(python3 scripts/new_sources.py 2>/dev/null) ||         { echo "(LEESFOUT: new_sources.py faalde)"; exit 0; }
       for f in $lijst; do
         b=$(basename "$f" .md)
-        if grep -qr "$b" wiki/log.md journal/ 2>/dev/null; then
+        # Een VERMELDING is geen afhandeling. De capture-run schrijft ook regels
+        # als "capture overgeslagen, wacht op Mark: <clips>", en die noemen
+        # precies de clips die nog OPEN staan. Zonder deze uitzondering telde de
+        # job die als afgehandeld en verdwenen ze uit beeld — een false-clear
+        # (gemeten 2026-09-11, de job meldde 0 open terwijl er 10 openstonden).
+        if grep -r "$b" wiki/log.md journal/ 2>/dev/null \
+             | grep -v "overgeslagen\|wacht op" | grep -q .; then
           echo "AFGEHANDELD $f"
         else
           echo "OPEN        $f :: $(grep -ohEm1 'https?://[^ ]+' "$f" 2>/dev/null | cut -c1-80)"
