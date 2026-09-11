@@ -23,9 +23,11 @@
       @starter namens @aanleiding".
 - [ ] 1.5 `prompts.sessie_clausule`: alleen types die voor deze aanleiding
       startbaar zijn.
-- [ ] 1.6 `sessies.yml`: `orchestrator` niet op `starters`.
-- [ ] 1.7 Tests: agent namens niet-starter geweigerd; aanleiding met
-      `rol: orchestrator` geweigerd; twee mensen via odin tegelijk toegestaan;
+- [ ] 1.6 `sessies.yml`: `orchestrator` blijft op `starters` (besluit Mark
+      2026-09-11) — geen wijziging, wel vastleggen in de how-to waaróm, en wat
+      het kost voor de herleiding.
+- [ ] 1.7 Tests: agent namens niet-starter geweigerd; aanleiding `orchestrator`
+      toegestaan (staat op `starters`); twee mensen via odin tegelijk toegestaan;
       tweede sessie van dezelfde persoon via odin geweigerd; meta-regel wordt
       door de oogst overgeslagen; bestandsnaam.
 - [ ] 1.8 `docs/how-to/werksessies.md`: aanleiding, limiet per persoon, en de

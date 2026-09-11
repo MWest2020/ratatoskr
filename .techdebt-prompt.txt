@@ -1,0 +1,31 @@
+Je werkt in MWest2020/boomhuis (deze worktree, branch los van main). Start een
+OpenSpec change "technical-debt-11-09" voor drie punten uit de architect-review
+in #technical_debt (2026-09-11):
+
+1. Werksessies loggen odin als starter i.p.v. de aanvrager. sessies.yml en
+   agents/listener.py geven odins naam door, runbestand heet
+   {typ}-odin-{ts}.jsonl. Fix: geef de afzender van het aansturende bericht
+   mee als `aanleiding` in runbestand + startpost; laat odin alleen starten
+   namens mensen die zelf op starters staan.
+
+2. "Immutable images" wordt geschreven maar niet gehandhaafd: Marks eigen
+   chat draait via scp naar /opt/buzz-build, geen BUZZ_IMAGE-pin, geen
+   compose-bestand in deze repo. uitrol-voor-derden lost dit op voor
+   nieuwe installaties maar laat Marks eigen installatie erbuiten.
+   Beslis: neem Marks installatie mee in dezelfde migratie, voor de
+   eerste derde live gaat.
+
+3. Regel <=200 al overschreden zonder handhaving: chat/server.py (221),
+   chat/buzzcli.py (210), chat/auth.py (203), agents/test_topology.py (241).
+   Geen CI. Voeg een regel-check toe (pre-commit of CI) of pas de conventie
+   bewust aan. auth.py (zelfgeschreven scrypt/TOTP/sessies) apart laten
+   reviewen via security-review voor uitrol-voor-derden.
+
+Schrijf conversational design -> design.md met verworpen alternatieven per
+punt -> propose. Geen code/apply in deze sessie, alleen het voorstel.
+
+Werkwijze: lees eerst CLAUDE.md en openspec/project.md van deze repo. Nederlands
+in proza. Zet de change onder openspec/changes/technical-debt-11-09/ met
+proposal.md, design.md, tasks.md en spec-deltas waar nodig, en valideer met
+`npx --yes @fission-ai/openspec@latest validate technical-debt-11-09 --strict`.
+Commit op een eigen branch en open een PR; niet mergen.

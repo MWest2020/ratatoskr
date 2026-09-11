@@ -26,9 +26,12 @@ listener-agent, en PR #71 zet `orchestrator` op `starters`.
 - Twee rollen per sessie. De **starter** schreef de marker (odin, of de mens
   zelf); de **aanleiding** is de Nostr-afzender van het bericht dat de beurt in
   gang zette. Typt een mens de marker zelf, dan zijn ze gelijk.
-- Machtiging: starter op `starters`, aanleiding op `starters`, en de aanleiding
-  heeft `rol: mens` in `identities.yml`. Die derde voorwaarde is wat "namens
-  mensen" mechanisch betekent; de registry draagt `rol` al.
+- Machtiging: starter op `starters` **en** aanleiding op `starters`. Twee
+  voorwaarden, niet drie. Een eerdere versie eiste ook `rol: mens` voor de
+  aanleiding; **besluit Mark 2026-09-11: `orchestrator` blijft op `starters`**,
+  dus die derde voorwaarde vervalt. Wie een sessie mag aanleiding geven staat
+  daarmee volledig in `sessies.yml` — één reviewbaar bestand — in plaats van
+  half daar en half in de `rol` in de registry.
 - De limiet gaat per aanleiding, niet per starter. Met odin als tussenpersoon zou
   een limiet per starter de tweede persoon weigeren die odin iets vraagt. Het
   risico waarvoor de oude regel bestond — een agent die in een lus elke beurt een
@@ -51,11 +54,15 @@ listener-agent, en PR #71 zet `orchestrator` op `starters`.
   `werksessies-vanuit-de-chat`: odin die zelf een sessie opspint.
 - *Odin schrijft `namens @x` in de marker.* Identiteit uit tekst; de bestaande
   eis verbiedt dat, en odins tekst is te sturen door alles in odins context.
-- *`orchestrator` toestaan als vertrouwde automatisering.* Die sleutel staat op
-  agent-lxc en wordt gedeeld door dispatch, jobs en terminal-sessies. Een sessie
-  met aanleiding `orchestrator` heeft hetzelfde gat als een met aanleiding
-  `odin`: er is geen mens te herleiden. Automatisering die een sessie wil, is een
-  job. Van alle keuzes hier is dit de makkelijkst om te draaien in de review.
+- *Aanleiding moet `rol: mens` hebben.* Mechanisch het scherpst: elke sessie is
+  dan naar een persoon te herleiden. **Verworpen door Mark (2026-09-11):
+  `orchestrator` blijft op `starters`.** Wat dat kost, expliciet: die sleutel
+  staat op agent-lxc en wordt gedeeld door dispatch, jobs en terminal-sessies,
+  dus bij een sessie met aanleiding `orchestrator` stopt de herleiding bij
+  "automatisering op agent-lxc" en niet bij een mens. Wat ervoor pleit: de
+  praktijk van vandaag — de terminal-sessie die dit werk doet, post als
+  `orchestrator`, en dat is precies hoe de eerste werksessies gestart zijn. De
+  rem blijft `starters` (een expliciete lijst in git) plus `max_gelijktijdig`.
 
 **Wat dit niet oplost.** De aanleiding is zo goed als de Nostr-afzender, en de
 webchat tekent elk bericht met Marks sleutel (`chat/actions.py`; design van

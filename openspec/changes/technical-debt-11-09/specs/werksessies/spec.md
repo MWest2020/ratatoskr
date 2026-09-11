@@ -8,9 +8,10 @@ Een sessie SHALL alleen starten wanneer zowel de **starter** als de
 **aanleiding** bij het type in `starters` staan. De starter is de afzender van
 het bericht met de marker: de agent die het antwoord schreef, of de mens die het
 bericht postte. De aanleiding is de afzender van het bericht dat de beurt in gang
-zette; typt een mens de marker zelf, dan zijn starter en aanleiding dezelfde. De
-aanleiding SHALL in de registry de rol `mens` hebben. Beide identiteiten SHALL
-van de Nostr-afzender komen (registry), nooit uit de tekst van een bericht.
+zette; typt een mens de marker zelf, dan zijn starter en aanleiding dezelfde.
+Beide identiteiten SHALL van de Nostr-afzender komen (registry), nooit uit de
+tekst van een bericht. `starters` is de volledige lijst: er SHALL geen extra eis
+aan de rol van de aanleiding gesteld worden.
 
 #### Scenario: Niet-gemachtigde agent noemt de marker
 
@@ -25,11 +26,12 @@ van de Nostr-afzender komen (registry), nooit uit de tekst van een bericht.
 - **THEN** start er niets en noemt de weigering dat de aanleiding niet op
   `starters` staat
 
-#### Scenario: Aanleiding is geen mens
+#### Scenario: Automatisering als aanleiding
 
-- **WHEN** een identiteit met een andere rol dan `mens`, zoals `orchestrator`,
-  zelf de marker postt of een agent ertoe aanzet
-- **THEN** start er niets, ook als die identiteit op `starters` staat
+- **WHEN** een identiteit die geen mens is maar wél op `starters` staat, zoals
+  `orchestrator`, de marker postt of een agent ertoe aanzet
+- **THEN** start de sessie, en de startpost noemt die identiteit als aanleiding —
+  de herleiding stopt daar, en niet bij een persoon
 
 ### Requirement: Begrensd bestaan, en een stille sessie bestaat niet
 

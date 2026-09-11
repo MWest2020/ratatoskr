@@ -34,9 +34,10 @@ security-review gegaan: de vorige review (2026-08-30) dateert van vóór die cod
   marker schreef) komt de `aanleiding`: de Nostr-afzender van het bericht dat de
   beurt in gang zette. Die staat in de naam van het runbestand, in een eerste
   regel daarin en in de startpost. Een sessie start alleen als starter én
-  aanleiding op `starters` staan en de aanleiding `rol: mens` heeft in de
-  registry. De limiet van één lopende sessie geldt per aanleiding.
-  `orchestrator` hoort daardoor niet op `starters`.
+  aanleiding op `starters` staan. De limiet van één lopende sessie geldt per
+  aanleiding. Besluit Mark 2026-09-11: `orchestrator` blijft op `starters` —
+  wie een sessie mag aanleiding geven staat daarmee volledig in `sessies.yml`,
+  en niet half in de `rol` in de registry.
 - **Eén uitrolpad, en Marks installatie gaat er als eerste over** — vóór de
   eerste derde live gaat. De migratie uit PR #71 wordt uitgevoerd, niet alleen
   beschreven.
