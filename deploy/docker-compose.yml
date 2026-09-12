@@ -14,8 +14,11 @@
 #      keuze van de beheerder, geen bijwerking van de default.
 # Bij een upstream-upgrade: nieuwe kopie nemen en deze drie opnieuw aanbrengen.
 #
-# Alles instelbaars staat in .env (zie .env.example). Images zijn gepind — nooit
-# :latest, nooit :main.
+# Alles instelbaars staat in .env (zie .env.example) BEHALVE de images: die staan
+# hier letterlijk. Een pin in .env staat op de host en niet in git, en dan lopen
+# "wat draait er" en "wat zegt de repo" spoorloos uiteen. Een upgrade is dus een
+# diff in dit bestand, en dat is precies wat je wilt kunnen zien.
+# Regels: geen variabele, geen `:-fallback`, minstens major.minor.
 #
 #   docker compose up -d
 #   docker compose exec chat python3 adminctl.py eigenaar <naam>
@@ -24,7 +27,7 @@ name: ${COMPOSE_PROJECT:-boomhuis}
 
 services:
   relay:
-    image: ${BUZZ_IMAGE:-ghcr.io/block/buzz:main}
+    image: ghcr.io/block/buzz:sha-4baccd5
     env_file:
       - .env
     environment:
@@ -75,7 +78,7 @@ services:
       - buzz-net
 
   postgres:
-    image: postgres:17-alpine
+    image: postgres:17.6-alpine
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-buzz}
       POSTGRES_USER: ${POSTGRES_USER:-buzz}
@@ -94,7 +97,7 @@ services:
       - buzz-net
 
   redis:
-    image: redis:7-alpine
+    image: redis:7.4-alpine
     command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:?set REDIS_PASSWORD}"]
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD:?set REDIS_PASSWORD}
@@ -140,7 +143,7 @@ services:
       - buzz-net
 
   seaweedfs-init:
-    image: rclone/rclone:1
+    image: rclone/rclone:1.71
     depends_on:
       seaweedfs:
         condition: service_healthy
@@ -159,7 +162,7 @@ services:
   # De chat: PWA + API. Praat met de relay over het interne netwerk (buzz-net),
   # dus hij heeft de gepubliceerde relay-poort niet nodig.
   chat:
-    image: ${CHAT_IMAGE:?set CHAT_IMAGE (gepinde tag, nooit :latest)}
+    image: ghcr.io/mwest2020/ratatoskr-chat:0.4.0
     env_file:
       - .env
     environment:
