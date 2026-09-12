@@ -117,7 +117,15 @@ def last_activity(content):
     return last
 
 
-def session_cards(runs_dir, now):
+# Een sessie schrijft continu naar zijn runbestand. Gebeurt dat een tijd niet
+# meer én staat er geen result-regel in, dan is het proces weg (time-out, kill,
+# herstart van de listener) en is de kaart een spook. Gemeten 2026-09-12: twee
+# afgekapte reviews stonden uren in `building` — Mark: "building lane update niet
+# en ik kan er niet op klikken".
+SESSION_STALE = 300
+
+
+def session_cards(runs_dir, now, stale_after=SESSION_STALE):
     """A work session is still running as long as there is no `result` line in the
     run file. Done is done: it leaves the board, it is in the channel."""
     cards = []
@@ -129,6 +137,8 @@ def session_cards(runs_dir, now):
             continue
         if '"type":"result"' in content.replace(" ", ""):
             continue
+        if now - ts > stale_after:
+            continue          # dead process, not a running session
         name = os.path.basename(path).rsplit("-", 1)[0]
         typ, _, who = name.partition("-")
         # A session has no URL but it does have a CHANNEL: that is where it

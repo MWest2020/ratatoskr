@@ -15,6 +15,12 @@ echo "— regelgrens"
 python3 scripts/line_limit.py || fout=1
 echo "— pins"
 python3 scripts/pin_check.py || fout=1
+# Alleen lokaal: in CI bestaat ~/.config/systemd/user niet, en daar is geen host
+# om van af te drijven.
+if [ -d "$HOME/.config/systemd/user" ]; then
+  echo "— units"
+  python3 scripts/check_units.py || fout=1
+fi
 echo
 if [ $fout -eq 0 ]; then
   echo "verify: groen. End-to-end tegen de VM: zie chat/e2e/README.md"

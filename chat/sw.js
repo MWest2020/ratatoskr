@@ -5,7 +5,7 @@
 //   keeps running after a timeout and refreshes the cache anyway (waitUntil).
 // - Statics (icons, manifest): cache first with a background update.
 // - /api/*: NEVER cached (chat is realtime, git is the truth).
-const CACHE = "boomhuis-shell-v21";  // v21: repos.css and login.css split out of app.css
+const CACHE = "boomhuis-shell-v22";  // v22: push self-repair is visible when it fails
 // A version bump wipes every older cache on `activate`. That is the only thing
 // that reliably unsticks an installed PWA stuck on the old JS: network first only
 // helps once the app runs, and that was exactly the bug where it did not.

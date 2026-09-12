@@ -51,7 +51,16 @@ async function enablePush(btn){
 if("serviceWorker" in navigator && "PushManager" in window && "Notification" in window){
   if(Notification.permission==="granted"){
     // Already granted: quietly ensure the server knows our (correct) subscription.
-    ensurePushSubscription().catch(()=>{});
+    // NOT silently on failure: a subscription can expire (reinstall, new browser
+    // context, FCM prunes it) and then you get no notifications and no hint why.
+    // Measured 2026-09-12 — Mark: "ook geen meldingen". So on failure the bell
+    // comes back: something to press instead of silence.
+    ensurePushSubscription().catch(()=>{
+      const pb=document.createElement("button");
+      pb.id="pushBtn"; pb.textContent="🔔"; pb.title="notifications are off — tap to fix";
+      pb.onclick=()=>enablePush(pb);
+      document.querySelector("header").appendChild(pb);
+    });
   }else if(Notification.permission!=="denied"){
     // Not decided yet: show a 🔔 button.
     const pb=document.createElement("button");
