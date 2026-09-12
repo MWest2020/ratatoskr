@@ -98,6 +98,29 @@ class Create(unittest.TestCase):
         pad = hooks if os.path.isabs(hooks) else os.path.join(werk, hooks)
         self.assertTrue(os.access(os.path.join(pad, "pre-push"), os.X_OK))
 
+    def test_hook_does_not_leak_to_the_rest_of_the_clone(self):
+        """Gemeten 2026-09-12: de hook stond in de GEDEELDE .git/hooks en
+        blokkeerde daarmee pushes vanuit elke andere worktree van dezelfde clone.
+        Het hek hoort bij de sessie, niet bij de repo."""
+        boven, clone = self._repo()
+        werk, _ = work_tree.create(clone, os.path.join(boven, "sessies"),
+                                   "build", "mark", now=42)
+        gedeeld = _git(["rev-parse", "--path-format=absolute", "--git-common-dir"],
+                       werk).stdout.strip()
+        self.assertFalse(os.path.exists(os.path.join(gedeeld, "hooks", "pre-push")),
+                         "de hook mag niet in de gedeelde hooks-map staan")
+        # En de worktree gebruikt wél zijn eigen map.
+        eigen = _git(["config", "core.hooksPath"], werk).stdout.strip()
+        self.assertTrue(eigen.endswith(".session-hooks"), eigen)
+        self.assertTrue(os.access(os.path.join(eigen, "pre-push"), os.X_OK))
+
+    def test_hook_dir_is_not_committed(self):
+        boven, clone = self._repo()
+        werk, _ = work_tree.create(clone, os.path.join(boven, "sessies"),
+                                   "build", "mark", now=42)
+        uit = _git(["status", "--porcelain"], werk).stdout
+        self.assertNotIn(".session-hooks", uit)
+
     def test_missing_repo_raises_instead_of_half_a_worktree(self):
         with self.assertRaises(Exception):
             work_tree.create("/bestaat/niet", tempfile.mkdtemp(), "build", "mark")

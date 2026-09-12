@@ -108,14 +108,46 @@ class OpenspecCards(unittest.TestCase):
 class Snapshot(unittest.TestCase):
     def test_failing_source_becomes_an_error_not_silence(self):
         """Stil niets tonen is niet te onderscheiden van 'er is niets te doen'."""
+        leeg = os.path.join(tempfile.mkdtemp(), "geen-cache.json")
         cfg = {"columns": COLUMNS,
                "sources": {"openspec_glob": "/bestaat/niet/*", "github_owner": "x",
-                           "session_runs": "/bestaat/niet", "merged_days": 3}}
+                           "session_runs": "/bestaat/niet", "merged_days": 3,
+                           "pr_cache": leeg, "pr_cache_seconds": 600}}
         board_sources.gh_json = lambda args: (_ for _ in ()).throw(RuntimeError("gh weg"))
         snap = board.build(cfg, now=1000.0)
         self.assertTrue(snap["errors"])
         self.assertIn("gh weg", snap["errors"][0])
         self.assertEqual(snap["cards"], [])
+
+    def test_stale_cache_is_used_but_announced(self):
+        """Een oude cache is beter dan een leeg bord — zolang het bord zegt dat
+        hij oud is. Stil oude PR's tonen is de false-clear in vermomming."""
+        cache = os.path.join(tempfile.mkdtemp(), "prs.json")
+        with open(cache, "w") as f:
+            json.dump({"at": 0, "cards": [{"column": "review", "age_days": 1}]}, f)
+        cfg = {"columns": COLUMNS,
+               "sources": {"openspec_glob": "/bestaat/niet/*", "github_owner": "x",
+                           "session_runs": "/bestaat/niet", "merged_days": 3,
+                           "pr_cache": cache, "pr_cache_seconds": 1}}
+        board_sources.gh_json = lambda args: (_ for _ in ()).throw(RuntimeError("gh weg"))
+        snap = board.build(cfg, now=1000.0)
+        self.assertEqual(len(snap["cards"]), 1)
+        self.assertIn("niet ververst", snap["errors"][0])
+
+    def test_fresh_cache_skips_github(self):
+        """Dit is wat een lopende sessie zichtbaar maakt: de PR-kant hoeft niet
+        elke twee minuten opnieuw opgehaald te worden."""
+        cache = os.path.join(tempfile.mkdtemp(), "prs.json")
+        with open(cache, "w") as f:
+            json.dump({"at": 999.0, "cards": []}, f)
+        cfg = {"columns": COLUMNS,
+               "sources": {"openspec_glob": "/bestaat/niet/*", "github_owner": "x",
+                           "session_runs": "/bestaat/niet", "merged_days": 3,
+                           "pr_cache": cache, "pr_cache_seconds": 600}}
+        def boem(args):
+            raise AssertionError("gh had niet aangeroepen mogen worden")
+        board_sources.gh_json = boem
+        self.assertEqual(board.build(cfg, now=1000.0)["errors"], [])
 
 
 if __name__ == "__main__":

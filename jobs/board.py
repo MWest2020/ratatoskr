@@ -34,6 +34,32 @@ def load_config(path=None):
     return yaml.safe_load(open(path or os.path.join(HERE, "board.yml")))
 
 
+def _pr_cards_cached(src, now, cache_path, max_age):
+    """PR's komen van GitHub en veranderen traag; sessies veranderen elke minuut.
+    Door de PR-kant te cachen kan de momentopname vaak draaien zonder GitHub elke
+    keer te bevragen — dat is wat een LOPENDE sessie zichtbaar maakt."""
+    try:
+        gecacht = json.load(open(cache_path))
+        if now - gecacht.get("at", 0) < max_age:
+            return gecacht["cards"], []
+    except (OSError, ValueError, KeyError):
+        pass
+    try:
+        cards = board_sources.pr_cards(src["github_owner"], src.get("merged_days", 3),
+                                       now, set(src.get("ignore_repos") or ()))
+    except Exception as e:
+        # Geen verse PR's? Val terug op de cache, hoe oud ook — maar zeg het.
+        try:
+            return json.load(open(cache_path))["cards"], [f"PR's niet ververst: {e}"]
+        except (OSError, ValueError, KeyError):
+            return [], [f"PR's niet opgehaald: {e}"]
+    tmp = cache_path + ".tmp"
+    with open(tmp, "w") as f:
+        json.dump({"at": now, "cards": cards}, f)
+    os.replace(tmp, cache_path)
+    return cards, []
+
+
 def build(cfg, now=None):
     """De momentopname. Een bron die faalt komt als `errors` mee — het bord moet
     kunnen zeggen 'ik weet het niet' in plaats van 'er is niets'."""
@@ -41,11 +67,10 @@ def build(cfg, now=None):
     src, cols = cfg["sources"], cfg["columns"]
     cards, errors = [], []
     cards += board_sources.openspec_cards(src["openspec_glob"], now)
-    try:
-        cards += board_sources.pr_cards(src["github_owner"], src.get("merged_days", 3),
-                                        now, set(src.get("ignore_repos") or ()))
-    except Exception as e:
-        errors.append(f"PR's niet opgehaald: {e}")
+    pr, fouten = _pr_cards_cached(src, now, src.get("pr_cache", "/tmp/board-prs.json"),
+                                  src.get("pr_cache_seconds", 600))
+    cards += pr
+    errors += fouten
     try:
         cards += board_sources.session_cards(src["session_runs"], now)
     except Exception as e:

@@ -25,6 +25,11 @@ function boardCard(c) {
   if (c.who) add(meta, el("span", "bwho", "@" + c.who));
   add(row, meta, el("div", "btitle", c.title || ""));
 
+  // Hoe het gebouwd wordt, en waar het nú mee bezig is. Zonder dat laatste is
+  // een lopende sessie een kaart die niets zegt.
+  if (c.via) add(row, el("div", "bvia", c.via));
+  if (c.activity) add(row, el("div", "bact", "⋯ " + c.activity));
+
   // Elke kaart gaat érgens heen. Een PR of een change opent op GitHub; een
   // werksessie heeft geen URL maar wel een kanaal, dus daar springt de app
   // heen. Kan een kaart nergens heen, dan is hij zichtbaar niet klikbaar —
@@ -97,6 +102,19 @@ async function openBoard() {
   cols.className = "bcols";
   for (const col of (d.columns || [])) cols.appendChild(boardColumn(col, cards));
   view.appendChild(cols);
+
+  if (!boardTimer) boardTimer = setInterval(() => {
+    if ($("#boardDrawer").classList.contains("open")) openBoard();
+    else closeBoard();
+  }, 30000);
 }
 
-function closeBoard() { $("#boardDrawer").classList.remove("open"); }
+// Zolang het bord openstaat, halen we elke 30 seconden een verse momentopname.
+// De producent draait elke twee minuten, dus je ziet een lopende sessie echt
+// vooruitgaan in plaats van één keer bij het openen.
+let boardTimer = null;
+
+function closeBoard() {
+  $("#boardDrawer").classList.remove("open");
+  if (boardTimer) { clearInterval(boardTimer); boardTimer = null; }
+}

@@ -38,3 +38,6 @@
 .bwho{color:var(--muted)}
 .btitle{color:var(--ink); font-size:.86rem; margin-top:.15rem;
   overflow-wrap:anywhere}
+.bvia{color:var(--muted); font-size:.72rem; margin-top:.2rem}
+.bact{color:var(--accent2); font-size:.72rem; margin-top:.15rem;
+  overflow-wrap:anywhere}

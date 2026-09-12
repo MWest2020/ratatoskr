@@ -55,7 +55,7 @@ def openspec_cards(pattern, now):
         base = urls[clone]
         url = f"{base}/tree/main/openspec/changes/{change}" if base else ""
         cards.append({"id": f"openspec:{repo}:{change}", "repo": repo,
-                      "title": change, "column": "proposal",
+                      "title": change, "column": "proposal", "via": "openspec",
                       "age_days": age_days(ts, now), "who": "", "url": url,
                       "source": path.replace("/home/agent/", "~/")})
     return cards
@@ -88,10 +88,33 @@ def pr_cards(owner, merged_days, now, ignore=()):
         cards.append({"id": f"pr:{r['repository']['name']}:{r['number']}",
                       "repo": r["repository"]["name"],
                       "title": f"#{r['number']} {r['title']}",
-                      "column": pr_column(pr), "age_days": age_days(ts, now),
+                      "column": pr_column(pr), "via": "pull request",
+                      "age_days": age_days(ts, now),
                       "who": (r.get("author") or {}).get("login", ""),
                       "url": r.get("url", ""), "source": ""})
     return cards
+
+
+def last_activity(content):
+    """De laatste tool-aanroep uit een runbestand, kort. Een lopende sessie die
+    alleen "bezig" zegt is een voortgangsbalk zonder balk."""
+    laatste = ""
+    for regel in content.splitlines():
+        if '"tool_use"' not in regel:
+            continue
+        try:
+            ev = json.loads(regel)
+        except ValueError:
+            continue
+        for c in (ev.get("message") or {}).get("content", []):
+            if c.get("type") == "tool_use":
+                doel = ""
+                for k in ("file_path", "path", "pattern", "command"):
+                    if c.get("input", {}).get(k):
+                        doel = str(c["input"][k])[-40:]
+                        break
+                laatste = f"{c.get('name')} {doel}".strip()
+    return laatste
 
 
 def session_cards(runs_dir, now):
@@ -110,15 +133,22 @@ def session_cards(runs_dir, now):
         typ, _, wie = naam.partition("-")
         # Een sessie heeft geen URL maar wel een KANAAL: daar praat hij. De app
         # springt daarheen in plaats van een dode kaart te tonen.
-        kanaal = ""
+        kanaal, schrijft = "", False
         try:
             eerste = json.loads(inhoud.splitlines()[0])
             if eerste.get("type") == "boomhuis_sessie":
-                kanaal, wie = eerste.get("kanaal", ""), eerste.get("requester", wie)
+                kanaal = eerste.get("kanaal", "")
+                wie = eerste.get("requester", wie)
+                schrijft = bool(eerste.get("schrijft"))
         except (ValueError, IndexError):
             pass
+        # Waar hij mee bezig is: de laatste tool-aanroep in het runbestand. Zonder
+        # dit is een lopende sessie een kaart die niets zegt, en dat is precies
+        # wat Mark miste: "tijdens bouwen verwacht ik updates".
         cards.append({"id": "session:" + os.path.basename(path),
                       "repo": "werksessie", "title": f"{typ} · {wie}",
-                      "column": "building", "age_days": age_days(ts, now),
+                      "column": "building",
+                      "via": "session (schrijft)" if schrijft else "session",
+                      "age_days": age_days(ts, now), "activity": last_activity(inhoud),
                       "who": wie, "url": "", "channel": kanaal, "source": path})
     return cards
