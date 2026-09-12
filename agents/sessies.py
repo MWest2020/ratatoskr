@@ -19,6 +19,8 @@ import time
 import bootstrap
 import providers
 import session_gate
+import session_report
+import work_tree
 
 CLAUDE = os.environ.get("CLAUDE_BIN", "claude")
 RUNS = os.environ.get("SESSIE_RUNS", "/tmp/boomhuis-sessies")
@@ -27,8 +29,15 @@ RUNS = os.environ.get("SESSIE_RUNS", "/tmp/boomhuis-sessies")
 lees_marker = session_gate.read_marker
 knip_marker = session_gate.strip_marker
 
-# Nooit aan een sessie, ook niet als een type ze per ongeluk in `tools` zet.
+# Nooit aan een LEZENDE sessie, ook niet als een type ze per ongeluk in `tools`
+# zet. Een schrijvende sessie (`writes: true`) heeft ze wél nodig — die werkt in
+# een eigen worktree met een pre-push-hook als hek, zie work_tree.py.
 VERBODEN = ["Write", "Edit", "NotebookEdit", "Bash", "Task", "KillShell"]
+# Ook een schrijvende sessie krijgt deze niet: Task spawnt agents buiten elk
+# zicht, KillShell raakt processen die niet van hem zijn.
+VERBODEN_ALTIJD = ["Task", "KillShell"]
+# Waar de worktrees van schrijvende sessies komen — buiten elke draaiende checkout.
+WERKMAPPEN = os.environ.get("SESSIE_WERKMAPPEN", "/home/agent/sessie-werk")
 PROGRESS_MAX, PROGRESS_GAP = 6, 25
 
 
@@ -58,15 +67,26 @@ class Register:
         if not ok:
             return None, reden
         t = self.cfg["types"][typ]
+        schrijft = bool(t.get("writes"))
         werkmap = t.get("werkmap") or ""
-        if not os.path.isdir(werkmap):
+        branch = ""
+        if schrijft:
+            # Verse worktree op een eigen branch, mét pre-push-hook. Faalt dat,
+            # dan start er niets: liever geen sessie dan een sessie die in een
+            # draaiende checkout schrijft.
+            try:
+                werkmap, branch = work_tree.create(werkmap, WERKMAPPEN, typ, requester)
+            except Exception as e:
+                return None, f"kon geen werkboom maken voor '{typ}': {str(e)[:140]}"
+        elif not os.path.isdir(werkmap):
             return None, f"werkmap van '{typ}' bestaat niet: {werkmap}"
-        tools = [x for x in (t.get("tools") or []) if x not in VERBODEN]
+        verboden = VERBODEN_ALTIJD if schrijft else VERBODEN
+        tools = [x for x in (t.get("tools") or []) if x not in verboden]
         cmd = [CLAUDE, "-p", "--output-format", "stream-json", "--verbose",
                "--permission-mode", "dontAsk",
                "--append-system-prompt", t.get("systeem") or "",
                "--allowedTools", ",".join(providers.scoped(tools, t.get("leest_ook"))),
-               "--disallowedTools", ",".join(VERBODEN)]
+               "--disallowedTools", ",".join(verboden)]
         if t.get("model"):
             cmd += ["--model", t["model"]]
         # Bestandsnaam op de REQUESTER: anders heet elke door odin gestarte sessie
@@ -80,6 +100,7 @@ class Register:
             # onbekende types over, dus dit stoort niets.
             json.dump({"type": "boomhuis_sessie", "sessietype": typ, "starter": starter,
                        "requester": requester, "kanaal": cname, "bericht": bericht_id,
+                       "schrijft": schrijft, "branch": branch, "werkmap": werkmap,
                        "gestart": int(time.time())}, uit)
             uit.write("\n")
             uit.flush()
@@ -98,7 +119,8 @@ class Register:
              "cid": cid, "cname": cname, "proc": proc,
              "pad": pad, "uit": uit, "offset": 0, "t0": time.time(),
              "identiteit": t.get("identiteit") or starter, "n": 0, "tp": 0.0,
-             "max_s": int(t.get("max_seconden") or 900), "res": None}
+             "max_s": int(t.get("max_seconden") or 900), "res": None,
+             "schrijft": schrijft, "branch": branch, "werkmap": werkmap}
         self.lopend.append(s)
         return s, ""
 
@@ -139,7 +161,7 @@ class Register:
                 klaar += 1
                 continue
             if s["proc"].poll() is not None:
-                post(s, self._resultaat(s, op))
+                post(s, session_report.result_text(s, op))
                 self._sluit(s)
                 klaar += 1
         return klaar
@@ -154,21 +176,6 @@ class Register:
             s["n"], s["tp"] = s["n"] + 1, nu
             doel = providers._target(c.get("input") or {})
             post(s, f"⋯ sessie {s['typ']}: {c.get('name')} {doel}".strip())
-
-    def _resultaat(self, s, op):
-        """Altijd iets posten. Een sessie die stil niets oplevert leest als 'niets
-        te melden', en dat is precies de false-clear die we niet willen."""
-        r = s["res"] or {}
-        antwoord = (r.get("result") or "").strip()
-        voet = (f"— sessie `{s['typ']}` · {int(op // 60)}m{int(op % 60):02d}s"
-                f" · ${float(r.get('total_cost_usd') or 0.0):.2f}"
-                f" · {int(r.get('num_turns') or 0)} beurten")
-        if not antwoord:
-            return (f"⚠️ sessie `{s['typ']}` eindigde zonder antwoord "
-                    f"(exit {s['proc'].returncode}). Log: {s['pad']}\n{voet}")
-        if r.get("is_error"):
-            antwoord = f"⚠️ sessie liep vast ({r.get('subtype') or 'error'}):\n{antwoord}"
-        return f"{antwoord}\n\n{voet}"
 
     def _stop(self, s):
         try:
