@@ -1,35 +1,35 @@
 # SPDX-License-Identifier: EUPL-1.2
-"""Wat een sessie aan het eind in het kanaal zet.
+"""What a session puts in the channel at the end.
 
-Apart van sessies.py omdat dat bestand over processen en bestanden gaat en dit
-over tekst — en omdat beide anders over de 200 regels gaan.
+Separate from sessions.py because that file is about processes and files and this
+one about text — and because otherwise both would go over 200 lines.
 
-Eén regel bepaalt alles hier: **een stille sessie bestaat niet.** Faalt hij, komt
-hij leeg terug of wordt hij afgekapt, dan staat de reden in het kanaal. Anders
-leest een storing als "er was niets te melden", en dat is de false-clear die we
-overal in deze repo bewaken.
+One rule decides everything here: **a silent session does not exist.** If it
+fails, comes back empty or is cut off, the reason is in the channel. Otherwise a
+failure reads as "there was nothing to report", which is the false clear we guard
+against everywhere in this repo.
 
-Engels in de code per ADR-0001; deze module is nieuw.
+The posted TEXT stays Dutch: it lands in the Dutch channels (ADR-0001).
 """
 import re
 
-# Een PR-link uit de uitvoer vissen. Een schrijvende sessie eindigt in een
-# voorstel, en dat voorstel is het enige wat een mens hoeft aan te klikken.
+# Fish a PR link out of the output. A writing session ends in a proposal, and
+# that proposal is the only thing a human has to click.
 PR_URL = re.compile(r"https://github\.com/[\w.-]+/[\w.-]+/pull/\d+")
 
 
 def pull_request(text):
-    """De LAATSTE PR-link in de uitvoer, of "". De laatste, want een sessie kan
-    er onderweg een noemen als voorbeeld; de laatste is degene die hij opende."""
+    """The LAST PR link in the output, or "". The last one, because a session may
+    name one along the way as an example; the last is the one it opened."""
     found = PR_URL.findall(text or "")
     return found[-1] if found else ""
 
 
 def footer(session, elapsed, result):
-    """De statistiekregel: hoe lang, wat het kostte, hoeveel beurten — en bij een
-    schrijvende sessie welke branch, zodat je het werk terug kunt vinden ook als
-    er geen PR uit kwam."""
-    parts = [f"— sessie `{session['typ']}` · {int(elapsed // 60)}m{int(elapsed % 60):02d}s",
+    """The stats line: how long, what it cost, how many turns — and for a writing
+    session which branch, so you can find the work back even when no PR came out
+    of it."""
+    parts = [f"— sessie `{session['type']}` · {int(elapsed // 60)}m{int(elapsed % 60):02d}s",
              f"${float(result.get('total_cost_usd') or 0.0):.2f}",
              f"{int(result.get('num_turns') or 0)} beurten"]
     if session.get("branch"):
@@ -38,23 +38,23 @@ def footer(session, elapsed, result):
 
 
 def result_text(session, elapsed):
-    """Altijd iets. Een sessie die stil niets oplevert leest als 'niets te
-    melden', en dat is precies wat we niet willen."""
+    """Always something. A session that quietly yields nothing reads as 'nothing
+    to report', and that is exactly what we do not want."""
     result = session.get("res") or {}
     answer = (result.get("result") or "").strip()
     foot = footer(session, elapsed, result)
 
     if not answer:
-        return (f"⚠️ sessie `{session['typ']}` eindigde zonder antwoord "
-                f"(exit {session['proc'].returncode}). Log: {session['pad']}\n{foot}")
+        return (f"⚠️ sessie `{session['type']}` eindigde zonder antwoord "
+                f"(exit {session['proc'].returncode}). Log: {session['path']}\n{foot}")
     if result.get("is_error"):
         answer = (f"⚠️ sessie liep vast ({result.get('subtype') or 'error'}):\n{answer}")
 
     pr = pull_request(answer)
-    if session.get("schrijft"):
-        # Een schrijvende sessie zonder PR is niet per se mislukt, maar het is
-        # wél het eerste wat je wilt weten.
+    if session.get("writes"):
+        # A writing session without a PR has not necessarily failed, but it is
+        # the first thing you want to know.
         answer += (f"\n\n🔀 {pr}" if pr
                    else f"\n\n⚠️ geen pull request in de uitvoer — werk staat in "
-                        f"`{session.get('werkmap', '?')}`")
+                        f"`{session.get('workdir', '?')}`")
     return f"{answer}\n\n{foot}"

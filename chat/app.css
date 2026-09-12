@@ -11,8 +11,8 @@
     background:var(--bg); color:var(--ink);
     font-family:"Public Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
     display:flex; flex-direction:column; overflow:hidden;
-    /* --app-h spiegelt visualViewport (app-ui.js). Zonder JS, of op een
-       browser zonder visualViewport, blijft 100dvh het gedrag. */
+    /* --app-h mirrors visualViewport (app-ui.js). Without JS, or on a browser
+       without visualViewport, 100dvh stays the behaviour. */
     height:100dvh; height:var(--app-h, 100dvh);
   }
   header{
@@ -28,7 +28,7 @@
     border:1px solid var(--line); border-radius:10px; padding:.4rem .7rem;
     font-size:.85rem; font-weight:600;
   }
-  /* kanaallade */
+  /* channel drawer */
   #drawer{
     position:absolute; inset:0; background:rgba(0,0,0,.55); z-index:20;
     display:none; opacity:0; transition:opacity .15s;
@@ -59,7 +59,7 @@
     border:1px solid var(--line); border-radius:10px; padding:.5rem .6rem; font:inherit}
   .newchan button{background:var(--accent); color:#1a1710; border:none;
     border-radius:10px; padding:0 .9rem; font-weight:800; font-size:1.1rem}
-  /* berichten */
+  /* messages */
   #msgs{flex:1 1 auto; overflow-y:auto; padding:.8rem .8rem 1rem;
     display:flex; flex-direction:column; gap:.55rem}
   .row{display:flex; flex-direction:column; max-width:82%}
@@ -75,20 +75,20 @@
   .author-mark{color:var(--accent)}
   .author-orchestrator{color:var(--accent2)}
   .empty{color:var(--muted); text-align:center; margin:auto; font-size:.9rem}
-  /* balk boven berichten die uit de momentopname komen: zonder datum is
-     oude tekst niet van verse te onderscheiden, en dat is erger dan niets */
-  .gedateerd{position:sticky; top:0; z-index:1; text-align:center;
+  /* bar above messages that come from the snapshot: without a date old text is
+     indistinguishable from fresh text, and that is worse than nothing */
+  .dated{position:sticky; top:0; z-index:1; text-align:center;
     font-size:.75rem; color:var(--muted); background:var(--bg);
     border-bottom:1px solid var(--muted); padding:.35rem .5rem; margin-bottom:.4rem}
-  /* knoppen onder een verbindingsmelding: opnieuw proberen, en de
-     noodgreep die de service worker en de caches wist */
-  .verbindknoppen{display:flex; gap:.5rem; justify-content:center;
+  /* buttons under a connection message: try again, and the emergency handle
+     that wipes the service worker and the caches */
+  .connbtns{display:flex; gap:.5rem; justify-content:center;
     margin-top:.7rem; flex-wrap:wrap}
-  .verbindknoppen button{background:transparent; color:var(--muted);
+  .connbtns button{background:transparent; color:var(--muted);
     border:1px solid var(--muted); border-radius:6px; padding:.35rem .7rem;
     font-size:.8rem; cursor:pointer}
-  .verbindknoppen button:disabled{opacity:.5}
-  /* agents-lade */
+  .connbtns button:disabled{opacity:.5}
+  /* agents drawer */
   #agentsDrawer{position:absolute; inset:0; background:rgba(0,0,0,.55); z-index:20;
     display:none; opacity:0; transition:opacity .15s}
   #agentsDrawer.open{display:block; opacity:1}
@@ -100,7 +100,7 @@
     padding:.6rem .7rem; margin:.35rem .3rem}
   .agent .nm{font-weight:700; color:var(--accent2)}
   .agent .nm::before{content:"@"}
-  .agent .rol{color:var(--muted); font-size:.8rem; margin:.1rem 0 .45rem}
+  .agent .role{color:var(--muted); font-size:.8rem; margin:.1rem 0 .45rem}
   .agent .chips{display:flex; flex-wrap:wrap; gap:.35rem}
   .agent .chip{font-family:"IBM Plex Mono",monospace; font-size:.72rem; cursor:pointer;
     background:var(--other); border:1px solid var(--line); color:var(--ink);
@@ -108,7 +108,7 @@
   .agent .chip::before{content:"#"; color:var(--accent)}
   .agent .none{color:var(--muted); font-size:.78rem; font-style:italic}
   .agenthint{color:var(--muted); font-size:.78rem; padding:.7rem; line-height:1.4}
-  /* invoer */
+  /* composer */
   form{
     flex:0 0 auto; display:flex; gap:.5rem; padding:.6rem .7rem;
     padding-bottom:calc(.6rem + env(safe-area-inset-bottom));
@@ -127,7 +127,7 @@
   .toast{position:absolute; bottom:5rem; left:50%; transform:translateX(-50%);
     background:var(--danger); color:#1a1710; padding:.4rem .8rem; border-radius:10px;
     font-size:.85rem; font-weight:700; z-index:30; display:none}
-  /* repos-lade — volledig scherm-modal met sluitknop + level-back */
+  /* repos drawer — a full-screen modal with a close button and a level-back */
   #reposDrawer{position:absolute; inset:0; background:rgba(0,0,0,.55); z-index:20;
     display:none; opacity:0; transition:opacity .15s}
   #reposDrawer.open{display:block; opacity:1}
@@ -145,7 +145,7 @@
     border:1px solid var(--line); border-radius:10px; padding:.35rem .6rem;
     font-size:1rem; font-weight:700; flex:0 0 auto; line-height:1}
   #reposDrawer #repoView{flex:1 1 auto; overflow-y:auto}
-  /* repo/PR-view */
+  /* repo/PR view */
   .rrow{padding:.6rem .7rem; border:1px solid var(--line); border-radius:12px;
     margin-bottom:.5rem; background:var(--panel2); cursor:pointer}
   .rrow:active{background:var(--other)}
@@ -172,7 +172,7 @@
   #pinned .body{margin-top:.4rem; max-height:9rem; overflow:auto; white-space:pre-wrap;
     color:var(--muted); line-height:1.4; font-size:.82rem}
   #pinned.collapsed .body{display:none}
-  /* ongelezen-badge in de kanaallijst */
+  /* unread badge in the channel list */
   .chan .cmeta{flex:1; min-width:0; display:flex; flex-direction:column; cursor:pointer}
   .chan .cn{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
   .chan .cdesc{font-size:.7rem; color:var(--muted); line-height:1.3; margin-top:.05rem;
@@ -181,7 +181,7 @@
     font-size:.72rem; font-weight:800; min-width:1.25rem; height:1.25rem;
     border-radius:999px; display:inline-flex; align-items:center;
     justify-content:center; padding:0 .35rem}
-  .chan .unread[hidden]{display:none}  /* author-regel wint van UA; expliciet verbergen */
+  .chan .unread[hidden]{display:none}  /* our rule beats the UA; hide explicitly */
 .tabs{display:flex;gap:.4rem;margin:.2rem 0 .6rem}
 .tab{flex:1;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:.4rem;font-size:.85rem;cursor:pointer}
 .tab.on{background:var(--accent);color:var(--bg);border-color:var(--accent);font-weight:700}
@@ -200,31 +200,31 @@
 .modal-add{flex:1;background:var(--accent);color:var(--bg);border:0;border-radius:10px;padding:.5rem;font-weight:700;cursor:pointer}
 .modal-cancel{flex:1;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:.5rem;cursor:pointer}
 
-  /* --- inlogpagina --- */
-  .inlogpagina{display:flex; align-items:center; justify-content:center;
+  /* --- login page --- */
+  .loginpage{display:flex; align-items:center; justify-content:center;
     min-height:100vh; padding:1rem}
-  .inlogkaart{width:min(24rem,100%); display:flex; flex-direction:column; gap:.6rem}
-  .inlogkaart h1{margin:0; font-size:1.3rem}
-  .inlogkaart form{display:flex; flex-direction:column; gap:.6rem; padding:0}
-  /* Het hidden-attribuut verliest van elke eigen display-regel: de browser
-     zet display:none zonder !important, en .veld hieronder zet display:flex.
-     Zonder deze regel stonden "Code uit je app" en "Setup-token" altijd in
-     beeld op de inlogpagina, terwijl ze pas horen te verschijnen als ze nodig
-     zijn. Geldt voor de hele app, niet alleen hier. */
+  .logincard{width:min(24rem,100%); display:flex; flex-direction:column; gap:.6rem}
+  .logincard h1{margin:0; font-size:1.3rem}
+  .logincard form{display:flex; flex-direction:column; gap:.6rem; padding:0}
+  /* The hidden attribute loses against any display rule of our own: the browser
+     sets display:none without !important, and .field below sets display:flex.
+     Without this rule "Code uit je app" and "Setup-token" were always visible on
+     the login page, while they should only appear when they are needed. Applies
+     to the whole app, not only here. */
   [hidden]{display:none !important}
-  .veld{display:flex; flex-direction:column; gap:.25rem; font-size:.8rem;
+  .field{display:flex; flex-direction:column; gap:.25rem; font-size:.8rem;
     color:var(--muted)}
-  .veld input{padding:.6rem .7rem; border-radius:8px; border:1px solid var(--muted);
+  .field input{padding:.6rem .7rem; border-radius:8px; border:1px solid var(--muted);
     background:transparent; color:inherit; font-size:1rem}
-  .inlogkaart button{background:var(--accent); color:#1a1710; border:none;
+  .logincard button{background:var(--accent); color:#1a1710; border:none;
     border-radius:8px; padding:.6rem; font-size:1rem; cursor:pointer}
-  .inlogkaart button:disabled{opacity:.5}
-  .inlogfout{color:#e06c6c; font-size:.85rem; margin:0}
+  .logincard button:disabled{opacity:.5}
+  .loginerror{color:#e06c6c; font-size:.85rem; margin:0}
 
-  /* voet van de kanalen-lade: wie je bent, uitnodigen, uitloggen */
-  .ladevoet{display:flex; align-items:center; gap:.5rem; flex-wrap:wrap;
+  /* foot of the channel drawer: who you are, invite, log out */
+  .drawerfoot{display:flex; align-items:center; gap:.5rem; flex-wrap:wrap;
     padding:.6rem .7rem; border-top:1px solid var(--muted)}
-  .ladevoet .agenthint{padding:0; flex:1 1 100%}
-  .ladevoet button{background:transparent; color:var(--muted); cursor:pointer;
+  .drawerfoot .agenthint{padding:0; flex:1 1 100%}
+  .drawerfoot button{background:transparent; color:var(--muted); cursor:pointer;
     border:1px solid var(--muted); border-radius:6px; padding:.3rem .6rem;
     font-size:.8rem}

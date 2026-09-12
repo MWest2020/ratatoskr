@@ -1,32 +1,32 @@
 <!doctype html>
-<html lang="nl">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Ratatoskr — inloggen</title>
+<title>Ratatoskr — sign in</title>
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/icon.svg">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="stylesheet" href="/app.css">
 </head>
-<body class="inlogpagina">
-<main class="inlogkaart">
-  <h1 id="titel">Ratatoskr</h1>
-  <p id="uitleg" class="agenthint"></p>
+<body class="loginpage">
+<main class="logincard">
+  <h1 id="title">Ratatoskr</h1>
+  <p id="intro" class="agenthint"></p>
   <form id="form" autocomplete="on">
-    <label class="veld"><span>Naam</span>
-      <input id="naam" name="username" autocomplete="username" autocapitalize="none"
+    <label class="field"><span>Name</span>
+      <input id="name" name="username" autocomplete="username" autocapitalize="none"
              spellcheck="false" required></label>
-    <label class="veld"><span>Wachtwoord</span>
-      <input id="wachtwoord" name="password" type="password" required></label>
-    <label class="veld" id="codeveld" hidden><span>Code uit je app</span>
+    <label class="field"><span>Password</span>
+      <input id="password" name="password" type="password" required></label>
+    <label class="field" id="codeField" hidden><span>Code from your app</span>
       <input id="code" inputmode="numeric" autocomplete="one-time-code"
              pattern="[0-9]*" maxlength="6"></label>
-    <label class="veld" id="tokenveld" hidden><span>Setup-token</span>
+    <label class="field" id="tokenField" hidden><span>Setup token</span>
       <input id="token" type="password" autocomplete="off"></label>
-    <button id="knop" type="submit">Inloggen</button>
+    <button id="submit" type="submit">Sign in</button>
   </form>
-  <p id="melding" class="inlogfout" hidden></p>
+  <p id="message" class="loginerror" hidden></p>
 </main>
 <script src="/login.js"></script>
 </body>

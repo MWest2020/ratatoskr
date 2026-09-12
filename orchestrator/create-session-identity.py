@@ -2,20 +2,20 @@
 # /// script
 # dependencies = ["coincurve>=20", "bech32>=1.2", "pyyaml>=6"]
 # ///
-"""Maak een LICHTE relay-identiteit voor een vaste Claude-sessie.
+"""Create a LIGHT relay identity for a standing Claude session.
 
-Anders dan create-agent.py: GEEN handbook-def en GEEN listener-run-lijst — een
-sessie is een interactieve Claude Code-sessie, geen door de listener gespawnde
-chat-agent. De identiteit dient puur om berichten aan de echte afzender toe te
-schrijven (identiteit = sleutelpaar), zodat ping.sh onder eigen sleutel post.
+Unlike create-agent.py: NO handbook def and NO listener run list — a session is
+an interactive Claude Code session, not a chat agent spawned by the listener. The
+identity exists purely to attribute messages to the real sender (identity = key
+pair), so ping.sh posts under its own key.
 
   uv run orchestrator/create-session-identity.py --name hubby
 
-Fail-closed: de plaintext-secret komt in een gitignored temp (secrets/_*.yaml,
-mode 0600) die altijd wordt opgeruimd; er wordt pas naar het git-getrackte
-secrets/identities.yaml geschreven als de SOPS-output geverifieerd versleuteld is.
-De secret gaat vóór de publieke registry-entry, en het #escalatie-lidmaatschap moet
-lukken (anders exit != 0) — geen halve staat.
+Fail-closed: the plaintext secret goes into a gitignored temp file
+(secrets/_*.yaml, mode 0600) that is always cleaned up; nothing is written to the
+git-tracked secrets/identities.yaml until the SOPS output is verified encrypted.
+The secret goes before the public registry entry, and the #escalatie membership
+must succeed (otherwise exit != 0) — no half state.
 """
 import argparse
 import datetime
@@ -30,7 +30,7 @@ from coincurve import PrivateKey
 import yaml
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-BOOMHUIS = os.path.dirname(HERE)  # orchestrator/ zit in de repo-root
+BOOMHUIS = os.path.dirname(HERE)  # orchestrator/ sits in the repo root
 RELAY = "ws://192.168.178.60:3000"
 
 
@@ -39,10 +39,10 @@ def run(cmd, env=None, inp=None):
 
 
 def report_channel_id():
-    """#escalatie, niet #general: #general is het hub-kanaal van odin en een
-    sessie mag daar niet posten (ping.sh weigert het). Een sessie meldt in het
-    projectkanaal, en in #escalatie wanneer Mark moet beslissen — dus is dat het
-    ene lidmaatschap dat elke sessie nodig heeft."""
+    """#escalatie, not #general: #general is odin's hub channel and a session may
+    not post there (ping.sh refuses it). A session reports in the project channel,
+    and in #escalatie when Mark has to decide — so that is the one membership
+    every session needs."""
     return yaml.safe_load(open(os.path.join(BOOMHUIS, "channels.yml")))["channels"]["escalatie"]["id"]
 
 
@@ -55,8 +55,8 @@ def npub_nsec():
 
 
 def store_secret(secp, sd, env):
-    """Voeg de nieuwe secret toe en schrijf fail-closed terug: plaintext alleen in
-    een gitignored temp (0600), en pas vervangen na geverifieerde encryptie."""
+    """Add the new secret and write back fail-closed: plaintext only in a
+    gitignored temp (0600), and only replaced after verified encryption."""
     tmp = os.path.join(BOOMHUIS, "secrets", "_new.yaml")  # gitignored (secrets/_*.yaml)
     try:
         fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
@@ -75,7 +75,7 @@ def store_secret(secp, sd, env):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--name", required=True, help="sessienaam, bv. hubby")
+    ap.add_argument("--name", required=True, help="session name, e.g. hubby")
     a = ap.parse_args()
     name = a.name.lower()
     env = dict(os.environ, SOPS_AGE_KEY_FILE=os.path.expanduser("~/.config/sops/age/keys.txt"))
@@ -90,7 +90,7 @@ def main():
     pub, npub, priv, nsec = npub_nsec()
     print(f"[session-id] {name}: npub={npub}")
 
-    # 1) SOPS-secret EERST (fail-closed)
+    # 1) SOPS secret FIRST (fail-closed)
     secp = os.path.join(BOOMHUIS, "secrets", "identities.yaml")
     dec = run(["sops", "-d", secp], env=env)
     if dec.returncode != 0:
@@ -99,21 +99,21 @@ def main():
     sd["identities"][name] = {"privkey_hex": priv, "nsec": nsec}
     store_secret(secp, sd, env)
 
-    # 2) publieke registry (pas ná de secret)
+    # 2) public registry (only after the secret)
     d["identities"][name] = {"rol": "sessie", "status": "actief", "pubkey_hex": pub,
                              "npub": npub, "aangemaakt": datetime.date.today().isoformat()}
     open(idp, "w").write("# Publieke identiteitsregistry van het boomhuis (spec: identity-registry).\n"
                          + yaml.safe_dump(d, default_flow_style=False, sort_keys=False))
 
-    # 3) relay-lid + #escalatie-lid (als mark); returncodes gecheckt.
+    # 3) relay member + #escalatie member (as mark); return codes checked.
     mark_nsec = sd["identities"]["mark"]["nsec"]
     rm = run(["ssh", "-o", "BatchMode=yes", "buzz-relay",
               f"cd /opt/buzz-relay && docker compose exec -T relay buzz-admin add-member --pubkey {pub} --role member"])
     if rm.returncode != 0:
         print(f"[session-id] WAARSCHUWING: relay add-member faalde: {(rm.stderr or rm.stdout)[:160]}")
-    time.sleep(2)  # relay-lidmaatschap laten propageren
+    time.sleep(2)  # let relay membership propagate
     benv = dict(os.environ, BUZZ_PRIVATE_KEY=mark_nsec, BUZZ_RELAY_URL=RELAY)
-    # --role member (niet 'bot'): een sessie is een deelnemer, geen listener-bot.
+    # --role member (not 'bot'): a session is a participant, not a listener bot.
     r = run([buzz, "channels", "add-member", "--channel", report_chan, "--pubkey", pub, "--role", "member"], env=benv)
     ok = False
     if r.returncode == 0:
@@ -126,7 +126,7 @@ def main():
                  "registry/secret staan al, maar de identiteit kan nog niet posten; check de relay.")
     print("[session-id] #escalatie-lid: ok")
 
-    # 4) profielnaam
+    # 4) profile name
     run([buzz, "users", "set-profile", "--name", name, "--about", f"Claude-sessie {name}"],
         env=dict(os.environ, BUZZ_PRIVATE_KEY=nsec, BUZZ_RELAY_URL=RELAY))
     print(f"[session-id] {name} klaar. De sessie post met "

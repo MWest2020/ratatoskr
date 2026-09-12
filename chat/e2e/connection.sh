@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
-# Werkt de kant die api.sh NIET raakt: de relay-verbinding, ingelogd.
+# Exercises the side api.sh does NOT touch: the relay connection, logged in.
 #
-# Waarom dit bestaat: `api.sh` draait bewust zonder sessie en bewijst dat een
-# vreemde niets krijgt. Daardoor raakt hij nooit één regel code die met de relay
-# praat. Op 2026-09-11 draaide Marks installatie daardoor een halve dag met een
-# chat die de relay niet kon bereiken ("404: no community is configured for this
-# host", want de container sprak `relay:3000` aan terwijl de community op een
-# andere host staat) — terwijl api.sh 38/38 groen gaf. Deze suite sluit dat gat.
+# Why this exists: `api.sh` deliberately runs without a session and proves a
+# stranger gets nothing. Because of that it never touches a single line of code
+# that talks to the relay. On 2026-09-11 Mark's installation therefore ran for
+# half a day with a chat that could not reach the relay ("404: no community is
+# configured for this host", because the container addressed `relay:3000` while
+# the community lives on another host) — while api.sh reported 38/38 green. This
+# suite closes that gap.
 #
-#   RATATOSKR_URL=https://… NAAM=… WW=… bash chat/e2e/verbinding.sh
+#   RATATOSKR_URL=https://… NAAM=… WW=… bash chat/e2e/connection.sh
 set -u
 H=${RATATOSKR_URL:-${BOOMHUIS_URL:-https://boomhuis-relay.tail8f7877.ts.net}}
 NAAM=${NAAM:-}; WW=${WW:-}
@@ -31,8 +32,8 @@ t "POST /api/login" 200 -c "$J" -X POST "$H/api/login" -H 'Content-Type: applica
 
 echo "— de relay-kant (dit is wat api.sh niet raakt)"
 t "GET /api/channels" 200 -b "$J" "$H/api/channels"
-# Een LEGE kanaallijst is geen geldige uitkomst op een draaiende installatie: dat
-# is precies hoe een onbereikbare relay eruitziet.
+# An EMPTY channel list is not a valid outcome on a running installation: that is
+# exactly what an unreachable relay looks like.
 if [ -s /tmp/verb.body ] && grep -q '"id"' /tmp/verb.body; then
   ok=$((ok+1)); printf '  ok   %-38s\n' "kanaallijst is niet leeg"
 else

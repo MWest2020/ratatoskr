@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: EUPL-1.2
-"""De serveerkant van het werk-overzicht: lezen, ouderdom, en de drie manieren
-waarop het mis kan gaan. Een leeg bord moet te onderscheiden zijn van een kapotte
-producent — dat onderscheid is het hele punt."""
+"""The serving side of the work overview: reading, age, and the three ways it can
+go wrong. An empty board must be distinguishable from a broken producer — that
+distinction is the whole point."""
 import json
 import os
 import tempfile
@@ -13,10 +13,10 @@ import board
 
 class Read(unittest.TestCase):
     def _file(self, data):
-        pad = os.path.join(tempfile.mkdtemp(), "board.json")
-        with open(pad, "w") as f:
+        path = os.path.join(tempfile.mkdtemp(), "board.json")
+        with open(path, "w") as f:
             json.dump(data, f)
-        return pad
+        return path
 
     def test_missing_is_404_with_a_hint(self):
         payload, code = board.read("/bestaat/echt/niet.json")
@@ -24,10 +24,10 @@ class Read(unittest.TestCase):
         self.assertIn("hint", payload)
 
     def test_broken_json_is_500_not_a_crash(self):
-        pad = os.path.join(tempfile.mkdtemp(), "board.json")
-        with open(pad, "w") as f:
+        path = os.path.join(tempfile.mkdtemp(), "board.json")
+        with open(path, "w") as f:
             f.write("{ dit is geen json")
-        payload, code = board.read(pad)
+        payload, code = board.read(path)
         self.assertEqual(code, 500)
         self.assertIn("unreadable", payload["error"])
 
@@ -38,9 +38,9 @@ class Read(unittest.TestCase):
         self.assertLess(payload["age_seconds"], 5)
 
     def test_old_snapshot_says_so(self):
-        """Stil een oud bord tonen is precies de false-clear die we niet willen."""
-        oud = time.time() - board.STALE_AFTER - 60
-        payload, _ = board.read(self._file({"generated_at": oud, "cards": []}))
+        """Silently showing an old board is exactly the false clear we do not want."""
+        old = time.time() - board.STALE_AFTER - 60
+        payload, _ = board.read(self._file({"generated_at": old, "cards": []}))
         self.assertTrue(payload["stale_snapshot"])
 
     def test_missing_timestamp_counts_as_stale(self):

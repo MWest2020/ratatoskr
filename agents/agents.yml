@@ -1,10 +1,11 @@
-# Dunne roster-pointer — NIET de definitie.
+# Thin roster pointer — NOT the definition.
 #
-# De canonieke agent-definities (mandaat, chat-facet/systemprompt, kanalen,
-# executie-facet) leven in de handbook: MWest2020/handbook -> docs/agents/<naam>.md,
-# MCP-leesbaar via handbook_mcp (read_doc). De listener HAALT ze daarvandaan.
-# Hier staat alleen WELKE agents deze listener-instantie draait; wie ze zijn
-# bepaalt de handbook. Zo is een bouwer altijd dezelfde bouwer (single source).
+# The canonical agent definitions (mandate, chat facet/system prompt, channels,
+# execution facet) live in the handbook: MWest2020/handbook ->
+# docs/agents/<name>.md, MCP-readable through handbook_mcp (read_doc). The
+# listener FETCHES them from there. This file only says WHICH agents this
+# listener instance runs; who they are is the handbook's call. That way a bouwer
+# is always the same bouwer (single source).
 
 registry_base: https://raw.githubusercontent.com/MWest2020/handbook/main/docs/agents
 

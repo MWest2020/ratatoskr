@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: EUPL-1.2
-"""De bronnen van het werk-overzicht: clones, GitHub en lopende werksessies.
+"""The sources of the work overview: clones, GitHub and running work sessions.
 
-Apart van board.py omdat dit de onzuivere kant is — glob, subprocess, netwerk —
-en omdat beide bestanden anders over de 200 regels gaan.
+Separate from board.py because this is the impure side — glob, subprocess,
+network — and because otherwise both files would go over 200 lines.
 
-Elke bron die faalt gooit; `board.build` vangt dat en zet het als LEESFOUT in de
-momentopname. Stil een lege lijst teruggeven is precies het verschil tussen
-"er is niets te doen" en "ik kon niet kijken".
+Every source that fails raises; `board.build` catches that and puts it in the
+snapshot as a READ ERROR. Silently returning an empty list is exactly the
+difference between "there is nothing to do" and "I could not look".
 """
 import glob
 import json
@@ -19,8 +19,8 @@ from board_model import DAY, age_days, pr_column
 
 
 def repo_url(clone_dir):
-    """De GitHub-URL van een clone, uit zijn eigen remote. Niet raden op de
-    mapnaam: een kaart die naar een 404 wijst is erger dan een kaart zonder link."""
+    """The GitHub URL of a clone, from its own remote. Do not guess from the
+    directory name: a card pointing at a 404 is worse than a card without a link."""
     try:
         p = subprocess.run(["git", "-C", clone_dir, "remote", "get-url", "origin"],
                            capture_output=True, text=True, timeout=10)
@@ -29,13 +29,13 @@ def repo_url(clone_dir):
     ref = (p.stdout or "").strip()
     if p.returncode != 0 or "github.com" not in ref:
         return ""
-    pad = ref.split("github.com", 1)[1].lstrip(":/").removesuffix(".git")
-    return "https://github.com/" + pad
+    path = ref.split("github.com", 1)[1].lstrip(":/").removesuffix(".git")
+    return "https://github.com/" + path
 
 
 def openspec_cards(pattern, now):
-    """Elke niet-gearchiveerde change is een voorstel. De ouderdom komt van de
-    mtime van proposal.md — dat is wanneer er voor het laatst aan gewerkt is."""
+    """Every non-archived change is a proposal. The age comes from the mtime of
+    proposal.md — that is when it was last worked on."""
     cards = []
     urls = {}
     for path in glob.glob(pattern):
@@ -50,8 +50,8 @@ def openspec_cards(pattern, now):
         clone = path.split("/openspec/", 1)[0]
         if clone not in urls:
             urls[clone] = repo_url(clone)
-        # Doorlinken naar de change zelf, niet naar de repo: je wilt de tekst zien,
-        # niet de voorpagina. `branch` kan afwijken; main is bij ons de waarheid.
+        # Link through to the change itself, not to the repo: you want the text,
+        # not the front page. `branch` may differ; main is the truth here.
         base = urls[clone]
         url = f"{base}/tree/main/openspec/changes/{change}" if base else ""
         cards.append({"id": f"openspec:{repo}:{change}", "repo": repo,
@@ -62,9 +62,9 @@ def openspec_cards(pattern, now):
 
 
 def gh_json(args):
-    """`gh` aanroepen. Een fout is een LEESFOUT, geen lege lijst: stil niets
-    tonen is niet te onderscheiden van 'er is niets', en dat is precies het
-    verschil dat je wilt zien."""
+    """Call `gh`. An error is a READ ERROR, not an empty list: silently showing
+    nothing is indistinguishable from 'there is nothing', and that is exactly the
+    difference you want to see."""
     p = subprocess.run(["gh", *args], capture_output=True, text=True, timeout=60)
     if p.returncode != 0:
         raise RuntimeError((p.stderr or p.stdout).strip()[:160])
@@ -72,13 +72,13 @@ def gh_json(args):
 
 
 def pr_cards(owner, merged_days, now, ignore=()):
-    velden = "repository,number,title,url,isDraft,updatedAt,author"
+    fields = "repository,number,title,url,isDraft,updatedAt,author"
     rows = gh_json(["search", "prs", f"--owner={owner}", "--state=open",
-                    "--limit", "40", "--json", velden])
+                    "--limit", "40", "--json", fields])
     cutoff = time.strftime("%Y-%m-%d", time.gmtime(now - merged_days * DAY))
     rows += [dict(r, merged=True) for r in gh_json(
         ["search", "prs", f"--owner={owner}", f"merged:>={cutoff}",
-         "--limit", "40", "--json", velden])]
+         "--limit", "40", "--json", fields])]
     cards = []
     for r in rows:
         if r["repository"]["name"] in ignore:
@@ -96,59 +96,59 @@ def pr_cards(owner, merged_days, now, ignore=()):
 
 
 def last_activity(content):
-    """De laatste tool-aanroep uit een runbestand, kort. Een lopende sessie die
-    alleen "bezig" zegt is een voortgangsbalk zonder balk."""
-    laatste = ""
-    for regel in content.splitlines():
-        if '"tool_use"' not in regel:
+    """The last tool call from a run file, short. A running session that only says
+    "busy" is a progress bar without a bar."""
+    last = ""
+    for line in content.splitlines():
+        if '"tool_use"' not in line:
             continue
         try:
-            ev = json.loads(regel)
+            ev = json.loads(line)
         except ValueError:
             continue
         for c in (ev.get("message") or {}).get("content", []):
             if c.get("type") == "tool_use":
-                doel = ""
+                target = ""
                 for k in ("file_path", "path", "pattern", "command"):
                     if c.get("input", {}).get(k):
-                        doel = str(c["input"][k])[-40:]
+                        target = str(c["input"][k])[-40:]
                         break
-                laatste = f"{c.get('name')} {doel}".strip()
-    return laatste
+                last = f"{c.get('name')} {target}".strip()
+    return last
 
 
 def session_cards(runs_dir, now):
-    """Een werksessie draait nog zolang er geen `result`-regel in het runbestand
-    staat. Klaar is klaar: die verdwijnt van het bord, hij staat in het kanaal."""
+    """A work session is still running as long as there is no `result` line in the
+    run file. Done is done: it leaves the board, it is in the channel."""
     cards = []
     for path in sorted(glob.glob(os.path.join(runs_dir, "*.jsonl"))):
         try:
-            inhoud = open(path, errors="ignore").read()
+            content = open(path, errors="ignore").read()
             ts = os.path.getmtime(path)
         except OSError:
             continue
-        if '"type":"result"' in inhoud.replace(" ", ""):
+        if '"type":"result"' in content.replace(" ", ""):
             continue
-        naam = os.path.basename(path).rsplit("-", 1)[0]
-        typ, _, wie = naam.partition("-")
-        # Een sessie heeft geen URL maar wel een KANAAL: daar praat hij. De app
-        # springt daarheen in plaats van een dode kaart te tonen.
-        kanaal, schrijft = "", False
+        name = os.path.basename(path).rsplit("-", 1)[0]
+        typ, _, who = name.partition("-")
+        # A session has no URL but it does have a CHANNEL: that is where it
+        # talks. The app jumps there instead of showing a dead card.
+        channel, writes = "", False
         try:
-            eerste = json.loads(inhoud.splitlines()[0])
-            if eerste.get("type") == "boomhuis_sessie":
-                kanaal = eerste.get("kanaal", "")
-                wie = eerste.get("requester", wie)
-                schrijft = bool(eerste.get("schrijft"))
+            first = json.loads(content.splitlines()[0])
+            if first.get("type") == "boomhuis_session":
+                channel = first.get("channel", "")
+                who = first.get("requester", who)
+                writes = bool(first.get("writes"))
         except (ValueError, IndexError):
             pass
-        # Waar hij mee bezig is: de laatste tool-aanroep in het runbestand. Zonder
-        # dit is een lopende sessie een kaart die niets zegt, en dat is precies
-        # wat Mark miste: "tijdens bouwen verwacht ik updates".
+        # What it is busy with: the last tool call in the run file. Without this a
+        # running session is a card that says nothing, and that is exactly what
+        # Mark missed: "tijdens bouwen verwacht ik updates".
         cards.append({"id": "session:" + os.path.basename(path),
-                      "repo": "werksessie", "title": f"{typ} · {wie}",
+                      "repo": "work session", "title": f"{typ} · {who}",
                       "column": "building",
-                      "via": "session (schrijft)" if schrijft else "session",
-                      "age_days": age_days(ts, now), "activity": last_activity(inhoud),
-                      "who": wie, "url": "", "channel": kanaal, "source": path})
+                      "via": "session (writes)" if writes else "session",
+                      "age_days": age_days(ts, now), "activity": last_activity(content),
+                      "who": who, "url": "", "channel": channel, "source": path})
     return cards

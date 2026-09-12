@@ -1,27 +1,27 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: EUPL-1.2
-"""De pure kern van het werk-overzicht: kolom, ouderdom, muf, samenvatting.
+"""The pure core of the work overview: column, age, staleness, summary.
 
-Apart van board.py en board_sources.py zodat dit te testen is zonder GitHub,
-zonder klok en zonder schijf — en zodat die twee elkaar niet hoeven te
-importeren (dat gaf een circulaire import).
+Separate from board.py and board_sources.py so this is testable without GitHub,
+without a clock and without a disk — and so those two need not import each other
+(which gave a circular import).
 
-Hier staat wat het bord zégt. De rest haalt alleen op en schrijft weg.
+This is what the board SAYS. The rest only fetches and writes.
 """
 DAY = 86400.0
 
 
 def pr_column(pr):
-    """In welke kolom hoort deze PR?
+    """Which column does this PR belong in?
 
-    Een draft is werk in uitvoering. Een OPEN, niet-draft PR wacht per definitie
-    op een mens: in deze flow blijft hij staan tot iemand 'm merget. Gemerged is
-    de uitgang.
+    A draft is work in progress. An OPEN, non-draft PR waits on a human by
+    definition: in this flow it stays put until someone merges it. Merged is the
+    exit.
 
-    Waarom niet op `reviewDecision`: `gh search prs` kent dat veld niet (gemeten
-    2026-09-12: "Unknown JSON field"). Dat per repo ophalen met `gh pr list` zou
-    een aanroep per repo kosten voor een nuance die hier niets toevoegt — open
-    en niet-draft ís hier wachten op review.
+    Why not on `reviewDecision`: `gh search prs` does not know that field
+    (measured 2026-09-12: "Unknown JSON field"). Fetching it per repo with `gh pr
+    list` would cost one call per repo for a nuance that adds nothing here — open
+    and non-draft IS waiting for review here.
     """
     if pr.get("merged"):
         return "merged"
@@ -29,21 +29,21 @@ def pr_column(pr):
 
 
 def age_days(since, now):
-    """Hoeveel dagen staat dit er al (nooit negatief — een klok die achterloopt
-    mag geen kaart 'uit de toekomst' opleveren)."""
+    """How many days has this been here (never negative — a clock running behind
+    must not produce a card 'from the future')."""
     return max(0.0, (now - float(since or now)) / DAY)
 
 
 def is_stale(card, columns):
-    """Staat deze kaart langer in zijn kolom dan de drempel? `stale_days: 0`
-    betekent 'nooit muf' — dat is de uitgangskolom, daar mag alles liggen."""
-    drempel = next((c.get("stale_days", 0) for c in columns if c["key"] == card["column"]), 0)
-    return bool(drempel) and card["age_days"] > drempel
+    """Has this card been in its column longer than the threshold? `stale_days: 0`
+    means 'never stale' — that is the exit column, anything may rest there."""
+    threshold = next((c.get("stale_days", 0) for c in columns if c["key"] == card["column"]), 0)
+    return bool(threshold) and card["age_days"] > threshold
 
 
 def summarise(cards, columns):
-    """Per kolom: hoeveel kaarten, hoeveel daarvan muf. Het bord toont dit bovenaan
-    zodat 'niets loopt vast' óók een zichtbare uitkomst is."""
+    """Per column: how many cards, how many of them stale. The board shows this at
+    the top so that 'nothing is stuck' is a visible outcome too."""
     out = []
     for c in columns:
         inside = [k for k in cards if k["column"] == c["key"]]

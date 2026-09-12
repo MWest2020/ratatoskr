@@ -1,16 +1,16 @@
 # SPDX-License-Identifier: EUPL-1.2
-"""HTTP-routing: een ECHTE server op localhost, met de relay- en GitHub-laag
-gestubd. Geen mock van de handler zelf, want juist de routing en de volgorde van
-de checks zijn wat hier misging.
+"""HTTP routing: a REAL server on localhost, with the relay and GitHub layers
+stubbed. No mock of the handler itself, because the routing and the order of the
+checks are exactly what went wrong here.
 
-De invariant die deze tests bewaken: **niets is open behalve de inlogroutes en
-de shell; elk verzoek onder /api/ vereist een sessie, en elke POST daarbovenop
-een sessiegebonden token**. En er komt nooit een rauwe upstream-fout terug op
-een invoerfout van de gebruiker.
+The invariant these tests guard: **nothing is open except the login routes and
+the shell; every request under /api/ needs a session, and every POST needs a
+session-bound token on top**. And a raw upstream error never comes back on a
+user input error.
 
-Lezen was ooit open omdat het tailnet het afschermde. Sinds
-`inloggen-per-persoon` niet meer: in die routes staan kanaalnamen, berichten en
-agent-verkeer.
+Reading was once open because the tailnet shielded it. Since
+`inloggen-per-persoon` no longer: those routes carry channel names, messages and
+agent traffic.
 """
 import json
 import os
@@ -26,7 +26,7 @@ import tempfile
 os.environ["BOOMHUIS_AUTH_DB"] = os.path.join(tempfile.mkdtemp(), "auth.db")
 os.environ.pop("BOOMHUIS_APP_TOKEN", None)
 
-import auth      # noqa: E402  — na het zetten van de env
+import auth      # noqa: E402  — after setting the env
 import auth_store as store  # noqa: E402
 import buzzcli   # noqa: E402
 import github    # noqa: E402
@@ -52,12 +52,12 @@ def _stub():
     server.actions.buzz = server.buzz
     server.actions.buzz_admin = server.buzz_admin
     server.actions.valid_cid = buzzcli.valid_cid
-    # Een momentopname van het werk-overzicht, zodat /api/board echt iets serveert
-    # in plaats van de 404 die een verse installatie geeft.
-    pad = os.path.join(tempfile.mkdtemp(), "board.json")
-    with open(pad, "w") as f:
+    # A snapshot of the work overview, so /api/board really serves something
+    # instead of the 404 a fresh installation gives.
+    path = os.path.join(tempfile.mkdtemp(), "board.json")
+    with open(path, "w") as f:
         json.dump({"generated_at": time.time(), "columns": [], "cards": []}, f)
-    server.board.PATH = pad
+    server.board.PATH = path
     github.list_repos = lambda limit=30: [{"full_name": "MWest2020/x"}]
     github.list_prs = lambda full: [{"number": 1}]
     github.get_pr = lambda full, n: {"number": n}
@@ -73,24 +73,23 @@ class ServerTest(unittest.TestCase):
         cls.srv = ThreadingHTTPServer(("127.0.0.1", 0), server.H)
         cls.base = "http://127.0.0.1:%d" % cls.srv.server_address[1]
         threading.Thread(target=cls.srv.serve_forever, daemon=True).start()
-        pid = store.maak_persoon("tester", auth.hash_wachtwoord("een goed wachtwoord"))
-        cls.sessie, cls.csrf = auth.start_sessie(pid)
+        pid = store.create_person("tester", auth.hash_password("een goed wachtwoord"))
+        cls.session, cls.csrf = auth.start_session(pid)
 
     @classmethod
     def tearDownClass(cls):
         cls.srv.shutdown()
 
-    def call(self, pad, data=None, raw=None, sessie=True, csrf=True):
-        """`sessie=False` doet alsof je niet ingelogd bent, `csrf=False` alsof
-        het sessietoken ontbreekt — de twee manieren waarop een verzoek hoort
-        te stranden."""
+    def call(self, path, data=None, raw=None, session=True, csrf=True):
+        """`session=False` pretends you are not logged in, `csrf=False` that the
+        session token is missing — the two ways a request should strand."""
         body = raw if raw is not None else (json.dumps(data).encode() if data is not None else None)
-        req = urllib.request.Request(self.base + pad, data=body,
+        req = urllib.request.Request(self.base + path, data=body,
                                      method="POST" if body is not None else "GET")
         if body is not None:
             req.add_header("Content-Type", "application/json")
-        if sessie:
-            req.add_header("Cookie", "{}={}".format(auth.COOKIE, self.sessie))
+        if session:
+            req.add_header("Cookie", "{}={}".format(auth.COOKIE, self.session))
         if body is not None and csrf:
             req.add_header(auth.CSRF_HEADER, self.csrf)
         try:
@@ -99,135 +98,135 @@ class ServerTest(unittest.TestCase):
         except urllib.error.HTTPError as e:
             return e.code, e.read().decode()
 
-    # --- werk-overzicht ---
-    def test_board_zonder_momentopname_is_404_met_uitleg(self):
-        """Een leeg bord moet te onderscheiden zijn van een kapotte producent."""
-        oud = server.board.PATH
+    # --- work overview ---
+    def test_board_without_a_snapshot_is_404_with_an_explanation(self):
+        """An empty board must be distinguishable from a broken producer."""
+        old = server.board.PATH
         server.board.PATH = "/bestaat/niet/board.json"
         try:
             code, body = self.call("/api/board")
         finally:
-            server.board.PATH = oud
+            server.board.PATH = old
         self.assertEqual(code, 404)
         self.assertIn("hint", body)
 
-    # --- Android-app ---
+    # --- Android app ---
     def test_assetlinks_is_open(self):
-        """Chrome haalt dit op vóór er een gebruiker is; achter de sessie zou de
-        app altijd met een adresbalk starten."""
-        code, body = self.call("/.well-known/assetlinks.json", sessie=False)
+        """Chrome fetches this before there is a user; behind the session the app
+        would always start with an address bar."""
+        code, body = self.call("/.well-known/assetlinks.json", session=False)
         self.assertEqual(code, 200)
         d = json.loads(body)
         self.assertEqual(d[0]["target"]["namespace"], "android_app")
         self.assertTrue(d[0]["target"]["sha256_cert_fingerprints"][0].count(":") == 31,
-                        "vingerafdruk hoort 32 hex-paren te zijn")
+                        "a fingerprint should be 32 hex pairs")
 
     def test_apk_is_open(self):
-        """Een APK-download start vaak buiten de sessie (downloadmanager, een
-        doorgestuurde link in een andere app) en draagt het cookie dan niet mee.
-        Achter de gate is de link onbruikbaar precies wanneer je 'm nodig hebt;
-        het bestand bevat niets geheims."""
-        code, _ = self.call("/ratatoskr.apk", sessie=False)
+        """An APK download often starts outside the session (download manager, a
+        forwarded link in another app) and then does not carry the cookie. Behind
+        the gate the link is useless exactly when you need it; the file holds
+        nothing secret."""
+        code, _ = self.call("/ratatoskr.apk", session=False)
         self.assertIn(code, (200, 404))
         self.assertNotEqual(code, 401)
 
-    def test_apk_zonder_bestand_is_404_geen_500(self):
-        """Een installatie zonder app hoort netjes te zeggen dat hij er niet is."""
+    def test_apk_without_a_file_is_404_not_500(self):
+        """An installation without an app should say cleanly that it is not there."""
         code, body = self.call("/ratatoskr.apk")
         self.assertIn(code, (200, 404))
         if code == 404:
-            self.assertIn("geen app", body)
+            self.assertIn("no app", body)
 
-    # --- lezen zit achter de sessie ---
-    LEESROUTES = ("/api/channels", "/api/agents", "/api/channel-members",
+    # --- reading sits behind the session ---
+    READ_ROUTES = ("/api/channels", "/api/agents", "/api/channel-members",
                   "/api/push/vapid", "/api/overview", "/api/repos", "/api/board",
                   f"/api/messages?channel={CID}", "/api/pinned?channel=general")
 
-    def test_leesroutes_met_sessie(self):
-        for pad in self.LEESROUTES:
-            self.assertEqual(self.call(pad)[0], 200, pad)
+    def test_read_routes_with_a_session(self):
+        for path in self.READ_ROUTES:
+            self.assertEqual(self.call(path)[0], 200, path)
 
-    def test_leesroutes_zonder_sessie_zijn_401(self):
-        for pad in self.LEESROUTES:
-            code, body = self.call(pad, sessie=False)
-            self.assertEqual(code, 401, pad)
-            self.assertNotIn("general", body, pad)   # geen gegevens in het antwoord
+    def test_read_routes_without_a_session_are_401(self):
+        for path in self.READ_ROUTES:
+            code, body = self.call(path, session=False)
+            self.assertEqual(code, 401, path)
+            self.assertNotIn("general", body, path)  # no data in the answer
 
-    def test_de_shell_blijft_open(self):
-        """De pagina en zijn scripts bevatten niets geheims, en de inlogpagina
-        moet zonder sessie te laden zijn — anders kun je nooit inloggen."""
-        for pad in ("/", "/login", "/app.js", "/login.js", "/sw.js"):
-            self.assertEqual(self.call(pad, sessie=False)[0], 200, pad)
+    def test_the_shell_stays_open(self):
+        """The page and its scripts hold nothing secret, and the login page has to
+        load without a session — otherwise you can never log in."""
+        for path in ("/", "/login", "/app.js", "/login.js", "/sw.js"):
+            self.assertEqual(self.call(path, session=False)[0], 200, path)
 
-    def test_status_zegt_alleen_of_er_al_iemand_is(self):
-        code, body = self.call("/api/status", sessie=False)
+    def test_status_only_says_whether_someone_exists(self):
+        code, body = self.call("/api/status", session=False)
         self.assertEqual(code, 200)
         self.assertEqual(sorted(json.loads(body)), ["personen"])
 
-    def test_shell_wordt_geserveerd(self):
-        for pad in ("/", "/index.html", "/app.js", "/app-repos.js", "/sw.js"):
-            code, body = self.call(pad)
-            self.assertEqual(code, 200, pad)
-            self.assertTrue(body.strip(), pad)
+    def test_shell_is_served(self):
+        for path in ("/", "/index.html", "/app.js", "/app-repos.js", "/sw.js"):
+            code, body = self.call(path)
+            self.assertEqual(code, 200, path)
+            self.assertTrue(body.strip(), path)
 
-    def test_onbekend_pad_is_404(self):
+    def test_unknown_path_is_404(self):
         self.assertEqual(self.call("/bestaat-niet")[0], 404)
 
-    def test_berichten_komen_op_tijd_gesorteerd(self):
+    def test_messages_come_sorted_by_time(self):
         _, body = self.call(f"/api/messages?channel={CID}")
         ts = [m["ts"] for m in json.loads(body)["messages"]]
         self.assertEqual(ts, sorted(ts))
 
-    def test_onbekend_kanaal_is_400_geen_502(self):
+    def test_unknown_channel_is_400_not_502(self):
         self.assertEqual(self.call("/api/messages?channel=nope")[0], 400)
 
-    def test_repo_parameter_wordt_gevalideerd(self):
+    def test_the_repo_parameter_is_validated(self):
         self.assertEqual(self.call("/api/prs?repo=MWest2020/x")[0], 200)
-        for slecht in ("", "zonder-owner", "../etc", "a/b/c"):
-            self.assertEqual(self.call("/api/prs?repo=" + slecht)[0], 400, slecht)
+        for bad in ("", "zonder-owner", "../etc", "a/b/c"):
+            self.assertEqual(self.call("/api/prs?repo=" + bad)[0], 400, bad)
         self.assertEqual(self.call("/api/pr?repo=MWest2020/x&num=abc")[0], 400)
 
-    def test_pinned_met_raar_kanaal_geeft_leeg_niet_stuk(self):
+    def test_pinned_with_an_odd_channel_gives_empty_not_broken(self):
         code, body = self.call("/api/pinned?channel=../../etc")
         self.assertEqual((code, json.loads(body)), (200, {"content": ""}))
 
-    # --- schrijven gaat eerst langs de poort ---
-    SCHRIJFROUTES = ("/api/send", "/api/channels/create", "/api/channels/delete",
+    # --- writing goes past the gate first ---
+    WRITE_ROUTES = ("/api/send", "/api/channels/create", "/api/channels/delete",
                      "/api/channel/add-member", "/api/push/subscribe", "/api/onbekend")
 
-    def test_elke_post_zonder_sessie_is_401(self):
-        for pad in self.SCHRIJFROUTES:
-            code, body = self.call(pad, data={}, sessie=False)
-            self.assertEqual(code, 401, pad)
-            self.assertIn("inloggen", body, pad)
+    def test_every_post_without_a_session_is_401(self):
+        for path in self.WRITE_ROUTES:
+            code, body = self.call(path, data={}, session=False)
+            self.assertEqual(code, 401, path)
+            self.assertIn("sign-in required", body, path)
 
-    def test_elke_post_zonder_sessietoken_is_403(self):
-        for pad in self.SCHRIJFROUTES:
-            code, _ = self.call(pad, data={}, csrf=False)
-            self.assertEqual(code, 403, pad)
+    def test_every_post_without_a_session_token_is_403(self):
+        for path in self.WRITE_ROUTES:
+            code, _ = self.call(path, data={}, csrf=False)
+            self.assertEqual(code, 403, path)
 
-    def test_met_sessie_komt_de_route_wel_aan_bod(self):
+    def test_with_a_session_the_route_is_reached(self):
         code, _ = self.call("/api/send", data={"channel": CID, "content": "hoi"})
         self.assertEqual(code, 200)
 
-    def test_onbekende_postroute_is_404(self):
+    def test_unknown_post_route_is_404(self):
         self.assertEqual(self.call("/api/onbekend", data={})[0], 404)
 
-    def test_inloggen_kan_zonder_sessie(self):
+    def test_logging_in_works_without_a_session(self):
         code, body = self.call("/api/login", data={"naam": "tester",
-                                                   "wachtwoord": "fout"}, sessie=False)
+                                                   "wachtwoord": "fout"}, session=False)
         self.assertEqual(code, 401)
-        self.assertIn("mislukt", body)
+        self.assertIn("sign-in failed", body)
 
-    def test_te_grote_body_wordt_geweigerd(self):
+    def test_an_oversized_body_is_refused(self):
         self.assertEqual(self.call("/api/send", raw=b"x" * 20000)[0], 413)
 
-    def test_kapotte_json_is_400_geen_traceback(self):
+    def test_broken_json_is_400_not_a_traceback(self):
         self.assertEqual(self.call("/api/send", raw=b"{geen json")[0], 400)
 
-    def test_antwoorden_worden_niet_gecachet(self):
+    def test_responses_are_not_cached(self):
         req = urllib.request.Request(self.base + "/api/channels")
-        req.add_header("Cookie", "{}={}".format(auth.COOKIE, self.sessie))
+        req.add_header("Cookie", "{}={}".format(auth.COOKIE, self.session))
         with urllib.request.urlopen(req, timeout=10) as r:
             self.assertEqual(r.headers.get("Cache-Control"), "no-store")
 

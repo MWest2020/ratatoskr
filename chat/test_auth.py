@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: EUPL-1.2
-"""Offline tests voor inloggen (chat/auth.py).
+"""Offline tests for logging in (chat/auth.py).
 
-Draaien vanuit chat/: `python3 -m unittest test_auth`. Geen relay of netwerk
-nodig; de database is een tijdelijk bestand.
+Run from chat/: `python3 -m unittest test_auth`. No relay or network needed; the
+database is a temporary file.
 """
 import os
 import tempfile
@@ -15,145 +15,145 @@ import auth  # noqa: E402
 import auth_store as store  # noqa: E402
 
 
-class Wachtwoorden(unittest.TestCase):
-    def test_klopt_en_klopt_niet(self):
-        h = auth.hash_wachtwoord("een lang genoeg wachtwoord", n=2 ** 12)
-        self.assertTrue(auth.wachtwoord_klopt("een lang genoeg wachtwoord", h))
-        self.assertFalse(auth.wachtwoord_klopt("iets anders", h))
+class Passwords(unittest.TestCase):
+    def test_matches_and_does_not_match(self):
+        h = auth.hash_password("een lang genoeg wachtwoord", n=2 ** 12)
+        self.assertTrue(auth.password_matches("een lang genoeg wachtwoord", h))
+        self.assertFalse(auth.password_matches("iets anders", h))
 
-    def test_zelfde_wachtwoord_geeft_andere_hash(self):
-        """Elk account zijn eigen salt, anders verraden gelijke hashes gelijke
-        wachtwoorden."""
-        a = auth.hash_wachtwoord("hetzelfde wachtwoord", n=2 ** 12)
-        b = auth.hash_wachtwoord("hetzelfde wachtwoord", n=2 ** 12)
+    def test_same_password_gives_a_different_hash(self):
+        """Every account its own salt, otherwise equal hashes give away equal
+        passwords."""
+        a = auth.hash_password("hetzelfde wachtwoord", n=2 ** 12)
+        b = auth.hash_password("hetzelfde wachtwoord", n=2 ** 12)
         self.assertNotEqual(a, b)
 
-    def test_lichtere_parameters_heten_verouderd(self):
-        self.assertTrue(auth.verouderd(auth.hash_wachtwoord("x" * 12, n=2 ** 12)))
-        self.assertFalse(auth.verouderd(auth.hash_wachtwoord("x" * 12)))
+    def test_lighter_parameters_count_as_outdated(self):
+        self.assertTrue(auth.outdated(auth.hash_password("x" * 12, n=2 ** 12)))
+        self.assertFalse(auth.outdated(auth.hash_password("x" * 12)))
 
-    def test_de_ingestelde_parameters_draaien_echt(self):
-        """scrypt weigert boven OpenSSL's geheugengrens (32 MB) met "memory
-        limit exceeded". Met N=2**15 gebeurde dat precies — dat merk je pas bij
-        de eerste echte login, dus staat het hier."""
-        h = auth.hash_wachtwoord("een wachtwoord van genoeg tekens")
-        self.assertTrue(auth.wachtwoord_klopt("een wachtwoord van genoeg tekens", h))
+    def test_the_configured_parameters_really_run(self):
+        """scrypt refuses above OpenSSL's memory limit (32 MB) with "memory limit
+        exceeded". With N=2**15 that happened exactly — you only notice at the
+        first real login, so it is here."""
+        h = auth.hash_password("een wachtwoord van genoeg tekens")
+        self.assertTrue(auth.password_matches("een wachtwoord van genoeg tekens", h))
 
-    def test_kapotte_hash_geeft_geen_toegang(self):
-        for rommel in ("", "geen$hash", "argon2$1$2$3$4$5", None):
-            self.assertFalse(auth.wachtwoord_klopt("wat dan ook", rommel))
+    def test_a_broken_hash_grants_no_access(self):
+        for junk in ("", "geen$hash", "argon2$1$2$3$4$5", None):
+            self.assertFalse(auth.password_matches("wat dan ook", junk))
 
 
-class TweedeFactor(unittest.TestCase):
-    def test_code_klopt_binnen_speling(self):
-        geheim = auth.nieuw_totp_geheim()
-        nu = time.time()
-        code = auth._totp(geheim, int(nu // 30))
-        self.assertTrue(auth.totp_klopt(geheim, code, nu=nu)[0])
+class SecondFactor(unittest.TestCase):
+    def test_code_matches_within_the_drift(self):
+        secret = auth.new_totp_secret()
+        now = time.time()
+        code = auth._totp(secret, int(now // 30))
+        self.assertTrue(auth.totp_matches(secret, code, now=now)[0])
 
-    def test_code_is_niet_twee_keer_bruikbaar(self):
-        geheim = auth.nieuw_totp_geheim()
-        nu = time.time()
-        code = auth._totp(geheim, int(nu // 30))
-        ok, teller = auth.totp_klopt(geheim, code, nu=nu)
+    def test_a_code_cannot_be_used_twice(self):
+        secret = auth.new_totp_secret()
+        now = time.time()
+        code = auth._totp(secret, int(now // 30))
+        ok, counter = auth.totp_matches(secret, code, now=now)
         self.assertTrue(ok)
-        self.assertFalse(auth.totp_klopt(geheim, code, laatste=teller, nu=nu)[0])
+        self.assertFalse(auth.totp_matches(secret, code, last=counter, now=now)[0])
 
-    def test_onzin_wordt_geweigerd(self):
-        geheim = auth.nieuw_totp_geheim()
+    def test_nonsense_is_refused(self):
+        secret = auth.new_totp_secret()
         for code in ("", "abcdef", "12345", None):
-            self.assertFalse(auth.totp_klopt(geheim, code)[0])
+            self.assertFalse(auth.totp_matches(secret, code)[0])
 
 
-class Sessies(unittest.TestCase):
+class Sessions(unittest.TestCase):
     def setUp(self):
-        self.pid = store.maak_persoon("sessietest-" + os.urandom(4).hex(), "hash")
+        self.pid = store.create_person("sessietest-" + os.urandom(4).hex(), "hash")
 
-    def test_sessie_leeft_en_is_in_te_trekken(self):
-        token, csrf = auth.start_sessie(self.pid)
-        koppen = {"Cookie": "{}={}".format(auth.COOKIE, token)}
-        self.assertIsNotNone(auth.sessie_uit_cookie(koppen))
-        auth.stop_sessie(koppen)
-        self.assertIsNone(auth.sessie_uit_cookie(koppen))
+    def test_a_session_lives_and_can_be_revoked(self):
+        token, csrf = auth.start_session(self.pid)
+        headers = {"Cookie": "{}={}".format(auth.COOKIE, token)}
+        self.assertIsNotNone(auth.session_from_cookie(headers))
+        auth.stop_session(headers)
+        self.assertIsNone(auth.session_from_cookie(headers))
         self.assertTrue(csrf)
 
-    def test_verlopen_sessie_telt_niet(self):
-        token, _ = auth.start_sessie(self.pid)
-        store.maak_sessie(auth._hash(token), self.pid, "x", store.nu() - 1)
-        koppen = {"Cookie": "{}={}".format(auth.COOKIE, token)}
-        self.assertIsNone(auth.sessie_uit_cookie(koppen))
+    def test_an_expired_session_does_not_count(self):
+        token, _ = auth.start_session(self.pid)
+        store.create_session(auth._hash(token), self.pid, "x", store.now() - 1)
+        headers = {"Cookie": "{}={}".format(auth.COOKIE, token)}
+        self.assertIsNone(auth.session_from_cookie(headers))
 
-    def test_overal_uitloggen_raakt_alle_apparaten(self):
-        een, _ = auth.start_sessie(self.pid)
-        twee, _ = auth.start_sessie(self.pid)
-        auth.stop_sessie({"Cookie": "{}={}".format(auth.COOKIE, een)}, overal=True)
-        self.assertIsNone(auth.sessie_uit_cookie(
-            {"Cookie": "{}={}".format(auth.COOKIE, twee)}))
+    def test_logging_out_everywhere_hits_every_device(self):
+        first, _ = auth.start_session(self.pid)
+        second, _ = auth.start_session(self.pid)
+        auth.stop_session({"Cookie": "{}={}".format(auth.COOKIE, first)}, everywhere=True)
+        self.assertIsNone(auth.session_from_cookie(
+            {"Cookie": "{}={}".format(auth.COOKIE, second)}))
 
-    def test_alleen_de_hash_staat_in_de_database(self):
-        """Wie het bestand leest heeft daar geen bruikbare sessie aan."""
-        token, _ = auth.start_sessie(self.pid)
-        with store._verbind() as con:
-            rijen = [r["hash"] for r in con.execute("SELECT hash FROM sessies")]
-        self.assertNotIn(token, rijen)
-        self.assertIn(auth._hash(token), rijen)
+    def test_only_the_hash_is_in_the_database(self):
+        """Whoever reads the file gets no usable session out of it."""
+        token, _ = auth.start_session(self.pid)
+        with store._connect() as con:
+            rows = [r["hash"] for r in con.execute("SELECT hash FROM sessies")]
+        self.assertNotIn(token, rows)
+        self.assertIn(auth._hash(token), rows)
 
-    def test_csrf_moet_kloppen(self):
-        token, csrf = auth.start_sessie(self.pid)
-        sessie = auth.sessie_uit_cookie({"Cookie": "{}={}".format(auth.COOKIE, token)})
-        self.assertTrue(auth.csrf_klopt({auth.CSRF_HEADER: csrf}, sessie))
-        self.assertFalse(auth.csrf_klopt({auth.CSRF_HEADER: "iets anders"}, sessie))
-        self.assertFalse(auth.csrf_klopt({}, sessie))
+    def test_csrf_must_match(self):
+        token, csrf = auth.start_session(self.pid)
+        session = auth.session_from_cookie({"Cookie": "{}={}".format(auth.COOKIE, token)})
+        self.assertTrue(auth.csrf_matches({auth.CSRF_HEADER: csrf}, session))
+        self.assertFalse(auth.csrf_matches({auth.CSRF_HEADER: "iets anders"}, session))
+        self.assertFalse(auth.csrf_matches({}, session))
 
 
 class Cookie(unittest.TestCase):
-    def test_secure_buiten_localhost(self):
-        self.assertIn("Secure", auth.cookie_kop("t", "boomhuis-relay.tail8f7877.ts.net"))
-        self.assertNotIn("Secure", auth.cookie_kop("t", "localhost:8090"))
+    def test_secure_outside_localhost(self):
+        self.assertIn("Secure", auth.cookie_header("t", "boomhuis-relay.tail8f7877.ts.net"))
+        self.assertNotIn("Secure", auth.cookie_header("t", "localhost:8090"))
 
-    def test_altijd_httponly_en_samesite(self):
-        kop = auth.cookie_kop("t", "localhost")
-        self.assertIn("HttpOnly", kop)
-        self.assertIn("SameSite=Lax", kop)
-
-
-class Uitnodigingen(unittest.TestCase):
-    def test_werkt_precies_een_keer(self):
-        token = auth.nieuwe_uitnodiging("uitnodiging")
-        self.assertTrue(auth.uitnodiging_geldig(token, "uitnodiging"))
-        self.assertTrue(auth.gebruik_uitnodiging(token))
-        self.assertFalse(auth.gebruik_uitnodiging(token))
-        self.assertFalse(auth.uitnodiging_geldig(token, "uitnodiging"))
-
-    def test_soort_moet_kloppen(self):
-        """Een setup-link is geen uitnodiging: anders maakt de tweede persoon
-        zichzelf eigenaar."""
-        token = auth.nieuwe_uitnodiging("setup")
-        self.assertFalse(auth.uitnodiging_geldig(token, "uitnodiging"))
-
-    def test_verlopen_uitnodiging_geldt_niet(self):
-        token = auth.nieuwe_uitnodiging("uitnodiging")
-        store.maak_uitnodiging(auth._hash(token), "uitnodiging", store.nu() - 1)
-        self.assertFalse(auth.uitnodiging_geldig(token, "uitnodiging"))
+    def test_always_httponly_and_samesite(self):
+        header = auth.cookie_header("t", "localhost")
+        self.assertIn("HttpOnly", header)
+        self.assertIn("SameSite=Lax", header)
 
 
-class OudeToken(unittest.TestCase):
-    """Het migratiepad: zolang er niemand is mag het oude gedeelde token de
-    eigenaar aanmaken. Zodra er iemand is, nooit meer."""
+class Invites(unittest.TestCase):
+    def test_works_exactly_once(self):
+        token = auth.new_invite("uitnodiging")
+        self.assertTrue(auth.invite_valid(token, "uitnodiging"))
+        self.assertTrue(auth.use_invite(token))
+        self.assertFalse(auth.use_invite(token))
+        self.assertFalse(auth.invite_valid(token, "uitnodiging"))
+
+    def test_the_kind_must_match(self):
+        """A setup link is not an invitation: otherwise the second person makes
+        themselves the owner."""
+        token = auth.new_invite("setup")
+        self.assertFalse(auth.invite_valid(token, "uitnodiging"))
+
+    def test_an_expired_invite_does_not_count(self):
+        token = auth.new_invite("uitnodiging")
+        store.create_invite(auth._hash(token), "uitnodiging", store.now() - 1)
+        self.assertFalse(auth.invite_valid(token, "uitnodiging"))
+
+
+class OldToken(unittest.TestCase):
+    """The migration path: as long as there is nobody the old shared token may
+    create the owner. Once someone exists, never again."""
 
     def setUp(self):
-        self._oud = os.environ.get("BOOMHUIS_APP_TOKEN")
+        self._old = os.environ.get("BOOMHUIS_APP_TOKEN")
         os.environ["BOOMHUIS_APP_TOKEN"] = "oud-gedeeld-token"
 
     def tearDown(self):
-        if self._oud is None:
+        if self._old is None:
             os.environ.pop("BOOMHUIS_APP_TOKEN", None)
         else:
-            os.environ["BOOMHUIS_APP_TOKEN"] = self._oud
+            os.environ["BOOMHUIS_APP_TOKEN"] = self._old
 
-    def test_niet_meer_zodra_er_iemand_is(self):
-        store.maak_persoon("iemand-" + os.urandom(4).hex(), "hash")
-        self.assertFalse(auth.setup_token_geldig("oud-gedeeld-token"))
+    def test_no_longer_once_someone_exists(self):
+        store.create_person("iemand-" + os.urandom(4).hex(), "hash")
+        self.assertFalse(auth.setup_token_valid("oud-gedeeld-token"))
 
 
 if __name__ == "__main__":

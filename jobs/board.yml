@@ -1,11 +1,11 @@
-# Werk-overzicht: wat beweegt er, en wat zit vast.
+# Work overview: what is moving, and what is stuck.
 #
-# Drempels staan hier en niet in de code: hoe lang iets "te lang" in een kolom
-# staat is een oordeel dat verandert, geen logica. Ouderdom is het signaal —
-# dat er twaalf dingen open staan wist je al.
+# The thresholds live here and not in the code: how long something is "too long"
+# in a column is a judgement that changes, not logic. Age is the signal — that
+# twelve things are open you already knew.
 
-# Kolommen, in volgorde. `stale_days` = hierboven is het te lang blijven liggen.
-# De titels zijn wat de GEBRUIKER ziet en dus Engels (ADR-0001).
+# Columns, in order. `stale_days` = above this it has been sitting too long.
+# The titles are what the USER sees and are therefore English (ADR-0001).
 columns:
   - key: proposal
     title: proposal
@@ -18,27 +18,27 @@ columns:
     stale_days: 2
   - key: merged
     title: merged
-    stale_days: 0        # 0 = nooit muf; dit is de uitgang
+    stale_days: 0        # 0 = never stale; this is the exit
 
-# Waar de producent kijkt.
+# Where the producer looks.
 sources:
-  # Clones op de host; elke niet-gearchiveerde change is een voorstel.
+  # Clones on the host; every non-archived change is a proposal.
   openspec_glob: /home/agent/*/openspec/changes/*/proposal.md
-  # GitHub-eigenaar voor open en recent gemergede PR's.
+  # GitHub owner for open and recently merged PRs.
   github_owner: MWest2020
-  # Runbestanden van werksessies (zie agents/sessies.py).
+  # Run files of work sessions (see agents/sessions.py).
   session_runs: /tmp/boomhuis-sessies
-  # PR's komen van GitHub en veranderen traag; sessies veranderen elke minuut.
-  # Door de PR-kant te cachen kan de momentopname elke twee minuten draaien —
-  # en dát is wat een lopende sessie zichtbaar maakt terwijl hij bouwt.
+  # PRs come from GitHub and change slowly; sessions change every minute. Caching
+  # the PR side lets the snapshot run every two minutes — and that is what makes a
+  # running session visible while it builds.
   pr_cache: /tmp/board-prs.json
   pr_cache_seconds: 600
-  # Hoeveel dagen terug "gemerged" nog getoond wordt.
+  # How many days back "merged" is still shown.
   merged_days: 3
-  # Repo's die niet op het bord horen. Niet elk open ding is werk, en niet elk
-  # open ding kún je sluiten: freelens-ai-extension is op GitHub GEARCHIVEERD,
-  # dus die PR blijft open en is als oudste kaart elke dag het luidst. Een bord
-  # dat iets toont wat je niet kúnt oplossen, leert je het bord te negeren.
-  # Besluit Mark 2026-09-12.
+  # Repos that do not belong on the board. Not every open thing is work, and not
+  # every open thing CAN be closed: freelens-ai-extension is ARCHIVED on GitHub,
+  # so that PR stays open and shouts loudest every day as the oldest card. A
+  # board that shows something you cannot fix teaches you to ignore the board.
+  # Mark's decision, 2026-09-12.
   ignore_repos:
     - freelens-ai-extension

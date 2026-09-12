@@ -1,14 +1,18 @@
 # SPDX-License-Identifier: EUPL-1.2
-"""Zet de native kanaal-beschrijving op elk relay-kanaal vanuit channels.yml `doel`.
+"""Set the native channel description on every relay channel from channels.yml
+`doel`.
 
-Reproduceerbaar (i.p.v. een eenmalige handmatige `buzz channels update`): draai dit
-opnieuw als een `doel` in channels.yml wijzigt of na een relay-herstel.
+Reproducible (instead of a one-off manual `buzz channels update`): run this again
+when a `doel` in channels.yml changes or after a relay restore.
 
-Tekent UITSLUITEND met de orchestrator-sleutel (een agent), nooit met marks
-mens-sleutel. Kanalen die door de mens zijn aangemaakt (chat-backend maakt ze nu
-nog als `mark`) kan de orchestrator niet updaten → die worden gemeld als
-"her-eigenaarschap nodig" (zie de follow-up-change reown-channels-to-orchestrator).
-Exit != 0 als er iets niet gezet kon worden.
+Signs EXCLUSIVELY with the orchestrator key (an agent), never with Mark's human
+key. Channels created by the human (the chat backend still creates them as
+`mark`) cannot be updated by the orchestrator → those are reported as "needs
+re-ownership" (see the follow-up change reown-channels-to-orchestrator).
+Exit != 0 when something could not be set.
+
+`doel` stays Dutch: channels.yml is a root-level data file and moves in its own
+change (ADR-0001).
 """
 import os
 import subprocess
@@ -36,10 +40,10 @@ def main():
     env = dict(os.environ, BUZZ_PRIVATE_KEY=orchestrator_nsec(), BUZZ_RELAY_URL=RELAY)
     failed = []
     for name, c in chans.items():
-        cid, doel = c.get("id"), (c.get("doel") or "").strip()
-        if not cid or not doel:
+        cid, purpose = c.get("id"), (c.get("doel") or "").strip()
+        if not cid or not purpose:
             print(f"  #{name}: overgeslagen (geen id/doel)"); continue
-        r = subprocess.run([BUZZ, "channels", "update", "--channel", cid, "--description", doel[:200]],
+        r = subprocess.run([BUZZ, "channels", "update", "--channel", cid, "--description", purpose[:200]],
                            capture_output=True, text=True, env=env)
         if r.returncode == 0 and '"error"' not in r.stdout:
             print(f"  #{name}: beschrijving gezet")

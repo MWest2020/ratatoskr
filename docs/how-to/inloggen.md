@@ -16,19 +16,19 @@ installatie draait.
 Een compose-installatie (zie [installeren.md](installeren.md)):
 
     cd /opt/ratatoskr
-    docker compose exec chat python3 adminctl.py eigenaar <jouw-naam>
+    docker compose exec chat python3 adminctl.py owner <jouw-naam>
 
 Marks eigen installatie draait (nog) als systemd-unit uit een checkout:
 
     cd /opt/buzz-build/chat
-    sudo python3 adminctl.py eigenaar <jouw-naam>
+    sudo python3 adminctl.py owner <jouw-naam>
 
 Hij vraagt je wachtwoord twee keer, zichtbaar noch in je shell-geschiedenis.
 Daarna log je in op `/login`.
 
-Meer opdrachten: `personen` (wie er zijn), `uitnodiging` (link voor iemand
-anders), `wachtwoord <naam>` (nieuw wachtwoord, trekt alle sessies van die
-persoon in), `verwijder <naam>`.
+Meer opdrachten: `people` (wie er zijn), `invite` (link voor iemand
+anders), `password <naam>` (nieuw wachtwoord, trekt alle sessies van die
+persoon in), `delete <naam>`.
 
 ## De eerste keer — via de browser
 
@@ -76,8 +76,8 @@ hoeft niet opnieuw in te loggen.
 Wachtwoord-vergeten zit niet in de app (daar heb je per definitie geen sessie
 voor); vanaf de host wel:
 
-    docker compose exec chat python3 adminctl.py wachtwoord <naam>   # compose
-    cd /opt/buzz-build/chat && sudo python3 adminctl.py wachtwoord <naam>
+    docker compose exec chat python3 adminctl.py password <naam>   # compose
+    cd /opt/buzz-build/chat && sudo python3 adminctl.py password <naam>
 
 Dat zet een nieuw wachtwoord en trekt alle sessies van die persoon in — wie het
 oude had, is eruit.

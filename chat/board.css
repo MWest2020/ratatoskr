@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: EUPL-1.2 */
-/* Werk-overzicht. Zelfde lade-vorm als Repos; de kolommen schuiven horizontaal
-   omdat een telefoon er nooit vier naast elkaar krijgt zonder ze onleesbaar te
-   maken. Muf = de enige kleur die om aandacht vraagt. */
+/* Work overview. Same drawer shape as Repos; the columns scroll horizontally
+   because a phone never fits four side by side without making them unreadable.
+   Stale = the only colour that asks for attention. */
 #boardDrawer{position:absolute; inset:0; background:rgba(0,0,0,.55); z-index:20;
   display:none; opacity:0; transition:opacity .15s}
 #boardDrawer.open{display:block; opacity:1}
@@ -28,7 +28,7 @@
 .bcard{background:var(--panel2); border:1px solid var(--line);
   border-radius:.5rem; padding:.45rem .55rem}
 .bcard.stale{border-color:#e0a33e}
-/* Alleen wat ergens heen gaat, ziet er klikbaar uit. */
+/* Only what goes somewhere looks clickable. */
 .bcard.blink{cursor:pointer}
 .bcard.blink:active{background:var(--mine)}
 .bmeta{display:flex; gap:.4rem; align-items:baseline; font-size:.75rem;

@@ -1,29 +1,26 @@
 # SPDX-License-Identifier: EUPL-1.2
-"""Een verse git-worktree voor een schrijvende werksessie, met een hek erin.
+"""A fresh git worktree for a writing work session, with a fence in it.
 
-Waarom een eigen worktree: `~/ratatoskr-listener` draait de listener en de chat
-draait uit een image. Een sessie die in een draaiende checkout schrijft, verbouwt
-zichzelf tijdens het werk. Er draaiden ooit twee listeners omdat een herstart uit
-twee verschillende bomen kwam — dat soort verwarring wil je niet ook nog per
-sessie.
+Why a worktree of its own: `~/ratatoskr-listener` runs the listener and the chat
+runs from an image. A session writing in a running checkout rebuilds itself while
+it works. Two listeners once ran because a restart came out of two different
+trees — you do not want that kind of confusion per session as well.
 
-Waarom een pre-push-hook en niet een zin in de prompt: een schrijvende sessie
-krijgt `Bash` (anders geen git en geen tests), en dan is "push niet naar main" in
-een prompt niets waard. Alles wat in zijn context komt — een README, een issue,
-een opgehaalde pagina — kan die instructie sturen. Een hook kan dat niet.
-
-Engels in de code per ADR-0001; deze module is nieuw.
+Why a pre-push hook and not a sentence in the prompt: a writing session gets
+`Bash` (no git and no tests otherwise), and then "do not push to main" in a prompt
+is worth nothing. Anything entering its context — a README, an issue, a fetched
+page — can steer that instruction. A hook cannot be steered.
 """
 import os
 import subprocess
 import time
 
-# Het hek. `git push` geeft elke ref op stdin door als "<local> <sha> <remote> <sha>";
-# alles wat niet naar de eigen branch gaat, weigeren we. Ook `main` expliciet,
-# zodat de melding duidelijk is in plaats van een generieke afwijzing.
+# The fence. `git push` passes every ref on stdin as "<local> <sha> <remote>
+# <sha>"; anything not going to its own branch is refused. `main` explicitly too,
+# so the message is clear instead of a generic rejection.
 HOOK = """#!/bin/sh
-# Geschreven door agents/work_tree.py. Een schrijvende werksessie mag alleen zijn
-# EIGEN branch pushen: zo blijft een pull request de enige uitkomst.
+# Written by agents/work_tree.py. A writing work session may only push its OWN
+# branch: that keeps a pull request the only outcome.
 allowed="refs/heads/%s"
 while read -r _local _lsha remote _rsha; do
     [ -z "$remote" ] && continue
@@ -38,10 +35,10 @@ exit 0
 
 
 def branch_name(session_type, requester, now=None):
-    """Herkenbaar en uniek: type, wie erom vroeg, wanneer."""
+    """Recognisable and unique: type, who asked, when."""
     stamp = int(now or time.time())
-    veilig = "".join(c if c.isalnum() or c in "-_" else "-" for c in requester)[:24]
-    return f"session/{session_type}-{veilig or 'unknown'}-{stamp}"
+    safe = "".join(c if c.isalnum() or c in "-_" else "-" for c in requester)[:24]
+    return f"session/{session_type}-{safe or 'unknown'}-{stamp}"
 
 
 def _run(args, cwd=None):
@@ -52,27 +49,27 @@ def _run(args, cwd=None):
 
 
 def install_hook(worktree, branch):
-    """De hook in een EIGEN hooks-map van deze worktree zetten.
+    """Put the hook in a hooks directory of THIS worktree.
 
-    Waarom niet gewoon `.git/hooks`: dat is de GEDEELDE map van de hele clone.
-    Gemeten 2026-09-12, pijnlijk: de hook van een sessie blokkeerde daardoor mijn
-    eigen push vanuit een andere worktree van dezelfde clone — "deze sessie mag
-    alleen refs/heads/session/… pushen". Twee sessies zouden elkaars hook
-    bovendien overschrijven.
+    Why not plain `.git/hooks`: that is the SHARED directory of the whole clone.
+    Measured 2026-09-12, painfully: a session's hook therefore blocked my own push
+    from another worktree of the same clone — "deze sessie mag alleen
+    refs/heads/session/… pushen". Two sessions would also overwrite each other's
+    hook.
 
-    Git heeft hier een mechanisme voor: `extensions.worktreeConfig` zet
-    `core.hooksPath` per worktree in plaats van voor de hele repo.
+    Git has a mechanism for this: `extensions.worktreeConfig` sets
+    `core.hooksPath` per worktree instead of for the whole repo.
     """
-    eigen = os.path.join(worktree, ".session-hooks")
-    os.makedirs(eigen, exist_ok=True)
+    own = os.path.join(worktree, ".session-hooks")
+    os.makedirs(own, exist_ok=True)
     _run(["git", "-C", worktree, "config", "extensions.worktreeConfig", "true"])
-    _run(["git", "-C", worktree, "config", "--worktree", "core.hooksPath", eigen])
-    pad = os.path.join(eigen, "pre-push")
-    with open(pad, "w") as f:
+    _run(["git", "-C", worktree, "config", "--worktree", "core.hooksPath", own])
+    path = os.path.join(own, "pre-push")
+    with open(path, "w") as f:
         f.write(HOOK % branch)
-    os.chmod(pad, 0o755)
-    # Niet meecommitten: het hek hoort bij de sessie, niet bij de branch. In een
-    # worktree is `.git` een BESTAND, geen map — dus het pad opvragen aan git.
+    os.chmod(path, 0o755)
+    # Not committed along: the fence belongs to the session, not to the branch. In
+    # a worktree `.git` is a FILE, not a directory — so ask git for the path.
     exclude = _run(["git", "-C", worktree, "rev-parse", "--git-path",
                     "info/exclude"]).strip()
     if not os.path.isabs(exclude):
@@ -80,20 +77,20 @@ def install_hook(worktree, branch):
     os.makedirs(os.path.dirname(exclude), exist_ok=True)
     with open(exclude, "a") as f:
         f.write("\n.session-hooks/\n")
-    return pad
+    return path
 
 
 def create(repo, base_dir, session_type, requester, now=None):
-    """(worktree, branch). Vers van `origin/main`, met het hek erin.
+    """(worktree, branch). Fresh from `origin/main`, with the fence in it.
 
-    `repo` is een bestaande clone; de worktree komt in `base_dir`, buiten elke
-    draaiende checkout. Faalt er iets, dan gooit dit — een halve worktree is
-    erger dan geen.
+    `repo` is an existing clone; the worktree goes into `base_dir`, outside every
+    running checkout. If anything fails this raises — half a worktree is worse
+    than none.
     """
     branch = branch_name(session_type, requester, now)
-    doel = os.path.join(base_dir, branch.replace("/", "-"))
+    target = os.path.join(base_dir, branch.replace("/", "-"))
     os.makedirs(base_dir, exist_ok=True)
     _run(["git", "-C", repo, "fetch", "--quiet", "origin", "main"])
-    _run(["git", "-C", repo, "worktree", "add", "-q", "-b", branch, doel, "origin/main"])
-    install_hook(doel, branch)
-    return doel, branch
+    _run(["git", "-C", repo, "worktree", "add", "-q", "-b", branch, target, "origin/main"])
+    install_hook(target, branch)
+    return target, branch

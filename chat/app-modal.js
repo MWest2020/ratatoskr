@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: EUPL-1.2
-// UI-helpers voor de mention-pop-up, apart van app.js zodat die ≤200 regels blijft.
-// Ook: de DOM-bouwers die de rest van de app gebruikt. Geladen vóór app.js en
-// app-ui.js, dus daar zijn `el` en `add` beschikbaar.
+// UI helpers for the mention pop-up, separate from app.js so that stays ≤200
+// lines. Also: the DOM builders the rest of the app uses. Loaded before app.js and
+// app-ui.js, so `el` and `add` are available there.
 
-// el(tag, class, tekst) — tekst gaat ALTIJD via textContent, nooit via innerHTML.
-// Dat is geen stijlkeuze: PR-titels, branchnamen, bestandsnamen en repo-
-// beschrijvingen komen van GitHub en kunnen door iedereen gezet worden die een PR
-// op een publieke repo opent. Met innerHTML draait dat als HTML in Marks PWA, waar
-// het apparaat-token in localStorage staat.
+// el(tag, class, text) — text ALWAYS goes through textContent, never innerHTML.
+// That is not a style choice: PR titles, branch names, file names and repo
+// descriptions come from GitHub and can be set by anyone who opens a PR on a
+// public repo. With innerHTML that runs as HTML in Mark's PWA, where the device
+// token sits in localStorage.
 function el(tag, cls, text){
   const n = document.createElement(tag);
   if (cls) n.className = cls;
@@ -15,7 +15,7 @@ function el(tag, cls, text){
   return n;
 }
 
-// add(ouder, ...kinderen) — strings worden tekstknopen, geen markup.
+// add(parent, ...children) — strings become text nodes, not markup.
 function add(parent, ...kids){
   for (const k of kids) {
     if (k === null || k === undefined) continue;
@@ -24,7 +24,7 @@ function add(parent, ...kids){
   return parent;
 }
 
-// Generieke ja/nee-pop-up → Promise<bool>.
+// Generic yes/no pop-up → Promise<bool>.
 function modalConfirm(title, sub, okLabel){
   return new Promise(resolve=>{
     const ov=document.createElement("div"); ov.className="modal-ov";
@@ -33,7 +33,7 @@ function modalConfirm(title, sub, okLabel){
     const s=document.createElement("div"); s.className="modal-sub"; s.textContent=sub;
     const row=document.createElement("div"); row.className="modal-row";
     const ok=document.createElement("button"); ok.className="modal-add"; ok.textContent=okLabel;
-    const cancel=document.createElement("button"); cancel.className="modal-cancel"; cancel.textContent="Annuleren";
+    const cancel=document.createElement("button"); cancel.className="modal-cancel"; cancel.textContent="Cancel";
     const done=v=>{ ov.remove(); resolve(v); };
     cancel.onclick=()=>done(false);
     ov.onclick=e=>{ if(e.target===ov) done(false); };
@@ -42,9 +42,9 @@ function modalConfirm(title, sub, okLabel){
   });
 }
 
-// Voeg een agent toe aan een kanaal → true bij succes (toont zelf de serverfout).
+// Add an agent to a channel → true on success (shows the server error itself).
 async function addAgent(name, cid){
   const rr=await postJSON("/api/channel/add-member",{channel:cid, name:name}).catch(()=>null);
-  if(rr && rr.ok){ toast("@"+name+" toegevoegd ✓"); return true; }
-  const jj=rr?await rr.json().catch(()=>({})):{}; toast(jj.error||"toevoegen mislukt"); return false;
+  if(rr && rr.ok){ toast("@"+name+" added ✓"); return true; }
+  const jj=rr?await rr.json().catch(()=>({})):{}; toast(jj.error||"adding failed"); return false;
 }

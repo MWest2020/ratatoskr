@@ -1,10 +1,10 @@
-// Playwright hoeft niet in deze repo te staan; wijs er met NODE_PATH naar:
-//   NODE_PATH=<pad>/node_modules node chat/e2e/ui.js
+// Playwright need not live in this repo; point at it with NODE_PATH:
+//   NODE_PATH=<path>/node_modules node chat/e2e/ui.js
 const { chromium, devices } = require('playwright');
 const EXE='/home/agent/.cache/ms-playwright/chromium-1234/chrome-linux64/chrome';
 const URL=((process.env.RATATOSKR_URL || process.env.BOOMHUIS_URL) || 'https://boomhuis-relay.tail8f7877.ts.net').replace(/\/+$/,'');
-// Sinds `inloggen-per-persoon` komt er zonder sessie geen app in beeld. Geef een
-// account mee; zonder dat kan deze suite niets bewijzen en zegt hij dat.
+// Since `inloggen-per-persoon` no app appears without a session. Pass an account;
+// without one this suite can prove nothing and says so.
 const NAAM=(process.env.RATATOSKR_NAAM || process.env.BOOMHUIS_NAAM), WW=(process.env.RATATOSKR_WW || process.env.BOOMHUIS_WW);
 let ok=0, fail=0;
 const t=(naam,cond,extra='')=>{ if(cond){ok++;console.log(`  ok   ${naam}`);} else {fail++;console.log(`  FAIL ${naam} ${extra}`);} };
@@ -14,16 +14,16 @@ const t=(naam,cond,extra='')=>{ if(cond){ok++;console.log(`  ok   ${naam}`);} el
   const ctx=await b.newContext({...devices['iPhone 13'],ignoreHTTPSErrors:true});
   const p=await ctx.newPage();
   const errs=[]; p.on('pageerror',e=>errs.push(e.message));
-  // Een 401 op een schrijfpoging is verwacht (de token-test hieronder); die telt
-  // dus niet als JS-fout, anders faalt de suite op haar eigen scenario.
+  // A 401 on a write attempt is expected (the token test below); it therefore
+  // does not count as a JS error, otherwise the suite fails on its own scenario.
   p.on('console',m=>{ if(m.type()==='error' && !/401/.test(m.text())) errs.push('console: '+m.text()); });
   if(!NAAM || !WW){
     console.log('BOOMHUIS_NAAM/BOOMHUIS_WW ontbreken — inloggen kan niet, suite gestopt.');
     await b.close(); process.exit(2);
   }
   await p.goto(URL+'/login',{waitUntil:'load',timeout:45000});
-  await p.fill('#naam',NAAM); await p.fill('#wachtwoord',WW);
-  await p.click('#knop');
+  await p.fill('#name',NAAM); await p.fill('#password',WW);
+  await p.click('#submit');
   await p.waitForTimeout(7000);
 
   console.log('— shell');
@@ -43,7 +43,7 @@ const t=(naam,cond,extra='')=>{ if(cond){ok++;console.log(`  ok   ${naam}`);} el
   const box=await p.evaluate(()=>{const r=[...document.querySelectorAll('.chan')].find(x=>x.querySelector('.cn')?.textContent==='bouw');
      const rr=r.getBoundingClientRect(), m=r.querySelector('.cmeta').getBoundingClientRect();
      return {right:rr.right,top:rr.top,h:rr.height,metaRight:m.right};});
-  await p.mouse.click((box.metaRight+box.right)/2, box.top+box.h/2);   // dode zone van vroeger
+  await p.mouse.click((box.metaRight+box.right)/2, box.top+box.h/2);   // the old dead zone
   await p.waitForTimeout(2500);
   t('tik naast de naam wisselt van kanaal', await p.evaluate(()=>document.querySelector('#chanName').textContent==='bouw'));
   t('en sluit de lade', await p.evaluate(()=>!document.querySelector('#drawer').classList.contains('open')));
@@ -53,12 +53,12 @@ const t=(naam,cond,extra='')=>{ if(cond){ok++;console.log(`  ok   ${naam}`);} el
   await p.evaluate(()=>[...document.querySelectorAll('.chan')].find(x=>x.querySelector('.cn')?.textContent==='general').click());
   await p.waitForTimeout(4000);
   const msgs=await p.evaluate(()=>({n:document.querySelectorAll('#msgs > *').length,
-     namen:[...document.querySelectorAll('#msgs .meta > span')].slice(-6).map(e=>e.textContent.trim()),
-     // markup in een naam of inhoud mag NOOIT een element worden
-     geinjecteerd: document.querySelectorAll('#msgs img,#msgs script').length}));
+     names:[...document.querySelectorAll('#msgs .meta > span')].slice(-6).map(e=>e.textContent.trim()),
+     // markup in a name or in content must NEVER become an element
+     injected: document.querySelectorAll('#msgs img,#msgs script').length}));
   t('berichten gerenderd', msgs.n>3, JSON.stringify(msgs).slice(0,120));
-  t('afzendernamen zichtbaar', msgs.namen.length>0, JSON.stringify(msgs.namen));
-  t('geen markup uit berichten gerenderd', msgs.geinjecteerd===0);
+  t('afzendernamen zichtbaar', msgs.names.length>0, JSON.stringify(msgs.names));
+  t('geen markup uit berichten gerenderd', msgs.injected===0);
 
   console.log('— agents-lade');
   await p.click('#agentsBtn'); await p.waitForTimeout(2500);
@@ -78,13 +78,13 @@ const t=(naam,cond,extra='')=>{ if(cond){ok++;console.log(`  ok   ${naam}`);} el
   t('sluitknop werkt', await p.evaluate(()=>!document.querySelector('#reposDrawer').classList.contains('open')));
 
   console.log('— ingelogd');
-  // Geen testbericht versturen: dat landt in een echt kanaal. Wat hier telt is
-  // dat de app wéét wie je bent en dat de uitweg zichtbaar is.
+  // Do not send a test message: that lands in a real channel. What counts here is
+  // that the app KNOWS who you are and that the way out is visible.
   await p.click('#switch'); await p.waitForTimeout(800);
   t('de lade noemt wie je bent',
-    /ingelogd als/i.test(await p.locator('#wieBenJe').textContent().catch(()=>'')),
-    await p.locator('#wieBenJe').textContent().catch(()=>'(leeg)'));
-  t('uitlogknop staat er', (await p.locator('#uitlogBtn').count())>0);
+    /signed in as/i.test(await p.locator('#whoAmI').textContent().catch(()=>'')),
+    await p.locator('#whoAmI').textContent().catch(()=>'(leeg)'));
+  t('uitlogknop staat er', (await p.locator('#logoutBtn').count())>0);
 
   console.log(`\ngeslaagd=${ok} mislukt=${fail}`);
   if(errs.length) console.log('JS-fouten:', errs.slice(0,4));

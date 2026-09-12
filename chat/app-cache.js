@@ -1,102 +1,104 @@
 // SPDX-License-Identifier: EUPL-1.2
 //
-// Een momentopname per kanaal, zodat er zonder verbinding iets zinnigs op het
-// scherm staat. Meldingen komen over het publieke internet binnen (Web Push
-// via FCM), de comms-API alleen over het tailnet — dus "melding binnen, app
-// leeg" is een normale toestand, geen storing.
+// A snapshot per channel, so there is something sensible on screen without a
+// connection. Notifications arrive over the public internet (Web Push through
+// FCM), the comms API only over the tailnet — so "notification in, app empty" is
+// a normal state, not an outage.
 //
-// Dit is nadrukkelijk GEEN tweede waarheid: de weergave draagt het tijdstip
-// waarop de berichten zijn opgehaald, verse data verdringt hem meteen, en er
-// wordt niets mee geschreven. De service worker blijft /api/ ongemoeid laten;
-// hij weet niet of iets vers is, de app wel.
+// This is emphatically NOT a second source of truth: the view carries the time
+// the messages were fetched, fresh data displaces it at once, and nothing is
+// written with it. The service worker still leaves /api/ alone; it does not know
+// whether something is fresh, the app does.
 
 const SNAPSHOT_PREFIX = "bh_snap_";
-// Zonder kanaallijst (die komt van de API) weet de app offline niet welk
-// kanaal open stond. Vandaar deze aparte verwijzing.
-const LAATSTE_KANAAL = "bh_laatste_kanaal";
-const MAX_BERICHTEN = 50;   // genoeg om de draad op te pakken, klein genoeg voor localStorage
-const MAX_KANALEN = 12;
+// Without a channel list (which comes from the API) the app does not know
+// offline which channel was open. Hence this separate pointer. The KEY stays
+// Dutch: it is in the localStorage of every installed app, and renaming it would
+// leave a stale copy behind that clearSnapshots() no longer removes.
+const LAST_CHANNEL = "bh_laatste_kanaal";
+const MAX_MESSAGES = 50;   // enough to pick up the thread, small enough for localStorage
+const MAX_CHANNELS = 12;
 
-/** Bewaar de laatst opgehaalde berichten van één kanaal. */
-function bewaarSnapshot(cid, msgs){
+/** Store the last fetched messages of one channel. */
+function saveSnapshot(cid, msgs){
   if(!cid || !Array.isArray(msgs)) return;
   try{
     localStorage.setItem(SNAPSHOT_PREFIX + cid, JSON.stringify({
       ts: Date.now(),
-      messages: msgs.slice(-MAX_BERICHTEN),
+      messages: msgs.slice(-MAX_MESSAGES),
     }));
-    snoeiSnapshots();
-  }catch(e){ /* vol of geweigerd: dan gewoon geen momentopname */ }
+    pruneSnapshots();
+  }catch(e){ /* full or refused: then simply no snapshot */ }
 }
 
-/** Onthoud welk kanaal open stond, inclusief naam voor de kop. */
-function bewaarLaatsteKanaal(c){
+/** Remember which channel was open, name included for the heading. */
+function saveLastChannel(c){
   if(!c || !c.id) return;
-  try{ localStorage.setItem(LAATSTE_KANAAL, JSON.stringify({ id: c.id, name: c.name || "" })); }
-  catch(e){ /* niets aan te doen */ }
+  try{ localStorage.setItem(LAST_CHANNEL, JSON.stringify({ id: c.id, name: c.name || "" })); }
+  catch(e){ /* nothing to be done */ }
 }
 
-function laatsteKanaal(){
-  try{ return JSON.parse(localStorage.getItem(LAATSTE_KANAAL) || "null"); }
+function lastChannel(){
+  try{ return JSON.parse(localStorage.getItem(LAST_CHANNEL) || "null"); }
   catch(e){ return null; }
 }
 
 /** {ts, messages} of null. */
-function leesSnapshot(cid){
+function readSnapshot(cid){
   try{
-    const rauw = localStorage.getItem(SNAPSHOT_PREFIX + cid);
-    if(!rauw) return null;
-    const snap = JSON.parse(rauw);
+    const raw = localStorage.getItem(SNAPSHOT_PREFIX + cid);
+    if(!raw) return null;
+    const snap = JSON.parse(raw);
     return (snap && Array.isArray(snap.messages) && snap.ts) ? snap : null;
   }catch(e){ return null; }
 }
 
-/** Houd de nieuwste MAX_KANALEN over; de rest is ballast. */
-function snoeiSnapshots(){
+/** Keep the newest MAX_CHANNELS; the rest is ballast. */
+function pruneSnapshots(){
   try{
-    const namen = Object.keys(localStorage).filter(k => k.startsWith(SNAPSHOT_PREFIX));
-    if(namen.length <= MAX_KANALEN) return;
-    const opTijd = namen.map(k => {
+    const names = Object.keys(localStorage).filter(k => k.startsWith(SNAPSHOT_PREFIX));
+    if(names.length <= MAX_CHANNELS) return;
+    const byTime = names.map(k => {
       let ts = 0;
       try{ ts = (JSON.parse(localStorage.getItem(k)) || {}).ts || 0; }catch(e){ ts = 0; }
       return { k, ts };
     }).sort((a, b) => b.ts - a.ts);
-    for(const oud of opTijd.slice(MAX_KANALEN)) localStorage.removeItem(oud.k);
-  }catch(e){ /* niets aan te doen */ }
+    for(const old of byTime.slice(MAX_CHANNELS)) localStorage.removeItem(old.k);
+  }catch(e){ /* nothing to be done */ }
 }
 
-/** Toon de momentopname van dit kanaal. Geeft false als die er niet is. */
-function toonSnapshot(cid){
-  const snap = leesSnapshot(cid);
+/** Show the snapshot of this channel. Returns false when there is none. */
+function showSnapshot(cid){
+  const snap = readSnapshot(cid);
   if(!snap || !snap.messages.length) return false;
-  renderBerichten(snap.messages, true);
+  renderMessages(snap.messages, true);
 
   const box = document.querySelector("#msgs");
   if(!box) return true;
-  const balk = document.createElement("div");
-  balk.className = "gedateerd";
-  const tijd = new Date(snap.ts).toLocaleString("nl-NL",
+  const bar = document.createElement("div");
+  bar.className = "dated";
+  const time = new Date(snap.ts).toLocaleString("en-GB",
     { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
-  balk.textContent = "offline — laatst bijgewerkt " + tijd;
-  box.insertBefore(balk, box.firstChild);
+  bar.textContent = "offline — last updated " + time;
+  box.insertBefore(bar, box.firstChild);
   return true;
 }
 
-/** Toon wat we het laatst wisten, ook als de kanaallijst nog niet geladen is. */
-function toonLaatstBekend(){
-  const c = (typeof current !== "undefined" && current) ? current : laatsteKanaal();
-  if(!c || !toonSnapshot(c.id)) return false;
-  const kop = document.querySelector("#chanName");
-  if(kop && !kop.textContent) kop.textContent = c.name || "";
+/** Show what we last knew, even when the channel list has not loaded yet. */
+function showLastKnown(){
+  const c = (typeof current !== "undefined" && current) ? current : lastChannel();
+  if(!c || !showSnapshot(c.id)) return false;
+  const head = document.querySelector("#chanName");
+  if(head && !head.textContent) head.textContent = c.name || "";
   return true;
 }
 
-/** Alles wissen — na een 401, zodat de volgende persoon op dit apparaat niets
-    van de vorige leest. Bij een netwerkfout juist NIET aanroepen. */
-function wisSnapshots(){
+/** Clear everything — after a 401, so the next person on this device reads
+    nothing of the previous one. Do NOT call this on a network error. */
+function clearSnapshots(){
   try{
     for(const k of Object.keys(localStorage)){
-      if(k.startsWith(SNAPSHOT_PREFIX) || k === LAATSTE_KANAAL) localStorage.removeItem(k);
+      if(k.startsWith(SNAPSHOT_PREFIX) || k === LAST_CHANNEL) localStorage.removeItem(k);
     }
-  }catch(e){ /* niets aan te doen */ }
+  }catch(e){ /* nothing to be done */ }
 }

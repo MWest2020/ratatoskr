@@ -1,32 +1,32 @@
 # SPDX-License-Identifier: EUPL-1.2
-"""De bestanden die we serveren — een allowlist, geen map.
+"""The files we serve — an allowlist, not a directory.
 
-Een allowlist omdat een directory serveren betekent dat elk bestand dat ooit
-per ongeluk in deze map belandt (een .env, een sleutel, een back-up) meteen
-publiek is. De prijs is dat je een nieuw bestand hier moet toevoegen; dat is
-twee keer vergeten en gaf dan een 404 die op iets anders leek. Vandaar dit
-eigen bestand, met de lijst op één plek.
+An allowlist because serving a directory means every file that ever lands in it
+by accident (a .env, a key, a backup) is public at once. The price is that you
+have to add a new file here; that was forgotten twice and then gave a 404 that
+looked like something else. Hence this file of its own, with the list in one
+place.
 
-sw.js staat op root-scope zodat de service worker de hele app kan controleren.
+sw.js sits at root scope so the service worker can control the whole app.
 """
 import json
 import os
 
-import instellingen
+import settings
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-# Waar de Android-app staat. NIET in de image: een APK is per installatie
-# (hij is ondertekend voor één origin), dus hij hoort bij de staat, niet bij de
-# code. Leeg of leeg gebleven map = de route bestaat gewoon niet.
-APK_DIR = instellingen.lees("APK_DIR", "/var/lib/ratatoskr/apk")
-APK_NAAM = "ratatoskr.apk"
+# Where the Android app lives. NOT in the image: an APK is per installation (it
+# is signed for one origin), so it belongs with the state, not with the code. An
+# empty or missing directory = the route simply does not exist.
+APK_DIR = settings.read("APK_DIR", "/var/lib/ratatoskr/apk")
+APK_NAME = "ratatoskr.apk"
 
-BESTANDEN = {
+FILES = {
     "/app.css": ("app.css", "text/css"),
     "/board.css": ("board.css", "text/css"),
     "/app.js": ("app.js", "text/javascript"),
     "/app-cache.js": ("app-cache.js", "text/javascript"),
-    "/app-verbinding.js": ("app-verbinding.js", "text/javascript"),
+    "/app-connection.js": ("app-connection.js", "text/javascript"),
     "/app-auth.js": ("app-auth.js", "text/javascript"),
     "/login.js": ("login.js", "text/javascript"),
     "/app-modal.js": ("app-modal.js", "text/javascript"),
@@ -40,35 +40,35 @@ BESTANDEN = {
     "/icon-192.png": ("icon-192.png", "image/png"),
     "/icon-512.png": ("icon-512.png", "image/png"),
     "/apple-touch-icon.png": ("apple-touch-icon.png", "image/png"),
-    # Android-app: Chrome haalt dit op VÓÓR er een gebruiker is. Statics staan
-    # in server.py vóór de sessie-gate en dit pad begint niet met /api/, dus het
-    # is open — en dat moet ook. Klopt de vingerafdruk niet met de sleutel
-    # waarmee de APK ondertekend is, dan start de app mét adresbalk: zichtbaar
-    # fout, niet stil.
+    # Android app: Chrome fetches this BEFORE there is a user. Statics sit in
+    # server.py before the session gate and this path does not start with /api/,
+    # so it is open — and it has to be. If the fingerprint does not match the key
+    # the APK was signed with, the app starts WITH an address bar: visibly wrong,
+    # not silently.
     "/.well-known/assetlinks.json": ("well-known/assetlinks.json", "application/json"),
 }
 
 
-def serveer_apk(h):
-    """De Android-app aanbieden — zonder sessie, zie server.py voor waarom.
-    Return True als er iets verstuurd is."""
-    pad = os.path.join(APK_DIR, APK_NAAM)
+def serve_apk(h):
+    """Serve the Android app — without a session, see server.py for why. Returns
+    True when something was sent."""
+    path = os.path.join(APK_DIR, APK_NAME)
     try:
-        with open(pad, "rb") as f:
-            inhoud = f.read()
+        with open(path, "rb") as f:
+            content = f.read()
     except OSError:
-        return h._send(404, json.dumps({"error": "geen app geïnstalleerd op deze server"})) or True
-    h._send(200, inhoud, "application/vnd.android.package-archive")
+        return h._send(404, json.dumps({"error": "no app installed on this server"})) or True
+    h._send(200, content, "application/vnd.android.package-archive")
     return True
 
 
-def serveer(h, pad):
-    """True wanneer dit pad een bekend bestand is en verstuurd is."""
-    if pad not in BESTANDEN:
+def serve(h, path):
+    """True when this path is a known file and has been sent."""
+    if path not in FILES:
         return False
-    naam, ctype = BESTANDEN[pad]
+    name, ctype = FILES[path]
     try:
-        with open(os.path.join(HERE, naam), "rb") as f:
+        with open(os.path.join(HERE, name), "rb") as f:
             return h._send(200, f.read(), ctype) or True
     except OSError:
-        return h._send(404, json.dumps({"error": "asset weg"})) or True
+        return h._send(404, json.dumps({"error": "asset missing"})) or True

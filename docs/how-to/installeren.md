@@ -49,7 +49,7 @@ De installatie begint zonder gebruikers. De eigenaar maak je op de machine zelf,
 want dat is het enige moment waarop er nog niemand is om het je te laten doen:
 
 ```bash
-docker compose exec chat python3 adminctl.py eigenaar <naam>
+docker compose exec chat python3 adminctl.py owner <naam>
 ```
 
 Dat vraagt tweemaal om een wachtwoord en zet de eigenaar in de database. Daarna

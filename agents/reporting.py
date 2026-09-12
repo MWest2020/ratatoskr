@@ -1,9 +1,11 @@
 # SPDX-License-Identifier: EUPL-1.2
-"""Meldingen per beurt: statistiek naar #statistics, limitaties naar #escalatie.
+"""Reports per turn: statistics to #statistics, limitations to #escalatie.
 
-Apart van listener.py zodat die onder de ≤200-regel-conventie blijft. `send` komt
-als callable binnen (de listener bezit de buzz-omgeving en de sleutels); dit
-bestand kent alleen het format en het beleid.
+Separate from listener.py so that file stays under the ≤200-line convention.
+`send` comes in as a callable (the listener owns the buzz environment and the
+keys); this file knows only the format and the policy.
+
+The reported TEXT stays Dutch: it lands in the Dutch channels.
 """
 import time
 
@@ -11,19 +13,19 @@ import prompts
 import providers
 import topology
 
-# Hoeveel tussenstanden per beurt, en minimaal hoeveel seconden ertussen.
+# How many progress lines per turn, and the minimum seconds between them.
 PROGRESS_MAX = 4
 PROGRESS_GAP = 20
 
 
 
 def progress_poster(send, cid, cfg, handle):
-    """Geeft een callback die tussentijds laat zien WAT de agent doet.
+    """Returns a callback that shows WHAT the agent is doing along the way.
 
-    Waarom: een beurt duurt tot 150s en tot nu toe was dat pure stilte — Mark zag
-    niets tot het antwoord er was. Eerste stap gaat er meteen uit, daarna hoogstens
-    elke PROGRESS_GAP seconden één regel, met een harde bovengrens. Melden mag de
-    beurt nooit vertragen of laten klappen, dus alles in een try.
+    Why: a turn takes up to 150s and until now that was pure silence — Mark saw
+    nothing until the answer arrived. The first step goes out immediately, then at
+    most one line every PROGRESS_GAP seconds, with a hard ceiling. Reporting must
+    never slow the turn down or make it fail, so everything sits in a try.
     """
     state = {"n": 0, "t": 0.0}
 
@@ -44,26 +46,26 @@ def progress_poster(send, cid, cfg, handle):
 
 
 def report_run(send, channels, handle, cname, cfg, r):
-    """Statistiek per beurt naar #statistics, en — alleen als er iets geweigerd is
-    of misging — één geaggregeerde melding naar #escalatie (besluit Mark
-    2026-09-06: per run, niet per geweigerde aanroep; mens beslist over verruiming).
-    Melden mag nooit de beurt zelf laten klappen."""
+    """Statistics per turn to #statistics, and — only when something was refused
+    or went wrong — one aggregated report to #escalatie (Mark, 2026-09-06: per
+    run, not per refused call; a human decides about widening). Reporting must
+    never make the turn itself fail."""
     try:
         stats = channels.get("statistics")
         if stats:
-            gevraagd, gedraaid = r.get("model_gevraagd") or "", r.get("model") or "?"
-            # Gevraagd én gedraaid, met een vlag als ze niet matchen: deze regel is
-            # het enige waarop Mark kan aflezen of het gedeclareerde model echt
-            # afgedwongen wordt. Alleen "wat er draaide" tonen verbergt juist dat.
-            model = gedraaid if not gevraagd else (
-                f"{gevraagd}→{gedraaid}" + ("" if providers.model_klopt(gevraagd, gedraaid)
+            requested, actual = r.get("model_requested") or "", r.get("model") or "?"
+            # Requested AND actual, with a flag when they differ: this line is
+            # the only place Mark can read whether the declared model is really
+            # enforced. Showing only "what ran" hides exactly that.
+            model = actual if not requested else (
+                f"{requested}→{actual}" + ("" if providers.model_matches(requested, actual)
                                             else "  ⚠ WIJKT AF"))
             line = (f"{handle} · #{cname} · {model} · "
                     f"{r.get('turns', 0)} turns · ${r.get('cost', 0.0):.2f}")
             send(stats, line, cfg["nsec"], cfg["npub"])
 
         denials, err = r.get("denials") or [], r.get("error") or ""
-        # Zelfrapportage uit de tekst: zie prompts.LIMIT_CLAUSE.
+        # Self-reporting from the text: see prompts.LIMIT_CLAUSE.
         limit = next((ln.split(":", 1)[1].strip()
                       for ln in (r.get("answer") or "").splitlines()
                       if ln.strip().startswith(prompts.LIMIT_MARKER)), "")
@@ -76,36 +78,37 @@ def report_run(send, channels, handle, cname, cfg, r):
             return
         tools = sorted({d.get("tool_name") or d.get("tool") or "?" for d in denials
                         if isinstance(d, dict)})
-        # Advies volgt de OORZAAK. Stond hier eerst altijd "rol verruimen", ook bij
-        # een time-out — en dan wijst de melding naar een knop die niets oplost.
+        # The advice follows the CAUSE. This used to always say "widen the role",
+        # even on a timeout — and then the report points at a button that fixes
+        # nothing.
         if denials or limit:
-            advies = ("beslissen: rol verruimen in de handbook-def "
+            advice = ("beslissen: rol verruimen in de handbook-def "
                       f"({', '.join(tools) if tools else 'de gemelde tool'}), of laten staan.")
         elif err == "timeout":
-            advies = (f"beslissen: de vraag was te groot voor één beurt "
+            advice = (f"beslissen: de vraag was te groot voor één beurt "
                       f"({providers.MAX_TURN_S}s). Opknippen, of als dit vaker gebeurt "
                       f"het zware werk als habitat-run doen — dat heeft 30 minuten.")
         else:
-            advies = "beslissen: storing bekijken in het listener-log; geen rolkwestie."
+            advice = "beslissen: storing bekijken in het listener-log; geen rolkwestie."
         msg = (f"limitatie · {handle} in #{cname} · model {r.get('model') or '?'}\n"
                + (f"zelf gemeld: {limit}\n" if limit else "")
                + (f"geweigerd: {', '.join(tools)} ({len(denials)}x)\n" if denials else "")
                + (f"storing: {err}\n" if err else "")
-               + advies)
+               + advice)
         send(esc, msg, cfg["nsec"], cfg["npub"])
     except Exception as e:
         print(f"[listener] melden mislukt ({handle}): {e}", flush=True)
 
 
 def report_missing_memberships(run, agents, channels, pub2name):
-    """Meld bij het opstarten welke agent-lidmaatschappen ontbreken. Geen exit: een
-    agent die niet in #statistics zit moet nog steeds antwoorden. Wél luid, want de
-    send faalt anders alleen in het log — waargenomen 2026-09-07, toen de
-    escalatieketen voor vijf van de acht agents in de praktijk dood was."""
+    """Report at start-up which agent memberships are missing. No exit: an agent
+    that is not in #statistics must still answer. Loudly though, because otherwise
+    the send only fails in the log — observed 2026-09-07, when the escalation
+    chain was dead in practice for five of the eight agents."""
     name2pub = {h: p for p, h in pub2name.items()}
-    mis = topology.missing_memberships(
+    missing = topology.missing_memberships(
         agents, channels, name2pub, lambda cid: topology.members(run, cid))
-    for handle, cname in mis:
+    for handle, cname in missing:
         print(f"[listener] LIDMAATSCHAP ONTBREEKT: @{handle} post in #{cname} maar is "
               f"geen lid — die send zal falen (bash ~/bh/members.sh --yes)", flush=True)
-    return mis
+    return missing

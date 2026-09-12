@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Boomhuis chat-backend — HTTP-routing + statische PWA-assets.
+"""Boomhuis chat backend — HTTP routing plus static PWA assets.
 
-Dun: de buzz/relay-datalaag zit in buzzcli.py, de GitHub-leeslaag in github.py.
-Hier alleen het serveren van de PWA-shell en de /api/*-routes.
+Thin: the buzz/relay data layer lives in buzzcli.py, the GitHub read layer in
+github.py. Here only the serving of the PWA shell and the /api/* routes.
 """
 import json
 import os
@@ -11,17 +11,17 @@ from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
 
-import github  # GitHub-leeslaag (repo/PR-view + pinned-context)
-import push    # Web Push — subscription-opslag + VAPID-public-key
+import github  # GitHub read layer (repo/PR view + pinned context)
+import push    # Web Push — subscription storage + VAPID public key
 from buzzcli import (buzz, buzz_admin, list_channels, list_channels_meta, valid_cid, author,
                      channel_overview, agent_roster, channel_roster, ME)
-import actions  # send/add-member/create-acties (server blijft dun)
-import auth          # sessies, wachtwoorden, TOTP
-import board         # werk-overzicht (momentopname van jobs/board.py)
-import auth_admin    # uitnodigen en tweede factor (achter de sessie)
-import auth_routes   # inloggen, setup, uitnodiging gebruiken, en de gate
-import instellingen  # RATATOSKR_*/BOOMHUIS_* uit de omgeving
-import statics       # de allowlist van bestanden die we serveren
+import actions  # send/add-member/create actions (the server stays thin)
+import auth          # sessions, passwords, TOTP
+import board         # work overview (snapshot from jobs/board.py)
+import auth_admin    # inviting and the second factor (behind the session)
+import auth_routes   # logging in, setup, using an invite, and the gate
+import settings      # RATATOSKR_*/BOOMHUIS_* from the environment
+import statics       # the allowlist of files we serve
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
@@ -35,21 +35,20 @@ class H(BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
         self.wfile.write(data)
-        self._log_toegang(code)
+        self._log_access(code)
 
-    def log_message(self, *a):  # stil: de eigen regel hieronder is genoeg
+    def log_message(self, *a):  # quiet: our own line below is enough
         pass
 
-    def _log_toegang(self, code):
-        """Eén regel per verzoek naar stdout (journald), als RATATOSKR_ACCESSLOG
-        aanstaat.
+    def _log_access(self, code):
+        """One line per request to stdout (journald), when RATATOSKR_ACCESSLOG is
+        on.
 
-        Bestaat om één vraag te kunnen beantwoorden die van buiten niet te zien
-        is: haalt een geïnstalleerde PWA de nieuwe bestanden eigenlijk wel op?
-        Alleen methode, pad, status en een afgeknot user-agent — geen headers,
-        geen tokens, geen bodies.
+        Exists to answer one question you cannot see from outside: does an
+        installed PWA actually fetch the new files? Only method, path, status and
+        a truncated user agent — no headers, no tokens, no bodies.
         """
-        if instellingen.lees("ACCESSLOG") not in ("1", "true", "yes"):
+        if settings.read("ACCESSLOG") not in ("1", "true", "yes"):
             return
         ua = (self.headers.get("User-Agent") or "-")[:80].replace("\n", " ")
         print(f"{datetime.now(timezone.utc).isoformat(timespec='seconds')} "
@@ -57,34 +56,33 @@ class H(BaseHTTPRequestHandler):
 
     def do_GET(self):
         u = urlparse(self.path)
-        # De inlogpagina staat vóór de gate: anders kun je nooit inloggen.
+        # The login page comes before the gate: otherwise you can never log in.
         if u.path == "/login":
             with open(os.path.join(HERE, "login.html"), "rb") as f:
                 return self._send(200, f.read(), "text/html; charset=utf-8")
         if u.path in ("/", "/index.html"):
             with open(os.path.join(HERE, "index.html"), "rb") as f:
                 return self._send(200, f.read(), "text/html; charset=utf-8")
-        if statics.serveer(self, u.path):
+        if statics.serve(self, u.path):
             return None
         if u.path == "/ratatoskr.apk":
-            # Open, net als /login en de asset-links. Twee redenen, allebei
-            # praktisch: (a) een APK-download start vaak buiten de sessie — een
-            # link die je doorstuurt opent in een andere app of in de
-            # downloadmanager, en die draagt het cookie niet mee, dus achter de
-            # gate is de link onbruikbaar precies wanneer je 'm nodig hebt;
-            # (b) het bestand bevat niets geheims: het is een browser-schil met
-            # de hostnaam erin, en die staat al in elke URL. De netwerklaag
-            # (tailnet of proxy) is hier de deur.
-            return statics.serveer_apk(self) and None
+            # Open, like /login and the asset links. Two reasons, both practical:
+            # (a) an APK download often starts outside the session — a link you
+            # forward opens in another app or in the download manager, and that
+            # does not carry the cookie, so behind the gate the link is useless
+            # exactly when you need it; (b) the file holds nothing secret: it is a
+            # browser shell with the host name in it, and that is already in every
+            # URL. The network layer (tailnet or proxy) is the door here.
+            return statics.serve_apk(self) and None
         if u.path.startswith("/api/"):
-            # Lezen zit óók achter de sessie: in deze routes staan kanaalnamen,
-            # berichten en agent-verkeer. Zonder tailnet ervoor betekent "lezen
-            # is open" simpelweg "alles is openbaar".
+            # Reading sits behind the session too: these routes carry channel
+            # names, messages and agent traffic. Without a tailnet in front,
+            # "reading is open" simply means "everything is public".
             if u.path == "/api/status":
                 return auth_routes.status(self)
             if u.path == "/api/sessie":
-                return auth_routes.sessie_info(self)
-            if auth_routes.gate(self, u.path, schrijft=False) is None:
+                return auth_routes.session_info(self)
+            if auth_routes.gate(self, u.path, writes=False) is None:
                 return None
 
         if u.path == "/api/channels":
@@ -114,7 +112,7 @@ class H(BaseHTTPRequestHandler):
         if u.path == "/api/prs":
             repo = (parse_qs(u.query).get("repo") or [""])[0]
             if not github.valid_repo(repo):
-                return self._send(400, json.dumps({"error": "repo: verwacht owner/naam"}))
+                return self._send(400, json.dumps({"error": "repo: expected owner/name"}))
             try:
                 return self._send(200, json.dumps({"prs": github.list_prs(repo)}))
             except Exception as e:
@@ -124,14 +122,14 @@ class H(BaseHTTPRequestHandler):
             repo = (q.get("repo") or [""])[0]
             num = (q.get("num") or [""])[0]
             if not github.valid_repo(repo) or not num.isdigit():
-                return self._send(400, json.dumps({"error": "repo: owner/naam, num: getal"}))
+                return self._send(400, json.dumps({"error": "repo: owner/name, num: a number"}))
             try:
                 return self._send(200, json.dumps(github.get_pr(repo, int(num))))
             except Exception as e:
                 return self._send(502, json.dumps({"error": str(e)[:200]}))
         if u.path == "/api/pinned":
-            # Pinned context = knowledge/<kanaal>.md uit de boomhuis-repo (één bron
-            # van waarheid; update via git push). Leeg = geen pin.
+            # Pinned context = knowledge/<channel>.md from the boomhuis repo (one
+            # source of truth; update through git push). Empty = no pin.
             name = (parse_qs(u.query).get("channel") or [""])[0].lower()
             if not re.match(r"^[a-z0-9][a-z0-9_-]{0,30}$", name):
                 return self._send(200, json.dumps({"content": ""}))
@@ -143,7 +141,7 @@ class H(BaseHTTPRequestHandler):
         if u.path == "/api/messages":
             cid = (parse_qs(u.query).get("channel") or [""])[0]
             if not valid_cid(cid):
-                return self._send(400, json.dumps({"error": "onbekend kanaal"}))
+                return self._send(400, json.dumps({"error": "unknown channel"}))
             rc, out, err = buzz(["messages", "get", "--channel", cid])
             if rc != 0:
                 return self._send(502, json.dumps({"error": err.strip()[:200]}))
@@ -169,34 +167,34 @@ class H(BaseHTTPRequestHandler):
             n = int(self.headers.get("Content-Length", 0))
         except ValueError:
             return self._send(400, json.dumps({"error": "bad length"}))
-        # Harde bovengrens: geen enkele POST-body (send, subscribe) is groot; dit
-        # voorkomt dat een tailnet-node de backend ongelimiteerd laat lezen.
+        # Hard ceiling: no POST body (send, subscribe) is large; this stops a
+        # tailnet node from making the backend read without limit.
         if n < 0 or n > 16384:
-            return self._send(413, json.dumps({"error": "body te groot"}))
+            return self._send(413, json.dumps({"error": "body too large"}))
         try:
             body = json.loads(self.rfile.read(n) or b"{}")
         except Exception:
             return self._send(400, json.dumps({"error": "bad json"}))
 
-        # Inloggen, setup en een uitnodiging gebruiken kunnen per definitie geen
-        # sessie hebben; die gaan vóór de gate.
+        # Logging in, setup and using an invitation cannot have a session by
+        # definition; those go before the gate.
         if auth_routes.open_route(self, u.path, body):
             return None
         if u.path == "/api/uitloggen":
-            return auth_routes.uitloggen(self, body)
+            return auth_routes.log_out(self, body)
 
-        # Al het andere: sessie plus een sessiegebonden token, want elke POST
-        # wijzigt iets (bericht, kanaal, lid, push-registratie, uitnodiging).
-        sessie = auth_routes.gate(self, u.path, schrijft=True)
-        if sessie is None:
+        # Everything else: a session plus a session-bound token, because every
+        # POST changes something (message, channel, member, push, invitation).
+        session = auth_routes.gate(self, u.path, writes=True)
+        if session is None:
             return None
-        if auth_admin.route(self, u.path, sessie, body):
+        if auth_admin.route(self, u.path, session, body):
             return None
 
         if u.path == "/api/push/subscribe":
             if push.add_subscription(body):
                 return self._send(200, json.dumps({"ok": True}))
-            return self._send(400, json.dumps({"error": "ongeldige subscription"}))
+            return self._send(400, json.dumps({"error": "invalid subscription"}))
 
         if u.path == "/api/channels/create":
             code, payload = actions.create_channel(body.get("name"))
@@ -205,8 +203,8 @@ class H(BaseHTTPRequestHandler):
         if u.path == "/api/channels/delete":
             cid = body.get("channel")
             if not valid_cid(cid):
-                return self._send(400, json.dumps({"error": "onbekend kanaal"}))
-            # Verwijderen is kanaalbeheer: tekent als orchestrator, niet als mark.
+                return self._send(400, json.dumps({"error": "unknown channel"}))
+            # Deleting is channel management: signs as orchestrator, not as mark.
             rc, out, err = buzz_admin(["channels", "delete", "--channel", cid])
             if rc is None:
                 return self._send(503, json.dumps({"error": err}))
@@ -227,10 +225,10 @@ class H(BaseHTTPRequestHandler):
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", "8090"))
-    # Bind-host is config, niet code. Default 0.0.0.0 (ongewijzigd gedrag); op de
-    # relay-VM zetten we BIND_HOST op het tailnet-IP (100.x) zodat de poort niet
-    # op de LAN-interface luistert — dan kan alleen een tailnet-node posten.
+    # The bind host is config, not code. Default 0.0.0.0 (unchanged behaviour); on
+    # the relay VM we set BIND_HOST to the tailnet IP (100.x) so the port does not
+    # listen on the LAN interface — then only a tailnet node can post.
     host = os.environ.get("BIND_HOST", "0.0.0.0")
-    auth_routes.setup_link_bij_start()
-    print(f"[chat] luistert op {host}:{port}", flush=True)
+    auth_routes.print_setup_link_at_start()
+    print(f"[chat] listening on {host}:{port}", flush=True)
     ThreadingHTTPServer((host, port), H).serve_forever()

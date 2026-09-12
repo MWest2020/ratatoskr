@@ -1,9 +1,10 @@
 # SPDX-License-Identifier: EUPL-1.2
-"""Provider-naad: het agent-backend zit achter één functie. Apart van listener.py
-zodat die onder de ≤200-regel-conventie blijft. Vandaag 'claude-p' (sub-first);
-een nieuw backend = één extra tak. De handbook-def declareert provider, model en
-tools (front-matter agent.chat), en die worden hier afgedwongen — niet alleen
-gedeclareerd (besluit Mark 2026-09-06: "afdwingen, niet yolo free for all").
+"""Provider seam: the agent backend sits behind one function. Separate from
+listener.py so that file stays under the ≤200-line convention. Today 'claude-p'
+(subscription first); a new backend = one extra branch. The handbook def
+declares provider, model and tools (front matter agent.chat), and those are
+enforced here — not merely declared (Mark, 2026-09-06: "afdwingen, niet yolo
+free for all").
 """
 import json
 import os
@@ -13,39 +14,41 @@ import time
 CLAUDE = os.environ.get("CLAUDE_BIN", "claude")
 MAX_TURN_S = 150
 
-# Wat de agent-subprocess van de omgeving mág zien. De listener draagt de nsec van
-# ELKE agent in zijn eigen omgeving; zonder deze filter erft elke beurt die sleutels
-# (en de age-key, GitHub-token, ssh-agent) en is één geslaagde prompt-injectie
-# genoeg om ze via /proc/self/environ te lezen en in het kanaal te posten.
+# What the agent subprocess is allowed to see of the environment. The listener
+# carries the nsec of EVERY agent in its own environment; without this filter
+# each turn inherits those keys (and the age key, GitHub token, ssh-agent) and
+# one successful prompt injection is enough to read them through
+# /proc/self/environ and post them in the channel.
 ENV_KEEP = ("PATH", "HOME", "LANG", "LC_ALL", "TZ", "TERM",
             "XDG_CONFIG_HOME", "XDG_CACHE_HOME", "XDG_DATA_HOME")
 
-# Pad-tools worden begrensd tot de werkboom. `--allowedTools Read` alleen begrenst
-# NIETS: geverifieerd 2026-09-06 dat een agent daarmee een bestand buiten de repo
-# las zonder denial; met `Read(./**)` wordt diezelfde poging geweigerd én gemeld.
+# Path tools are bounded to the work tree. `--allowedTools Read` on its own
+# bounds NOTHING: verified 2026-09-06 that an agent read a file outside the repo
+# with it and got no denial; with `Read(./**)` that same attempt is refused and
+# reported.
 PATH_TOOLS = {"Read", "Grep", "Glob", "Edit", "Write", "NotebookEdit"}
 
 
-# Alleen deze drie mogen een tweede pad krijgen: lezen buiten de werkboom is
-# soms nodig (een skill-forge-oordeel over een clip die in de zettelkast ligt),
-# schrijven buiten de werkboom nooit.
-LEES_TOOLS = ("Read", "Grep", "Glob")
+# Only these three may get a second path: reading outside the work tree is
+# sometimes needed (a skill-forge judgement about a clip in the zettelkast),
+# writing outside it never is.
+READ_TOOLS = ("Read", "Grep", "Glob")
 
 
 def scoped(tools, extra=None):
-    """Pad-tools krijgen een werkboom-scope; de rest blijft zoals hij is.
+    """Path tools get a work-tree scope; the rest stays as it is.
 
-    `extra` = expliciet gedeclareerde EXTRA leespaden (per sessietype in
-    sessies.yml). Elk pad wordt een eigen, even strakke scope — niet een
-    verruiming van de werkboom-scope, maar een tweede vergunning ernaast."""
-    uit = [f"{t}(./**)" if t in PATH_TOOLS else t for t in (tools or [])]
-    for pad in (extra or []):
-        uit += [f"{t}({pad.rstrip('/')}/**)" for t in LEES_TOOLS if t in (tools or [])]
-    return uit
+    `extra` = explicitly declared EXTRA read paths (per session type in
+    sessions.yml). Every path becomes its own, equally tight scope — not a
+    widening of the work-tree scope, but a second permit beside it."""
+    out = [f"{t}(./**)" if t in PATH_TOOLS else t for t in (tools or [])]
+    for path in (extra or []):
+        out += [f"{t}({path.rstrip('/')}/**)" for t in READ_TOOLS if t in (tools or [])]
+    return out
 
 
 def _target(inp):
-    """Het interessante deel van een tool-aanroep, kort: een pad of een commando."""
+    """The interesting part of a tool call, short: a path or a command."""
     for k in ("file_path", "path", "pattern", "command", "url"):
         v = inp.get(k)
         if v:
@@ -55,19 +58,19 @@ def _target(inp):
 
 
 def agent_env():
-    """Alleen wat de CLI nodig heeft — geen sleutels, geen tokens."""
+    """Only what the CLI needs — no keys, no tokens."""
     return {k: v for k, v in os.environ.items() if k in ENV_KEEP}
 
 
-def main_model(usage, gevraagd=None):
-    """Het model dat het WERK deed, uit `modelUsage`.
+def main_model(usage, requested=None):
+    """The model that did the WORK, from `modelUsage`.
 
-    Eerder werd hier de eerste sleutel van die map genomen. Een run kan meerdere
-    modellen aanraken, en dan noemde de statistiekregel er willekeurig één — precies
-    het getal waarop je zou aflezen of het gedeclareerde model afgedwongen wordt.
-    Nu: het model met de meeste tokens. Geen usage → wat er gevraagd was."""
+    This used to take the first key of that map. A run can touch several models,
+    and then the stats line named an arbitrary one — precisely the number you
+    would read to see whether the declared model is enforced. Now: the model with
+    the most tokens. No usage → whatever was requested."""
     if not isinstance(usage, dict) or not usage:
-        return gevraagd or ""
+        return requested or ""
 
     def tokens(v):
         if not isinstance(v, dict):
@@ -78,31 +81,32 @@ def main_model(usage, gevraagd=None):
     return max(usage, key=lambda k: tokens(usage[k]))
 
 
-def model_klopt(gevraagd, gedraaid):
-    """Is het gedraaide model de familie die gevraagd werd? De def noemt de
-    intentie (haiku/sonnet/opus), de run een exacte id (claude-sonnet-5)."""
-    if not gevraagd:
+def model_matches(requested, actual):
+    """Is the model that ran the family that was requested? The def names the
+    intent (haiku/sonnet/opus), the run an exact id (claude-sonnet-5)."""
+    if not requested:
         return True
-    return gevraagd.lower() in (gedraaid or "").lower()
+    return requested.lower() in (actual or "").lower()
 
 
 def run(provider, system, prompt, model=None, allow=None, deny=None, progress=None):
-    """Draai één beurt. Return {answer, model, cost, turns, denials, error}.
+    """Run one turn. Returns {answer, model, cost, turns, denials, error}.
 
-    `denials` = de tool-aanroepen die de permissielaag heeft geweigerd; de
-    listener meldt die per run in #escalatie zodat een mens beslist of de rol
-    verruimd moet worden. Zonder dit veld zou een agent stil minder kunnen dan
-    zijn mandaat belooft.
+    `denials` = the tool calls the permission layer refused; the listener reports
+    those per run in #escalatie so a human decides whether the role should be
+    widened. Without this field an agent would silently be able to do less than
+    its mandate promises.
     """
     if provider not in (None, "claude-p", "claude"):
         return {"answer": f"(provider '{provider}' nog niet ondersteund door deze listener)",
                 "model": "", "cost": 0.0, "turns": 0, "denials": [], "error": "provider"}
 
-    # dontAsk = deny-by-default: alles buiten --allowedTools wordt geweigerd i.p.v.
-    # aangeboden. Zonder deze vlag hield de agent tools als Agent, WebFetch en
-    # SendMessage — de allowlist bepaalde alleen wat zónder vragen mocht. Gemeten
-    # 2026-09-06: mét de vlag komt een WebFetch-poging als permission_denial terug,
-    # zodat #escalatie een machinaal signaal krijgt en niet alleen zelfrapportage.
+    # dontAsk = deny by default: anything outside --allowedTools is refused
+    # instead of offered. Without this flag the agent kept tools like Agent,
+    # WebFetch and SendMessage — the allowlist only decided what was allowed
+    # WITHOUT asking. Measured 2026-09-06: with the flag a WebFetch attempt comes
+    # back as a permission_denial, so #escalatie gets a machine signal and not
+    # only self-reporting.
     cmd = [CLAUDE, "-p", "--output-format", "json", "--permission-mode", "dontAsk",
            "--append-system-prompt", system]
     if model:
@@ -111,12 +115,12 @@ def run(provider, system, prompt, model=None, allow=None, deny=None, progress=No
         cmd += ["--allowedTools", ",".join(scoped(allow))]
     if deny:
         cmd += ["--disallowedTools", ",".join(deny)]
-    # Prompt via stdin, niet als argument: --allowedTools/--disallowedTools zijn
-    # variadisch (`<tools...>`) en slikken een daaropvolgend positioneel argument op
-    # ("Input must be provided either through stdin or as a prompt argument").
-    # Streamen i.p.v. wachten: met stream-json komt elke stap binnen zodra hij
-    # gebeurt, zodat de listener kan laten zien WAT de agent doet in plaats van
-    # anderhalve minuut stilte. `progress` krijgt korte regels ("Read providers.py").
+    # Prompt over stdin, not as an argument: --allowedTools/--disallowedTools are
+    # variadic (`<tools...>`) and swallow a following positional argument ("Input
+    # must be provided either through stdin or as a prompt argument").
+    # Streaming instead of waiting: with stream-json every step arrives as it
+    # happens, so the listener can show WHAT the agent is doing instead of ninety
+    # seconds of silence. `progress` gets short lines ("Read providers.py").
     cmd += ["--output-format", "stream-json", "--verbose"]
     t0 = time.time()
     try:
@@ -150,12 +154,12 @@ def run(provider, system, prompt, model=None, allow=None, deny=None, progress=No
     proc.wait(timeout=10)
     if not d:
         err = (proc.stderr.read() or "").strip()[:200]
-        return {"answer": "(geen antwoord)", "model": model or "", "model_gevraagd": model or "", "cost": 0.0,
+        return {"answer": "(geen antwoord)", "model": model or "", "model_requested": model or "", "cost": 0.0,
                 "turns": 0, "denials": [], "error": err or "geen resultaat-event"}
 
     return {"answer": (d.get("result") or "").strip() or "(geen antwoord)",
             "model": main_model(d.get("modelUsage"), model),
-            "model_gevraagd": model or "",
+            "model_requested": model or "",
             "cost": float(d.get("total_cost_usd") or 0.0),
             "turns": int(d.get("num_turns") or 0),
             "denials": d.get("permission_denials") or [],

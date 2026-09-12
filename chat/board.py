@@ -1,30 +1,30 @@
 # SPDX-License-Identifier: EUPL-1.2
-"""Het werk-overzicht serveren. Meer doet de chat hier niet.
+"""Serve the work overview. That is all the chat does here.
 
-De momentopname wordt gemaakt door `jobs/board.py` op de host waar de clones en
-de sessies staan; dit leest alleen het bestand. Die scheiding is expres: de
-chat-container heeft geen clones, geen `gh` en geen GitHub-toegang, en elke
-traagheid daar zou anders een trage app worden.
+The snapshot is produced by `jobs/board.py` on the host that has the clones and
+the sessions; this only reads the file. That split is deliberate: the chat
+container has no clones, no `gh` and no GitHub access, and any slowness there
+would otherwise become a slow app.
 """
 import json
 import os
 import time
 
-import instellingen
+import settings
 
-PATH = instellingen.lees("BOARD_FILE", "/var/lib/ratatoskr/board.json")
-# Boven deze leeftijd is de momentopname verdacht: de producent draait elke 10
-# minuten, dus een half uur stilte betekent dat er iets stuk is. De app zegt dat
-# dan — een leeg bord is anders niet te onderscheiden van een kapotte producent.
+PATH = settings.read("BOARD_FILE", "/var/lib/ratatoskr/board.json")
+# Above this age the snapshot is suspect: the producer runs every 10 minutes, so
+# half an hour of silence means something is broken. The app says so then — an
+# empty board is otherwise indistinguishable from a broken producer.
 STALE_AFTER = 1800
 
 
 def read(path=None):
-    """(payload, http-status). Nooit een uitzondering naar buiten: een bord dat
-    er niet is, is een nette 404 met wat je moet doen."""
-    pad = path or PATH
+    """(payload, http status). Never an exception to the outside: a board that is
+    not there is a clean 404 with what to do about it."""
+    target = path or PATH
     try:
-        with open(pad) as f:
+        with open(target) as f:
             data = json.load(f)
     except FileNotFoundError:
         return {"error": "no snapshot yet",

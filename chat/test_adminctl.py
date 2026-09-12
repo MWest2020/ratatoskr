@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: EUPL-1.2
-"""Tests voor het host-beheer (chat/adminctl.py).
+"""Tests for host-side administration (chat/adminctl.py).
 
-Draait het script als subproces, met een eigen database en het wachtwoord op
-stdin — dat is precies hoe het in het echt gebruikt wordt.
+Runs the script as a subprocess, with its own database and the password on
+stdin — which is exactly how it is used for real.
 """
 import os
 import subprocess
@@ -21,81 +21,81 @@ class Adminctl(unittest.TestCase):
                         BOOMHUIS_URL="https://voorbeeld")
         self.env.pop("BOOMHUIS_APP_TOKEN", None)
 
-    def run_ctl(self, *args, invoer=None):
+    def run_ctl(self, *args, stdin=None):
         r = subprocess.run([sys.executable, os.path.join(HERE, "adminctl.py"), *args],
-                           env=self.env, input=invoer, capture_output=True, text=True,
+                           env=self.env, input=stdin, capture_output=True, text=True,
                            cwd=HERE)
         return r.returncode, r.stdout + r.stderr
 
-    def test_eigenaar_maken_en_terugzien(self):
-        code, uit = self.run_ctl("eigenaar", "mark", invoer=WW + WW)
-        self.assertEqual(code, 0, uit)
-        self.assertIn("aangemaakt", uit)
-        _, lijst = self.run_ctl("personen")
-        self.assertIn("mark", lijst)
-        self.assertIn("eigenaar", lijst)
+    def test_create_an_owner_and_see_it_back(self):
+        code, out = self.run_ctl("owner", "mark", stdin=WW + WW)
+        self.assertEqual(code, 0, out)
+        self.assertIn("created", out)
+        _, listing = self.run_ctl("people")
+        self.assertIn("mark", listing)
+        self.assertIn("owner", listing)
 
-    def test_tweede_eigenaar_kan_niet(self):
-        self.run_ctl("eigenaar", "mark", invoer=WW + WW)
-        code, uit = self.run_ctl("eigenaar", "iemand", invoer=WW + WW)
+    def test_a_second_owner_is_refused(self):
+        self.run_ctl("owner", "mark", stdin=WW + WW)
+        code, out = self.run_ctl("owner", "iemand", stdin=WW + WW)
         self.assertEqual(code, 1)
-        self.assertIn("al een account", uit)
+        self.assertIn("already an account", out)
 
-    def test_een_regel_is_genoeg_zonder_terminal(self):
-        """`docker compose exec -T chat python3 adminctl.py eigenaar mark` heeft
-        geen terminal; zonder deze tak strandt een verse installatie in een
-        EOFError precies wanneer hij zijn eerste account moet krijgen."""
-        code, uit = self.run_ctl("eigenaar", "mies", invoer=WW)
-        self.assertEqual(code, 0, uit)
-        _, lijst = self.run_ctl("personen")
-        self.assertIn("mies", lijst)
+    def test_one_line_is_enough_without_a_terminal(self):
+        """`docker compose exec -T chat python3 adminctl.py owner mark` has no
+        terminal; without this branch a fresh installation strands in an EOFError
+        exactly when it has to get its first account."""
+        code, out = self.run_ctl("owner", "mies", stdin=WW)
+        self.assertEqual(code, 0, out)
+        _, listing = self.run_ctl("people")
+        self.assertIn("mies", listing)
 
-    def test_wachtwoorden_moeten_gelijk_zijn(self):
-        code, uit = self.run_ctl("eigenaar", "mark",
-                                 invoer=WW + "iets heel anders hier\n")
+    def test_passwords_must_be_equal(self):
+        code, out = self.run_ctl("owner", "mark",
+                                 stdin=WW + "iets heel anders hier\n")
         self.assertEqual(code, 1)
-        self.assertIn("verschillen", uit)
+        self.assertIn("differ", out)
 
-    def test_kort_wachtwoord_wordt_geweigerd(self):
-        code, uit = self.run_ctl("eigenaar", "mark", invoer="kort\nkort\n")
+    def test_a_short_password_is_refused(self):
+        code, out = self.run_ctl("owner", "mark", stdin="kort\nkort\n")
         self.assertEqual(code, 1)
-        self.assertIn("minstens", uit)
+        self.assertIn("at least", out)
 
-    def test_uitnodiging_pas_na_een_eigenaar(self):
-        code, _ = self.run_ctl("uitnodiging")
+    def test_an_invite_only_after_an_owner(self):
+        code, _ = self.run_ctl("invite")
         self.assertEqual(code, 1)
-        self.run_ctl("eigenaar", "mark", invoer=WW + WW)
-        code, uit = self.run_ctl("uitnodiging")
+        self.run_ctl("owner", "mark", stdin=WW + WW)
+        code, out = self.run_ctl("invite")
         self.assertEqual(code, 0)
-        self.assertIn("/login?uitnodiging=", uit)
+        self.assertIn("/login?uitnodiging=", out)
 
-    def test_wachtwoord_wijzigen_trekt_sessies_in(self):
-        self.run_ctl("eigenaar", "mark", invoer=WW + WW)
-        # een sessie erbij, en kijken of die na de wijziging weg is
-        code, uit = self.run_ctl("wachtwoord", "mark",
-                                 invoer="een nieuw lang wachtwoord\n" * 2)
-        self.assertEqual(code, 0, uit)
-        self.assertIn("sessies zijn ingetrokken", uit)
+    def test_changing_the_password_revokes_sessions(self):
+        self.run_ctl("owner", "mark", stdin=WW + WW)
+        # add a session, and see whether it is gone after the change
+        code, out = self.run_ctl("password", "mark",
+                                 stdin="een nieuw lang wachtwoord\n" * 2)
+        self.assertEqual(code, 0, out)
+        self.assertIn("sessions have been revoked", out)
 
-    def test_de_laatste_eigenaar_blijft_staan(self):
-        """Jezelf verwijderen als enige eigenaar maakt de installatie
-        onbereikbaar; dat hoort niet per ongeluk te kunnen."""
-        self.run_ctl("eigenaar", "mark", invoer=WW + WW)
-        code, uit = self.run_ctl("verwijder", "mark")
-        self.assertEqual(code, 0, uit)   # enige persoon: dan mag het wel, dat is opnieuw beginnen
-        _, lijst = self.run_ctl("personen")
-        self.assertIn("nog niemand", lijst)
+    def test_the_last_owner_stays(self):
+        """Deleting yourself as the only owner makes the installation
+        unreachable; that should not be possible by accident."""
+        self.run_ctl("owner", "mark", stdin=WW + WW)
+        code, out = self.run_ctl("delete", "mark")
+        self.assertEqual(code, 0, out)   # only person: then it is allowed, that is starting over
+        _, listing = self.run_ctl("people")
+        self.assertIn("nobody yet", listing)
 
-    def test_onbekende_naam_verwijderen(self):
-        self.run_ctl("eigenaar", "mark", invoer=WW + WW)
-        code, uit = self.run_ctl("verwijder", "bestaat-niet")
+    def test_deleting_an_unknown_name(self):
+        self.run_ctl("owner", "mark", stdin=WW + WW)
+        code, out = self.run_ctl("delete", "bestaat-niet")
         self.assertEqual(code, 1)
-        self.assertIn("onbekende naam", uit)
+        self.assertIn("unknown name", out)
 
-    def test_onzin_opdracht_toont_de_uitleg(self):
-        code, uit = self.run_ctl("dansen")
+    def test_a_nonsense_command_shows_the_usage(self):
+        code, out = self.run_ctl("dansen")
         self.assertEqual(code, 1)
-        self.assertIn("adminctl.py", uit)
+        self.assertIn("adminctl.py", out)
 
 
 if __name__ == "__main__":

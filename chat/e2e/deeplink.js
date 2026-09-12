@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: EUPL-1.2
-// Meldingen linken naar hun kanaal: /#bouw opent #bouw. Zonder dit landde elke
-// melding op de app-root, dus op het eerste kanaal.
-// NODE_PATH=<pad>/node_modules node chat/e2e/deeplink.js
-const { logIn } = require('./inlog');
+// Notifications link to their channel: /#bouw opens #bouw. Without this every
+// notification landed on the app root, and so on the first channel.
+// NODE_PATH=<path>/node_modules node chat/e2e/deeplink.js
+const { logIn } = require('./login');
 const { chromium, devices } = require('playwright');
 const fs=require('fs');
-const D=require('path').join(__dirname,'..')+'/';   // de werkkopie van chat/
+const D=require('path').join(__dirname,'..')+'/';   // the working copy of chat/
 const EXE='/home/agent/.cache/ms-playwright/chromium-1234/chrome-linux64/chrome';
 let ok=0,fail=0; const t=(n,c,e='')=>{c?(ok++,console.log('  ok   '+n)):(fail++,console.log('  FAIL '+n+' '+e));};
 (async()=>{
@@ -26,26 +26,26 @@ let ok=0,fail=0; const t=(n,c,e='')=>{c?(ok++,console.log('  ok   '+n)):(fail++,
   t('melding naar #bouw opent #bouw', await p.evaluate(()=>document.querySelector('#chanName').textContent==='bouw'),
     await p.evaluate(()=>document.querySelector('#chanName').textContent));
 
-  // al open venster dat naar een ander kanaal wordt gestuurd
+  // an already open window sent to another channel
   await p.evaluate(()=>{ location.hash='#review'; });
   await p.waitForTimeout(3000);
   t('hashwijziging in een open venster wisselt mee', await p.evaluate(()=>document.querySelector('#chanName').textContent==='review'),
     await p.evaluate(()=>document.querySelector('#chanName').textContent));
 
-  // handmatig wisselen schrijft de hash mee
+  // switching by hand writes the hash along
   await p.click('#switch'); await p.waitForTimeout(600);
   await p.evaluate(()=>[...document.querySelectorAll('.chan')].find(x=>x.querySelector('.cn')?.textContent==='marketing').click());
   await p.waitForTimeout(2500);
   t('handmatig wisselen zet de hash', await p.evaluate(()=>location.hash==='#marketing'),
     await p.evaluate(()=>location.hash));
 
-  // onbekende hash in een AL OPEN venster: niet wegspringen
+  // an unknown hash in an ALREADY OPEN window: do not jump away
   await p.evaluate(()=>{ location.hash='#bestaat-niet'; });
   await p.waitForTimeout(2000);
   t('onbekende hash laat een open venster staan', await p.evaluate(()=>document.querySelector('#chanName').textContent==='marketing'),
     await p.evaluate(()=>document.querySelector('#chanName').textContent));
 
-  // onbekende hash bij een VERSE start: terugval op het eerste kanaal
+  // an unknown hash on a FRESH start: fall back on the first channel
   await p.reload({waitUntil:'load'});
   await p.waitForTimeout(5000);
   t('onbekende hash valt bij een verse start terug op het eerste', await p.evaluate(()=>document.querySelector('#chanName').textContent==='general'),

@@ -1,24 +1,24 @@
 # SPDX-License-Identifier: EUPL-1.2
-"""Web Push — opslag van push-subscriptions (stdlib-only).
+"""Web Push — storage of push subscriptions (stdlib only).
 
-De VM-backend bewaart hier de subscriptions en serveert de VAPID-public-key; het
-daadwerkelijke versturen gebeurt vanaf agent-lxc (orchestrator/push-notify.py, met
-pywebpush) — de VM-backend blijft bewust dependency-loos.
+The VM backend keeps the subscriptions here and serves the VAPID public key; the
+actual sending happens from agent-lxc (orchestrator/push-notify.py, with
+pywebpush) — the VM backend stays deliberately dependency-free.
 """
 import json
 import os
 import threading
 
-# Runtime-state, GEEN git-inhoud: op de VM zet chat.env PUSH_SUBS_PATH naar een
-# state-dir buiten de deploy-checkout (/var/lib/boomhuis/push_subs.json). De
-# default hier is enkel een lokale fallback voor tests; het bestand staat in
-# .gitignore. Runbook: chat/README.md → "Web Push".
+# Runtime state, NOT git content: on the VM chat.env points PUSH_SUBS_PATH at a
+# state dir outside the deploy checkout (/var/lib/boomhuis/push_subs.json). The
+# default here is only a local fallback for tests; the file is in .gitignore.
+# Runbook: chat/README.md → "Web Push".
 SUBS_PATH = os.environ.get(
     "PUSH_SUBS_PATH",
     os.path.join(os.path.dirname(os.path.abspath(__file__)), "push_subs.json"))
-# De subscribe-route is onbeschermd (tailnet-only, geen per-user auth). Cap het
-# aantal subscriptions zodat een tailnet-node de opslag niet ongelimiteerd kan
-# laten groeien; oudste valt eruit (FIFO).
+# The subscribe route is unprotected (tailnet only, no per-user auth). Cap the
+# number of subscriptions so a tailnet node cannot grow the storage without
+# limit; the oldest drops out (FIFO).
 MAX_SUBS = int(os.environ.get("PUSH_MAX_SUBS", "50"))
 _lock = threading.Lock()
 
@@ -28,10 +28,10 @@ def vapid_public():
 
 
 def _clean_sub(sub):
-    """Valideer een Web-Push-subscription en geef 'm GENORMALISEERD terug (alleen
-    endpoint + keys.p256dh/auth), of None. Zonder deze poort accepteert
-    /api/push/subscribe elk JSON-object en slaat het ongefilterd op; dit dwingt de
-    vorm af die pywebpush echt kan versturen en begrenst elk veld op lengte."""
+    """Validate a Web Push subscription and return it NORMALISED (endpoint plus
+    keys.p256dh/auth only), or None. Without this gate /api/push/subscribe accepts
+    any JSON object and stores it unfiltered; this enforces the shape pywebpush can
+    actually send and bounds every field by length."""
     if not isinstance(sub, dict):
         return None
     ep = sub.get("endpoint")
@@ -56,14 +56,15 @@ def load_subscriptions():
 
 
 def _write(subs):
-    # State-dir kan ontbreken (verse VM, gemiste mkdir-stap): aanmaken i.p.v. een
-    # onbehandelde FileNotFoundError door do_POST heen (traceback, geen HTTP-antwoord).
+    # The state dir may be missing (fresh VM, skipped mkdir step): create it
+    # instead of an unhandled FileNotFoundError through do_POST (a traceback, no
+    # HTTP answer).
     d = os.path.dirname(SUBS_PATH)
     if d:
         os.makedirs(d, exist_ok=True)
     tmp = SUBS_PATH + ".tmp"
-    # 0600: de subscriptions zijn per-apparaat push-tokens; net als chat.env
-    # horen ze niet wereld-leesbaar (default umask geeft 0644).
+    # 0600: the subscriptions are per-device push tokens; like chat.env they do
+    # not belong world-readable (the default umask gives 0644).
     fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     with os.fdopen(fd, "w") as f:
         json.dump(subs, f)
@@ -71,7 +72,7 @@ def _write(subs):
 
 
 def add_subscription(sub):
-    """Voeg een subscription toe (dedup op endpoint). Return True bij succes."""
+    """Add a subscription (deduped on endpoint). Returns True on success."""
     clean = _clean_sub(sub)
     if clean is None:
         return False

@@ -3,11 +3,11 @@ async function loadAgents(){
   let data;
   try{ data=await (await fetch("/api/agents")).json(); }catch(e){ return; }
   const wrap=$("#agentList"); wrap.innerHTML="";
-  // registry-data via textContent (geen HTML-injectie), zelfde idioom als de per-kanaal-view.
+  // registry data through textContent (no HTML injection), same idiom as the per-channel view.
   for(const a of (data.agents||[])){
     const el=document.createElement("div"); el.className="agent";
     const nm=document.createElement("div"); nm.className="nm"; nm.textContent=a.handle; el.appendChild(nm);
-    const rol=document.createElement("div"); rol.className="rol"; rol.textContent=a.rol||""; el.appendChild(rol);
+    const role=document.createElement("div"); role.className="role"; role.textContent=a.rol||""; el.appendChild(role);
     if((a.channels||[]).length){
       const chips=document.createElement("div"); chips.className="chips";
       for(const c of a.channels){
@@ -17,22 +17,22 @@ async function loadAgents(){
         chips.appendChild(ch);
       }
       el.appendChild(chips);
-    } else { const none=document.createElement("div"); none.className="none"; none.textContent="in geen enkel kanaal"; el.appendChild(none); }
+    } else { const none=document.createElement("div"); none.className="none"; none.textContent="in no channel at all"; el.appendChild(none); }
     wrap.appendChild(el);
   }
 }
 async function loadChannelMembers(){
   const wrap=$("#channelMembers");
   if(wrap.dataset.loaded){ return; }
-  wrap.innerHTML='<div class="agenthint">laden…</div>';
+  wrap.innerHTML='<div class="agenthint">loading…</div>';
   let data; try{ data=await (await fetch("/api/channel-members")).json(); }
-  catch(e){ wrap.innerHTML='<div class="agenthint">kon leden niet laden.</div>'; return; }
+  catch(e){ wrap.innerHTML='<div class="agenthint">could not load members.</div>'; return; }
   wrap.innerHTML="";
   const chans=data.channels||[];
-  if(!chans.length){ wrap.innerHTML='<div class="agenthint">geen kanalen (relay onbereikbaar?).</div>'; return; }
+  if(!chans.length){ wrap.innerHTML='<div class="agenthint">no channels (relay unreachable?).</div>'; return; }
   wrap.dataset.loaded="1";
-  // Eigen classes (krow/kname/kmem): NIET .agent/.nm/.chip, die dragen ::before-@/#
-  // die #netnl tot "@#netnl" zouden maken. DOM + textContent = geen HTML-injectie.
+  // Own classes (krow/kname/kmem): NOT .agent/.nm/.chip, those carry ::before @/#
+  // which would turn #netnl into "@#netnl". DOM + textContent = no HTML injection.
   for(const c of chans){
     const el=document.createElement("div"); el.className="krow";
     const nm=document.createElement("div"); nm.className="kname"; nm.textContent="#"+c.channel; el.appendChild(nm);
@@ -41,15 +41,15 @@ async function loadChannelMembers(){
       const chips=document.createElement("div"); chips.className="kchips";
       for(const m of mem){
         const ch=document.createElement("span"); ch.className="kmem"; ch.textContent=m.name;
-        if(m.rol) ch.title=m.rol;                          // ecosysteem-rol (agent/sessie/mens)
-        if(m.channel_role && m.channel_role!=="member"){    // rol op dít kanaal
+        if(m.rol) ch.title=m.rol;                          // ecosystem role (agent/session/human)
+        if(m.channel_role && m.channel_role!=="member"){    // role on THIS channel
           const r=document.createElement("span"); r.className="mrole"; r.textContent=" "+m.channel_role; ch.appendChild(r);
         }
         ch.onclick=()=>{ const cc=channels.find(x=>x.name===c.channel); if(cc){ selectChannel(cc); closeAgents(); } };
         chips.appendChild(ch);
       }
       el.appendChild(chips);
-    } else { const none=document.createElement("div"); none.className="knone"; none.textContent="geen leden"; el.appendChild(none); }
+    } else { const none=document.createElement("div"); none.className="knone"; none.textContent="no members"; el.appendChild(none); }
     wrap.appendChild(el);
   }
 }
@@ -66,12 +66,12 @@ function closeRepos(){ $("#reposDrawer").classList.remove("open"); }
 
 async function sendTo(channelName, text){
   const c = channels.find(x=>x.name===channelName);
-  if(!c){ toast("kanaal #"+channelName+" bestaat niet"); return false; }
-  // via _postSend zodat óók dit pad de mention-pop-up + 409-afhandeling krijgt
-  // (bv. @reviewer die nog geen lid van #review is).
+  if(!c){ toast("channel #"+channelName+" does not exist"); return false; }
+  // through _postSend so this path also gets the mention pop-up and 409 handling
+  // (e.g. @reviewer who is not a member of #review yet).
   return await _postSend(text, c.id, false, new Set());
 }
-// UI-bindings
+// UI bindings
 $("#switch").onclick=()=>$("#drawer").classList.add("open");
 $("#agentsBtn").onclick=()=>{ $("#channelMembers").dataset.loaded=""; showAgentTab("agents"); $("#agentsDrawer").classList.add("open"); };
 $("#tabAgents").onclick=()=>showAgentTab("agents");
@@ -97,7 +97,7 @@ $("#composer").addEventListener("submit", async e=>{
   e.preventDefault();
   const t=input.value.trim(); if(!t||!current) return;
   $("#send").disabled=true;
-  // try/finally: knop nooit permanent op slot (bv. netwerkfout mid-send).
+  // try/finally: never leave the button locked (e.g. a network error mid-send).
   try {
     const ok=await send(t);
     if(ok){ input.value=""; input.style.height="auto"; await refresh(true); }
@@ -107,8 +107,8 @@ input.addEventListener("keydown",e=>{
   if(e.key==="Enter"&&!e.shiftKey){ e.preventDefault(); $("#composer").requestSubmit(); }
 });
 
-// De vastgezette context boven het kanaal — presentatie, dus hier en niet
-// in app.js (die bleef anders boven de 200 regels uit CLAUDE.md).
+// The pinned context above the channel — presentation, so here and not in
+// app.js (which would otherwise stay above the 200 lines from CLAUDE.md).
 async function loadPinned(name){
   const el=$("#pinned");
   let content="";
@@ -116,7 +116,7 @@ async function loadPinned(name){
     content=(d.content||"").trim(); }catch(e){ content=""; }
   if(!content){ el.hidden=true; el.innerHTML=""; return; }
   const lines=content.split("\n");
-  let title="Vastgezette context", body=content;
+  let title="Pinned context", body=content;
   if(lines[0] && lines[0].startsWith("#")){
     title=lines[0].replace(/^#+\s*/,"").replace(/^📌\s*/,"");
     body=lines.slice(1).join("\n").replace(/^>.*$/gm,"").trim();
@@ -130,71 +130,71 @@ async function loadPinned(name){
     el.querySelector(".caret").textContent=el.classList.contains("collapsed")?"▸":"▾"; };
 }
 
-// Kanaal uit de hash (#bouw), bv. via een push-melding. Onbekende naam → het
-// eerste kanaal, zoals voorheen.
-function kanaalUitHash(){
-  const naam = decodeURIComponent((location.hash || "").slice(1)).toLowerCase();
-  return channels.find(c => c.name === naam) || null;
+// Channel from the hash (#bouw), e.g. through a push notification. An unknown
+// name → the first channel, as before.
+function channelFromHash(){
+  const name = decodeURIComponent((location.hash || "").slice(1)).toLowerCase();
+  return channels.find(c => c.name === name) || null;
 }
 
-// Blijft proberen tot de kanalen binnen zijn. Op een telefoon komt de
-// tailnet-tunnel later op dan de app: de service worker serveert dan de
-// gecachete shell en de eerste fetch faalt. Zonder deze herhaling bleef het
-// scherm daarna voorgoed op "laden…" staan, ook nadat het netwerk terug was.
-let kanalenBinnen=false, herkansing=null;
-async function laadWatErIs(){
-  if(!kanalenBinnen){
+// Keeps trying until the channels are in. On a phone the tailnet tunnel comes up
+// later than the app: the service worker then serves the cached shell and the
+// first fetch fails. Without this retry the screen stayed on "loading…" forever
+// after that, even once the network was back.
+let channelsIn=false, retry=null;
+async function loadWhatThereIs(){
+  if(!channelsIn){
     if(!await loadChannels()){
-      meldGeenVerbinding();
-      if(!herkansing) herkansing=setTimeout(()=>{ herkansing=null; laadWatErIs(); }, 3000);
+      showNoConnection();
+      if(!retry) retry=setTimeout(()=>{ retry=null; loadWhatThereIs(); }, 3000);
       return;
     }
-    kanalenBinnen=true;
-    if(herkansing){ clearTimeout(herkansing); herkansing=null; }
-    selectChannel(kanaalUitHash() || channels[0]);
-    await loadChannels();   // nogmaals: nu met de actieve markering
+    channelsIn=true;
+    if(retry){ clearTimeout(retry); retry=null; }
+    selectChannel(channelFromHash() || channels[0]);
+    await loadChannels();   // again: now with the active marker
   }
   refresh(false);
   loadOverview();
 }
 
 (async function init(){
-  // Eerst weten wie je bent. Alleen een echte 401 stuurt naar inloggen; kunnen
-  // we de server niet bereiken, dan gaat de app gewoon door en doet de
-  // offline-weergave zijn werk.
-  const sessie = await sessieOphalen();
-  if(sessie === null){ naarInloggen(); return; }
-  toonWieJeBent(sessie);
+  // First find out who you are. Only a real 401 goes to the login page; if we
+  // cannot reach the server the app simply carries on and the offline view does
+  // its job.
+  const session = await fetchSession();
+  if(session === null){ goToLogin(); return; }
+  showWhoYouAre(session);
 
-  // Timers en luisteraars staan vóór de eerste netwerkaanroep: die aanroep
-  // faalde bij een koude start, nam init() mee, en daarmee de poll die de app
-  // had kunnen laten herstellen.
+  // Timers and listeners come before the first network call: on a cold start
+  // that call failed, took init() with it, and with it the poll that could have
+  // let the app recover.
   pollTimer=setInterval(()=>refresh(false), 4000);
   setInterval(loadOverview, 12000);
-  document.addEventListener("visibilitychange",()=>{ if(!document.hidden) laadWatErIs(); });
-  // Het moment waarop de tunnel opkomt, in plaats van de volgende poll afwachten.
-  window.addEventListener("online", laadWatErIs);
-  // Al open venster dat door een melding naar #kanaal wordt gestuurd: een
-  // hash-wijziging herlaadt de pagina niet, dus hier zelf op reageren.
-  window.addEventListener("hashchange",()=>{ const c=kanaalUitHash(); if(c) selectChannel(c); });
+  document.addEventListener("visibilitychange",()=>{ if(!document.hidden) loadWhatThereIs(); });
+  // The moment the tunnel comes up, instead of waiting for the next poll.
+  window.addEventListener("online", loadWhatThereIs);
+  // An already open window sent to #channel by a notification: a hash change
+  // does not reload the page, so react to it here.
+  window.addEventListener("hashchange",()=>{ const c=channelFromHash(); if(c) selectChannel(c); });
 
-  laadWatErIs();
+  loadWhatThereIs();
 })();
 
-// --- PWA: service worker + installeer-knop ---
+// --- PWA: service worker plus install button ---
 if("serviceWorker" in navigator){
-  // updateViaCache "none": het sw-script zelf nooit uit de HTTP-cache, anders
-  // kan een apparaat een oude worker blijven herregistreren.
+  // updateViaCache "none": never take the sw script itself from the HTTP cache,
+  // otherwise a device can keep re-registering an old worker.
   navigator.serviceWorker.register("/sw.js",{updateViaCache:"none"}).catch(()=>{});
 }
 let deferredPrompt=null;
 window.addEventListener("beforeinstallprompt", e=>{
   e.preventDefault(); deferredPrompt=e;
   const b=document.createElement("button");
-  b.textContent="Installeer";
+  b.textContent="Install";
   b.style.cssText="margin-left:.4rem;background:var(--accent);color:#15130f;border:0;border-radius:10px;padding:.4rem .7rem;font-size:.85rem;font-weight:700";
   b.onclick=async()=>{ b.remove(); if(!deferredPrompt)return; deferredPrompt.prompt();
     await deferredPrompt.userChoice; deferredPrompt=null; };
   document.querySelector("header").appendChild(b);
 });
-// Web Push zit in app-push.js (aparte module, na deze).
+// Web Push lives in app-push.js (a separate module, after this one).

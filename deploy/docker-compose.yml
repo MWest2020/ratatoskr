@@ -21,7 +21,7 @@
 # Regels: geen variabele, geen `:-fallback`, minstens major.minor.
 #
 #   docker compose up -d
-#   docker compose exec chat python3 adminctl.py eigenaar <naam>
+#   docker compose exec chat python3 adminctl.py owner <naam>
 
 name: ${COMPOSE_PROJECT:-boomhuis}
 
