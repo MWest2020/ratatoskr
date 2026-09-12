@@ -20,5 +20,11 @@
 - [x] 3.2 `docs/how-to/werksessies.md` bijwerken
 
 ## 4. Bewijs
-- [ ] 4.1 Live: odin start op Marks verzoek een build-sessie die een PR oplevert
-- [ ] 4.2 Change archiveren
+- [x] 4.1 Live bewezen, drie keer. Mark startte `!sessie build` in #bouw en dat
+      leverde PR #102 op (test_topology.py gesplitst langs module-onder-test, mét
+      de vondst dat drie testklassen ná de `__main__`-regel stonden en dus nooit
+      liepen). Daarna PR #105 (de laatste Nederlandse teksten) en PR #106 (de
+      baseline leeg: vijf bestanden gesplitst, nieuwe CSS netjes in statics.py,
+      sw-SHELL, FRESH_ASSETS en een cache-bump — de val die hier twee keer eerder
+      is ingelopen).
+- [x] 4.2 Change archiveren
