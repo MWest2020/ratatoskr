@@ -36,10 +36,10 @@ def main():
     env = dict(os.environ, BUZZ_PRIVATE_KEY=orchestrator_nsec(), BUZZ_RELAY_URL=RELAY)
     failed = []
     for name, c in chans.items():
-        cid, doel = c.get("id"), (c.get("doel") or "").strip()
-        if not cid or not doel:
+        cid, purpose = c.get("id"), (c.get("doel") or "").strip()
+        if not cid or not purpose:
             print(f"  #{name}: overgeslagen (geen id/doel)"); continue
-        r = subprocess.run([BUZZ, "channels", "update", "--channel", cid, "--description", doel[:200]],
+        r = subprocess.run([BUZZ, "channels", "update", "--channel", cid, "--description", purpose[:200]],
                            capture_output=True, text=True, env=env)
         if r.returncode == 0 and '"error"' not in r.stdout:
             print(f"  #{name}: beschrijving gezet")

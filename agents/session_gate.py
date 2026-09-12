@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: EUPL-1.2
 """De poort van een werksessie: wie vraagt het, namens wie, en mag dat.
 
-Apart van sessies.py omdat dit puur is — geen processen, geen bestanden — en
+Apart van sessions.py omdat dit puur is — geen processen, geen bestanden — en
 omdat beide bestanden anders over de 200 regels gaan.
 
 Twee rollen per sessie, en dat onderscheid is de reden dat dit bestand bestaat.
@@ -49,8 +49,8 @@ def may_start(cfg, type_name, starter, requester, running):
     """
     types = (cfg or {}).get("types") or {}
     if type_name not in types:
-        namen = ", ".join(sorted(types)) or "(geen)"
-        return False, f"onbekend sessietype '{type_name}' — beschikbaar: {namen}"
+        names = ", ".join(sorted(types)) or "(geen)"
+        return False, f"onbekend sessietype '{type_name}' — beschikbaar: {names}"
     allowed = types[type_name].get("starters") or []
     if starter not in allowed:
         return False, f"@{starter} mag het type '{type_name}' niet starten"
@@ -59,6 +59,6 @@ def may_start(cfg, type_name, starter, requester, running):
                        f"die staat niet bij de starters van '{type_name}'")
     if any(s["requester"] == requester for s in running):
         return False, f"er loopt al een sessie voor @{requester} — die eerst afwachten"
-    if len(running) >= int(cfg.get("max_gelijktijdig") or 2):
+    if len(running) >= int(cfg.get("max_concurrent") or 2):
         return False, "er lopen al maximaal sessies — later opnieuw"
     return True, ""

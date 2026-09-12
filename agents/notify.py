@@ -20,15 +20,15 @@ import time
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SENDER = os.path.join(ROOT, "orchestrator", "push-notify.py")
 COOLDOWN = int(os.environ.get("PUSH_COOLDOWN_SECONDS", "45"))
-STIL = ("statistics",)          # kanalen die nooit pushen
+SILENT = ("statistics",)          # kanalen die nooit pushen
 PROGRESS_PREFIX = "⋯"
 
 _last: dict = {}                # kanaalnaam -> (tijdstip, onderdrukt aantal)
 
 
-def wil_melden(cname, author, content, me):
+def should_notify(cname, author, content, me):
     """Is dit een bericht waar een mens iets aan heeft?"""
-    if cname in STIL:
+    if cname in SILENT:
         return False
     if author == me:                       # eigen bericht
         return False
@@ -40,15 +40,15 @@ def wil_melden(cname, author, content, me):
 def push(cname, author, content):
     """Stuur één melding; faalt stil (een melding mag de listener nooit hinderen)."""
     now = time.time()
-    t, gemist = _last.get(cname, (0.0, 0))
+    t, missed = _last.get(cname, (0.0, 0))
     if now - t < COOLDOWN:
-        _last[cname] = (t, gemist + 1)     # binnen de cooldown: alleen tellen
+        _last[cname] = (t, missed + 1)     # binnen de cooldown: alleen tellen
         return False
     body = (content or "").strip().replace("\n", " ")
     if len(body) > 140:
         body = body[:137] + "…"
-    if gemist:
-        body += f"  (+{gemist} eerder)"
+    if missed:
+        body += f"  (+{missed} eerder)"
     _last[cname] = (now, 0)
     try:
         # Kanaal in de URL: een melding over #bouw hoorde je in #bouw te zetten,

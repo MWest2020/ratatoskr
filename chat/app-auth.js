@@ -14,7 +14,7 @@ let csrfToken = "";
 /** De sessie, of `null` bij een 401 (echt uitgelogd), of `undefined` als we er
     niet bij konden. Dat onderscheid is de hele grap: uitgelogd stuurt naar
     inloggen, geen netwerk laat de app staan waar hij staat. */
-async function sessieOphalen(){
+async function fetchSession(){
   let r;
   try{ r = await fetch("/api/sessie", { headers: { "Accept": "application/json" } }); }
   catch(e){ return undefined; }
@@ -28,15 +28,15 @@ async function sessieOphalen(){
 }
 
 /** Naar de inlogpagina, met een verwijzing terug naar waar je was. */
-function naarInloggen(){
-  if(typeof wisSnapshots === "function") wisSnapshots();
-  const terug = location.pathname + location.search + location.hash;
-  location.replace("/login?terug=" + encodeURIComponent(terug));
+function goToLogin(){
+  if(typeof clearSnapshots === "function") clearSnapshots();
+  const back = location.pathname + location.search + location.hash;
+  location.replace("/login?terug=" + encodeURIComponent(back));
 }
 
 /** Alleen aanroepen bij een échte 401, niet bij een netwerkfout. */
-function afgemeld(){
-  naarInloggen();
+function loggedOut(){
+  goToLogin();
 }
 
 async function postJSON(path, body){
@@ -48,11 +48,11 @@ async function postJSON(path, body){
     },
     body: JSON.stringify(body),
   });
-  if(r.status === 401){ afgemeld(); }
+  if(r.status === 401){ loggedOut(); }
   if(r.status === 403 && !csrfToken){
     // Sessietoken kwijt (bijvoorbeeld na een herstart van de app): ophalen en
     // één keer opnieuw. Lukt dat niet, dan is de sessie echt weg.
-    const s = await sessieOphalen();
+    const s = await fetchSession();
     if(s){
       return await fetch(path, {
         method: "POST",
@@ -60,25 +60,25 @@ async function postJSON(path, body){
         body: JSON.stringify(body),
       });
     }
-    afgemeld();
+    loggedOut();
   }
   return r;
 }
 
-async function uitloggen(overal){
-  try{ await postJSON("/api/uitloggen", { overal: !!overal }); }catch(e){}
-  if(typeof wisSnapshots === "function") wisSnapshots();
+async function logOut(everywhere){
+  try{ await postJSON("/api/uitloggen", { overal: !!everywhere }); }catch(e){}
+  if(typeof clearSnapshots === "function") clearSnapshots();
   location.replace("/login");
 }
 
 // Wie ben je, en mag je uitnodigen — de eigenaar wel, de rest niet.
-function toonWieJeBent(sessie){
-  const wie = $("#wieBenJe");
-  if(wie && sessie && sessie.naam) wie.textContent = "ingelogd als " + sessie.naam;
-  const uitnodig = $("#uitnodigBtn");
-  if(uitnodig && sessie && sessie.eigenaar){
-    uitnodig.hidden = false;
-    uitnodig.onclick = async () => {
+function showWhoYouAre(session){
+  const who = $("#whoAmI");
+  if(who && session && session.naam) who.textContent = "ingelogd als " + session.naam;
+  const invite = $("#inviteBtn");
+  if(invite && session && session.eigenaar){
+    invite.hidden = false;
+    invite.onclick = async () => {
       const r = await postJSON("/api/uitnodiging", {});
       const d = await r.json().catch(() => ({}));
       if(!r.ok || !d.pad){ toast(d.error || "uitnodigen mislukte"); return; }
@@ -87,45 +87,45 @@ function toonWieJeBent(sessie){
       catch(e){ toast(link); }   // geen klembord: dan maar tonen
     };
   }
-  const ww = $("#wwBtn");
-  if(ww) ww.onclick = wachtwoordWijzigen;
-  const uit = $("#uitlogBtn");
-  if(uit) uit.onclick = () => uitloggen(false);
+  const pw = $("#passwordBtn");
+  if(pw) pw.onclick = changePassword;
+  const out = $("#logoutBtn");
+  if(out) out.onclick = () => logOut(false);
 }
 
 /** Wachtwoord wijzigen. Twee velden in een pop-up; window.prompt kan niet, dat
     blokkeren browsers in een geïnstalleerde PWA. */
-function wachtwoordWijzigen(){
+function changePassword(){
   const ov = el("div", "modal-ov");
   const box = el("div", "modal");
-  const huidig = el("input", "modal-in"); huidig.type = "password";
-  huidig.placeholder = "huidig wachtwoord"; huidig.autocomplete = "current-password";
-  const nieuw = el("input", "modal-in"); nieuw.type = "password";
-  nieuw.placeholder = "nieuw wachtwoord (min. 12 tekens)";
-  nieuw.autocomplete = "new-password";
-  const rij = el("div", "modal-row");
+  const current = el("input", "modal-in"); current.type = "password";
+  current.placeholder = "huidig wachtwoord"; current.autocomplete = "current-password";
+  const fresh = el("input", "modal-in"); fresh.type = "password";
+  fresh.placeholder = "nieuw wachtwoord (min. 12 tekens)";
+  fresh.autocomplete = "new-password";
+  const row = el("div", "modal-row");
   const ok = el("button", "modal-add", "Wijzigen");
-  const annuleer = el("button", "modal-cancel", "Annuleren");
-  const sluit = () => ov.remove();
-  annuleer.onclick = sluit;
-  ov.onclick = (e) => { if(e.target === ov) sluit(); };
+  const cancel = el("button", "modal-cancel", "Annuleren");
+  const close = () => ov.remove();
+  cancel.onclick = close;
+  ov.onclick = (e) => { if(e.target === ov) close(); };
   ok.onclick = async () => {
     ok.disabled = true;
     const r = await postJSON("/api/wachtwoord",
-      { huidig: huidig.value, nieuw: nieuw.value });
+      { huidig: current.value, nieuw: fresh.value });
     const d = await r.json().catch(() => ({}));
     ok.disabled = false;
     if(!r.ok){ toast(d.error || "wijzigen mislukte"); return; }
     // De server gaf een nieuwe sessie; die zit al in de cookie, het token hier.
     if(d.csrf) csrfToken = d.csrf;
-    sluit();
+    close();
     toast("wachtwoord gewijzigd — andere apparaten zijn uitgelogd");
   };
-  add(rij, ok, annuleer);
+  add(row, ok, cancel);
   add(box, el("div", "modal-t", "Wachtwoord wijzigen"),
       el("div", "modal-sub", "Alle andere apparaten worden uitgelogd."),
-      huidig, nieuw, rij);
+      current, fresh, row);
   add(ov, box);
   document.body.append(ov);
-  setTimeout(() => huidig.focus(), 50);
+  setTimeout(() => current.focus(), 50);
 }

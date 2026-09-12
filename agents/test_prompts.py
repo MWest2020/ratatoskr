@@ -9,7 +9,7 @@ import prompts
 
 
 class Mentioned(unittest.TestCase):
-    def test_woordgrens(self):
+    def test_word_boundary(self):
         self.assertTrue(prompts.mentioned("hoi @architect kijk", "architect"))
         self.assertTrue(prompts.mentioned("@architect.", "architect"))
         self.assertFalse(prompts.mentioned("kijk in @architectuur", "architect"))
@@ -19,7 +19,7 @@ class Mentioned(unittest.TestCase):
 
 
 class ChannelKnowledge(unittest.TestCase):
-    def test_path_traversal_geweigerd(self):
+    def test_path_traversal_refused(self):
         # onveilige (relay-geleverde) kanaalnaam mag geen bestand buiten knowledge/ lezen
         for bad in ["../../etc/passwd", "..", "a/b", "x/../y", "/etc/hosts", ""]:
             self.assertEqual(prompts.channel_knowledge("/tmp", bad), "")

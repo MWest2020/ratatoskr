@@ -40,7 +40,7 @@ indeling zien, dus:
 
 Daarna:
 
-    bash android/bouwen.sh      # -> android/ratatoskr-<versie>.apk
+    bash android/build.sh      # -> android/ratatoskr-<versie>.apk
 
 Het script haalt de ondertekensleutel uit SOPS in een tijdelijke map, gooit het
 gegenereerde Android-project weg (zodat de build volledig uit
@@ -52,7 +52,7 @@ gegenereerde Android-project weg (zodat de build volledig uit
    nieuwe versie, `appVersionCode` één omhoog. Die twee versievelden moeten
    gelijk zijn — lopen ze uiteen, dan zegt de APK iets anders dan het bestand,
    en het bouwscript weigert.
-2. `bash android/bouwen.sh`
+2. `bash android/build.sh`
 3. De APK naar de installatie kopiëren (zie hieronder).
 
 De **vingerafdruk verandert niet** zolang je dezelfde sleutel gebruikt, dus
@@ -81,7 +81,7 @@ enige onvervangbare bestand in deze hele keten — de rest is opnieuw te maken.
 
 Uitpakken wanneer je 'm nodig hebt:
 
-    python3 android/sleutel-uitpakken.py /tmp/ks    # en ruim die map daarna op
+    python3 android/extract-key.py /tmp/ks    # en ruim die map daarna op
 
 ## Voor een andere installatie
 

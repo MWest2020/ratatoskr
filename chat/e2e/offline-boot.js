@@ -11,7 +11,7 @@
 //
 //   NODE_PATH=<pad>/node_modules node chat/e2e/offline-boot.js
 const { chromium, devices } = require('playwright');
-const { logIn } = require('./inlog');
+const { logIn } = require('./login');
 const EXE = process.env.PW_CHROME
   || '/home/agent/.cache/ms-playwright/chromium-1234/chrome-linux64/chrome';
 const URL = ((process.env.RATATOSKR_URL || process.env.BOOMHUIS_URL) || 'https://boomhuis-relay.tail8f7877.ts.net').replace(/\/+$/,'');
@@ -112,24 +112,24 @@ async function until(page, fn, ms = 15000) {
   // Een oude cache erbij zetten is de eerlijke test: na het verversen laadt de
   // app opnieuw en registreert hij zijn worker weer (dat hoort), dus tellen
   // zegt niets — of de OUDE troep weg is, wel.
-  const voor = await p.evaluate(async () => {
+  const before = await p.evaluate(async () => {
     await caches.open('boomhuis-shell-oud');
     return {
       sw: (await navigator.serviceWorker.getRegistrations()).length,
-      oud: (await caches.keys()).includes('boomhuis-shell-oud'),
+      old: (await caches.keys()).includes('boomhuis-shell-oud'),
     };
   });
-  t('service worker draaide en er stond een oude cache', voor.sw > 0 && voor.oud,
-    JSON.stringify(voor));
+  t('service worker draaide en er stond een oude cache', before.sw > 0 && before.old,
+    JSON.stringify(before));
 
-  await p.evaluate(() => verversApp());
+  await p.evaluate(() => refreshApp());
   await p.waitForTimeout(5000);
-  const na = await p.evaluate(async () => ({
-    oud: (await caches.keys()).includes('boomhuis-shell-oud'),
+  const after = await p.evaluate(async () => ({
+    old: (await caches.keys()).includes('boomhuis-shell-oud'),
     url: location.search,
   }));
-  t('verversen wist de oude cache en herlaadt', na.oud === false && /vers=/.test(na.url),
-    JSON.stringify(na));
+  t('verversen wist de oude cache en herlaadt', after.old === false && /vers=/.test(after.url),
+    JSON.stringify(after));
   t('de app werkt na het verversen', await until(p, () =>
     document.querySelectorAll('.chan').length > 5, 15000));
 

@@ -7,7 +7,7 @@ async function loadAgents(){
   for(const a of (data.agents||[])){
     const el=document.createElement("div"); el.className="agent";
     const nm=document.createElement("div"); nm.className="nm"; nm.textContent=a.handle; el.appendChild(nm);
-    const rol=document.createElement("div"); rol.className="rol"; rol.textContent=a.rol||""; el.appendChild(rol);
+    const role=document.createElement("div"); role.className="role"; role.textContent=a.rol||""; el.appendChild(role);
     if((a.channels||[]).length){
       const chips=document.createElement("div"); chips.className="chips";
       for(const c of a.channels){
@@ -132,26 +132,26 @@ async function loadPinned(name){
 
 // Kanaal uit de hash (#bouw), bv. via een push-melding. Onbekende naam → het
 // eerste kanaal, zoals voorheen.
-function kanaalUitHash(){
-  const naam = decodeURIComponent((location.hash || "").slice(1)).toLowerCase();
-  return channels.find(c => c.name === naam) || null;
+function channelFromHash(){
+  const name = decodeURIComponent((location.hash || "").slice(1)).toLowerCase();
+  return channels.find(c => c.name === name) || null;
 }
 
 // Blijft proberen tot de kanalen binnen zijn. Op een telefoon komt de
 // tailnet-tunnel later op dan de app: de service worker serveert dan de
 // gecachete shell en de eerste fetch faalt. Zonder deze herhaling bleef het
 // scherm daarna voorgoed op "laden…" staan, ook nadat het netwerk terug was.
-let kanalenBinnen=false, herkansing=null;
-async function laadWatErIs(){
-  if(!kanalenBinnen){
+let channelsIn=false, retry=null;
+async function loadWhatThereIs(){
+  if(!channelsIn){
     if(!await loadChannels()){
-      meldGeenVerbinding();
-      if(!herkansing) herkansing=setTimeout(()=>{ herkansing=null; laadWatErIs(); }, 3000);
+      showNoConnection();
+      if(!retry) retry=setTimeout(()=>{ retry=null; loadWhatThereIs(); }, 3000);
       return;
     }
-    kanalenBinnen=true;
-    if(herkansing){ clearTimeout(herkansing); herkansing=null; }
-    selectChannel(kanaalUitHash() || channels[0]);
+    channelsIn=true;
+    if(retry){ clearTimeout(retry); retry=null; }
+    selectChannel(channelFromHash() || channels[0]);
     await loadChannels();   // nogmaals: nu met de actieve markering
   }
   refresh(false);
@@ -162,23 +162,23 @@ async function laadWatErIs(){
   // Eerst weten wie je bent. Alleen een echte 401 stuurt naar inloggen; kunnen
   // we de server niet bereiken, dan gaat de app gewoon door en doet de
   // offline-weergave zijn werk.
-  const sessie = await sessieOphalen();
-  if(sessie === null){ naarInloggen(); return; }
-  toonWieJeBent(sessie);
+  const session = await fetchSession();
+  if(session === null){ goToLogin(); return; }
+  showWhoYouAre(session);
 
   // Timers en luisteraars staan vóór de eerste netwerkaanroep: die aanroep
   // faalde bij een koude start, nam init() mee, en daarmee de poll die de app
   // had kunnen laten herstellen.
   pollTimer=setInterval(()=>refresh(false), 4000);
   setInterval(loadOverview, 12000);
-  document.addEventListener("visibilitychange",()=>{ if(!document.hidden) laadWatErIs(); });
+  document.addEventListener("visibilitychange",()=>{ if(!document.hidden) loadWhatThereIs(); });
   // Het moment waarop de tunnel opkomt, in plaats van de volgende poll afwachten.
-  window.addEventListener("online", laadWatErIs);
+  window.addEventListener("online", loadWhatThereIs);
   // Al open venster dat door een melding naar #kanaal wordt gestuurd: een
   // hash-wijziging herlaadt de pagina niet, dus hier zelf op reageren.
-  window.addEventListener("hashchange",()=>{ const c=kanaalUitHash(); if(c) selectChannel(c); });
+  window.addEventListener("hashchange",()=>{ const c=channelFromHash(); if(c) selectChannel(c); });
 
-  laadWatErIs();
+  loadWhatThereIs();
 })();
 
 // --- PWA: service worker + installeer-knop ---

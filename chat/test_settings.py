@@ -4,42 +4,42 @@ mislukte uitrol, dus die is getest en niet aangenomen."""
 import os
 import unittest
 
-import instellingen
+import settings
 
 
-class Lezen(unittest.TestCase):
+class Reading(unittest.TestCase):
     def setUp(self):
         for k in ("RATATOSKR_PROEF", "BOOMHUIS_PROEF"):
             os.environ.pop(k, None)
 
     tearDown = setUp
 
-    def test_nieuwe_naam(self):
+    def test_new_name(self):
         os.environ["RATATOSKR_PROEF"] = "nieuw"
-        self.assertEqual(instellingen.lees("PROEF"), "nieuw")
+        self.assertEqual(settings.read("PROEF"), "nieuw")
 
-    def test_oude_naam_blijft_werken(self):
+    def test_old_name_keeps_working(self):
         os.environ["BOOMHUIS_PROEF"] = "oud"
-        self.assertEqual(instellingen.lees("PROEF"), "oud")
+        self.assertEqual(settings.read("PROEF"), "oud")
 
-    def test_nieuwe_wint(self):
+    def test_new_wins(self):
         os.environ["BOOMHUIS_PROEF"] = "oud"
         os.environ["RATATOSKR_PROEF"] = "nieuw"
-        self.assertEqual(instellingen.lees("PROEF"), "nieuw")
+        self.assertEqual(settings.read("PROEF"), "nieuw")
 
-    def test_leeg_telt_als_afwezig(self):
+    def test_empty_counts_as_absent(self):
         """Een per ongeluk lege regel in .env mag de terugval niet blokkeren."""
         os.environ["RATATOSKR_PROEF"] = ""
         os.environ["BOOMHUIS_PROEF"] = "oud"
-        self.assertEqual(instellingen.lees("PROEF"), "oud")
+        self.assertEqual(settings.read("PROEF"), "oud")
 
     def test_default(self):
-        self.assertEqual(instellingen.lees("PROEF", "vangnet"), "vangnet")
+        self.assertEqual(settings.read("PROEF", "vangnet"), "vangnet")
 
-    def test_gezet(self):
-        self.assertFalse(instellingen.gezet("PROEF"))
+    def test_is_set(self):
+        self.assertFalse(settings.is_set("PROEF"))
         os.environ["BOOMHUIS_PROEF"] = "x"
-        self.assertTrue(instellingen.gezet("PROEF"))
+        self.assertTrue(settings.is_set("PROEF"))
 
 
 if __name__ == "__main__":

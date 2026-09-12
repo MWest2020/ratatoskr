@@ -9,11 +9,11 @@
 #   BOARD_OUT=/var/lib/ratatoskr/board.json bash jobs/publish-board.sh
 #   BOARD_SSH=buzz-relay BOARD_VOLUME=buzz-prod_ratatoskr-chat-data bash jobs/publish-board.sh
 set -euo pipefail
-HIER="$(cd "$(dirname "$0")" && pwd)"
+HERE="$(cd "$(dirname "$0")" && pwd)"
 TMP="$(mktemp)"
 trap 'rm -f "$TMP"' EXIT
 
-python3 "$HIER/board.py" --out "$TMP"
+python3 "$HERE/board.py" --out "$TMP"
 
 if [ -n "${BOARD_SSH:-}" ]; then
   VOL="${BOARD_VOLUME:?zet BOARD_VOLUME als je BOARD_SSH gebruikt}"

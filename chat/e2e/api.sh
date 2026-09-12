@@ -3,7 +3,7 @@
 #
 # Sinds `inloggen-per-persoon` zit ook lezen achter de sessie. Deze suite draait
 # daarom bewust ZONDER cookie: hij bewijst dat er niets uitlekt aan wie niet
-# ingelogd is. De ingelogde kant zit in chat/e2e/inloggen.js, want daar heb je
+# ingelogd is. De ingelogde kant zit in chat/e2e/login-flow.js, want daar heb je
 # een browser voor nodig.
 H=${RATATOSKR_URL:-${BOOMHUIS_URL:-https://boomhuis-relay.tail8f7877.ts.net}}
 ok=0; fail=0
@@ -14,7 +14,7 @@ t(){ # naam, verwachte code, curl-args...
   else fail=$((fail+1)); printf '  FAIL %-42s kreeg %s, verwacht %s: %s\n' "$naam" "$code" "$verw" "$(head -c 90 /tmp/e2e.body)"; fi
 }
 echo "— statische shell"
-for f in / /login /app.css /app.js /login.js /app-auth.js /app-cache.js /app-modal.js /app-ui.js /app-push.js /sw.js /manifest.webmanifest /icon.svg /icon-192.png; do
+for f in / /login /app.css /app.js /login.js /app-auth.js /app-cache.js /app-connection.js /app-modal.js /app-ui.js /app-push.js /sw.js /manifest.webmanifest /icon.svg /icon-192.png; do
   t "GET $f" 200 "$H$f"; done
 t "GET /bestaat-niet" 404 "$H/bestaat-niet"
 

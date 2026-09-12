@@ -1,6 +1,6 @@
 // Playwright hoeft niet in deze repo te staan; wijs er met NODE_PATH naar:
 //   NODE_PATH=<pad>/node_modules node chat/e2e/xss.js
-const { logIn } = require('./inlog');
+const { logIn } = require('./login');
 const { chromium, devices } = require('playwright');
 const fs=require('fs');
 const D=require('path').join(__dirname,'..')+'/';   // de werkkopie van chat/
@@ -46,15 +46,15 @@ const PAYLOAD = '<img src=x onerror="window.__XSS=1"><script>window.__XSS=1</scr
       xss: !!window.__XSS,
       imgs: document.querySelectorAll('#reposDrawer img').length,
       href: (document.querySelector('.gh')||{}).href || '(geen)',
-      titelTekst: (document.querySelector('.rn')||{}).textContent || '(geen)'}));
-    const tekstOk = /img src=x/.test(String(r.titelTekst));   // payload zichtbaar ALS TEKST
+      titleText: (document.querySelector('.rn')||{}).textContent || '(geen)'}));
+    const textOk = /img src=x/.test(String(r.titleText));     // payload zichtbaar ALS TEKST
     if (r.xss)            { fail++; console.log(`  FAIL ${tag}: de payload is UITGEVOERD`); }
     else                    console.log(`  ok   ${tag}: payload niet uitgevoerd`);
     if (r.imgs)           { fail++; console.log(`  FAIL ${tag}: ${r.imgs} element(en) uit de payload gerenderd`); }
     else                    console.log(`  ok   ${tag}: geen elementen uit de payload`);
     if (/^javascript:/.test(String(r.href))) { fail++; console.log(`  FAIL ${tag}: javascript:-href klikbaar`); }
     else                    console.log(`  ok   ${tag}: href = ${String(r.href).slice(0,30)}`);
-    if (!tekstOk)         { fail++; console.log(`  FAIL ${tag}: titel niet leesbaar weergegeven`); }
+    if (!textOk)          { fail++; console.log(`  FAIL ${tag}: titel niet leesbaar weergegeven`); }
     else                    console.log(`  ok   ${tag}: titel leesbaar als tekst`);
     await ctx.close();
   }

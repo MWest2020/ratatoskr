@@ -8,7 +8,7 @@
 # host", want de container sprak `relay:3000` aan terwijl de community op een
 # andere host staat) — terwijl api.sh 38/38 groen gaf. Deze suite sluit dat gat.
 #
-#   RATATOSKR_URL=https://… NAAM=… WW=… bash chat/e2e/verbinding.sh
+#   RATATOSKR_URL=https://… NAAM=… WW=… bash chat/e2e/connection.sh
 set -u
 H=${RATATOSKR_URL:-${BOOMHUIS_URL:-https://boomhuis-relay.tail8f7877.ts.net}}
 NAAM=${NAAM:-}; WW=${WW:-}

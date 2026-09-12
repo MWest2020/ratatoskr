@@ -29,8 +29,8 @@ def repo_url(clone_dir):
     ref = (p.stdout or "").strip()
     if p.returncode != 0 or "github.com" not in ref:
         return ""
-    pad = ref.split("github.com", 1)[1].lstrip(":/").removesuffix(".git")
-    return "https://github.com/" + pad
+    path = ref.split("github.com", 1)[1].lstrip(":/").removesuffix(".git")
+    return "https://github.com/" + path
 
 
 def openspec_cards(pattern, now):
@@ -72,13 +72,13 @@ def gh_json(args):
 
 
 def pr_cards(owner, merged_days, now, ignore=()):
-    velden = "repository,number,title,url,isDraft,updatedAt,author"
+    fields = "repository,number,title,url,isDraft,updatedAt,author"
     rows = gh_json(["search", "prs", f"--owner={owner}", "--state=open",
-                    "--limit", "40", "--json", velden])
+                    "--limit", "40", "--json", fields])
     cutoff = time.strftime("%Y-%m-%d", time.gmtime(now - merged_days * DAY))
     rows += [dict(r, merged=True) for r in gh_json(
         ["search", "prs", f"--owner={owner}", f"merged:>={cutoff}",
-         "--limit", "40", "--json", velden])]
+         "--limit", "40", "--json", fields])]
     cards = []
     for r in rows:
         if r["repository"]["name"] in ignore:
@@ -98,23 +98,23 @@ def pr_cards(owner, merged_days, now, ignore=()):
 def last_activity(content):
     """De laatste tool-aanroep uit een runbestand, kort. Een lopende sessie die
     alleen "bezig" zegt is een voortgangsbalk zonder balk."""
-    laatste = ""
-    for regel in content.splitlines():
-        if '"tool_use"' not in regel:
+    last = ""
+    for line in content.splitlines():
+        if '"tool_use"' not in line:
             continue
         try:
-            ev = json.loads(regel)
+            ev = json.loads(line)
         except ValueError:
             continue
         for c in (ev.get("message") or {}).get("content", []):
             if c.get("type") == "tool_use":
-                doel = ""
+                target = ""
                 for k in ("file_path", "path", "pattern", "command"):
                     if c.get("input", {}).get(k):
-                        doel = str(c["input"][k])[-40:]
+                        target = str(c["input"][k])[-40:]
                         break
-                laatste = f"{c.get('name')} {doel}".strip()
-    return laatste
+                last = f"{c.get('name')} {target}".strip()
+    return last
 
 
 def session_cards(runs_dir, now):
@@ -123,32 +123,32 @@ def session_cards(runs_dir, now):
     cards = []
     for path in sorted(glob.glob(os.path.join(runs_dir, "*.jsonl"))):
         try:
-            inhoud = open(path, errors="ignore").read()
+            content = open(path, errors="ignore").read()
             ts = os.path.getmtime(path)
         except OSError:
             continue
-        if '"type":"result"' in inhoud.replace(" ", ""):
+        if '"type":"result"' in content.replace(" ", ""):
             continue
-        naam = os.path.basename(path).rsplit("-", 1)[0]
-        typ, _, wie = naam.partition("-")
+        name = os.path.basename(path).rsplit("-", 1)[0]
+        typ, _, who = name.partition("-")
         # Een sessie heeft geen URL maar wel een KANAAL: daar praat hij. De app
         # springt daarheen in plaats van een dode kaart te tonen.
-        kanaal, schrijft = "", False
+        channel, writes = "", False
         try:
-            eerste = json.loads(inhoud.splitlines()[0])
-            if eerste.get("type") == "boomhuis_sessie":
-                kanaal = eerste.get("kanaal", "")
-                wie = eerste.get("requester", wie)
-                schrijft = bool(eerste.get("schrijft"))
+            first = json.loads(content.splitlines()[0])
+            if first.get("type") == "boomhuis_session":
+                channel = first.get("channel", "")
+                who = first.get("requester", who)
+                writes = bool(first.get("writes"))
         except (ValueError, IndexError):
             pass
         # Waar hij mee bezig is: de laatste tool-aanroep in het runbestand. Zonder
         # dit is een lopende sessie een kaart die niets zegt, en dat is precies
         # wat Mark miste: "tijdens bouwen verwacht ik updates".
         cards.append({"id": "session:" + os.path.basename(path),
-                      "repo": "werksessie", "title": f"{typ} · {wie}",
+                      "repo": "werksessie", "title": f"{typ} · {who}",
                       "column": "building",
-                      "via": "session (schrijft)" if schrijft else "session",
-                      "age_days": age_days(ts, now), "activity": last_activity(inhoud),
-                      "who": wie, "url": "", "channel": kanaal, "source": path})
+                      "via": "session (writes)" if writes else "session",
+                      "age_days": age_days(ts, now), "activity": last_activity(content),
+                      "who": who, "url": "", "channel": channel, "source": path})
     return cards

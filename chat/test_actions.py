@@ -14,28 +14,28 @@ import buzzcli
 import roster
 
 
-class Nep:
+class Fake:
     """Vervangt buzz/buzz_admin en onthoudt de aanroepen."""
 
-    def __init__(self, antwoord=(0, "", ""), admin_uit=False):
-        self.antwoord, self.admin_uit, self.calls = antwoord, admin_uit, []
+    def __init__(self, answer=(0, "", ""), admin_off=False):
+        self.answer, self.admin_off, self.calls = answer, admin_off, []
 
     def buzz(self, args, stdin=None, timeout=25, key=None):
         self.calls.append(("buzz", args, key))
-        return self.antwoord
+        return self.answer
 
     def admin(self, args, stdin=None, timeout=25):
         self.calls.append(("admin", args, None))
-        if self.admin_uit:
+        if self.admin_off:
             return None, "", buzzcli.ADMIN_OFF
-        return self.antwoord
+        return self.answer
 
 
-class Basis(unittest.TestCase):
-    def zet(self, nep, cids=("c1",), agents=None, hub="pk-odin"):
-        self.oud = (actions.buzz, actions.buzz_admin, actions.valid_cid,
+class Base(unittest.TestCase):
+    def install(self, fake, cids=("c1",), agents=None, hub="pk-odin"):
+        self.old = (actions.buzz, actions.buzz_admin, actions.valid_cid,
                     roster.agent_pubkey, roster.hub_pubkey, actions.channel_member_pubkeys)
-        actions.buzz, actions.buzz_admin = nep.buzz, nep.admin
+        actions.buzz, actions.buzz_admin = fake.buzz, fake.admin
         actions.valid_cid = lambda c: c in cids
         actions.channel_member_pubkeys = lambda c: {"pk-lid": "member"}
         roster.agent_pubkey = lambda n: (agents or {}).get(n)
@@ -43,111 +43,111 @@ class Basis(unittest.TestCase):
 
     def tearDown(self):
         (actions.buzz, actions.buzz_admin, actions.valid_cid,
-         roster.agent_pubkey, roster.hub_pubkey, actions.channel_member_pubkeys) = self.oud
+         roster.agent_pubkey, roster.hub_pubkey, actions.channel_member_pubkeys) = self.old
 
 
-class KanaalBeheerTest(Basis):
-    def test_create_tekent_als_orchestrator_niet_als_mark(self):
-        nep = Nep((0, json.dumps({"channel_id": "nieuw"}), ""))
-        self.zet(nep)
+class ChannelAdminTest(Base):
+    def test_create_signs_as_orchestrator_not_as_mark(self):
+        fake = Fake((0, json.dumps({"channel_id": "nieuw"}), ""))
+        self.install(fake)
         code, _ = actions.create_channel("bouwoverleg")
         self.assertEqual(code, 200)
-        soorten = {c[0] for c in nep.calls}
-        self.assertEqual(soorten, {"admin"})          # geen enkele gewone buzz-call
+        kinds = {c[0] for c in fake.calls}
+        self.assertEqual(kinds, {"admin"})            # geen enkele gewone buzz-call
 
-    def test_zonder_orchestrator_sleutel_geen_stille_terugval(self):
-        nep = Nep(admin_uit=True)
-        self.zet(nep)
+    def test_without_the_orchestrator_key_there_is_no_silent_fallback(self):
+        fake = Fake(admin_off=True)
+        self.install(fake)
         code, payload = actions.create_channel("bouwoverleg")
         self.assertEqual(code, 503)
         self.assertIn("BUZZ_ORCHESTRATOR_KEY", payload["error"])
-        self.assertNotIn("buzz", {c[0] for c in nep.calls})   # niets met marks sleutel
+        self.assertNotIn("buzz", {c[0] for c in fake.calls})  # niets met marks sleutel
 
-    def test_naam_wordt_gevalideerd_voor_de_relay(self):
-        nep = Nep(); self.zet(nep)
-        for naam in ("", "met spatie", "a" * 40, "-begintfout", "../x", "a/b"):
-            code, _ = actions.create_channel(naam)
-            self.assertEqual(code, 400, naam)
-        self.assertEqual(nep.calls, [])               # niets bereikte de relay
+    def test_the_name_is_validated_before_the_relay(self):
+        fake = Fake(); self.install(fake)
+        for name in ("", "met spatie", "a" * 40, "-begintfout", "../x", "a/b"):
+            code, _ = actions.create_channel(name)
+            self.assertEqual(code, 400, name)
+        self.assertEqual(fake.calls, [])              # niets bereikte de relay
 
-    def test_hoofdletters_en_spaties_worden_genormaliseerd(self):
+    def test_capitals_and_spaces_are_normalised(self):
         # Bewust géén fout: de gebruiker typt "Bouw " en krijgt #bouw.
-        nep = Nep((0, json.dumps({"channel_id": "n"}), "")); self.zet(nep)
+        fake = Fake((0, json.dumps({"channel_id": "n"}), "")); self.install(fake)
         code, payload = actions.create_channel("  Bouw  ")
         self.assertEqual((code, payload["name"]), (200, "bouw"))
 
-    def test_hub_wordt_toegevoegd_aan_een_nieuw_kanaal(self):
-        nep = Nep((0, json.dumps({"channel_id": "nieuw"}), ""))
-        self.zet(nep)
+    def test_the_hub_is_added_to_a_new_channel(self):
+        fake = Fake((0, json.dumps({"channel_id": "nieuw"}), ""))
+        self.install(fake)
         _, payload = actions.create_channel("bouwoverleg")
         self.assertTrue(payload["hub_added"])
-        add = [c for c in nep.calls if c[1][:2] == ["channels", "add-member"]]
+        add = [c for c in fake.calls if c[1][:2] == ["channels", "add-member"]]
         self.assertEqual(add[0][1][5], "pk-odin")     # --pubkey van de hub
 
-    def test_zonder_hub_faalt_de_create_niet(self):
+    def test_the_create_does_not_fail_without_a_hub(self):
         # De add is best-effort: het kanaal bestaat al. Wél zichtbaar in het antwoord.
-        nep = Nep((0, json.dumps({"channel_id": "nieuw"}), ""))
-        self.zet(nep, hub=None)
+        fake = Fake((0, json.dumps({"channel_id": "nieuw"}), ""))
+        self.install(fake, hub=None)
         code, payload = actions.create_channel("bouwoverleg")
         self.assertEqual(code, 200)
         self.assertFalse(payload["hub_added"])
 
 
-class AgentToevoegenTest(Basis):
-    def test_alleen_bekende_agents(self):
-        nep = Nep(); self.zet(nep, agents={"bouwer": "pk-b"})
+class AddAgentTest(Base):
+    def test_only_known_agents(self):
+        fake = Fake(); self.install(fake, agents={"bouwer": "pk-b"})
         self.assertEqual(actions.add_agent("c1", "onbekend")[0], 404)
-        self.assertEqual(nep.calls, [])
+        self.assertEqual(fake.calls, [])
 
-    def test_onbekend_kanaal_wordt_geweigerd(self):
-        nep = Nep(); self.zet(nep, agents={"bouwer": "pk-b"})
+    def test_an_unknown_channel_is_refused(self):
+        fake = Fake(); self.install(fake, agents={"bouwer": "pk-b"})
         self.assertEqual(actions.add_agent("bestaat-niet", "bouwer")[0], 400)
 
-    def test_toevoegen_tekent_als_orchestrator(self):
-        nep = Nep(); self.zet(nep, agents={"bouwer": "pk-b"})
+    def test_adding_signs_as_orchestrator(self):
+        fake = Fake(); self.install(fake, agents={"bouwer": "pk-b"})
         self.assertEqual(actions.add_agent("c1", "bouwer")[0], 200)
-        self.assertEqual({c[0] for c in nep.calls}, {"admin"})
+        self.assertEqual({c[0] for c in fake.calls}, {"admin"})
 
 
-class SendTest(Basis):
-    def test_lege_inhoud_bereikt_de_relay_niet(self):
-        nep = Nep(); self.zet(nep)
+class SendTest(Base):
+    def test_empty_content_never_reaches_the_relay(self):
+        fake = Fake(); self.install(fake)
         self.assertEqual(actions.send("c1", "   ")[0], 400)
-        self.assertEqual(nep.calls, [])
+        self.assertEqual(fake.calls, [])
 
-    def test_onbekend_kanaal_wordt_geweigerd(self):
-        nep = Nep(); self.zet(nep)
+    def test_an_unknown_channel_is_refused(self):
+        fake = Fake(); self.install(fake)
         self.assertEqual(actions.send("weg", "hoi")[0], 400)
 
-    def test_bericht_tekent_met_de_procesidentiteit(self):
-        nep = Nep(); self.zet(nep)
+    def test_a_message_signs_with_the_process_identity(self):
+        fake = Fake(); self.install(fake)
         self.assertEqual(actions.send("c1", "hoi")[0], 200)
-        self.assertEqual({c[0] for c in nep.calls}, {"buzz"})   # mark, niet de orchestrator
+        self.assertEqual({c[0] for c in fake.calls}, {"buzz"})  # mark, niet de orchestrator
 
-    def test_onbekende_mention_geeft_een_keuze_terug(self):
-        fout = (1, "", "mention '@bouwer' does not match any channel member")
-        nep = Nep(fout); self.zet(nep, agents={"bouwer": "pk-b"})
+    def test_an_unknown_mention_returns_a_choice(self):
+        err = (1, "", "mention '@bouwer' does not match any channel member")
+        fake = Fake(err); self.install(fake, agents={"bouwer": "pk-b"})
         code, payload = actions.send("c1", "hoi @bouwer")
         self.assertEqual(code, 409)
         self.assertEqual(payload["missing_agent"], "bouwer")
         self.assertTrue(payload["known"])            # bestaat -> "toevoegen" mag
         self.assertTrue(payload["can_force"])
 
-    def test_onbekende_mention_die_geen_agent_is(self):
-        fout = (1, "", "mention '@niemand' does not match any channel member")
-        nep = Nep(fout); self.zet(nep, agents={})
+    def test_an_unknown_mention_that_is_not_an_agent(self):
+        err = (1, "", "mention '@niemand' does not match any channel member")
+        fake = Fake(err); self.install(fake, agents={})
         _, payload = actions.send("c1", "hoi @niemand")
         self.assertFalse(payload["known"])           # alleen "toch versturen"
 
-    def test_force_hangt_een_echt_lid_als_anker(self):
-        nep = Nep(); self.zet(nep)
+    def test_force_uses_a_real_member_as_anchor(self):
+        fake = Fake(); self.install(fake)
         actions.send("c1", "hoi @here", force=True)
-        args = nep.calls[0][1]
+        args = fake.calls[0][1]
         self.assertIn("--mention", args)
         self.assertEqual(args[args.index("--mention") + 1], "pk-lid")
 
-    def test_andere_relayfout_blijft_een_502(self):
-        nep = Nep((1, "", "relay down")); self.zet(nep)
+    def test_another_relay_error_stays_a_502(self):
+        fake = Fake((1, "", "relay down")); self.install(fake)
         code, payload = actions.send("c1", "hoi")
         self.assertEqual(code, 502)
         self.assertIn("relay down", payload["error"])

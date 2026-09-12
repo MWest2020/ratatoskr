@@ -40,8 +40,8 @@ exit 0
 def branch_name(session_type, requester, now=None):
     """Herkenbaar en uniek: type, wie erom vroeg, wanneer."""
     stamp = int(now or time.time())
-    veilig = "".join(c if c.isalnum() or c in "-_" else "-" for c in requester)[:24]
-    return f"session/{session_type}-{veilig or 'unknown'}-{stamp}"
+    safe = "".join(c if c.isalnum() or c in "-_" else "-" for c in requester)[:24]
+    return f"session/{session_type}-{safe or 'unknown'}-{stamp}"
 
 
 def _run(args, cwd=None):
@@ -63,14 +63,14 @@ def install_hook(worktree, branch):
     Git heeft hier een mechanisme voor: `extensions.worktreeConfig` zet
     `core.hooksPath` per worktree in plaats van voor de hele repo.
     """
-    eigen = os.path.join(worktree, ".session-hooks")
-    os.makedirs(eigen, exist_ok=True)
+    own = os.path.join(worktree, ".session-hooks")
+    os.makedirs(own, exist_ok=True)
     _run(["git", "-C", worktree, "config", "extensions.worktreeConfig", "true"])
-    _run(["git", "-C", worktree, "config", "--worktree", "core.hooksPath", eigen])
-    pad = os.path.join(eigen, "pre-push")
-    with open(pad, "w") as f:
+    _run(["git", "-C", worktree, "config", "--worktree", "core.hooksPath", own])
+    path = os.path.join(own, "pre-push")
+    with open(path, "w") as f:
         f.write(HOOK % branch)
-    os.chmod(pad, 0o755)
+    os.chmod(path, 0o755)
     # Niet meecommitten: het hek hoort bij de sessie, niet bij de branch. In een
     # worktree is `.git` een BESTAND, geen map — dus het pad opvragen aan git.
     exclude = _run(["git", "-C", worktree, "rev-parse", "--git-path",
@@ -80,7 +80,7 @@ def install_hook(worktree, branch):
     os.makedirs(os.path.dirname(exclude), exist_ok=True)
     with open(exclude, "a") as f:
         f.write("\n.session-hooks/\n")
-    return pad
+    return path
 
 
 def create(repo, base_dir, session_type, requester, now=None):
@@ -91,9 +91,9 @@ def create(repo, base_dir, session_type, requester, now=None):
     erger dan geen.
     """
     branch = branch_name(session_type, requester, now)
-    doel = os.path.join(base_dir, branch.replace("/", "-"))
+    target = os.path.join(base_dir, branch.replace("/", "-"))
     os.makedirs(base_dir, exist_ok=True)
     _run(["git", "-C", repo, "fetch", "--quiet", "origin", "main"])
-    _run(["git", "-C", repo, "worktree", "add", "-q", "-b", branch, doel, "origin/main"])
-    install_hook(doel, branch)
-    return doel, branch
+    _run(["git", "-C", repo, "worktree", "add", "-q", "-b", branch, target, "origin/main"])
+    install_hook(target, branch)
+    return target, branch

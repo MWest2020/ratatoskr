@@ -12,25 +12,25 @@ import github
 
 
 class ValidRepoTest(unittest.TestCase):
-    def test_owner_slash_naam_is_geldig(self):
-        for naam in ("MWest2020/boomhuis", "a/b", "MWest2020/internetnl-cli",
+    def test_owner_slash_name_is_valid(self):
+        for name in ("MWest2020/boomhuis", "a/b", "MWest2020/internetnl-cli",
                      "MWest2020/Road_to_el_DORA-do", "org.io/repo.js"):
-            self.assertTrue(github.valid_repo(naam), naam)
+            self.assertTrue(github.valid_repo(name), name)
 
-    def test_zonder_owner_is_ongeldig(self):
+    def test_without_an_owner_is_invalid(self):
         self.assertFalse(github.valid_repo("boomhuis"))
 
-    def test_padtekens_komen_er_niet_door(self):
+    def test_path_characters_do_not_get_through(self):
         # Elk segment moet met een alfanumeriek teken beginnen, anders glippen
         # ".." en "." erdoor en gaat een pad-achtige waarde de URL in.
-        for naam in ("../x", "./x", "a/..", "a/../b", "a/b/c", "/x", "x/"):
-            self.assertFalse(github.valid_repo(naam), naam)
+        for name in ("../x", "./x", "a/..", "a/../b", "a/b/c", "/x", "x/"):
+            self.assertFalse(github.valid_repo(name), name)
 
-    def test_leeg_en_witruimte_zijn_ongeldig(self):
-        for naam in ("", None, "a b/c", "a/b c", " a/b"):
-            self.assertFalse(github.valid_repo(naam), repr(naam))
+    def test_empty_and_whitespace_are_invalid(self):
+        for name in ("", None, "a b/c", "a/b c", " a/b"):
+            self.assertFalse(github.valid_repo(name), repr(name))
 
-    def test_lengte_is_begrensd(self):
+    def test_length_is_bounded(self):
         self.assertFalse(github.valid_repo("a" * 200 + "/b"))
 
 

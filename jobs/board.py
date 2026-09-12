@@ -88,13 +88,13 @@ def main():
     ap.add_argument("--config")
     a = ap.parse_args()
     data = build(load_config(a.config))
-    tekst = json.dumps(data, indent=1)
+    text = json.dumps(data, indent=1)
     if not a.out:
-        print(tekst)
+        print(text)
         return
     tmp = a.out + ".tmp"          # atomisch: nooit een half bestand serveren
     with open(tmp, "w") as f:
-        f.write(tekst)
+        f.write(text)
     os.replace(tmp, a.out)
     print(f"[board] {len(data['cards'])} kaarten -> {a.out}"
           + (f" ({len(data['errors'])} leesfout(en))" if data["errors"] else ""))

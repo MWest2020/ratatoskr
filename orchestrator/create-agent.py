@@ -5,7 +5,7 @@
 
 Na een coordinator-voorstel dat Mark goedkeurt:
   uv run orchestrator/create-agent.py --name ontwerper --channels general,architectuur \
-      --mandaat "Sparringpartner voor frontend/UX en design-systemen." \
+      --mandate "Sparringpartner voor frontend/UX en design-systemen." \
       --system "Je bent 'ontwerper', ... Kort, Nederlands."
 
 Doet: keypair genereren → handbook-def op een BRANCH + PR (CODEOWNERS = Mark) →
@@ -44,7 +44,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--name", required=True)
     ap.add_argument("--channels", required=True, help="komma-gescheiden, bv. general,architectuur")
-    ap.add_argument("--mandaat", required=True)
+    ap.add_argument("--mandate", required=True)
     ap.add_argument("--system", required=True, help="chat-facet systemprompt")
     a = ap.parse_args()
     name = a.name.lower()
@@ -71,7 +71,7 @@ agent:
 
 ## Mandaat
 
-{a.mandaat}
+{a.mandate}
 
 ## Chat-facet (boomhuis)
 
@@ -90,7 +90,7 @@ Geen — {name} draait alleen in de chat.
     run(["git", "push", "-q", "-u", "origin", br], cwd=HANDBOOK)
     pr = run(["gh", "pr", "create", "--repo", "MWest2020/handbook", "--head", br,
               "--title", f"Nieuwe agent: {name}", "--body",
-              f"Canonieke def voor @{name}. Kanalen: {', '.join(chans)}.\n\nMandaat: {a.mandaat}\n\n"
+              f"Canonieke def voor @{name}. Kanalen: {', '.join(chans)}.\n\nMandaat: {a.mandate}\n\n"
               "Aangemaakt via de coordinator-flow (create-agent). Merge activeert de agent "
               "(de listener leest de def van main)."], cwd=HANDBOOK)
     run(["git", "checkout", "-q", "main"], cwd=HANDBOOK)
@@ -141,7 +141,7 @@ Geen — {name} draait alleen in de chat.
         r = run([buzz, "channels", "add-member", "--channel", cid, "--pubkey", pub, "--role", "bot"], env=benv)
         print(f"[create] {c}-bot: {'ok' if 'accepted' in r.stdout and 'true' in r.stdout else r.stdout[:80] or r.stderr[:80]}")
     # eigen profielnaam
-    run([buzz, "users", "set-profile", "--name", name, "--about", a.mandaat[:120]],
+    run([buzz, "users", "set-profile", "--name", name, "--about", a.mandate[:120]],
         env=dict(os.environ, BUZZ_PRIVATE_KEY=nsec, BUZZ_RELAY_URL=RELAY))
 
     print(f"[create] {name} bedraad in boomhuis (identity/secrets/run-lijst/lidmaatschap/profiel).")

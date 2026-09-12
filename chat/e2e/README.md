@@ -4,17 +4,17 @@ Draaien tegen de **echte VM**, niet tegen een mock. Ze vervangen de unittests ni
 ze vangen wat unittests per definitie missen: uitrol, service worker, viewport,
 en of de laag eronder ook echt aan staat.
 
-    NAAM=… WW=… bash chat/e2e/na-uitrol.sh    # DE drie lagen, na elke uitrol
+    NAAM=… WW=… bash chat/e2e/after-deploy.sh    # DE drie lagen, na elke uitrol
     bash chat/e2e/api.sh          # HTTP: wat een vreemde NIET mag
-    NAAM=… WW=… bash chat/e2e/verbinding.sh   # INGELOGD: praat de chat met de relay?
-    NAAM=… WW=… node chat/e2e/rook.js         # BROWSER: doet de app het echt?
-    node chat/e2e/inloggen.js     # browser: inloggen, sessie, uitloggen
+    NAAM=… WW=… bash chat/e2e/connection.sh   # INGELOGD: praat de chat met de relay?
+    NAAM=… WW=… node chat/e2e/smoke.js         # BROWSER: doet de app het echt?
+    node chat/e2e/login-flow.js     # browser: inloggen, sessie, uitloggen
     node chat/e2e/ui.js           # browser: shell, kanalen, laden, token-modal
     node chat/e2e/xss.js          # regressietest op de GitHub-rendering
     node chat/e2e/deeplink.js     # melding -> juiste kanaal
     node chat/e2e/offline-boot.js # koude start zonder tunnel, en herstel
 
-`ui.js`, `xss.js`, `deeplink.js`, `offline-boot.js` en `inloggen.js` hebben Playwright nodig en een Chromium. Staat Playwright
+`ui.js`, `xss.js`, `deeplink.js`, `offline-boot.js` en `login-flow.js` hebben Playwright nodig en een Chromium. Staat Playwright
 elders, wijs er dan met `NODE_PATH` naar; `executablePath` bovenaan het script
 wijst naar de browser.
 
@@ -24,15 +24,15 @@ Alle drie geven exitcode 0 bij succes, dus ze zijn te ketenen.
 
 `BOOMHUIS_URL` mag mét of zonder slash aan het eind — de scripts strippen 'm.
 
-## Na elke uitrol: `na-uitrol.sh`
+## Na elke uitrol: `after-deploy.sh`
 
 Drie lagen, in oplopende echtheid — en je hebt ze alle drie nodig:
 
 | laag | ziet | ziet NIET |
 |---|---|---|
 | `api.sh` | de gate, zonder sessie | alles wat achter inloggen zit, en de relay |
-| `verbinding.sh` | de relay-kant, ingelogd | of de JS in de browser leeft |
-| `rook.js` | wat een mens ziet | — |
+| `connection.sh` | de relay-kant, ingelogd | of de JS in de browser leeft |
+| `smoke.js` | wat een mens ziet | — |
 
 Op 2026-09-11 gaf laag 1 een halve dag 38/38 groen terwijl de app stilstond.
 Eén laag is geen test van een uitrol.
@@ -41,14 +41,14 @@ Je hebt een testaccount nodig. Maak er een met een uitnodiging en gooi 'm daarna
 weg — een staand account dat alles kan lezen is een tweede sleutel die je niet
 nodig hebt:
 
-    docker compose exec -T chat python3 adminctl.py uitnodiging
+    docker compose exec -T chat python3 adminctl.py invite
     # link gebruiken, dan:
-    docker compose exec -T chat python3 adminctl.py verwijder <naam>
+    docker compose exec -T chat python3 adminctl.py delete <naam>
 
 Dit draait **niet** in CI: de installatie zit achter een tailnet of een proxy,
 en een runner van GitHub komt daar niet. Het is een uitrol-stap, geen push-stap.
 
-## Waarom `verbinding.sh` bestaat
+## Waarom `connection.sh` bestaat
 
 `api.sh` draait bewust zónder sessie en raakt daardoor geen enkele regel code die
 met de relay praat. Op 2026-09-11 draaide Marks installatie een halve dag met een
@@ -57,16 +57,16 @@ de community van die relay op een andere host staat ("404: no community is
 configured for this host") — en `api.sh` gaf al die tijd 38/38 groen. De app
 stond op "laden…" en crashte op `Cannot read properties of undefined`.
 
-`verbinding.sh` logt wél in en eist dat de kanaallijst NIET leeg is: een lege
+`connection.sh` logt wél in en eist dat de kanaallijst NIET leeg is: een lege
 lijst is precies hoe een onbereikbare relay eruitziet. Bewezen dat hij vangt wat
 api.sh miste: met de kapotte instelling faalt hij op 2 van 7.
 
-## Waarom `rook.js` bestaat
+## Waarom `smoke.js` bestaat
 
-Omdat ook `verbinding.sh` niet ziet wat een mens ziet. De storing van 11
+Omdat ook `connection.sh` niet ziet wat een mens ziet. De storing van 11
 september eindigde in de browser: `PAGEERROR: Cannot read properties of
 undefined (reading 'name')`, nul kanalen in de lade, `#msgs` op "laden…". Precies
-die drie dingen eist `rook.js`, plus dat de app blijft pollen — want een app die
+die drie dingen eist `smoke.js`, plus dat de app blijft pollen — want een app die
 er goed uitziet maar niets meer vraagt, is dood.
 
 Bewezen tegen de échte storing: met de kapotte relay-instelling faalt hij op
@@ -79,7 +79,7 @@ Gemeten 2026-09-11 tegen een schone VM (change `uitrol-voor-derden`):
 
 - `api.sh` — **draait**, 38/38 groen. Hij test wat een vreemde niet mag, en dat
   hangt niet van inhoud af.
-- `inloggen.js` — **draait voor het installatie-deel**: setup-link, eerste
+- `login-flow.js` — **draait voor het installatie-deel**: setup-link, eerste
   account, in de app, CSRF, uitloggen, opnieuw inloggen. De assertions die
   kanalen of berichten nodig hebben falen, want een verse relay heeft die niet.
 - `ui.js`, `deeplink.js`, `offline-boot.js`, `xss.js` — **draaien niet**: ze zijn
@@ -145,7 +145,7 @@ herstellen. Alle andere e2e-tests draaien tegen een gezonde API en zien dat
 dus niet. Deze blokkeert `/api/*`, laat de app starten, deblokkeert, en meet
 dat hij zichzelf herstelt — zonder herlaad.
 
-## Waarom `inloggen.js` een verse installatie wil
+## Waarom `login-flow.js` een verse installatie wil
 
 De setup-link maakt de eigenaar en werkt daarna niet meer — dat is precies wat
 hij moet doen. Draai hem dus tegen een testinstallatie, of leeg `auth.db` en

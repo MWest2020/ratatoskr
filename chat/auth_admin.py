@@ -9,90 +9,90 @@ import auth_store as store
 from auth_routes import _json
 
 
-def _persoon(sessie):
-    return store.persoon(sessie["persoon"])
+def _person(session):
+    return store.person(session["persoon"])
 
 
-def uitnodigen(h, sessie):
+def invite(h, session):
     """Maak een eenmalige, verlopende uitnodiging. Alleen de eigenaar."""
-    if not _persoon(sessie)["eigenaar"]:
+    if not _person(session)["eigenaar"]:
         return _json(h, 403, {"error": "alleen de eigenaar kan uitnodigen"})
-    token = auth.nieuwe_uitnodiging("uitnodiging")
+    token = auth.new_invite("uitnodiging")
     return _json(h, 201, {
         "pad": "/login?uitnodiging=" + token,
-        "verloopt_over_dagen": auth.UITNODIGING_DUUR // 86400,
+        "verloopt_over_dagen": auth.INVITE_TTL // 86400,
     })
 
 
-def uitnodigingen_intrekken(h, sessie):
-    if not _persoon(sessie)["eigenaar"]:
+def revoke_invites(h, session):
+    if not _person(session)["eigenaar"]:
         return _json(h, 403, {"error": "alleen de eigenaar kan uitnodigingen intrekken"})
-    store.trek_uitnodigingen_in("uitnodiging")
+    store.revoke_invites("uitnodiging")
     return _json(h, 200, {"status": "ingetrokken"})
 
 
-def wachtwoord_wijzigen(h, sessie, body):
+def change_password(h, session, body):
     """Je eigen wachtwoord. Het huidige moet mee: anders is een geleende
     sessie genoeg om iemand permanent buiten te sluiten.
 
     Alle sessies gaan eruit, ook deze — en er komt meteen een nieuwe voor dit
     apparaat terug. Wie het oude wachtwoord had, is dus overal weg, en jij hoeft
     niet opnieuw in te loggen."""
-    p = _persoon(sessie)
-    huidig = body.get("huidig") or ""
-    nieuw = body.get("nieuw") or ""
-    if not auth.wachtwoord_klopt(huidig, p["hash"]):
+    p = _person(session)
+    current = body.get("huidig") or ""
+    new = body.get("nieuw") or ""
+    if not auth.password_matches(current, p["hash"]):
         return _json(h, 403, {"error": "het huidige wachtwoord klopt niet"})
-    if len(nieuw) < 12:
+    if len(new) < 12:
         return _json(h, 400, {"error": "nieuw wachtwoord minstens 12 tekens"})
-    store.zet_hash(p["id"], auth.hash_wachtwoord(nieuw))
-    store.trek_alle_sessies_in(p["id"])
-    token, csrf = auth.start_sessie(p["id"])
+    store.set_hash(p["id"], auth.hash_password(new))
+    store.revoke_all_sessions(p["id"])
+    token, csrf = auth.start_session(p["id"])
     return _json(h, 200, {"status": "gewijzigd", "csrf": csrf},
-                 [("Set-Cookie", auth.cookie_kop(token, h.headers.get("Host", "")))])
+                 [("Set-Cookie", auth.cookie_header(token, h.headers.get("Host", "")))])
 
 
-def totp_starten(h, sessie):
+def totp_start(h, session):
     """Geef een geheim terug; het gaat pas aan als er een kloppende code komt.
     Anders sluit een verkeerd overgetypt geheim je uit je eigen account."""
-    geheim = auth.nieuw_totp_geheim()
-    naam = _persoon(sessie)["naam"]
+    secret = auth.new_totp_secret()
+    name = _person(session)["naam"]
     return _json(h, 200, {
-        "geheim": geheim,
+        "geheim": secret,
         "otpauth": "otpauth://totp/boomhuis:{}?secret={}&issuer=boomhuis".format(
-            naam, geheim),
+            name, secret),
     })
 
 
-def totp_bevestigen(h, sessie, body):
-    geheim = (body.get("geheim") or "").strip()
-    ok, teller = auth.totp_klopt(geheim, body.get("code") or "") if geheim else (False, None)
+def totp_confirm(h, session, body):
+    secret = (body.get("geheim") or "").strip()
+    ok, counter = auth.totp_matches(secret, body.get("code") or "") if secret else (False, None)
     if not ok:
         return _json(h, 400, {"error": "code klopt niet"})
-    store.zet_totp(sessie["persoon"], geheim)
-    store.zet_totp_teller(sessie["persoon"], teller)
+    store.set_totp(session["persoon"], secret)
+    store.set_totp_counter(session["persoon"], counter)
     return _json(h, 200, {"totp": True})
 
 
-def totp_uit(h, sessie):
-    store.zet_totp(sessie["persoon"], None)
+def totp_off(h, session):
+    store.set_totp(session["persoon"], None)
     return _json(h, 200, {"totp": False})
 
 
-def route(h, pad, sessie, body=None):
+def route(h, path, session, body=None):
     """True wanneer dit pad hier hoort en is afgehandeld."""
     if body is None:
         return False
-    if pad == "/api/uitnodiging":
-        return uitnodigen(h, sessie)
-    if pad == "/api/uitnodiging/intrekken":
-        return uitnodigingen_intrekken(h, sessie)
-    if pad == "/api/wachtwoord":
-        return wachtwoord_wijzigen(h, sessie, body)
-    if pad == "/api/totp/start":
-        return totp_starten(h, sessie)
-    if pad == "/api/totp/aan":
-        return totp_bevestigen(h, sessie, body)
-    if pad == "/api/totp/uit":
-        return totp_uit(h, sessie)
+    if path == "/api/uitnodiging":
+        return invite(h, session)
+    if path == "/api/uitnodiging/intrekken":
+        return revoke_invites(h, session)
+    if path == "/api/wachtwoord":
+        return change_password(h, session, body)
+    if path == "/api/totp/start":
+        return totp_start(h, session)
+    if path == "/api/totp/aan":
+        return totp_confirm(h, session, body)
+    if path == "/api/totp/uit":
+        return totp_off(h, session)
     return False

@@ -195,14 +195,14 @@ def channel_roster():
         out = []
         for name, cid in chans:
             members = []
-            for pk, chrole in channel_member_pubkeys(cid).items():
+            for pk, channel_role in channel_member_pubkeys(cid).items():
                 if not pk:
                     continue  # lid-entry zonder pubkey → geen None-sleutel (TypeError)
                 ident = idmap.get(pk) or {}
                 members.append({
                     "name": ident.get("name") or NAMES.get(pk) or ("npub:" + pk[:8]),
                     "rol": ident.get("rol", ""),          # ecosysteem-rol (agent/sessie/mens)
-                    "channel_role": chrole,               # rol op dít kanaal (owner/bot/member)
+                    "channel_role": channel_role,         # rol op dít kanaal (owner/bot/member)
                 })
             members.sort(key=lambda m: (m["channel_role"] != "owner", m["name"]))
             out.append({"channel": name, "id": cid, "members": members})

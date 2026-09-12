@@ -20,14 +20,14 @@ def _git(args, cwd):
 
 class BranchName(unittest.TestCase):
     def test_shape(self):
-        naam = work_tree.branch_name("build", "mark", now=1700000000)
-        self.assertEqual(naam, "session/build-mark-1700000000")
+        name = work_tree.branch_name("build", "mark", now=1700000000)
+        self.assertEqual(name, "session/build-mark-1700000000")
 
     def test_strange_requester_is_made_safe(self):
         """Een naam belandt in een branchnaam én in een pad."""
-        naam = work_tree.branch_name("build", "../../etc/passwd", now=1)
-        self.assertNotIn("/", naam.split("session/", 1)[1])
-        self.assertNotIn("..", naam)
+        name = work_tree.branch_name("build", "../../etc/passwd", now=1)
+        self.assertNotIn("/", name.split("session/", 1)[1])
+        self.assertNotIn("..", name)
 
     def test_empty_requester_still_yields_a_name(self):
         self.assertIn("unknown", work_tree.branch_name("build", "", now=1))
@@ -38,11 +38,11 @@ class Hook(unittest.TestCase):
 
     def _hook(self, branch="session/build-mark-1"):
         d = tempfile.mkdtemp()
-        pad = os.path.join(d, "pre-push")
-        with open(pad, "w") as f:
+        path = os.path.join(d, "pre-push")
+        with open(path, "w") as f:
             f.write(work_tree.HOOK % branch)
-        os.chmod(pad, 0o755)
-        return pad
+        os.chmod(path, 0o755)
+        return path
 
     def _push(self, hook, remote_ref):
         return subprocess.run([hook], input=f"refs/heads/x abc {remote_ref} def\n",
@@ -72,54 +72,54 @@ class Hook(unittest.TestCase):
 class Create(unittest.TestCase):
     def _repo(self):
         """Een clone met een `origin/main`, zoals de echte situatie."""
-        boven = tempfile.mkdtemp()
-        oorsprong = os.path.join(boven, "origin")
-        os.makedirs(oorsprong)
-        _git(["init", "-q", "-b", "main"], oorsprong)
-        open(os.path.join(oorsprong, "f.txt"), "w").write("x")
-        _git(["add", "-A"], oorsprong)
-        _git(["-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "init"], oorsprong)
-        clone = os.path.join(boven, "clone")
-        _git(["clone", "-q", oorsprong, clone], boven)
-        return boven, clone
+        top = tempfile.mkdtemp()
+        origin = os.path.join(top, "origin")
+        os.makedirs(origin)
+        _git(["init", "-q", "-b", "main"], origin)
+        open(os.path.join(origin, "f.txt"), "w").write("x")
+        _git(["add", "-A"], origin)
+        _git(["-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "init"], origin)
+        clone = os.path.join(top, "clone")
+        _git(["clone", "-q", origin, clone], top)
+        return top, clone
 
     def test_worktree_is_fresh_and_fenced(self):
-        boven, clone = self._repo()
-        werk, branch = work_tree.create(clone, os.path.join(boven, "sessies"),
+        top, clone = self._repo()
+        work, branch = work_tree.create(clone, os.path.join(top, "sessions"),
                                         "build", "mark", now=42)
-        self.assertTrue(os.path.isfile(os.path.join(werk, "f.txt")))
+        self.assertTrue(os.path.isfile(os.path.join(work, "f.txt")))
         # Buiten de clone: een sessie mag niet in een draaiende checkout schrijven.
-        self.assertFalse(werk.startswith(clone))
+        self.assertFalse(work.startswith(clone))
         self.assertEqual(branch, "session/build-mark-42")
-        huidige = _git(["rev-parse", "--abbrev-ref", "HEAD"], werk).stdout.strip()
-        self.assertEqual(huidige, branch)
+        current = _git(["rev-parse", "--abbrev-ref", "HEAD"], work).stdout.strip()
+        self.assertEqual(current, branch)
         # En het hek staat er, uitvoerbaar.
-        hooks = _git(["rev-parse", "--git-path", "hooks"], werk).stdout.strip()
-        pad = hooks if os.path.isabs(hooks) else os.path.join(werk, hooks)
-        self.assertTrue(os.access(os.path.join(pad, "pre-push"), os.X_OK))
+        hooks = _git(["rev-parse", "--git-path", "hooks"], work).stdout.strip()
+        path = hooks if os.path.isabs(hooks) else os.path.join(work, hooks)
+        self.assertTrue(os.access(os.path.join(path, "pre-push"), os.X_OK))
 
     def test_hook_does_not_leak_to_the_rest_of_the_clone(self):
         """Gemeten 2026-09-12: de hook stond in de GEDEELDE .git/hooks en
         blokkeerde daarmee pushes vanuit elke andere worktree van dezelfde clone.
         Het hek hoort bij de sessie, niet bij de repo."""
-        boven, clone = self._repo()
-        werk, _ = work_tree.create(clone, os.path.join(boven, "sessies"),
+        top, clone = self._repo()
+        work, _ = work_tree.create(clone, os.path.join(top, "sessions"),
                                    "build", "mark", now=42)
-        gedeeld = _git(["rev-parse", "--path-format=absolute", "--git-common-dir"],
-                       werk).stdout.strip()
-        self.assertFalse(os.path.exists(os.path.join(gedeeld, "hooks", "pre-push")),
+        shared = _git(["rev-parse", "--path-format=absolute", "--git-common-dir"],
+                      work).stdout.strip()
+        self.assertFalse(os.path.exists(os.path.join(shared, "hooks", "pre-push")),
                          "de hook mag niet in de gedeelde hooks-map staan")
         # En de worktree gebruikt wél zijn eigen map.
-        eigen = _git(["config", "core.hooksPath"], werk).stdout.strip()
-        self.assertTrue(eigen.endswith(".session-hooks"), eigen)
-        self.assertTrue(os.access(os.path.join(eigen, "pre-push"), os.X_OK))
+        own = _git(["config", "core.hooksPath"], work).stdout.strip()
+        self.assertTrue(own.endswith(".session-hooks"), own)
+        self.assertTrue(os.access(os.path.join(own, "pre-push"), os.X_OK))
 
     def test_hook_dir_is_not_committed(self):
-        boven, clone = self._repo()
-        werk, _ = work_tree.create(clone, os.path.join(boven, "sessies"),
+        top, clone = self._repo()
+        work, _ = work_tree.create(clone, os.path.join(top, "sessions"),
                                    "build", "mark", now=42)
-        uit = _git(["status", "--porcelain"], werk).stdout
-        self.assertNotIn(".session-hooks", uit)
+        out = _git(["status", "--porcelain"], work).stdout
+        self.assertNotIn(".session-hooks", out)
 
     def test_missing_repo_raises_instead_of_half_a_worktree(self):
         with self.assertRaises(Exception):

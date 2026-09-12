@@ -13,28 +13,28 @@ leesplek kan achterblijven.
 """
 import os
 
-NIEUW = "RATATOSKR_"
-OUD = "BOOMHUIS_"
+NEW = "RATATOSKR_"
+OLD = "BOOMHUIS_"
 
 
-def lees(naam, default=""):
-    """`lees("URL")` → RATATOSKR_URL, anders BOOMHUIS_URL, anders `default`.
+def read(name, default=""):
+    """`read("URL")` → RATATOSKR_URL, anders BOOMHUIS_URL, anders `default`.
 
     Een lege string telt als afwezig: een instelling die per ongeluk leeg in
     `.env` staat mag de terugval niet blokkeren."""
-    for prefix in (NIEUW, OUD):
-        waarde = os.environ.get(prefix + naam, "")
-        if waarde != "":
-            return waarde
+    for prefix in (NEW, OLD):
+        value = os.environ.get(prefix + name, "")
+        if value != "":
+            return value
     return default
 
 
-def zet(naam, waarde):
+def set_value(name, value):
     """Alleen voor tests en `adminctl`, die een pad uit een env-bestand in de
     omgeving zet voordat de opslaglaag geladen wordt. Zet de NIEUWE naam."""
-    os.environ[NIEUW + naam] = waarde
+    os.environ[NEW + name] = value
 
 
-def gezet(naam):
+def is_set(name):
     """Staat deze instelling ergens (oud of nieuw)?"""
-    return lees(naam) != ""
+    return read(name) != ""

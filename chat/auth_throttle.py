@@ -9,25 +9,25 @@ en één adres blokkeren niet door namen te raden.
 Deelt de tabel `pogingen` met auth_store; een los bestand omdat het een eigen
 zorg is (en omdat auth_store anders over de 200 regels uit CLAUDE.md gaat).
 """
-from auth_store import _verbind, nu
+from auth_store import _connect, now
 
-def poging_geblokkeerd(sleutel):
+def blocked_for(key):
     """Seconden die deze sleutel nog moet wachten (0 = mag)."""
-    with _verbind() as con:
-        rij = con.execute("SELECT * FROM pogingen WHERE sleutel = ?", (sleutel,)).fetchone()
-        return max(0, rij["tot"] - nu()) if rij else 0
+    with _connect() as con:
+        row = con.execute("SELECT * FROM pogingen WHERE sleutel = ?", (key,)).fetchone()
+        return max(0, row["tot"] - now()) if row else 0
 
 
-def noteer_mislukking(sleutel, wacht_vanaf=3, max_wacht=300):
+def note_failure(key, wait_from=3, max_wait=300):
     """Tel de mislukking en zet de wachttijd. Oplopend, met een plafond."""
-    with _verbind() as con:
-        rij = con.execute("SELECT * FROM pogingen WHERE sleutel = ?", (sleutel,)).fetchone()
-        aantal = (rij["aantal"] if rij else 0) + 1
-        wacht = 0 if aantal < wacht_vanaf else min(2 ** (aantal - wacht_vanaf), max_wacht)
+    with _connect() as con:
+        row = con.execute("SELECT * FROM pogingen WHERE sleutel = ?", (key,)).fetchone()
+        count = (row["aantal"] if row else 0) + 1
+        wait = 0 if count < wait_from else min(2 ** (count - wait_from), max_wait)
         con.execute("INSERT OR REPLACE INTO pogingen (sleutel, aantal, tot) VALUES (?,?,?)",
-                    (sleutel, aantal, nu() + wacht))
+                    (key, count, now() + wait))
 
 
-def wis_pogingen(sleutel):
-    with _verbind() as con:
-        con.execute("DELETE FROM pogingen WHERE sleutel = ?", (sleutel,))
+def clear_attempts(key):
+    with _connect() as con:
+        con.execute("DELETE FROM pogingen WHERE sleutel = ?", (key,))

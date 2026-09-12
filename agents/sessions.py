@@ -1,13 +1,13 @@
 # SPDX-License-Identifier: EUPL-1.2
-"""Werksessies: een langere, LEZENDE claude-run die vanuit een kanaal start.
+"""Werksessies: een langere claude-run die vanuit een kanaal start.
 
 Een chat-beurt is één `claude -p` van 150s met Read/Grep/Glob. Dat is te klein
 voor werk ("lees deze twaalf clips en zeg wat eruit moet"). Een werksessie is
 hetzelfde subprocess, maar met minuten, een eigen werkmap en een eigen toolset —
-en alles daarvan staat in `sessies.yml`, niet in de prompt.
+en alles daarvan staat in `sessions.yml`, niet in de prompt.
 
 Niet-blokkerend: de sessie draait losgekoppeld met stdout naar een runbestand;
-`oogst()` leest per listener-tick het nieuwe stuk. Zo bevriest een sessie van een
+`tick()` leest per listener-tick het nieuwe stuk. Zo bevriest een sessie van een
 kwartier de chat niet.
 """
 import json
@@ -24,27 +24,27 @@ import work_tree
 
 CLAUDE = os.environ.get("CLAUDE_BIN", "claude")
 RUNS = os.environ.get("SESSIE_RUNS", "/tmp/boomhuis-sessies")
-# Marker lezen/knippen en de machtiging staan in session_gate.py (puur, Engels);
+# Marker lezen/knippen en de machtiging staan in session_gate.py (puur);
 # hier blijft alleen wat processen en bestanden aanraakt.
-lees_marker = session_gate.read_marker
-knip_marker = session_gate.strip_marker
+read_marker = session_gate.read_marker
+strip_marker = session_gate.strip_marker
 
 # Nooit aan een LEZENDE sessie, ook niet als een type ze per ongeluk in `tools`
 # zet. Een schrijvende sessie (`writes: true`) heeft ze wél nodig — die werkt in
 # een eigen worktree met een pre-push-hook als hek, zie work_tree.py.
-VERBODEN = ["Write", "Edit", "NotebookEdit", "Bash", "Task", "KillShell"]
+FORBIDDEN = ["Write", "Edit", "NotebookEdit", "Bash", "Task", "KillShell"]
 # Ook een schrijvende sessie krijgt deze niet: Task spawnt agents buiten elk
 # zicht, KillShell raakt processen die niet van hem zijn.
-VERBODEN_ALTIJD = ["Task", "KillShell"]
+ALWAYS_FORBIDDEN = ["Task", "KillShell"]
 # Waar de worktrees van schrijvende sessies komen — buiten elke draaiende checkout.
-WERKMAPPEN = os.environ.get("SESSIE_WERKMAPPEN", "/home/agent/sessie-werk")
+WORKTREE_BASE = os.environ.get("SESSIE_WERKMAPPEN", "/home/agent/sessie-werk")
 PROGRESS_MAX, PROGRESS_GAP = 6, 25
 
 
-def laad(here):
-    """sessies.yml lezen. Ontbreekt het bestand → geen types (fail-closed)."""
+def load(here):
+    """sessions.yml lezen. Ontbreekt het bestand → geen types (fail-closed)."""
     try:
-        return bootstrap.load_yaml(os.path.join(here, "sessies.yml")) or {}
+        return bootstrap.load_yaml(os.path.join(here, "sessions.yml")) or {}
     except OSError:
         return {"types": {}}
 
@@ -55,58 +55,60 @@ class Register:
     def __init__(self, cfg, runs=RUNS):
         self.cfg = cfg
         self.runs = runs
-        self.lopend = []
+        self.running = []
         os.makedirs(runs, exist_ok=True)
 
-    def start(self, typ, opdracht, starter, requester, cname, cid, bericht_id=""):
-        """Start losgekoppeld. Return (sessie, "") of (None, reden).
+    def start(self, type_name, task, starter, requester, cname, cid, message_id=""):
+        """Start losgekoppeld. Return (sessie, "") of (None, reason).
 
         `starter` schreef de marker, `requester` is degene namens wie het gaat —
         bij een mens die zelf typt zijn ze gelijk."""
-        ok, reden = session_gate.may_start(self.cfg, typ, starter, requester, self.lopend)
+        ok, reason = session_gate.may_start(self.cfg, type_name, starter, requester,
+                                            self.running)
         if not ok:
-            return None, reden
-        t = self.cfg["types"][typ]
-        schrijft = bool(t.get("writes"))
-        werkmap = t.get("werkmap") or ""
+            return None, reason
+        t = self.cfg["types"][type_name]
+        writes = bool(t.get("writes"))
+        workdir = t.get("workdir") or ""
         branch = ""
-        if schrijft:
+        if writes:
             # Verse worktree op een eigen branch, mét pre-push-hook. Faalt dat,
             # dan start er niets: liever geen sessie dan een sessie die in een
             # draaiende checkout schrijft.
             try:
-                werkmap, branch = work_tree.create(werkmap, WERKMAPPEN, typ, requester)
+                workdir, branch = work_tree.create(workdir, WORKTREE_BASE,
+                                                  type_name, requester)
             except Exception as e:
-                return None, f"kon geen werkboom maken voor '{typ}': {str(e)[:140]}"
-        elif not os.path.isdir(werkmap):
-            return None, f"werkmap van '{typ}' bestaat niet: {werkmap}"
-        verboden = VERBODEN_ALTIJD if schrijft else VERBODEN
-        tools = [x for x in (t.get("tools") or []) if x not in verboden]
+                return None, f"kon geen werkboom maken voor '{type_name}': {str(e)[:140]}"
+        elif not os.path.isdir(workdir):
+            return None, f"werkmap van '{type_name}' bestaat niet: {workdir}"
+        forbidden = ALWAYS_FORBIDDEN if writes else FORBIDDEN
+        tools = [x for x in (t.get("tools") or []) if x not in forbidden]
         cmd = [CLAUDE, "-p", "--output-format", "stream-json", "--verbose",
                "--permission-mode", "dontAsk",
-               "--append-system-prompt", t.get("systeem") or "",
-               "--allowedTools", ",".join(providers.scoped(tools, t.get("leest_ook"))),
-               "--disallowedTools", ",".join(verboden)]
+               "--append-system-prompt", t.get("system") or "",
+               "--allowedTools", ",".join(providers.scoped(tools, t.get("also_reads"))),
+               "--disallowedTools", ",".join(forbidden)]
         if t.get("model"):
             cmd += ["--model", t["model"]]
         # Bestandsnaam op de REQUESTER: anders heet elke door odin gestarte sessie
         # odin, en is achteraf niet te zien voor wie hij liep.
-        pad = os.path.join(self.runs, f"{typ}-{requester}-{int(time.time())}.jsonl")
-        prompt = (t.get("prompt") or "{opdracht}").replace("{opdracht}", opdracht)
+        path = os.path.join(self.runs, f"{type_name}-{requester}-{int(time.time())}.jsonl")
+        prompt = (t.get("prompt") or "{task}").replace("{task}", task)
         try:
-            uit = open(pad, "w")
+            out = open(path, "w")
             # Eerste regel: wie, namens wie, waar. Vóór het proces start, zodat de
-            # herkomst er ook staat als de sessie meteen sneuvelt. De oogst slaat
+            # herkomst er ook staat als de sessie meteen sneuvelt. De tick slaat
             # onbekende types over, dus dit stoort niets.
-            json.dump({"type": "boomhuis_sessie", "sessietype": typ, "starter": starter,
-                       "requester": requester, "kanaal": cname, "bericht": bericht_id,
-                       "schrijft": schrijft, "branch": branch, "werkmap": werkmap,
-                       "gestart": int(time.time())}, uit)
-            uit.write("\n")
-            uit.flush()
-            proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=uit,
+            json.dump({"type": "boomhuis_session", "session_type": type_name,
+                       "starter": starter, "requester": requester, "channel": cname,
+                       "message": message_id, "writes": writes, "branch": branch,
+                       "workdir": workdir, "started": int(time.time())}, out)
+            out.write("\n")
+            out.flush()
+            proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=out,
                                     stderr=subprocess.DEVNULL, text=True,
-                                    cwd=werkmap, env=providers.agent_env(),
+                                    cwd=workdir, env=providers.agent_env(),
                                     start_new_session=True)
         except OSError as e:
             return None, f"kan de sessie niet starten: {str(e)[:100]}"
@@ -115,20 +117,20 @@ class Register:
             proc.stdin.close()
         except BrokenPipeError:
             pass
-        s = {"typ": typ, "starter": starter, "requester": requester,
+        s = {"type": type_name, "starter": starter, "requester": requester,
              "cid": cid, "cname": cname, "proc": proc,
-             "pad": pad, "uit": uit, "offset": 0, "t0": time.time(),
-             "identiteit": t.get("identiteit") or starter, "n": 0, "tp": 0.0,
-             "max_s": int(t.get("max_seconden") or 900), "res": None,
-             "schrijft": schrijft, "branch": branch, "werkmap": werkmap}
-        self.lopend.append(s)
+             "path": path, "out": out, "offset": 0, "t0": time.time(),
+             "identity": t.get("identity") or starter, "n": 0, "tp": 0.0,
+             "max_s": int(t.get("max_seconds") or 900), "res": None,
+             "writes": writes, "branch": branch, "workdir": workdir}
+        self.running.append(s)
         return s, ""
 
-    def _nieuwe_events(self, s):
+    def _new_events(self, s):
         """Wat er sinds de vorige tick in het runbestand bij kwam."""
         evs = []
         try:
-            with open(s["pad"]) as f:
+            with open(s["path"]) as f:
                 f.seek(s["offset"])
                 for line in f:
                     if not line.endswith("\n"):   # halve regel: volgende tick opnieuw
@@ -145,37 +147,37 @@ class Register:
     def tick(self, post):
         """Voortgang en afronding. `post(sessie, tekst)` doet het posten; deze
         module kent geen sleutels. Return het aantal afgeronde sessies."""
-        klaar = 0
-        for s in list(self.lopend):
-            for ev in self._nieuwe_events(s):
+        done = 0
+        for s in list(self.running):
+            for ev in self._new_events(s):
                 if ev.get("type") == "result":
                     s["res"] = ev
                 elif ev.get("type") == "assistant":
-                    self._voortgang(s, ev, post)
-            op = time.time() - s["t0"]
-            if s["proc"].poll() is None and op > s["max_s"]:
+                    self._progress(s, ev, post)
+            elapsed = time.time() - s["t0"]
+            if s["proc"].poll() is None and elapsed > s["max_s"]:
                 self._stop(s)
-                post(s, f"⏹️ sessie `{s['typ']}` afgekapt na {int(op // 60)} min "
+                post(s, f"⏹️ sessie `{s['type']}` afgekapt na {int(elapsed // 60)} min "
                         f"(budget {s['max_s']}s). Wat tot dan gedaan is, staat hierboven.")
-                self._sluit(s)
-                klaar += 1
+                self._close(s)
+                done += 1
                 continue
             if s["proc"].poll() is not None:
-                post(s, session_report.result_text(s, op))
-                self._sluit(s)
-                klaar += 1
-        return klaar
+                post(s, session_report.result_text(s, elapsed))
+                self._close(s)
+                done += 1
+        return done
 
-    def _voortgang(self, s, ev, post):
+    def _progress(self, s, ev, post):
         for c in (ev.get("message") or {}).get("content", []):
             if c.get("type") != "tool_use":
                 continue
-            nu = time.time()
-            if s["n"] >= PROGRESS_MAX or (s["n"] and nu - s["tp"] < PROGRESS_GAP):
+            now = time.time()
+            if s["n"] >= PROGRESS_MAX or (s["n"] and now - s["tp"] < PROGRESS_GAP):
                 continue
-            s["n"], s["tp"] = s["n"] + 1, nu
-            doel = providers._target(c.get("input") or {})
-            post(s, f"⋯ sessie {s['typ']}: {c.get('name')} {doel}".strip())
+            s["n"], s["tp"] = s["n"] + 1, now
+            target = providers._target(c.get("input") or {})
+            post(s, f"⋯ sessie {s['type']}: {c.get('name')} {target}".strip())
 
     def _stop(self, s):
         try:
@@ -183,10 +185,10 @@ class Register:
         except (ProcessLookupError, PermissionError, OSError):
             pass
 
-    def _sluit(self, s):
+    def _close(self, s):
         try:
-            s["uit"].close()
+            s["out"].close()
         except OSError:
             pass
-        if s in self.lopend:
-            self.lopend.remove(s)
+        if s in self.running:
+            self.running.remove(s)

@@ -21,7 +21,7 @@ class PollChannels(unittest.TestCase):
     def setUp(self):
         topology._channels.update(t=0.0, data=None)  # cache leeg per test
 
-    def test_hide_fallback_wint_en_nieuw_kanaal(self):
+    def test_hide_fallback_wins_and_new_channel(self):
         rows = ('{"channels":[{"name":"general","id":"WRONG"},'
                 '{"name":"welcome-everyone","id":"junk"},'
                 '{"name":"nieuw","id":"n1"},{"name":"red-team","id":"rt"}]}')
@@ -32,7 +32,7 @@ class PollChannels(unittest.TestCase):
         self.assertEqual(d["nieuw"], "n1")             # echt-nieuw kanaal erbij
         self.assertEqual(d["escalatie"], "e")
 
-    def test_mislukte_fetch_behoudt_goede_cache(self):
+    def test_failed_fetch_keeps_a_good_cache(self):
         fb = {"general": "g"}
         rows = '{"channels":[{"name":"nieuw","id":"n1"}]}'
         topology.poll_channels(_run({"list": rows}), fb, now=1000)
@@ -40,12 +40,12 @@ class PollChannels(unittest.TestCase):
         d = topology.poll_channels(_run({"list": ""}), fb, now=2000)  # lege fetch
         self.assertEqual(d.get("nieuw"), "n1")  # niet teruggevallen op kale fallback
 
-    def test_geen_cache_en_fout_valt_op_fallback(self):
+    def test_no_cache_and_an_error_falls_back(self):
         fb = {"general": "g"}
         d = topology.poll_channels(_run({"list": ""}), fb, now=1000)
         self.assertEqual(d, fb)
 
-    def test_dedup_op_cid_bij_twee_namen(self):
+    def test_dedup_on_cid_for_two_names(self):
         # zelfde cid onder een relay-naam en een channels.yml-naam → één entry,
         # de channels.yml-naam (canoniek) wint, geen dubbele poll.
         rows = '{"channels":[{"name":"algemeen","id":"X"},{"name":"nieuw","id":"n1"}]}'
@@ -56,7 +56,7 @@ class PollChannels(unittest.TestCase):
         self.assertNotIn("algemeen", d)                # relay-alias voor dezelfde cid weg
         self.assertEqual(d["nieuw"], "n1")
 
-    def test_lege_relay_lijst_behoudt_ontdekte_kanalen(self):
+    def test_empty_relay_list_keeps_discovered_channels(self):
         # geslaagd-maar-leeg ({"channels":[]}) is nooit legitiem → goede cache houden,
         # niet terugvallen op fallback-only (verlies van een ontdekt kanaal).
         fb = {"general": "g"}
@@ -70,20 +70,20 @@ class Members(unittest.TestCase):
     def setUp(self):
         topology._members.clear()
 
-    def test_leeg_kanaal_wordt_gecachet(self):
+    def test_empty_channel_is_cached(self):
         run = _run({"members": '{"members":[{"pubkey":"a"}]}'})
         self.assertEqual(topology.members(run, "c", now=1000), {"a"})
         topology._members["c"]["t"] = 0.0  # verlopen
         run2 = _run({"members": '{"members":[]}'})  # legit leeg (laatste lid weg)
         self.assertEqual(topology.members(run2, "c", now=2000), set())
 
-    def test_mislukte_fetch_behoudt_leden(self):
+    def test_failed_fetch_keeps_members(self):
         run = _run({"members": '{"members":[{"pubkey":"a"}]}'})
         topology.members(run, "c", now=1000)
         topology._members["c"]["t"] = 0.0
         self.assertEqual(topology.members(_run({"members": ""}), "c", now=2000), {"a"})
 
-    def test_eerste_mislukte_fetch_cachet_niet_negatief(self):
+    def test_first_failed_fetch_does_not_cache_negatively(self):
         # geen eerdere entry + mislukte fetch → set() teruggeven, maar NIET cachen,
         # zodat een lid dat direct daarna verschijnt niet 60s onzichtbaar blijft.
         self.assertEqual(topology.members(_run({"members": ""}), "x", now=1000), set())
@@ -93,7 +93,7 @@ class Members(unittest.TestCase):
 
 
 class Rows(unittest.TestCase):
-    def test_non_dict_geeft_none_geen_crash(self):
+    def test_non_dict_gives_none_not_a_crash(self):
         # rc=0 met 'null' of een bare string mag geen AttributeError geven
         self.assertIsNone(topology._rows("null", "channels"))
         self.assertIsNone(topology._rows('"hoi"', "channels"))
@@ -112,36 +112,36 @@ class IsScoped(unittest.TestCase):
         self.assertTrue(topology.is_scoped(["general"], "red-team", "p", lambda: {"p"}))
         self.assertFalse(topology.is_scoped(["general"], "red-team", "p", lambda: {"q"}))
 
-    def test_members_lui_bij_def_scope(self):
+    def test_members_lazy_on_def_scope(self):
         # def-scope beantwoordt de vraag → member_pubs_fn mag NIET worden aangeroepen
         def boom():
             raise AssertionError("members onnodig opgehaald")
         self.assertTrue(topology.is_scoped(["general"], "general", "p", boom))
 
 
-class LidmaatschapTest(unittest.TestCase):
+class MembershipTest(unittest.TestCase):
     """Elke agent post óók in #statistics en #escalatie, ongeacht zijn eigen scope.
     Zonder lidmaatschap faalt die send stil — dat gebeurde: odin zat niet in
     #statistics en vijf agents niet in #escalatie."""
 
     CH = {"general": "c-gen", "statistics": "c-stat", "escalatie": "c-esc", "bouw": "c-bouw"}
 
-    def test_meldt_ontbrekend_rapportagekanaal(self):
+    def test_reports_a_missing_report_channel(self):
         agents = {"odin": {"channels": ["general"]}}
-        leden = {"c-gen": {"pk-odin"}, "c-stat": set(), "c-esc": {"pk-odin"}}
-        mis = topology.missing_memberships(agents, self.CH, {"odin": "pk-odin"}, leden.get)
-        self.assertEqual(mis, [("odin", "statistics")])
+        members = {"c-gen": {"pk-odin"}, "c-stat": set(), "c-esc": {"pk-odin"}}
+        missing = topology.missing_memberships(agents, self.CH, {"odin": "pk-odin"}, members.get)
+        self.assertEqual(missing, [("odin", "statistics")])
 
-    def test_meldt_ontbrekend_eigen_kanaal(self):
+    def test_reports_a_missing_own_channel(self):
         agents = {"bouwer": {"channels": ["bouw"]}}
-        leden = {"c-bouw": set(), "c-stat": {"pk-b"}, "c-esc": {"pk-b"}}
-        mis = topology.missing_memberships(agents, self.CH, {"bouwer": "pk-b"}, leden.get)
-        self.assertEqual(mis, [("bouwer", "bouw")])
+        members = {"c-bouw": set(), "c-stat": {"pk-b"}, "c-esc": {"pk-b"}}
+        missing = topology.missing_memberships(agents, self.CH, {"bouwer": "pk-b"}, members.get)
+        self.assertEqual(missing, [("bouwer", "bouw")])
 
-    def test_niets_te_melden_als_alles_klopt(self):
+    def test_nothing_to_report_when_all_is_well(self):
         agents = {"odin": {"channels": ["general"]}}
-        leden = {c: {"pk-odin"} for c in self.CH.values()}
-        self.assertEqual(topology.missing_memberships(agents, self.CH, {"odin": "pk-odin"}, leden.get), [])
+        members = {c: {"pk-odin"} for c in self.CH.values()}
+        self.assertEqual(topology.missing_memberships(agents, self.CH, {"odin": "pk-odin"}, members.get), [])
 
 
 if __name__ == "__main__":

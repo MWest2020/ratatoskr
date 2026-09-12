@@ -37,8 +37,8 @@ def age_days(since, now):
 def is_stale(card, columns):
     """Staat deze kaart langer in zijn kolom dan de drempel? `stale_days: 0`
     betekent 'nooit muf' — dat is de uitgangskolom, daar mag alles liggen."""
-    drempel = next((c.get("stale_days", 0) for c in columns if c["key"] == card["column"]), 0)
-    return bool(drempel) and card["age_days"] > drempel
+    threshold = next((c.get("stale_days", 0) for c in columns if c["key"] == card["column"]), 0)
+    return bool(threshold) and card["age_days"] > threshold
 
 
 def summarise(cards, columns):

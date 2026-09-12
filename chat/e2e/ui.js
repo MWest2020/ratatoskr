@@ -22,8 +22,8 @@ const t=(naam,cond,extra='')=>{ if(cond){ok++;console.log(`  ok   ${naam}`);} el
     await b.close(); process.exit(2);
   }
   await p.goto(URL+'/login',{waitUntil:'load',timeout:45000});
-  await p.fill('#naam',NAAM); await p.fill('#wachtwoord',WW);
-  await p.click('#knop');
+  await p.fill('#name',NAAM); await p.fill('#password',WW);
+  await p.click('#submit');
   await p.waitForTimeout(7000);
 
   console.log('— shell');
@@ -53,12 +53,12 @@ const t=(naam,cond,extra='')=>{ if(cond){ok++;console.log(`  ok   ${naam}`);} el
   await p.evaluate(()=>[...document.querySelectorAll('.chan')].find(x=>x.querySelector('.cn')?.textContent==='general').click());
   await p.waitForTimeout(4000);
   const msgs=await p.evaluate(()=>({n:document.querySelectorAll('#msgs > *').length,
-     namen:[...document.querySelectorAll('#msgs .meta > span')].slice(-6).map(e=>e.textContent.trim()),
+     names:[...document.querySelectorAll('#msgs .meta > span')].slice(-6).map(e=>e.textContent.trim()),
      // markup in een naam of inhoud mag NOOIT een element worden
-     geinjecteerd: document.querySelectorAll('#msgs img,#msgs script').length}));
+     injected: document.querySelectorAll('#msgs img,#msgs script').length}));
   t('berichten gerenderd', msgs.n>3, JSON.stringify(msgs).slice(0,120));
-  t('afzendernamen zichtbaar', msgs.namen.length>0, JSON.stringify(msgs.namen));
-  t('geen markup uit berichten gerenderd', msgs.geinjecteerd===0);
+  t('afzendernamen zichtbaar', msgs.names.length>0, JSON.stringify(msgs.names));
+  t('geen markup uit berichten gerenderd', msgs.injected===0);
 
   console.log('— agents-lade');
   await p.click('#agentsBtn'); await p.waitForTimeout(2500);
@@ -82,9 +82,9 @@ const t=(naam,cond,extra='')=>{ if(cond){ok++;console.log(`  ok   ${naam}`);} el
   // dat de app wéét wie je bent en dat de uitweg zichtbaar is.
   await p.click('#switch'); await p.waitForTimeout(800);
   t('de lade noemt wie je bent',
-    /ingelogd als/i.test(await p.locator('#wieBenJe').textContent().catch(()=>'')),
-    await p.locator('#wieBenJe').textContent().catch(()=>'(leeg)'));
-  t('uitlogknop staat er', (await p.locator('#uitlogBtn').count())>0);
+    /ingelogd als/i.test(await p.locator('#whoAmI').textContent().catch(()=>'')),
+    await p.locator('#whoAmI').textContent().catch(()=>'(leeg)'));
+  t('uitlogknop staat er', (await p.locator('#logoutBtn').count())>0);
 
   console.log(`\ngeslaagd=${ok} mislukt=${fail}`);
   if(errs.length) console.log('JS-fouten:', errs.slice(0,4));

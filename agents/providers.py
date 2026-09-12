@@ -29,19 +29,19 @@ PATH_TOOLS = {"Read", "Grep", "Glob", "Edit", "Write", "NotebookEdit"}
 # Alleen deze drie mogen een tweede pad krijgen: lezen buiten de werkboom is
 # soms nodig (een skill-forge-oordeel over een clip die in de zettelkast ligt),
 # schrijven buiten de werkboom nooit.
-LEES_TOOLS = ("Read", "Grep", "Glob")
+READ_TOOLS = ("Read", "Grep", "Glob")
 
 
 def scoped(tools, extra=None):
     """Pad-tools krijgen een werkboom-scope; de rest blijft zoals hij is.
 
     `extra` = expliciet gedeclareerde EXTRA leespaden (per sessietype in
-    sessies.yml). Elk pad wordt een eigen, even strakke scope — niet een
+    sessions.yml). Elk pad wordt een eigen, even strakke scope — niet een
     verruiming van de werkboom-scope, maar een tweede vergunning ernaast."""
-    uit = [f"{t}(./**)" if t in PATH_TOOLS else t for t in (tools or [])]
-    for pad in (extra or []):
-        uit += [f"{t}({pad.rstrip('/')}/**)" for t in LEES_TOOLS if t in (tools or [])]
-    return uit
+    out = [f"{t}(./**)" if t in PATH_TOOLS else t for t in (tools or [])]
+    for path in (extra or []):
+        out += [f"{t}({path.rstrip('/')}/**)" for t in READ_TOOLS if t in (tools or [])]
+    return out
 
 
 def _target(inp):
@@ -59,15 +59,15 @@ def agent_env():
     return {k: v for k, v in os.environ.items() if k in ENV_KEEP}
 
 
-def main_model(usage, gevraagd=None):
+def main_model(usage, requested=None):
     """Het model dat het WERK deed, uit `modelUsage`.
 
     Eerder werd hier de eerste sleutel van die map genomen. Een run kan meerdere
     modellen aanraken, en dan noemde de statistiekregel er willekeurig één — precies
     het getal waarop je zou aflezen of het gedeclareerde model afgedwongen wordt.
-    Nu: het model met de meeste tokens. Geen usage → wat er gevraagd was."""
+    Nu: het model met de meeste tokens. Geen usage → wat er requested was."""
     if not isinstance(usage, dict) or not usage:
-        return gevraagd or ""
+        return requested or ""
 
     def tokens(v):
         if not isinstance(v, dict):
@@ -78,12 +78,12 @@ def main_model(usage, gevraagd=None):
     return max(usage, key=lambda k: tokens(usage[k]))
 
 
-def model_klopt(gevraagd, gedraaid):
-    """Is het gedraaide model de familie die gevraagd werd? De def noemt de
+def model_matches(requested, actual):
+    """Is het gedraaide model de familie die requested werd? De def noemt de
     intentie (haiku/sonnet/opus), de run een exacte id (claude-sonnet-5)."""
-    if not gevraagd:
+    if not requested:
         return True
-    return gevraagd.lower() in (gedraaid or "").lower()
+    return requested.lower() in (actual or "").lower()
 
 
 def run(provider, system, prompt, model=None, allow=None, deny=None, progress=None):
@@ -150,12 +150,12 @@ def run(provider, system, prompt, model=None, allow=None, deny=None, progress=No
     proc.wait(timeout=10)
     if not d:
         err = (proc.stderr.read() or "").strip()[:200]
-        return {"answer": "(geen antwoord)", "model": model or "", "model_gevraagd": model or "", "cost": 0.0,
+        return {"answer": "(geen antwoord)", "model": model or "", "model_requested": model or "", "cost": 0.0,
                 "turns": 0, "denials": [], "error": err or "geen resultaat-event"}
 
     return {"answer": (d.get("result") or "").strip() or "(geen antwoord)",
             "model": main_model(d.get("modelUsage"), model),
-            "model_gevraagd": model or "",
+            "model_requested": model or "",
             "cost": float(d.get("total_cost_usd") or 0.0),
             "turns": int(d.get("num_turns") or 0),
             "denials": d.get("permission_denials") or [],

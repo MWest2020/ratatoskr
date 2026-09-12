@@ -19,11 +19,11 @@ in de **handbook** — single source of truth: `MWest2020/handbook` →
 - `test_topology.py` — offline unittests (`cd agents && python3 -m unittest test_topology`).
 - `relay.py` — buzz-I/O (lezen/posten/topologie-calls); een storing doodt de
   daemon nooit maar wordt ook nooit als "leeg" verkocht.
-- `sessies.py` + `sessies.yml` — **werksessies**: een langere, LEZENDE claude-run
+- `sessions.py` + `sessions.yml` — **werksessies**: een langere, LEZENDE claude-run
   die vanuit een kanaal start met `!sessie <type> <opdracht>`. Het type (werkmap,
-  tools, model, tijdbudget, wie mag starten) staat in `sessies.yml`, niet in de
+  tools, model, tijdbudget, wie mag starten) staat in `sessions.yml`, niet in de
   prompt. Zie [docs/how-to/werksessies.md](../docs/how-to/werksessies.md).
-- `test_sessies.py` — offline unittests voor marker, machtiging en grenzen.
+- `test_sessions.py` — offline unittests voor marker, machtiging en grenzen.
 - `run.sh` — exporteert NSEC_<HANDLE> uit SOPS en start de listener.
 
 De backend is bewust opgesplitst zodat elk bestand ≤200 regels blijft.

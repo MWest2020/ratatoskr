@@ -73,7 +73,7 @@ def handle(msgs, m):
     mm = CMD.search(m.get("content", ""))
     if not mm:
         return
-    rol, change, repo = mm.group(1), mm.group(2), mm.group(3)
+    role, change, repo = mm.group(1), mm.group(2), mm.group(3)
     plan = last_bouwer_plan(msgs, m.get("created_at", 0))
     if not plan:
         post(BOUW, f"⚠️ geen bouwer-plan gevonden vóór je !dispatch — vraag @bouwer eerst een change-voorstel.")
@@ -83,9 +83,9 @@ def handle(msgs, m):
     # gesuperviseerd (BRIDGE_LIVE) of Mark draait het zelf.
     task_ref = f".habitat/task-{change}.md"
     cmd = (f"HABITAT_TASK_REF={task_ref} {DISPATCH_SH or '<dispatch.sh>'} "
-           f"{rol} {change} {repo}")
+           f"{role} {change} {repo}")
     if LIVE and DISPATCH_SH:
-        post(BOUW, f"🚀 dispatch (live) — rol={rol} change={change} repo={repo}\n"
+        post(BOUW, f"🚀 dispatch (live) — rol={role} change={change} repo={repo}\n"
                    f"taak-ref: {task_ref}")
         # (De echte git-write van het plan naar de doelrepo + dispatch.sh-aanroep
         #  horen hier; bewust gated tot de eerste gesuperviseerde run.)

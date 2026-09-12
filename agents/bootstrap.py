@@ -11,7 +11,7 @@ import urllib.request
 import yaml
 
 
-def alleen_ik(pad="/tmp/boomhuis-listener.lock"):
+def only_me(path="/tmp/boomhuis-listener.lock"):
     """Eén listener per host, of niets. Geeft het open lock-bestand terug (dat moet
     je vasthouden) of None als er al een draait.
 
@@ -21,7 +21,7 @@ def alleen_ik(pad="/tmp/boomhuis-listener.lock"):
     twee processen doodde; dit maakt dat onmogelijk in plaats van onwaarschijnlijk.
     Het slot valt vanzelf weg als het proces stopt (flock, geen pidfile die na
     een kill blijft liggen)."""
-    f = open(pad, "w")
+    f = open(path, "w")
     try:
         fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except OSError:

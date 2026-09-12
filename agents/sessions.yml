@@ -13,20 +13,20 @@
 #           geen Write/Edit/Bash, geen push. Iets veranderen loopt via een
 #           OpenSpec-change en een habitat-run — niet via een sessie.
 
-max_gelijktijdig: 2
+max_concurrent: 2
 
 types:
   zettelkast:
-    werkmap: /home/agent/zettelkast
+    workdir: /home/agent/zettelkast
     model: sonnet
-    max_seconden: 900
+    max_seconds: 900
     starters: [mark, orchestrator, odin]
-    identiteit: odin          # onder wiens naam voortgang en resultaat gepost worden
-    beschrijving: >-
+    identity: odin          # onder wiens naam voortgang en resultaat gepost worden
+    description: >-
       leest Marks zettelkast-vault (sources/, wiki/, journal/) en beoordeelt wat er
       met gedeelde clips moet gebeuren; mag een gedeelde link ophalen
     tools: [Read, Grep, Glob, WebFetch]
-    systeem: |
+    system: |
       Je bent een werksessie van Ratatoskr, gestart vanuit een chatkanaal. Je
       LEEST en OORDEELT; je verandert niets — geen bestanden, geen commits. Je
       opbrengst is een kort, eerlijk bericht in dat kanaal.
@@ -50,23 +50,23 @@ types:
       Nederlands, kort, geen opsmuk. Noem per punt het bestand. Zie je iets dat
       gedaan moet worden, stel het voor — voer het niet uit.
     prompt: |
-      Opdracht uit de chat: {opdracht}
+      Opdracht uit de chat: {task}
 
       Beantwoord die op basis van de vault. Begin met "🔍 zettelkast-sessie".
 
   skill-forge:
-    werkmap: /home/agent/skill-forge
+    workdir: /home/agent/skill-forge
     model: sonnet
-    max_seconden: 900
+    max_seconds: 900
     starters: [mark, orchestrator, odin]
-    identiteit: odin
-    beschrijving: >-
+    identity: odin
+    description: >-
       beoordeelt materiaal (een gedeelde link, een clip, een repo) tegen de eigen
       skill-bibliotheek: zit hier een SKILL.md in, en vult die een gat?
     tools: [Read, Grep, Glob, WebFetch]
-    leest_ook:                # tweede LEES-vergunning, even strak begrensd
+    also_reads:                # tweede LEES-vergunning, even strak begrensd
       - /home/agent/zettelkast/sources
-    systeem: |
+    system: |
       Je bent een werksessie van Ratatoskr, gestart vanuit een chatkanaal. Je
       LEEST en OORDEELT; je importeert, schrijft of wijzigt niets. Je opbrengst is
       een kort, eerlijk bericht in dat kanaal.
@@ -88,17 +88,17 @@ types:
       importeren, laten liggen, of eerst uitzoeken. Nederlands, kort, geen opsmuk.
       Zie je iets dat gedaan moet worden, stel het voor — voer het niet uit.
     prompt: |
-      Opdracht uit de chat: {opdracht}
+      Opdracht uit de chat: {task}
 
       Beantwoord die op basis van de bibliotheek. Begin met "🛠️ skill-forge-sessie".
 
   ratatoskr:
-    werkmap: /home/agent/ratatoskr-listener
+    workdir: /home/agent/ratatoskr-listener
     model: sonnet
-    max_seconden: 900
+    max_seconds: 900
     starters: [mark, orchestrator, odin]
-    identiteit: odin
-    beschrijving: >-
+    identity: odin
+    description: >-
       leest de Ratatoskr-repo zoals die draait (code, specs, changes), mag externe
       documentatie erbij halen, en levert een onderbouwd voorstel; schrijft zelf
       geen change en geen code
@@ -108,7 +108,7 @@ types:
     # het begrenst: geen schrijfrechten, geen shell, geen sleutels, en de opbrengst
     # is een voorstel dat een mens leest.
     tools: [Read, Grep, Glob, WebFetch]
-    systeem: |
+    system: |
       Je bent een werksessie van Ratatoskr, gestart vanuit een chatkanaal. Je
       LEEST en OORDEELT; je schrijft geen bestanden en geen change. Je opbrengst is
       een bericht in dat kanaal dat een mens of @bouwer als startpunt kan gebruiken.
@@ -133,7 +133,7 @@ types:
       kort, geen opsmuk. Je stelt voor; een change schrijven en code wijzigen doet
       een mens of een habitat-run.
     prompt: |
-      Opdracht uit de chat: {opdracht}
+      Opdracht uit de chat: {task}
 
       Beantwoord die op basis van de repo. Begin met "🌳 ratatoskr-sessie".
 
@@ -142,18 +142,18 @@ types:
     # branch, met een pre-push-hook die alles behalve die branch weigert. Hij
     # eindigt in een pull request — mergen blijft mensenwerk.
     writes: true
-    # Bij een schrijvend type is `werkmap` de CLONE waaruit de worktree komt,
+    # Bij een schrijvend type is `workdir` de CLONE waaruit de worktree komt,
     # niet de map waarin gewerkt wordt.
-    werkmap: /home/agent/ratatoskr
+    workdir: /home/agent/ratatoskr
     model: sonnet
-    max_seconden: 3600        # bouwen met tests duurt langer dan lezen
+    max_seconds: 3600         # bouwen met tests duurt langer dan lezen
     starters: [mark, orchestrator]
-    identiteit: odin
-    beschrijving: >-
+    identity: odin
+    description: >-
       bouwt in een eigen worktree van deze repo en opent een pull request; mergen
       doet hij niet, en naar main pushen kan hij niet
     tools: [Read, Grep, Glob, Edit, Write, Bash]
-    systeem: |
+    system: |
       Je bent een schrijvende werksessie van Ratatoskr, gestart vanuit een
       chatkanaal. Je werkt in een VERSE git-worktree van origin/main, op een
       eigen branch. Je levert een pull request op; je merget niet, en pushen naar
@@ -174,6 +174,6 @@ types:
       wat je hebt geprobeerd en waar het strandde — een sessie die stil niets
       oplevert is niet te onderscheiden van een sessie die niets vond.
     prompt: |
-      Opdracht uit de chat: {opdracht}
+      Opdracht uit de chat: {task}
 
       Begin met "🔨 build-sessie".

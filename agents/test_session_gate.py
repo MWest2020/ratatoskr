@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: EUPL-1.2
 """Offline tests voor de POORT van een werksessie: marker, machtiging, clausule.
 
-De runner (register, oogst, grenzen, rapport) staat in test_sessies.py. Die
-splitsing volgt de code: session_gate.py is puur, sessies.py raakt processen aan.
+De runner (register, oogst, grenzen, rapport) staat in test_sessions.py. Die
+splitsing volgt de code: session_gate.py is puur, sessions.py raakt processen aan.
 
 Draaien: cd agents && python3 -m unittest test_session_gate
 """
@@ -12,117 +12,116 @@ import unittest
 
 import prompts
 import session_gate
-import sessies
 
 
 CFG = {
-    "max_gelijktijdig": 2,
+    "max_concurrent": 2,
     "types": {
-        "zettelkast": {"werkmap": "/tmp", "starters": ["odin", "mark"],
-                       "identiteit": "odin", "tools": ["Read"], "max_seconden": 60,
-                       "prompt": "Opdracht: {opdracht}"},
+        "zettelkast": {"workdir": "/tmp", "starters": ["odin", "mark"],
+                       "identity": "odin", "tools": ["Read"], "max_seconds": 60,
+                       "prompt": "Opdracht: {task}"},
     },
 }
 
 
 class Marker(unittest.TestCase):
-    def test_leest_type_en_opdracht(self):
+    def test_reads_type_and_task(self):
         self.assertEqual(session_gate.read_marker("hoi\n!sessie zettelkast kijk naar de clips"),
                          ("zettelkast", "kijk naar de clips"))
 
-    def test_zonder_opdracht(self):
+    def test_without_task(self):
         self.assertEqual(session_gate.read_marker("!sessie zettelkast"), ("zettelkast", ""))
 
-    def test_alleen_de_eerste_telt(self):
+    def test_only_the_first_counts(self):
         """Eén bericht zet hoogstens één sessie in gang."""
         t = "!sessie zettelkast een\n!sessie zettelkast twee"
         self.assertEqual(session_gate.read_marker(t)[1], "een")
 
-    def test_geen_marker(self):
+    def test_no_marker(self):
         self.assertIsNone(session_gate.read_marker("praat over !sessie in een zin"))
 
-    def test_knippen_haalt_de_regel_weg(self):
+    def test_stripping_removes_the_line(self):
         """Een geposte marker mag niet opnieuw gelezen kunnen worden."""
-        uit = session_gate.strip_marker("voor\n!sessie zettelkast doe iets\nna")
-        self.assertNotIn("!sessie", uit)
-        self.assertIn("voor", uit)
-        self.assertIn("na", uit)
+        out = session_gate.strip_marker("voor\n!sessie zettelkast doe iets\nna")
+        self.assertNotIn("!sessie", out)
+        self.assertIn("voor", out)
+        self.assertIn("na", out)
 
-    def test_knippen_laat_de_tweede_staan_maar_start_niets(self):
-        uit = session_gate.strip_marker("!sessie zettelkast een\n!sessie zettelkast twee")
-        self.assertEqual(session_gate.read_marker(uit), ("zettelkast", "twee"))
+    def test_stripping_leaves_the_second_but_starts_nothing(self):
+        out = session_gate.strip_marker("!sessie zettelkast een\n!sessie zettelkast twee")
+        self.assertEqual(session_gate.read_marker(out), ("zettelkast", "twee"))
 
-class Machtiging(unittest.TestCase):
-    def mag(self, typ="zettelkast", starter="odin", requester="mark", lopend=()):
-        return session_gate.may_start(CFG, typ, starter, requester, list(lopend))
+class Authorisation(unittest.TestCase):
+    def may(self, type_name="zettelkast", starter="odin", requester="mark", running=()):
+        return session_gate.may_start(CFG, type_name, starter, requester, list(running))
 
-    def test_onbekend_type_noemt_wat_er_wel_is(self):
-        ok, reden = self.mag(typ="nietbestaand")
+    def test_unknown_type_names_what_does_exist(self):
+        ok, reason = self.may(type_name="nietbestaand")
         self.assertFalse(ok)
-        self.assertIn("zettelkast", reden)
+        self.assertIn("zettelkast", reason)
 
-    def test_niet_gemachtigde_starter(self):
-        ok, reden = self.mag(starter="roodteam")
+    def test_unauthorised_starter(self):
+        ok, reason = self.may(starter="roodteam")
         self.assertFalse(ok)
-        self.assertIn("roodteam", reden)
+        self.assertIn("roodteam", reason)
 
-    def test_agent_namens_iemand_die_niet_mag(self):
+    def test_agent_on_behalf_of_someone_not_allowed(self):
         """Odin mag starten, maar niet namens wie zelf niet op starters staat."""
-        ok, reden = self.mag(requester="roodteam")
+        ok, reason = self.may(requester="roodteam")
         self.assertFalse(ok)
-        self.assertIn("namens", reden)
+        self.assertIn("namens", reason)
 
-    def test_onbekende_afzender_mag_niet(self):
+    def test_unknown_sender_is_refused(self):
         """PUB2NAME geeft '?' voor een onbekende pubkey — die staat nooit in starters."""
-        self.assertFalse(self.mag(starter="?", requester="?")[0])
+        self.assertFalse(self.may(starter="?", requester="?")[0])
 
-    def test_een_sessie_per_requester(self):
+    def test_one_session_per_requester(self):
         """De limiet gaat per vrager: twee mensen via odin mag wél."""
-        ok, reden = self.mag(lopend=[{"requester": "mark"}])
+        ok, reason = self.may(running=[{"requester": "mark"}])
         self.assertFalse(ok)
-        self.assertIn("al een sessie", reden)
+        self.assertIn("al een sessie", reason)
 
-    def test_tweede_persoon_via_dezelfde_agent_mag(self):
-        ok, reden = self.mag(requester="odin", lopend=[{"requester": "mark"}])
-        self.assertTrue(ok, reden)
+    def test_second_person_via_the_same_agent_is_allowed(self):
+        ok, reason = self.may(requester="odin", running=[{"requester": "mark"}])
+        self.assertTrue(ok, reason)
 
-    def test_globale_bovengrens(self):
-        lopend = [{"requester": "x"}, {"requester": "y"}]
-        ok, reden = self.mag(lopend=lopend)
+    def test_global_upper_bound(self):
+        running = [{"requester": "x"}, {"requester": "y"}]
+        ok, reason = self.may(running=running)
         self.assertFalse(ok)
-        self.assertIn("maximaal", reden)
+        self.assertIn("maximaal", reason)
 
-    def test_mag_wel(self):
-        self.assertEqual(self.mag(), (True, ""))
+    def test_allowed(self):
+        self.assertEqual(self.may(), (True, ""))
 
-class Clausule(unittest.TestCase):
+class Clause(unittest.TestCase):
     """Een agent die geen starter is, hoort niet te lezen dat hij sessies kan starten."""
 
-    def test_starter_krijgt_de_types(self):
-        t = prompts.sessie_clausule(CFG, "odin")
+    def test_starter_gets_the_types(self):
+        t = prompts.session_clause(CFG, "odin")
         self.assertIn("!sessie", t)
         self.assertIn("zettelkast", t)
 
-    def test_niet_starter_krijgt_niets(self):
-        self.assertEqual(prompts.sessie_clausule(CFG, "roodteam"), "")
+    def test_non_starter_gets_nothing(self):
+        self.assertEqual(prompts.session_clause(CFG, "roodteam"), "")
 
-    def test_geen_types_geen_clausule(self):
-        self.assertEqual(prompts.sessie_clausule({"types": {}}, "odin"), "")
+    def test_no_types_no_clause(self):
+        self.assertEqual(prompts.session_clause({"types": {}}, "odin"), "")
 
-class EenListener(unittest.TestCase):
+class OneListener(unittest.TestCase):
     """Twee listeners = elk bericht dubbel beantwoord en elke sessie dubbel
     gestart. Gemeten 2026-09-11 in #architectuur: één marker, twee sessies."""
 
-    def test_tweede_instantie_krijgt_niets(self):
+    def test_second_instance_gets_nothing(self):
         import bootstrap
-        pad = os.path.join(tempfile.mkdtemp(), "slot")
-        eerste = bootstrap.alleen_ik(pad)
-        self.assertIsNotNone(eerste)
-        self.assertIsNone(bootstrap.alleen_ik(pad))
-        eerste.close()                      # slot vrij
-        tweede = bootstrap.alleen_ik(pad)
-        self.assertIsNotNone(tweede)
-        tweede.close()
+        path = os.path.join(tempfile.mkdtemp(), "lock")
+        first = bootstrap.only_me(path)
+        self.assertIsNotNone(first)
+        self.assertIsNone(bootstrap.only_me(path))
+        first.close()                       # slot vrij
+        second = bootstrap.only_me(path)
+        self.assertIsNotNone(second)
+        second.close()
 
 
 if __name__ == "__main__":

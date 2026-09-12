@@ -19,11 +19,11 @@ def _a_member_of(cid):
     anker sowieso niet met een agent te verwarren is. Het lid wordt niet ge-@t in
     de content, dus de listener (die op @handle in de tekst triggert) reageert er
     niet op; de voorkeur is een extra gordel."""
-    mem = sorted(p for p in channel_member_pubkeys(cid) if p)  # stabiel per call
-    if not mem:
+    members = sorted(p for p in channel_member_pubkeys(cid) if p)  # stabiel per call
+    if not members:
         return None
     agents = {a["pubkey"] for a in roster.chat_agents()}
-    return next((p for p in mem if p not in agents), mem[0])
+    return next((p for p in members if p not in agents), members[0])
 
 
 def add_agent(cid, name):

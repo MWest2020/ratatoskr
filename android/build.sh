@@ -5,34 +5,34 @@
 # zit er dus meteen in — dit script draai je alleen als het icoon, de naam, de
 # start-URL of de host verandert.
 #
-#   bash android/bouwen.sh            # -> android/ratatoskr-<versie>.apk
+#   bash android/build.sh             # -> android/ratatoskr-<versie>.apk
 #
 # Vereist eenmalig: JDK 17, Android SDK (build-tools 36.1.0 + platform 36) en
 # `npm i -g @bubblewrap/cli`. Zie docs/how-to/android-app.md.
 #
 # De ondertekensleutel komt uit SOPS en staat NOOIT in de repo als bestand.
 set -euo pipefail
-HIER="$(cd "$(dirname "$0")" && pwd)"
+HERE="$(cd "$(dirname "$0")" && pwd)"
 export JAVA_HOME="${JAVA_HOME:-/usr/lib/jvm/java-17-openjdk-amd64}"
 export ANDROID_HOME="${ANDROID_HOME:-$HOME/android-sdk}"
 BT="${BUILD_TOOLS:-$ANDROID_HOME/build-tools/36.1.0}"
 
 KSDIR="$(mktemp -d)"
 trap 'rm -rf "$KSDIR"' EXIT
-python3 "$HIER/sleutel-uitpakken.py" "$KSDIR" >/dev/null
+python3 "$HERE/extract-key.py" "$KSDIR" >/dev/null
 KS="$KSDIR/ratatoskr.keystore"
-PW="$(cat "$KSDIR/wachtwoord.txt")"
+PW="$(cat "$KSDIR/password.txt")"
 # twa-manifest.json noemt ./ratatoskr.keystore — bubblewrap zoekt 'm naast het
 # project. Een link, zodat het echte bestand in de tijdelijke map blijft en bij
 # het opruimen meegaat.
-ln -sf "$KS" "$HIER/ratatoskr.keystore"
-trap 'rm -rf "$KSDIR"; rm -f "$HIER/ratatoskr.keystore"' EXIT
+ln -sf "$KS" "$HERE/ratatoskr.keystore"
+trap 'rm -rf "$KSDIR"; rm -f "$HERE/ratatoskr.keystore"' EXIT
 
 # Bubblewrap kent TWEE versievelden: `appVersion` wordt de versionName in
 # build.gradle, `appVersionName` staat in het manifest. Lopen ze uiteen, dan
 # zegt de APK iets anders dan het bestand — gemeten: een APK met versionName
 # "Y" terwijl het manifest 0.2.0 zei. Hier hard afdwingen.
-VERSIE="$(python3 - "$HIER/twa-manifest.json" <<'PY'
+VERSION="$(python3 - "$HERE/twa-manifest.json" <<'PY'
 import json, sys
 d = json.load(open(sys.argv[1]))
 a, b = d.get("appVersion"), d.get("appVersionName")
@@ -42,7 +42,7 @@ print(b)
 PY
 )"
 
-cd "$HIER"
+cd "$HERE"
 # Schoon beginnen. Het gegenereerde Android-project is afgeleide van
 # twa-manifest.json; laat je het staan, dan houdt build.gradle de versie van de
 # vórige build vast — gemeten: een APK met versionName "Y" terwijl het manifest
@@ -68,9 +68,9 @@ test -f app-release-unsigned-aligned.apk || {
 
 "$BT/apksigner" sign --ks "$KS" --ks-key-alias ratatoskr \
   --ks-pass "pass:$PW" --key-pass "pass:$PW" \
-  --out "ratatoskr-$VERSIE.apk" app-release-unsigned-aligned.apk
+  --out "ratatoskr-$VERSION.apk" app-release-unsigned-aligned.apk
 
 echo "--- vingerafdruk (hoort in chat/well-known/assetlinks.json) ---"
-"$BT/apksigner" verify --print-certs "ratatoskr-$VERSIE.apk" \
+"$BT/apksigner" verify --print-certs "ratatoskr-$VERSION.apk" \
   | grep -i "SHA-256 digest" | head -1
-echo "klaar: $HIER/ratatoskr-$VERSIE.apk"
+echo "klaar: $HERE/ratatoskr-$VERSION.apk"

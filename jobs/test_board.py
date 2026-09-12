@@ -95,9 +95,9 @@ class Summary(unittest.TestCase):
 class OpenspecCards(unittest.TestCase):
     def test_archive_is_skipped(self):
         d = tempfile.mkdtemp()
-        levend = os.path.join(d, "home", "agent", "repo", "openspec", "changes", "nieuw")
-        dood = os.path.join(d, "home", "agent", "repo", "openspec", "changes", "archive", "oud")
-        for p in (levend, dood):
+        live = os.path.join(d, "home", "agent", "repo", "openspec", "changes", "nieuw")
+        dead = os.path.join(d, "home", "agent", "repo", "openspec", "changes", "archive", "oud")
+        for p in (live, dead):
             os.makedirs(p)
             open(os.path.join(p, "proposal.md"), "w").write("x")
         got = board_sources.openspec_cards(os.path.join(d, "home/agent/*/openspec/changes/*/proposal.md"),
@@ -182,9 +182,9 @@ class Links(unittest.TestCase):
 
     def test_session_card_carries_its_channel(self):
         d = tempfile.mkdtemp()
-        pad = os.path.join(d, "zettelkast-mark-1.jsonl")
-        with open(pad, "w") as f:
-            f.write(json.dumps({"type": "boomhuis_sessie", "kanaal": "general",
+        path = os.path.join(d, "zettelkast-mark-1.jsonl")
+        with open(path, "w") as f:
+            f.write(json.dumps({"type": "boomhuis_session", "channel": "general",
                                 "requester": "mark"}) + "\n")
         got = board_sources.session_cards(d, time.time())
         self.assertEqual(got[0]["channel"], "general")

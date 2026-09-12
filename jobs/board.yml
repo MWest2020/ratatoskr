@@ -26,7 +26,7 @@ sources:
   openspec_glob: /home/agent/*/openspec/changes/*/proposal.md
   # GitHub-eigenaar voor open en recent gemergede PR's.
   github_owner: MWest2020
-  # Runbestanden van werksessies (zie agents/sessies.py).
+  # Runbestanden van werksessies (zie agents/sessions.py).
   session_runs: /tmp/boomhuis-sessies
   # PR's komen van GitHub en veranderen traag; sessies veranderen elke minuut.
   # Door de PR-kant te cachen kan de momentopname elke twee minuten draaien —

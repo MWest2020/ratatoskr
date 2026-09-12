@@ -12,21 +12,21 @@ sw.js staat op root-scope zodat de service worker de hele app kan controleren.
 import json
 import os
 
-import instellingen
+import settings
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 # Waar de Android-app staat. NIET in de image: een APK is per installatie
 # (hij is ondertekend voor één origin), dus hij hoort bij de staat, niet bij de
 # code. Leeg of leeg gebleven map = de route bestaat gewoon niet.
-APK_DIR = instellingen.lees("APK_DIR", "/var/lib/ratatoskr/apk")
-APK_NAAM = "ratatoskr.apk"
+APK_DIR = settings.read("APK_DIR", "/var/lib/ratatoskr/apk")
+APK_NAME = "ratatoskr.apk"
 
-BESTANDEN = {
+FILES = {
     "/app.css": ("app.css", "text/css"),
     "/board.css": ("board.css", "text/css"),
     "/app.js": ("app.js", "text/javascript"),
     "/app-cache.js": ("app-cache.js", "text/javascript"),
-    "/app-verbinding.js": ("app-verbinding.js", "text/javascript"),
+    "/app-connection.js": ("app-connection.js", "text/javascript"),
     "/app-auth.js": ("app-auth.js", "text/javascript"),
     "/login.js": ("login.js", "text/javascript"),
     "/app-modal.js": ("app-modal.js", "text/javascript"),
@@ -49,26 +49,26 @@ BESTANDEN = {
 }
 
 
-def serveer_apk(h):
+def serve_apk(h):
     """De Android-app aanbieden — zonder sessie, zie server.py voor waarom.
     Return True als er iets verstuurd is."""
-    pad = os.path.join(APK_DIR, APK_NAAM)
+    path = os.path.join(APK_DIR, APK_NAME)
     try:
-        with open(pad, "rb") as f:
-            inhoud = f.read()
+        with open(path, "rb") as f:
+            content = f.read()
     except OSError:
         return h._send(404, json.dumps({"error": "geen app geïnstalleerd op deze server"})) or True
-    h._send(200, inhoud, "application/vnd.android.package-archive")
+    h._send(200, content, "application/vnd.android.package-archive")
     return True
 
 
-def serveer(h, pad):
+def serve(h, path):
     """True wanneer dit pad een bekend bestand is en verstuurd is."""
-    if pad not in BESTANDEN:
+    if path not in FILES:
         return False
-    naam, ctype = BESTANDEN[pad]
+    name, ctype = FILES[path]
     try:
-        with open(os.path.join(HERE, naam), "rb") as f:
+        with open(os.path.join(HERE, name), "rb") as f:
             return h._send(200, f.read(), ctype) or True
     except OSError:
         return h._send(404, json.dumps({"error": "asset weg"})) or True

@@ -10,9 +10,9 @@ import json
 import os
 import time
 
-import instellingen
+import settings
 
-PATH = instellingen.lees("BOARD_FILE", "/var/lib/ratatoskr/board.json")
+PATH = settings.read("BOARD_FILE", "/var/lib/ratatoskr/board.json")
 # Boven deze leeftijd is de momentopname verdacht: de producent draait elke 10
 # minuten, dus een half uur stilte betekent dat er iets stuk is. De app zegt dat
 # dan — een leeg bord is anders niet te onderscheiden van een kapotte producent.
@@ -22,9 +22,9 @@ STALE_AFTER = 1800
 def read(path=None):
     """(payload, http-status). Nooit een uitzondering naar buiten: een bord dat
     er niet is, is een nette 404 met wat je moet doen."""
-    pad = path or PATH
+    target = path or PATH
     try:
-        with open(pad) as f:
+        with open(target) as f:
             data = json.load(f)
     except FileNotFoundError:
         return {"error": "no snapshot yet",

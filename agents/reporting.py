@@ -51,12 +51,12 @@ def report_run(send, channels, handle, cname, cfg, r):
     try:
         stats = channels.get("statistics")
         if stats:
-            gevraagd, gedraaid = r.get("model_gevraagd") or "", r.get("model") or "?"
-            # Gevraagd én gedraaid, met een vlag als ze niet matchen: deze regel is
+            requested, actual = r.get("model_requested") or "", r.get("model") or "?"
+            # Gevraagd én actual, met een vlag als ze niet matchen: deze regel is
             # het enige waarop Mark kan aflezen of het gedeclareerde model echt
             # afgedwongen wordt. Alleen "wat er draaide" tonen verbergt juist dat.
-            model = gedraaid if not gevraagd else (
-                f"{gevraagd}→{gedraaid}" + ("" if providers.model_klopt(gevraagd, gedraaid)
+            model = actual if not requested else (
+                f"{requested}→{actual}" + ("" if providers.model_matches(requested, actual)
                                             else "  ⚠ WIJKT AF"))
             line = (f"{handle} · #{cname} · {model} · "
                     f"{r.get('turns', 0)} turns · ${r.get('cost', 0.0):.2f}")
@@ -79,19 +79,19 @@ def report_run(send, channels, handle, cname, cfg, r):
         # Advies volgt de OORZAAK. Stond hier eerst altijd "rol verruimen", ook bij
         # een time-out — en dan wijst de melding naar een knop die niets oplost.
         if denials or limit:
-            advies = ("beslissen: rol verruimen in de handbook-def "
+            advice = ("beslissen: rol verruimen in de handbook-def "
                       f"({', '.join(tools) if tools else 'de gemelde tool'}), of laten staan.")
         elif err == "timeout":
-            advies = (f"beslissen: de vraag was te groot voor één beurt "
+            advice = (f"beslissen: de vraag was te groot voor één beurt "
                       f"({providers.MAX_TURN_S}s). Opknippen, of als dit vaker gebeurt "
                       f"het zware werk als habitat-run doen — dat heeft 30 minuten.")
         else:
-            advies = "beslissen: storing bekijken in het listener-log; geen rolkwestie."
+            advice = "beslissen: storing bekijken in het listener-log; geen rolkwestie."
         msg = (f"limitatie · {handle} in #{cname} · model {r.get('model') or '?'}\n"
                + (f"zelf gemeld: {limit}\n" if limit else "")
                + (f"geweigerd: {', '.join(tools)} ({len(denials)}x)\n" if denials else "")
                + (f"storing: {err}\n" if err else "")
-               + advies)
+               + advice)
         send(esc, msg, cfg["nsec"], cfg["npub"])
     except Exception as e:
         print(f"[listener] melden mislukt ({handle}): {e}", flush=True)
@@ -103,9 +103,9 @@ def report_missing_memberships(run, agents, channels, pub2name):
     send faalt anders alleen in het log — waargenomen 2026-09-07, toen de
     escalatieketen voor vijf van de acht agents in de praktijk dood was."""
     name2pub = {h: p for p, h in pub2name.items()}
-    mis = topology.missing_memberships(
+    missing = topology.missing_memberships(
         agents, channels, name2pub, lambda cid: topology.members(run, cid))
-    for handle, cname in mis:
+    for handle, cname in missing:
         print(f"[listener] LIDMAATSCHAP ONTBREEKT: @{handle} post in #{cname} maar is "
               f"geen lid — die send zal falen (bash ~/bh/members.sh --yes)", flush=True)
-    return mis
+    return missing

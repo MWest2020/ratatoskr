@@ -48,7 +48,7 @@ De chat blijft gewoon werken terwijl een sessie loopt — hij draait losgekoppel
 
 ## Wat een sessie mag
 
-Er zijn twee soorten, en dat staat per type in `sessies.yml`.
+Er zijn twee soorten, en dat staat per type in `sessions.yml`.
 
 **Lezende sessies** (`zettelkast`, `skill-forge`, `ratatoskr`) lezen en verder
 niets. Geen `Write`, geen `Edit`, geen `Bash`, geen push; de lees-tools zijn
@@ -76,7 +76,7 @@ wie `zettelkast` mag starten mag daarmee nog niet bouwen.
 
 ## Types
 
-Alle types staan in [`agents/sessies.yml`](../../agents/sessies.yml): werkmap,
+Alle types staan in [`agents/sessions.yml`](../../agents/sessions.yml): werkmap,
 tools, model, tijdbudget, wie mag starten, en onder welke identiteit het
 resultaat gepost wordt. Een nieuw type is een PR op dat bestand, geen
 prompt-truc.
@@ -100,7 +100,7 @@ prompt-truc.
 ## Als het niet werkt
 
 - `⛔ geen sessie: onbekend sessietype …` — de listener noemt de types die er
-  wél zijn; check `agents/sessies.yml`.
+  wél zijn; check `agents/sessions.yml`.
 - `⛔ geen sessie: @naam mag het type niet starten` — zet jezelf bij `starters`
   van dat type (PR).
 - Niets gebeurt na een marker: draait de listener met deze code? De marker wordt

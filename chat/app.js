@@ -38,12 +38,12 @@ async function loadOverview(){
 // Geeft false terug als de kanalen niet te halen zijn (koude start vóór de
 // tunnel op is). Niet gooien: de aanroeper hangt de hele app eraan op.
 async function loadChannels(){
-  let antwoord, data;
-  try{ antwoord = await fetch("/api/channels"); }
-  catch(e){ noteerVerbindingsfout(e); return false; }
-  if(antwoord.status === 401){ afgemeld(); return false; }
-  try{ data = await antwoord.json(); }
-  catch(e){ noteerVerbindingsfout(e); return false; }
+  let response, data;
+  try{ response = await fetch("/api/channels"); }
+  catch(e){ noteConnectionError(e); return false; }
+  if(response.status === 401){ loggedOut(); return false; }
+  try{ data = await response.json(); }
+  catch(e){ noteConnectionError(e); return false; }
   if(!Array.isArray(data)) return false;
   channels = data;
   const wrap = $("#chanList"); wrap.innerHTML="";
@@ -97,7 +97,7 @@ async function createChannel(name){
 function selectChannel(c){
   if(current && current.id===c.id) return;      // geen herlaad-lus via hashchange
   current=c; lastCount=0; $("#chanName").textContent=c.name;
-  bewaarLaatsteKanaal(c);   // zodat offline bekend is wat er open stond
+  saveLastChannel(c);       // zodat offline bekend is wat er open stond
   // Hash meeschrijven: een herstart van de PWA (iOS bevriest hem op de
   // achtergrond) brengt je terug in het kanaal waar je was, en een melding kan
   // hierheen linken.
@@ -112,26 +112,26 @@ const fmtTime = ts => { const d=new Date(ts*1000);
 
 async function refresh(force){
   if(!current) return;
-  let antwoord, data;
-  try{ antwoord = await fetch("/api/messages?channel="+current.id); }
-  catch(e){ noteerVerbindingsfout(e); meldGeenVerbinding(); return; }
+  let response, data;
+  try{ response = await fetch("/api/messages?channel="+current.id); }
+  catch(e){ noteConnectionError(e); showNoConnection(); return; }
   // 401 is geen verbindingsprobleem maar een uitlog: naar inloggen, en wat er
   // lokaal bewaard staat gaat weg.
-  if(antwoord.status === 401){ afgemeld(); return; }
-  try{ data = await antwoord.json(); }
-  catch(e){ noteerVerbindingsfout(e); meldGeenVerbinding(); return; }
-  if(data.error){ noteerVerbindingsfout(data.error); meldGeenVerbinding(); return; }
+  if(response.status === 401){ loggedOut(); return; }
+  try{ data = await response.json(); }
+  catch(e){ noteConnectionError(e); showNoConnection(); return; }
+  if(data.error){ noteConnectionError(data.error); showNoConnection(); return; }
   const msgs=data.messages||[];
   if(!force && msgs.length===lastCount) return;
   lastCount=msgs.length;
   if(current){ markSeen(current.id, msgs.length); renderBadges(); }
-  bewaarSnapshot(current.id, msgs);   // voor als er straks geen verbinding is
-  renderBerichten(msgs, force);
+  saveSnapshot(current.id, msgs);     // voor als er straks geen verbinding is
+  renderMessages(msgs, force);
 }
 
 // Ook gebruikt door de offline-weergave, die dezelfde berichten toont maar
 // met een gedateerde balk erboven.
-function renderBerichten(msgs, force){
+function renderMessages(msgs, force){
   const box=$("#msgs");
   const near = box.scrollHeight - box.scrollTop - box.clientHeight < 120;
   if(msgs.length===0){ box.innerHTML='<div class="empty">Nog geen berichten — begin het gesprek.</div>'; return; }

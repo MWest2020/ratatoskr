@@ -74,7 +74,7 @@ def habitat_jobs():
         return f"(kubectl-fout: {e})"
 
 
-def checkout_staat():
+def checkout_state():
     """Waar komt dit bestand vandaan? Een liveness-bestand dat uit een achterlopende
     of vuile werkkopie komt, meldt werk dat niet bestaat en agents die niet draaien.
     Dat gebeurde: `~/boomhuis` stond 52 commits achter met ongecommitte
@@ -89,29 +89,29 @@ def checkout_staat():
             return ""
     branch = git("rev-parse", "--abbrev-ref", "HEAD") or "?"
     sha = git("rev-parse", "--short", "HEAD") or "?"
-    achter = git("rev-list", "--count", "HEAD..origin/main") or "?"
-    vuil = len([r for r in git("status", "--porcelain").splitlines() if r.strip()])
-    regel = f"_bron: {branch}@{sha}"
-    waarschuwingen = []
+    behind = git("rev-list", "--count", "HEAD..origin/main") or "?"
+    dirty = len([r for r in git("status", "--porcelain").splitlines() if r.strip()])
+    line = f"_bron: {branch}@{sha}"
+    warnings = []
     if branch != "main":
-        waarschuwingen.append(f"niet op main ({branch})")
-    if achter not in ("0", "?"):
-        waarschuwingen.append(f"{achter} commits achter origin/main")
-    if vuil:
-        waarschuwingen.append(f"{vuil} ongecommitte wijziging(en)")
-    if waarschuwingen:
+        warnings.append(f"niet op main ({branch})")
+    if behind not in ("0", "?"):
+        warnings.append(f"{behind} commits achter origin/main")
+    if dirty:
+        warnings.append(f"{dirty} ongecommitte wijziging(en)")
+    if warnings:
         return ("> ⚠ **Dit overzicht komt uit een afwijkende werkkopie**: "
-                + ", ".join(waarschuwingen)
+                + ", ".join(warnings)
                 + ". Wat hier staat kan werk melden dat niet bestaat, of agents "
-                  "die niet draaien.\n", regel + " — AFWIJKEND_")
-    return ("", regel + "_")
+                  "die niet draaien.\n", line + " — AFWIJKEND_")
+    return ("", line + "_")
 
 
 def main():
-    waarschuwing, bron = checkout_staat()
+    warning, source = checkout_state()
     L = ["# Wat er nu draait (gegenereerd — niet handmatig bewerken)", ""]
-    if waarschuwing:
-        L += [waarschuwing]
+    if warning:
+        L += [warning]
     L += ["## Draaiende chat-agents (listener)"]
     L += [f"- @{h}" for h in chat_agents()]
     L += ["", "## Open werk (backlog — altijd oppakken)"]
@@ -126,7 +126,7 @@ def main():
     L += ["", "## Habitat-Jobs"]
     j = habitat_jobs()
     L += [j] if j else ["- (cluster niet gekoppeld — env KUBECTL niet gezet)"]
-    L += ["", bron]
+    L += ["", source]
     open(os.path.join(ROOT, "knowledge", "_live.md"), "w").write("\n".join(L) + "\n")
     print("knowledge/_live.md geschreven")
 

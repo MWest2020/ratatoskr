@@ -12,7 +12,7 @@ in identities.yml. Geen bron → geen spawn (fail-closed). De closed relay is de
 achtervang op identiteitsniveau.
 
 Invariant: geen shell, geen repo-schrijfrecht, geen dispatch vanuit hier. Een
-`!sessie`-marker start wél een LEZENDE werksessie (zie sessies.py) — die verandert
+`!sessie`-marker start wél een LEZENDE werksessie (zie sessions.py) — die verandert
 niets en levert tekst in het kanaal.
 """
 import os
@@ -20,7 +20,7 @@ import time
 
 import bootstrap
 import relay
-import sessies
+import sessions
 import prompts
 import notify
 import providers
@@ -50,8 +50,8 @@ AGENT_PUBS = set()  # gevuld met pubkeys van agents (uit identities via naam)
 
 def main():
     # Vasthouden zolang de listener leeft: sluiten geeft het slot vrij.
-    slot = bootstrap.alleen_ik()          # noqa: F841 — de referentie ís de functie
-    if slot is None:
+    lock = bootstrap.only_me()            # noqa: F841 — de referentie ís de functie
+    if lock is None:
         # Exitcode 0, geen fout: onder systemd met `Restart=on-failure` zou een
         # niet-nul exit een herstartlus van 10 seconden opleveren tegen een slot
         # dat nooit vrijkomt. "Er draait er al een" is de gewenste uitkomst.
@@ -66,37 +66,37 @@ def main():
     if not read_nsec:
         raise SystemExit("[listener] NSEC_ORCHESTRATOR ontbreekt (zie agents/run.sh)")
     send = relay.sender(RELAY)
-    haal = lambda cid: relay.get_messages(cid, read_nsec, RELAY)  # noqa: E731
+    fetch = lambda cid: relay.get_messages(cid, read_nsec, RELAY)  # noqa: E731
     run = relay.runner(read_nsec, RELAY)  # relay-I/O voor topology
-    reg = sessies.Register(sessies.laad(HERE))
+    reg = sessions.Register(sessions.load(HERE))
 
-    def sessie_post(s, tekst):
+    def session_post(s, text):
         """Voortgang/resultaat onder de identiteit die het TYPE declareert."""
-        c = AGENTS.get(s["identiteit"])
+        c = AGENTS.get(s["identity"])
         if c:
-            send(s["cid"], tekst, c["nsec"], c["npub"])
+            send(s["cid"], text, c["nsec"], c["npub"])
 
-    def probeer_sessie(tekst, starter, requester, cname, cid, bericht_id=""):
+    def try_session(text, starter, requester, cname, cid, message_id=""):
         """Een `!sessie`-marker uitvoeren. `starter` schreef de marker, `requester`
         is degene namens wie het gaat. Weigeringen worden gemeld, niet ingeslikt —
         een stille weigering lijkt op een sessie die niets vond."""
-        mk = sessies.lees_marker(tekst)
+        mk = sessions.read_marker(text)
         if not mk:
             return
-        typ, opdracht = mk
-        s, reden = reg.start(typ, opdracht, starter, requester, cname, cid, bericht_id)
+        type_name, task = mk
+        s, reason = reg.start(type_name, task, starter, requester, cname, cid, message_id)
         if not s:
-            print(f"[listener] sessie geweigerd ({starter}→{requester}/{typ}): {reden}",
+            print(f"[listener] sessie geweigerd ({starter}→{requester}/{type_name}): {reason}",
                   flush=True)
             c = AGENTS.get(HUB) or next(iter(AGENTS.values()))
-            send(cid, f"⛔ geen sessie: {reden}", c["nsec"], c["npub"])
+            send(cid, f"⛔ geen sessie: {reason}", c["nsec"], c["npub"])
             return
-        namens = "" if starter == requester else f" namens @{requester}"
-        print(f"[listener] sessie {typ} gestart door {starter}{namens} in #{cname}",
+        on_behalf = "" if starter == requester else f" namens @{requester}"
+        print(f"[listener] sessie {type_name} gestart door {starter}{on_behalf} in #{cname}",
               flush=True)
-        sessie_post(s, f"▶️ sessie `{typ}` gestart door @{starter}{namens} "
-                       f"(max {s['max_s'] // 60} min) — "
-                       f"opdracht: {opdracht[:120] or '(geen)'}")
+        session_post(s, f"▶️ sessie `{type_name}` gestart door @{starter}{on_behalf} "
+                        f"(max {s['max_s'] // 60} min) — "
+                        f"opdracht: {task[:120] or '(geen)'}")
 
     reporting.report_missing_memberships(run, AGENTS, CHANNELS, PUB2NAME)
     name2pub = {h: p for p, h in PUB2NAME.items()}   # om niet op agents te reageren
@@ -117,13 +117,13 @@ def main():
         seeded.add(cid)
 
     for cid in topology.poll_channels(run, CHANNELS).values():
-        msgs = haal(cid)
+        msgs = fetch(cid)
         if msgs is not None:
             seed(cid, msgs)
     print(f"[listener] actief; agents uit handbook: {', '.join(AGENTS)}", flush=True)
     while True:
         for cname, cid in topology.poll_channels(run, CHANNELS).items():
-            msgs = haal(cid)
+            msgs = fetch(cid)
             if msgs is None:      # mislukte read → overslaan, volgende tick opnieuw
                 continue
             if cid not in seeded:  # kanaal net in de poll-set: historie als 'gezien'
@@ -136,14 +136,14 @@ def main():
                 seen.add(mid)
                 # Melden vóór de agent-filter: juist een agent-ANTWOORD is waar
                 # een mens op wacht. Wat níet meldt, beslist notify.wil_melden.
-                schrijver = PUB2NAME.get(m.get("pubkey"), "?")
-                if notify.wil_melden(cname, schrijver, m.get("content", ""), ME_NAME):
-                    notify.push(cname, schrijver, m.get("content", ""))
+                writer = PUB2NAME.get(m.get("pubkey"), "?")
+                if notify.should_notify(cname, writer, m.get("content", ""), ME_NAME):
+                    notify.push(cname, writer, m.get("content", ""))
                 if m.get("pubkey") in AGENT_PUBS:
                     continue
                 content = m.get("content", "")
                 # Mens typt de marker zelf: starter en requester zijn gelijk.
-                probeer_sessie(content, schrijver, schrijver, cname, cid, mid)
+                try_session(content, writer, writer, cname, cid, mid)
                 # (a) @mentions van hier-gescopte/relay-lid-agents; (b) anders: vervolg.
                 targets = [h for h in AGENTS
                            if prompts.mentioned(content, h) and scoped(h, cname, cid)]
@@ -174,8 +174,8 @@ def main():
                     try:
                         r = providers.run(cfg.get("provider"),
                                           cfg["system"] + prompts.LIMIT_CLAUSE
-                                          + prompts.sessie_clausule(reg.cfg, handle,
-                                                                    schrijver), p,
+                                          + prompts.session_clause(reg.cfg, handle,
+                                                                   writer), p,
                                           model=cfg.get("model"), allow=cfg.get("allow"),
                                           deny=cfg.get("deny"),
                                           progress=reporting.progress_poster(
@@ -183,15 +183,15 @@ def main():
                     except Exception as e:  # incl. time-out: de beurt mag nooit klappen
                         r = {"answer": f"(fout: {e})", "error": str(e)[:120]}
                     ans = r.get("answer", "(geen antwoord)")
-                    mk = sessies.lees_marker(ans)
-                    tekst = sessies.knip_marker(ans) if mk else ans
-                    if tekst and send(cid, tekst, cfg["nsec"], cfg["npub"]):
+                    mk = sessions.read_marker(ans)
+                    text = sessions.strip_marker(ans) if mk else ans
+                    if text and send(cid, text, cfg["nsec"], cfg["npub"]):
                         print(f"[listener] {handle} antwoordde in #{cname} ({reason})", flush=True)
                     if mk:
-                        # Odin schreef de marker, maar de vraag kwam van `schrijver`.
-                        probeer_sessie(ans, handle, schrijver, cname, cid, mid)
+                        # Odin schreef de marker, maar de vraag kwam van `writer`.
+                        try_session(ans, handle, writer, cname, cid, mid)
                     reporting.report_run(send, CHANNELS, handle, cname, cfg, r)
-        reg.tick(sessie_post)   # voortgang/afronding van lopende werksessies
+        reg.tick(session_post)  # voortgang/afronding van lopende werksessies
         time.sleep(POLL)
 
 

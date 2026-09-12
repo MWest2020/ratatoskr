@@ -14,7 +14,7 @@
 //   4. de app POLT ook echt (anders leeft hij niet, hij ziet er alleen zo uit).
 //
 //   NODE_PATH=<pad>/node_modules PW_CHROME=<chrome> \
-//   RATATOSKR_URL=https://… NAAM=… WW=… node chat/e2e/rook.js
+//   RATATOSKR_URL=https://… NAAM=… WW=… node chat/e2e/smoke.js
 const { chromium, devices } = require('playwright');
 const EXE = process.env.PW_CHROME
   || '/home/agent/.cache/ms-playwright/chromium-1234/chrome-linux64/chrome';
@@ -38,31 +38,31 @@ const t = (naam, cond, extra = '') => {
   const ctx = await b.newContext({ ...devices['Galaxy S9+'], ignoreHTTPSErrors: true });
   const p = await ctx.newPage();
 
-  const fouten = [];
+  const errors = [];
   let apiCalls = 0;
-  p.on('pageerror', (e) => fouten.push('PAGEERROR: ' + e.message));
+  p.on('pageerror', (e) => errors.push('PAGEERROR: ' + e.message));
   p.on('console', (m) => {
     // Een 401 hoort bij scenario's die de app zelf afhandelt; de rest telt.
-    if (m.type() === 'error' && !/401/.test(m.text())) fouten.push('console: ' + m.text().slice(0, 160));
+    if (m.type() === 'error' && !/401/.test(m.text())) errors.push('console: ' + m.text().slice(0, 160));
   });
   p.on('response', (r) => { if (new global.URL(r.url()).pathname.startsWith('/api/')) apiCalls++; });
 
   console.log('— inloggen');
   await p.goto(BASIS + '/login', { waitUntil: 'load', timeout: 45000 });
-  await p.fill('#naam', NAAM);
-  await p.fill('#wachtwoord', WW);
-  await p.click('#knop');
+  await p.fill('#name', NAAM);
+  await p.fill('#password', WW);
+  await p.click('#submit');
   await p.waitForTimeout(9000);
   t('in de app (niet terug op /login)', new global.URL(p.url()).pathname === '/', p.url());
 
   console.log('— doet de app het');
   const st = await p.evaluate(() => ({
-    kanalen: document.querySelectorAll('.chan').length,
+    channels: document.querySelectorAll('.chan').length,
     msgs: (document.querySelector('#msgs') || {}).textContent.trim().slice(0, 60),
     sw: !!navigator.serviceWorker.controller,
   }));
-  t('geen JS-fouten', fouten.length === 0, fouten.slice(0, 3).join(' | '));
-  t('kanaallijst gevuld', st.kanalen > 0, `${st.kanalen} kanalen`);
+  t('geen JS-fouten', errors.length === 0, errors.slice(0, 3).join(' | '));
+  t('kanaallijst gevuld', st.channels > 0, `${st.channels} kanalen`);
   // "laden…" is exact het beeld van de storing: shell staat, JS is dood.
   t('berichten geladen (niet op "laden…")', !/^laden/.test(st.msgs), JSON.stringify(st.msgs));
   t('service worker actief', st.sw);
@@ -70,29 +70,29 @@ const t = (naam, cond, extra = '') => {
   console.log('— het bord');
   await p.click('#boardBtn');
   await p.waitForTimeout(3000);
-  const bord = await p.evaluate(() => ({
+  const board = await p.evaluate(() => ({
     open: document.querySelector('#boardDrawer').classList.contains('open'),
-    kolommen: document.querySelectorAll('.bcol').length,
-    tekst: (document.querySelector('#boardView') || {}).textContent.slice(0, 80),
+    columns: document.querySelectorAll('.bcol').length,
+    text: (document.querySelector('#boardView') || {}).textContent.slice(0, 80),
   }));
-  t('bord opent', bord.open);
+  t('bord opent', board.open);
   // Vier kolommen, ook als er niets in staat: een lege kolom hoort zichtbaar
   // leeg te zijn, niet afwezig.
-  t('vier kolommen', bord.kolommen === 4, `${bord.kolommen} kolommen: ${bord.tekst}`);
+  t('vier kolommen', board.columns === 4, `${board.columns} kolommen: ${board.text}`);
   // Een bord vol kaarten waar je niet op kunt klikken is een plaatje.
-  const klikbaar = await p.evaluate(() => ({
-    kaarten: document.querySelectorAll('.bcard').length,
-    linkbaar: document.querySelectorAll('.bcard.blink').length,
+  const clickable = await p.evaluate(() => ({
+    cards: document.querySelectorAll('.bcard').length,
+    linked: document.querySelectorAll('.bcard.blink').length,
   }));
-  t('kaarten linken door', klikbaar.kaarten === 0 || klikbaar.linkbaar > 0,
-    `${klikbaar.linkbaar}/${klikbaar.kaarten} klikbaar`);
+  t('kaarten linken door', clickable.cards === 0 || clickable.linked > 0,
+    `${clickable.linked}/${clickable.cards} klikbaar`);
   await p.click('#boardClose');
   await p.waitForTimeout(500);
 
   console.log('— leeft de app (polt hij?)');
-  const voor = apiCalls;
+  const before = apiCalls;
   await p.waitForTimeout(20000);
-  t('api-verzoeken blijven komen', apiCalls > voor, `${apiCalls - voor} in 20s`);
+  t('api-verzoeken blijven komen', apiCalls > before, `${apiCalls - before} in 20s`);
 
   console.log(`\n${ok} ok, ${fail} fail`);
   await b.close();

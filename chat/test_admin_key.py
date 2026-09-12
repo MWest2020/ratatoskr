@@ -22,13 +22,13 @@ class AdminKeyTest(unittest.TestCase):
     def tearDown(self):
         os.environ.pop("BUZZ_ORCHESTRATOR_KEY", None)
 
-    def test_zonder_sleutel_is_beheer_uit(self):
+    def test_without_a_key_management_is_off(self):
         b = self._load(None)
         rc, _out, err = b.buzz_admin(["channels", "list"])
         self.assertIsNone(rc)                 # None = "niet geprobeerd"
         self.assertIn("BUZZ_ORCHESTRATOR_KEY", err)
 
-    def test_met_sleutel_tekent_de_aanroep_met_die_sleutel(self):
+    def test_with_a_key_the_call_signs_with_that_key(self):
         b = self._load("nsec-orchestrator")
         seen = {}
 
@@ -47,7 +47,7 @@ class AdminKeyTest(unittest.TestCase):
             b.subprocess.run = orig
         self.assertEqual(seen["key"], "nsec-orchestrator")
 
-    def test_gewone_buzz_gebruikt_de_procesidentiteit(self):
+    def test_plain_buzz_uses_the_process_identity(self):
         b = self._load("nsec-orchestrator")
         seen = {}
 
@@ -87,12 +87,12 @@ class HubLookupTest(unittest.TestCase):
         "  odin:\n    rol: meta-agent\n    status: actief\n    pubkey_hex: cc\n"
     )
 
-    def test_ingetrokken_hub_telt_niet_mee(self):
+    def test_a_revoked_hub_does_not_count(self):
         m = self._map(self.REG)
         metas = [pk for pk, i in m.items() if i.get("rol") == "meta-agent"]
         self.assertEqual(metas, ["cc"])          # odin, niet de ingetrokken coordinator
 
-    def test_hernoeming_breekt_de_lookup_niet(self):
+    def test_renaming_does_not_break_the_lookup(self):
         # zelfde registry, andere naam voor dezelfde rol
         m = self._map(self.REG.replace("  odin:", "  wodan:"))
         metas = [i["name"] for i in m.values() if i.get("rol") == "meta-agent"]

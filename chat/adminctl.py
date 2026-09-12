@@ -6,11 +6,11 @@ Bestaat omdat de webweg een kip-en-ei heeft: je kunt pas inloggen als er een
 account is, en als je de app niet kunt bereiken kom je er niet. Dit draait op de
 machine waar de installatie staat — wie daar bij kan, kan sowieso alles.
 
-    sudo -E python3 adminctl.py eigenaar mark
-    sudo -E python3 adminctl.py uitnodiging
-    sudo -E python3 adminctl.py personen
-    sudo -E python3 adminctl.py wachtwoord mark
-    sudo -E python3 adminctl.py verwijder gast
+    sudo -E python3 adminctl.py owner mark
+    sudo -E python3 adminctl.py invite
+    sudo -E python3 adminctl.py people
+    sudo -E python3 adminctl.py password mark
+    sudo -E python3 adminctl.py delete gast
 
 Het wachtwoord wordt gevraagd (twee keer, niet zichtbaar) en staat nergens in
 je shell-geschiedenis. `-E` zodat RATATOSKR_AUTH_DB en RATATOSKR_URL uit de
@@ -20,27 +20,27 @@ import getpass
 import os
 import sys
 
-import instellingen
+import settings
 
 
-def _uit_env_bestand(sleutel):
+def _from_env_file(key):
     """De service leest zijn instellingen uit chat.env; dit script draait
     ernaast en zou anders het standaardpad en `<jouw url>` pakken terwijl beide
     gewoon naast hem liggen. Beide naamgevingen, nieuw eerst."""
-    for naam in (instellingen.NIEUW + sleutel, instellingen.OUD + sleutel):
-        waarde = _uit_bestand(naam)
-        if waarde:
-            return waarde
+    for name in (settings.NEW + key, settings.OLD + key):
+        value = _from_file(name)
+        if value:
+            return value
     return ""
 
 
-def _uit_bestand(sleutel):
-    pad = os.path.join(os.path.dirname(os.path.abspath(__file__)), "chat.env")
+def _from_file(key):
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "chat.env")
     try:
-        with open(pad) as f:
-            for regel in f:
-                k, _, v = regel.strip().partition("=")
-                if k == sleutel:
+        with open(path) as f:
+            for line in f:
+                k, _, v = line.strip().partition("=")
+                if k == key:
                     return v.strip().strip('"').strip("'")
     except OSError:
         return ""
@@ -48,125 +48,125 @@ def _uit_bestand(sleutel):
 
 
 # Vóór het importeren van auth_store: die leest het pad bij het laden.
-if not instellingen.gezet("AUTH_DB"):
-    uit_bestand = _uit_env_bestand("AUTH_DB")
-    if uit_bestand:
-        instellingen.zet("AUTH_DB", uit_bestand)
+if not settings.is_set("AUTH_DB"):
+    from_file = _from_env_file("AUTH_DB")
+    if from_file:
+        settings.set_value("AUTH_DB", from_file)
 
 import auth  # noqa: E402
 import auth_store as store  # noqa: E402
 
-MIN_LENGTE = 12
+MIN_LENGTH = 12
 
 
-def _vraag_wachtwoord(naam):
+def _ask_password(name):
     # Geen terminal — `docker compose exec -T`, een installatiescript, een
     # ansible-taak: dan komt het wachtwoord van stdin. Zonder deze tak eindigt
     # `adminctl eigenaar` daar in een EOFError, en dat is precies het moment
     # waarop een verse installatie zijn eerste account moet krijgen.
     # Één regel, niet twee: de herhaalvraag is een typefout-vangnet voor mensen.
     if not sys.stdin.isatty():
-        eerste = sys.stdin.readline().rstrip("\n")
-        if not eerste:
+        first = sys.stdin.readline().rstrip("\n")
+        if not first:
             sys.exit("geen wachtwoord op stdin (en geen terminal om het te vragen)")
-        if len(eerste) < MIN_LENGTE:
-            sys.exit("wachtwoord moet minstens {} tekens zijn".format(MIN_LENGTE))
+        if len(first) < MIN_LENGTH:
+            sys.exit("wachtwoord moet minstens {} tekens zijn".format(MIN_LENGTH))
         # Staat er een tweede regel, dan is dat een bevestiging en moet hij
         # kloppen (zo werkte het altijd al bij aanleveren via een pipe). Eén
         # regel is óók goed: een installatiescript maakt geen typefouten.
-        tweede = sys.stdin.readline().rstrip("\n")
-        if tweede and tweede != eerste:
+        second = sys.stdin.readline().rstrip("\n")
+        if second and second != first:
             sys.exit("de twee wachtwoorden verschillen")
-        return eerste
-    eerste = getpass.getpass("Wachtwoord voor {}: ".format(naam))
-    if len(eerste) < MIN_LENGTE:
-        sys.exit("wachtwoord moet minstens {} tekens zijn".format(MIN_LENGTE))
-    if eerste != getpass.getpass("Nog een keer: "):
+        return first
+    first = getpass.getpass("Wachtwoord voor {}: ".format(name))
+    if len(first) < MIN_LENGTH:
+        sys.exit("wachtwoord moet minstens {} tekens zijn".format(MIN_LENGTH))
+    if first != getpass.getpass("Nog een keer: "):
         sys.exit("de twee wachtwoorden verschillen")
-    return eerste
+    return first
 
 
-def _basis():
-    uit_omgeving = instellingen.lees("URL") or _uit_env_bestand("URL")
-    return uit_omgeving.rstrip("/") or "<jouw boomhuis-url>"
+def _base_url():
+    from_env = settings.read("URL") or _from_env_file("URL")
+    return from_env.rstrip("/") or "<jouw boomhuis-url>"
 
 
-def eigenaar(naam):
+def owner(name):
     """De eerste persoon. Alleen zolang er niemand is — daarna is uitnodigen
     de weg, want een tweede eigenaar maken hoort niet stilletjes te kunnen."""
-    if store.aantal_personen() > 0:
-        sys.exit("er is al een account; gebruik 'uitnodiging' of 'wachtwoord'")
-    pid = store.maak_persoon(naam, auth.hash_wachtwoord(_vraag_wachtwoord(naam)),
-                             eigenaar=True)
+    if store.person_count() > 0:
+        sys.exit("er is al een account; gebruik 'invite' of 'password'")
+    pid = store.create_person(name, auth.hash_password(_ask_password(name)),
+                              owner=True)
     if pid is None:
         sys.exit("die naam bestaat al")
-    store.trek_uitnodigingen_in("setup")   # de afgedrukte setup-link vervalt hiermee
-    print("eigenaar '{}' aangemaakt. Inloggen: {}/login".format(naam, _basis()))
+    store.revoke_invites("setup")   # de afgedrukte setup-link vervalt hiermee
+    print("eigenaar '{}' aangemaakt. Inloggen: {}/login".format(name, _base_url()))
 
 
-def uitnodiging():
-    if store.aantal_personen() == 0:
-        sys.exit("er is nog geen eigenaar; begin met 'eigenaar <naam>'")
-    token = auth.nieuwe_uitnodiging("uitnodiging")
-    print("{}/login?uitnodiging={}".format(_basis(), token))
-    print("Werkt één keer, verloopt over {} dagen.".format(auth.UITNODIGING_DUUR // 86400))
+def invite():
+    if store.person_count() == 0:
+        sys.exit("er is nog geen eigenaar; begin met 'owner <naam>'")
+    token = auth.new_invite("uitnodiging")
+    print("{}/login?uitnodiging={}".format(_base_url(), token))
+    print("Werkt één keer, verloopt over {} dagen.".format(auth.INVITE_TTL // 86400))
 
 
-def personen():
-    with store._verbind() as con:
-        rijen = con.execute(
+def people():
+    with store._connect() as con:
+        rows = con.execute(
             "SELECT naam, eigenaar, totp IS NOT NULL AS tweede FROM personen "
             "ORDER BY gemaakt").fetchall()
-    if not rijen:
+    if not rows:
         print("nog niemand")
         return
-    for r in rijen:
-        merk = []
+    for r in rows:
+        marks = []
         if r["eigenaar"]:
-            merk.append("eigenaar")
+            marks.append("eigenaar")
         if r["tweede"]:
-            merk.append("2FA")
-        print("{:<20} {}".format(r["naam"], ", ".join(merk) or "-"))
+            marks.append("2FA")
+        print("{:<20} {}".format(r["naam"], ", ".join(marks) or "-"))
 
 
-def wachtwoord(naam):
-    p = store.persoon_op_naam(naam)
+def password(name):
+    p = store.person_by_name(name)
     if p is None:
         sys.exit("onbekende naam")
-    store.zet_hash(p["id"], auth.hash_wachtwoord(_vraag_wachtwoord(naam)))
-    store.trek_alle_sessies_in(p["id"])    # wie het oude had, is eruit
-    print("wachtwoord van '{}' gewijzigd; alle sessies zijn ingetrokken".format(naam))
+    store.set_hash(p["id"], auth.hash_password(_ask_password(name)))
+    store.revoke_all_sessions(p["id"])    # wie het oude had, is eruit
+    print("wachtwoord van '{}' gewijzigd; alle sessies zijn ingetrokken".format(name))
 
 
-def verwijder(naam):
-    p = store.persoon_op_naam(naam)
+def delete(name):
+    p = store.person_by_name(name)
     if p is None:
         sys.exit("onbekende naam")
-    if p["eigenaar"] and store.aantal_personen() > 1:
+    if p["eigenaar"] and store.person_count() > 1:
         sys.exit("dit is de eigenaar; maak eerst iemand anders eigenaar")
-    store.trek_alle_sessies_in(p["id"])
-    with store._verbind() as con:
+    store.revoke_all_sessions(p["id"])
+    with store._connect() as con:
         con.execute("DELETE FROM personen WHERE id = ?", (p["id"],))
-    print("'{}' verwijderd, sessies ingetrokken".format(naam))
+    print("'{}' verwijderd, sessies ingetrokken".format(name))
 
 
-OPDRACHTEN = {
-    "eigenaar": (eigenaar, 1),
-    "uitnodiging": (uitnodiging, 0),
-    "personen": (personen, 0),
-    "wachtwoord": (wachtwoord, 1),
-    "verwijder": (verwijder, 1),
+COMMANDS = {
+    "owner": (owner, 1),
+    "invite": (invite, 0),
+    "people": (people, 0),
+    "password": (password, 1),
+    "delete": (delete, 1),
 }
 
 
 def main(argv):
-    if len(argv) < 2 or argv[1] not in OPDRACHTEN:
+    if len(argv) < 2 or argv[1] not in COMMANDS:
         sys.exit(__doc__)
-    fn, aantal = OPDRACHTEN[argv[1]]
+    fn, count = COMMANDS[argv[1]]
     args = argv[2:]
-    if len(args) != aantal:
+    if len(args) != count:
         sys.exit("gebruik: adminctl.py {} {}".format(
-            argv[1], "<naam>" if aantal else "").strip())
+            argv[1], "<naam>" if count else "").strip())
     fn(*args)
 
 

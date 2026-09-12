@@ -13,7 +13,7 @@ wat hij oplevert is tekst en een voorstel — nooit een wijziging.
 ### Requirement: Een werksessie is een gedeclareerd type, geen vrije opdracht
 
 Elke werksessie SHALL een type zijn dat in de boomhuis-repo gedeclareerd staat
-(`agents/sessies.yml`), met daarin ten minste: de werkmap, de toegestane tools,
+(`agents/sessions.yml`), met daarin ten minste: de werkmap, de toegestane tools,
 het model, het tijdbudget, wie het type mag starten en welke identiteit het
 resultaat post. Een starter SHALL alleen het TYPE kiezen en een opdracht in
 vrije tekst meegeven; hij SHALL nooit de werkmap, de tools, het model of het

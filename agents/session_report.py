@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: EUPL-1.2
 """Wat een sessie aan het eind in het kanaal zet.
 
-Apart van sessies.py omdat dat bestand over processen en bestanden gaat en dit
+Apart van sessions.py omdat dat bestand over processen en bestanden gaat en dit
 over tekst — en omdat beide anders over de 200 regels gaan.
 
 Eén regel bepaalt alles hier: **een stille sessie bestaat niet.** Faalt hij, komt
@@ -29,7 +29,7 @@ def footer(session, elapsed, result):
     """De statistiekregel: hoe lang, wat het kostte, hoeveel beurten — en bij een
     schrijvende sessie welke branch, zodat je het werk terug kunt vinden ook als
     er geen PR uit kwam."""
-    parts = [f"— sessie `{session['typ']}` · {int(elapsed // 60)}m{int(elapsed % 60):02d}s",
+    parts = [f"— sessie `{session['type']}` · {int(elapsed // 60)}m{int(elapsed % 60):02d}s",
              f"${float(result.get('total_cost_usd') or 0.0):.2f}",
              f"{int(result.get('num_turns') or 0)} beurten"]
     if session.get("branch"):
@@ -45,16 +45,16 @@ def result_text(session, elapsed):
     foot = footer(session, elapsed, result)
 
     if not answer:
-        return (f"⚠️ sessie `{session['typ']}` eindigde zonder antwoord "
-                f"(exit {session['proc'].returncode}). Log: {session['pad']}\n{foot}")
+        return (f"⚠️ sessie `{session['type']}` eindigde zonder antwoord "
+                f"(exit {session['proc'].returncode}). Log: {session['path']}\n{foot}")
     if result.get("is_error"):
         answer = (f"⚠️ sessie liep vast ({result.get('subtype') or 'error'}):\n{answer}")
 
     pr = pull_request(answer)
-    if session.get("schrijft"):
+    if session.get("writes"):
         # Een schrijvende sessie zonder PR is niet per se mislukt, maar het is
         # wél het eerste wat je wilt weten.
         answer += (f"\n\n🔀 {pr}" if pr
                    else f"\n\n⚠️ geen pull request in de uitvoer — werk staat in "
-                        f"`{session.get('werkmap', '?')}`")
+                        f"`{session.get('workdir', '?')}`")
     return f"{answer}\n\n{foot}"

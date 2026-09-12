@@ -20,7 +20,7 @@ import auth          # sessies, wachtwoorden, TOTP
 import board         # werk-overzicht (momentopname van jobs/board.py)
 import auth_admin    # uitnodigen en tweede factor (achter de sessie)
 import auth_routes   # inloggen, setup, uitnodiging gebruiken, en de gate
-import instellingen  # RATATOSKR_*/BOOMHUIS_* uit de omgeving
+import settings       # RATATOSKR_*/BOOMHUIS_* uit de omgeving
 import statics       # de allowlist van bestanden die we serveren
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -35,12 +35,12 @@ class H(BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
         self.wfile.write(data)
-        self._log_toegang(code)
+        self._log_access(code)
 
     def log_message(self, *a):  # stil: de eigen regel hieronder is genoeg
         pass
 
-    def _log_toegang(self, code):
+    def _log_access(self, code):
         """Eén regel per verzoek naar stdout (journald), als RATATOSKR_ACCESSLOG
         aanstaat.
 
@@ -49,7 +49,7 @@ class H(BaseHTTPRequestHandler):
         Alleen methode, pad, status en een afgeknot user-agent — geen headers,
         geen tokens, geen bodies.
         """
-        if instellingen.lees("ACCESSLOG") not in ("1", "true", "yes"):
+        if settings.read("ACCESSLOG") not in ("1", "true", "yes"):
             return
         ua = (self.headers.get("User-Agent") or "-")[:80].replace("\n", " ")
         print(f"{datetime.now(timezone.utc).isoformat(timespec='seconds')} "
@@ -64,7 +64,7 @@ class H(BaseHTTPRequestHandler):
         if u.path in ("/", "/index.html"):
             with open(os.path.join(HERE, "index.html"), "rb") as f:
                 return self._send(200, f.read(), "text/html; charset=utf-8")
-        if statics.serveer(self, u.path):
+        if statics.serve(self, u.path):
             return None
         if u.path == "/ratatoskr.apk":
             # Open, net als /login en de asset-links. Twee redenen, allebei
@@ -75,7 +75,7 @@ class H(BaseHTTPRequestHandler):
             # (b) het bestand bevat niets geheims: het is een browser-schil met
             # de hostnaam erin, en die staat al in elke URL. De netwerklaag
             # (tailnet of proxy) is hier de deur.
-            return statics.serveer_apk(self) and None
+            return statics.serve_apk(self) and None
         if u.path.startswith("/api/"):
             # Lezen zit óók achter de sessie: in deze routes staan kanaalnamen,
             # berichten en agent-verkeer. Zonder tailnet ervoor betekent "lezen
@@ -83,8 +83,8 @@ class H(BaseHTTPRequestHandler):
             if u.path == "/api/status":
                 return auth_routes.status(self)
             if u.path == "/api/sessie":
-                return auth_routes.sessie_info(self)
-            if auth_routes.gate(self, u.path, schrijft=False) is None:
+                return auth_routes.session_info(self)
+            if auth_routes.gate(self, u.path, writes=False) is None:
                 return None
 
         if u.path == "/api/channels":
@@ -183,14 +183,14 @@ class H(BaseHTTPRequestHandler):
         if auth_routes.open_route(self, u.path, body):
             return None
         if u.path == "/api/uitloggen":
-            return auth_routes.uitloggen(self, body)
+            return auth_routes.log_out(self, body)
 
         # Al het andere: sessie plus een sessiegebonden token, want elke POST
         # wijzigt iets (bericht, kanaal, lid, push-registratie, uitnodiging).
-        sessie = auth_routes.gate(self, u.path, schrijft=True)
-        if sessie is None:
+        session = auth_routes.gate(self, u.path, writes=True)
+        if session is None:
             return None
-        if auth_admin.route(self, u.path, sessie, body):
+        if auth_admin.route(self, u.path, session, body):
             return None
 
         if u.path == "/api/push/subscribe":
@@ -231,6 +231,6 @@ if __name__ == "__main__":
     # relay-VM zetten we BIND_HOST op het tailnet-IP (100.x) zodat de poort niet
     # op de LAN-interface luistert — dan kan alleen een tailnet-node posten.
     host = os.environ.get("BIND_HOST", "0.0.0.0")
-    auth_routes.setup_link_bij_start()
+    auth_routes.print_setup_link_at_start()
     print(f"[chat] luistert op {host}:{port}", flush=True)
     ThreadingHTTPServer((host, port), H).serve_forever()

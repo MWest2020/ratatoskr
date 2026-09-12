@@ -1,0 +1,36 @@
+You are working in MWest2020/ratatoskr (this worktree, on a branch off main).
+
+Task: the one mechanical language conversion that ADR-0001 asks for. Read
+docs/adr/0001-code-in-het-engels.md first — it was revised twice today and the
+current rule is: English for everything that stays in the repository (code,
+comments, docs, commit messages, interface strings), Dutch only for conversation.
+
+Convert, in this order, committing after each step so a mistake is easy to undo:
+
+1. Identifiers and filenames in `chat/`, `agents/`, `jobs/`, `orchestrator/`.
+   Dutch names like `instellingen.lees`, `mag_starten`, `knip_marker`, `laad`,
+   `lopend`, `verboden`, `bouwen.sh`, `na-uitrol.sh`, `verbinding.sh` become
+   English. Keep behaviour identical.
+
+2. Comments and docstrings in those same files.
+
+3. Interface strings the user sees: chat/index.html, chat/login.html,
+   chat/login.js, chat/app*.js, adminctl.py output, and API error messages.
+   English, no translation layer — that is a separate change.
+
+Rules that are not negotiable:
+- **Public contracts do NOT change in this pass**: the `!sessie` marker, the
+  `RATATOSKR_*` / `BOOMHUIS_*` environment names, the route `/ratatoskr.apk`,
+  `/api/*` paths, channel names, session type names in agents/sessies.yml, and
+  systemd unit names. Renaming those breaks running installations and people's
+  habits; they get their own decision.
+- The 125+ unit tests are the proof that only names changed. They must be green
+  after every commit: `bash verify.sh`.
+- `scripts/line_limit.py` and `scripts/pin_check.py` must stay green. Do not
+  raise the baseline; if a file grows past its baseline, split it properly.
+- Files <= 200 lines. EUPL-1.2 SPDX headers stay.
+- Do not touch openspec/changes/archive/** — that is a record of what happened,
+  not living text.
+
+Open ONE pull request with a body that lists what was renamed to what, and say
+explicitly what you left alone and why. Do not merge.
