@@ -26,9 +26,9 @@ Marks eigen installatie draait (nog) als systemd-unit uit een checkout:
 Hij vraagt je wachtwoord twee keer, zichtbaar noch in je shell-geschiedenis.
 Daarna log je in op `/login`.
 
-Meer opdrachten: `personen` (wie er zijn), `uitnodiging` (link voor iemand
-anders), `wachtwoord <naam>` (nieuw wachtwoord, trekt alle sessies van die
-persoon in), `verwijder <naam>`.
+Meer opdrachten: `people` (wie er zijn), `invite` (link voor iemand
+anders), `password <naam>` (nieuw wachtwoord, trekt alle sessies van die
+persoon in), `delete <naam>`.
 
 ## De eerste keer — via de browser
 
