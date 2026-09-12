@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: EUPL-1.2
-"""Invoervalidatie van de GitHub-leeslaag.
+"""Input validation of the GitHub read layer.
 
-Waarom dit bestaat: `/api/prs?repo=boomhuis` (zonder owner) ging ongecontroleerd
-door naar de GitHub-API en kwam terug als een **502 met rauwe upstream-tekst**.
-Een invoerfout die zich voordoet als een storing, en de gebruiker ziet
-"HTTP Error 404: Not Found" in plaats van "verwacht owner/naam".
+Why this exists: `/api/prs?repo=boomhuis` (without an owner) went unchecked
+through to the GitHub API and came back as a **502 with raw upstream text**. An
+input error posing as an outage, and the user sees "HTTP Error 404: Not Found"
+instead of "expected owner/name".
 """
 import unittest
 
@@ -21,8 +21,8 @@ class ValidRepoTest(unittest.TestCase):
         self.assertFalse(github.valid_repo("boomhuis"))
 
     def test_path_characters_do_not_get_through(self):
-        # Elk segment moet met een alfanumeriek teken beginnen, anders glippen
-        # ".." en "." erdoor en gaat een pad-achtige waarde de URL in.
+        # Every segment must start with an alphanumeric character, otherwise ".."
+        # and "." slip through and a path-like value ends up in the URL.
         for name in ("../x", "./x", "a/..", "a/../b", "a/b/c", "/x", "x/"):
             self.assertFalse(github.valid_repo(name), name)
 

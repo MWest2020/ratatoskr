@@ -1,15 +1,13 @@
 // SPDX-License-Identifier: EUPL-1.2
-// Het werk-overzicht: vier kolommen met kaarten, en wat te lang stilstaat.
+// The work overview: four columns of cards, and whatever stands still too long.
 //
-// Alle tekst hier is ENGELS (ADR-0001: interface standaard Engels). De rest van
-// de app is nog Nederlands en gaat in één keer om via een taallaag; nieuwe
-// teksten beginnen niet opnieuw in het Nederlands.
+// All text here is ENGLISH (ADR-0001: the interface is English by default).
 //
-// Kaarttitels komen van GitHub en van mappen op de host — dus alles via `el`/
-// `add` (textContent), nooit innerHTML. Een PR-titel kan door iedereen gezet
-// worden die een PR opent op een publieke repo.
+// Card titles come from GitHub and from directories on the host — so everything
+// goes through `el`/`add` (textContent), never innerHTML. A PR title can be set
+// by anyone who opens a PR on a public repo.
 //
-// Er is geen slepen en geen statusknop: git is de waarheid, dit is een spiegel.
+// There is no dragging and no status button: git is the truth, this is a mirror.
 
 function ageLabel(days) {
   if (days < 1) return Math.max(1, Math.round(days * 24)) + "h";
@@ -25,15 +23,15 @@ function boardCard(c) {
   if (c.who) add(meta, el("span", "bwho", "@" + c.who));
   add(row, meta, el("div", "btitle", c.title || ""));
 
-  // Hoe het gebouwd wordt, en waar het nú mee bezig is. Zonder dat laatste is
-  // een lopende sessie een kaart die niets zegt.
+  // How it is being built, and what it is busy with right now. Without that last
+  // part a running session is a card that says nothing.
   if (c.via) add(row, el("div", "bvia", c.via));
   if (c.activity) add(row, el("div", "bact", "⋯ " + c.activity));
 
-  // Elke kaart gaat érgens heen. Een PR of een change opent op GitHub; een
-  // werksessie heeft geen URL maar wel een kanaal, dus daar springt de app
-  // heen. Kan een kaart nergens heen, dan is hij zichtbaar niet klikbaar —
-  // een kaart die wel klikbaar lijkt en niets doet is erger dan geen link.
+  // Every card goes somewhere. A PR or a change opens on GitHub; a work session
+  // has no URL but does have a channel, so that is where the app jumps. If a card
+  // can go nowhere it is visibly not clickable — a card that looks clickable and
+  // does nothing is worse than no link at all.
   if (c.url) {
     row.classList.add("blink");
     row.onclick = () => window.open(c.url, "_blank", "noopener");
@@ -79,7 +77,7 @@ async function openBoard() {
   }
   view.innerHTML = "";
   if (d.error) {
-    // Een ontbrekend bord is iets anders dan geen werk — zeg dat.
+    // A missing board is something other than no work — say so.
     add(view, el("div", "agenthint", d.error), el("div", "agenthint", d.hint || ""));
     return;
   }
@@ -109,9 +107,9 @@ async function openBoard() {
   }, 30000);
 }
 
-// Zolang het bord openstaat, halen we elke 30 seconden een verse momentopname.
-// De producent draait elke twee minuten, dus je ziet een lopende sessie echt
-// vooruitgaan in plaats van één keer bij het openen.
+// While the board is open we fetch a fresh snapshot every 30 seconds. The
+// producer runs every two minutes, so you really see a running session move
+// along instead of only once at opening time.
 let boardTimer = null;
 
 function closeBoard() {

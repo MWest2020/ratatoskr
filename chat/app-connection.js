@@ -1,29 +1,29 @@
 // SPDX-License-Identifier: EUPL-1.2
 //
-// Alles rond "we kunnen het boomhuis niet bereiken": wat er misging, en de
-// twee dingen die de gebruiker eraan kan doen. Los bestand omdat app.js en
-// app-ui.js allebei tegen de 200-regelgrens uit CLAUDE.md aan zitten.
+// Everything around "we cannot reach the boomhuis": what went wrong, and the two
+// things the user can do about it. A separate file because app.js and app-ui.js
+// both sit against the 200-line limit from CLAUDE.md.
 //
-// Waarom een knop en geen automatisme: een app die zichzelf bij elke storing
-// wist, wist ook je ongelezen-status bij een tunnel die twee seconden hikt.
+// Why a button and not an automatism: an app that wipes itself on every outage
+// also wipes your unread state when the tunnel hiccups for two seconds.
 
 let lastError = "";
 
-// Onthoud waaróp het misging; de melding hieronder toont het.
+// Remember WHAT went wrong; the message below shows it.
 function noteConnectionError(e){
   lastError = (e && e.message) ? e.message : (e ? String(e) : "");
 }
 
-// Meld dat er geen verbinding is — mét het adres en de fout, want "geen
-// verbinding" maakt geen verschil zichtbaar tussen een tunnel die nog niet op
-// is en een app die naar een adres wijst dat niet meer bestaat.
-// Al gerenderde berichten blijven staan: die zijn nog waar.
+// Report that there is no connection — with the address and the error, because
+// "no connection" shows no difference between a tunnel that is not up yet and an
+// app pointing at an address that no longer exists.
+// Messages already rendered stay put: those are still true.
 function showNoConnection(){
   const box = document.querySelector("#msgs");
   if(!box || box.querySelector(".row")) return;
 
-  // Is er een momentopname van dit kanaal, toon die dan met zijn datum: bijna
-  // altijd nuttiger dan een leeg scherm, en de knoppen komen eronder.
+  // If there is a snapshot of this channel, show it with its date: almost always
+  // more useful than an empty screen, and the buttons come below it.
   const withSnapshot = (typeof showLastKnown === "function" && showLastKnown());
   if(!withSnapshot) box.innerHTML = "";
 
@@ -31,9 +31,9 @@ function showNoConnection(){
   wrap.className = "empty";
 
   const head = document.createElement("div");
-  // Het boomhuis staat alleen op het tailnet. Verreweg de vaakste oorzaak
-  // van "geen verbinding" is dat Tailscale op het toestel uit staat — dus
-  // die staat in de melding zelf, niet in iemands hoofd.
+  // The boomhuis is only on the tailnet. By far the most common cause of "no
+  // connection" is Tailscale being off on the device — so that is in the message
+  // itself, not in someone's head.
   head.textContent = withSnapshot
     ? "geen verbinding — staat Tailscale aan?"
     : "geen verbinding met het boomhuis — staat Tailscale aan?";
@@ -59,26 +59,26 @@ function showNoConnection(){
   buttons.appendChild(refresh);
 
   wrap.appendChild(buttons);
-  box.appendChild(wrap);   // onder de berichten, niet erboven
+  box.appendChild(wrap);   // below the messages, not above them
 }
 
-// De enige handeling die een vastgelopen PWA gegarandeerd loskrijgt zonder
-// hem te verwijderen en opnieuw te installeren. Faalt een stap, ga door:
-// herladen is altijd beter dan blijven staan.
+// The only action that reliably unsticks a jammed PWA without deleting and
+// reinstalling it. If a step fails, carry on: reloading is always better than
+// staying put.
 async function refreshApp(){
   try{
     if("serviceWorker" in navigator){
       const regs = await navigator.serviceWorker.getRegistrations();
       await Promise.all(regs.map(r => r.unregister().catch(() => {})));
     }
-  }catch(e){ /* niets aan te doen; hieronder toch herladen */ }
+  }catch(e){ /* nothing to be done; we reload below anyway */ }
   try{
     if(window.caches){
       const keys = await caches.keys();
       await Promise.all(keys.map(k => caches.delete(k).catch(() => {})));
     }
-  }catch(e){ /* idem */ }
-  // Cache-buster in de URL: een herlaad alleen kan op iOS nog uit de
-  // page-cache komen, en dan is er niets veranderd.
+  }catch(e){ /* likewise */ }
+  // Cache buster in the URL: on iOS a plain reload can still come from the page
+  // cache, and then nothing has changed.
   location.replace(location.pathname + "?vers=" + Date.now() + location.hash);
 }

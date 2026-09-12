@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: EUPL-1.2
-"""Haal de ondertekensleutel uit SOPS en zet 'm als bestand neer.
+"""Pull the signing key out of SOPS and put it down as a file.
 
-De keystore staat versleuteld in `secrets/android-signing.yaml` omdat Android de
-IDENTITEIT van een app aan die sleutel ontleent: kwijt betekent een ándere app,
-en iedereen moet opnieuw installeren. Hij hoort dus bij de repo, niet bij een
-machine.
+The keystore is encrypted in `secrets/android-signing.yaml` because Android
+derives the IDENTITY of an app from that key: lose it and it is a different app,
+and everyone has to reinstall. So it belongs with the repo, not with a machine.
 
     python3 android/extract-key.py /tmp/ks
 
-Ruim die map daarna op. Dit script schrijft niets in de repo en drukt het
-wachtwoord niet af — het zet het in een bestand naast de keystore, 0600.
+Clean that directory up afterwards. This script writes nothing into the repo and
+does not print the password — it puts it in a file next to the keystore, 0600.
 """
 import base64
 import os
@@ -25,7 +24,7 @@ ROOT = os.path.dirname(HERE)
 
 def main(argv):
     if len(argv) < 2:
-        raise SystemExit("gebruik: extract-key.py <doelmap>")
+        raise SystemExit("usage: extract-key.py <target dir>")
     target = argv[1]
     os.environ.setdefault("SOPS_AGE_KEY_FILE",
                           os.path.expanduser("~/.config/sops/age/keys.txt"))
@@ -48,8 +47,8 @@ def main(argv):
 
     print(ks)
     print("alias:", d["alias"])
-    print("vingerafdruk:", d["vingerafdruk_sha256"])
-    print("wachtwoord staat in:", pw)
+    print("fingerprint:", d["vingerafdruk_sha256"])
+    print("password is in:", pw)
 
 
 if __name__ == "__main__":

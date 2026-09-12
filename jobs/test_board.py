@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: EUPL-1.2
-"""Tests voor het werk-overzicht. Alleen de PURE kant: kolomkeuze, ouderdom en
-muf-zijn. Die bepalen wat het bord zegt, en die wil je kunnen testen zonder
-GitHub en zonder klok.
+"""Tests for the work overview. Only the PURE side: column choice, age and
+staleness. Those decide what the board says, and you want to test them without
+GitHub and without a clock.
 
-Draaien: cd jobs && python3 -m unittest test_board
+Run with: cd jobs && python3 -m unittest test_board
 """
 import json
 import os
@@ -31,7 +31,7 @@ class Column(unittest.TestCase):
         self.assertEqual(board_model.pr_column({"draft": True}), "building")
 
     def test_open_non_draft_is_waiting_on_a_human(self):
-        """In deze flow blijft een open PR staan tot iemand 'm merget."""
+        """In this flow an open PR stays put until someone merges it."""
         self.assertEqual(board_model.pr_column({"draft": False}), "review")
 
     def test_missing_draft_flag_is_review(self):
@@ -44,7 +44,7 @@ class Age(unittest.TestCase):
         self.assertAlmostEqual(board_model.age_days(now - 2 * board_model.DAY, now), 2.0)
 
     def test_never_negative(self):
-        """Een klok die achterloopt mag geen kaart uit de toekomst opleveren."""
+        """A clock running behind must not produce a card from the future."""
         now = 100.0
         self.assertEqual(board_model.age_days(now + 5000, now), 0.0)
 
@@ -60,7 +60,7 @@ class Stale(unittest.TestCase):
         self.assertFalse(board_model.is_stale({"column": "review", "age_days": 1}, COLUMNS))
 
     def test_zero_threshold_is_never_stale(self):
-        """De uitgangskolom: daar mag alles liggen."""
+        """The exit column: anything may rest there."""
         self.assertFalse(board_model.is_stale({"column": "merged", "age_days": 999}, COLUMNS))
 
     def test_unknown_column_is_never_stale(self):
@@ -69,8 +69,8 @@ class Stale(unittest.TestCase):
 
 class Ignore(unittest.TestCase):
     def test_ignored_repo_is_dropped(self):
-        """Een PR op een repo waar je niet meer aan werkt is de oudste kaart, en
-        schreeuwt daarom elke dag het hardst. Niet elk open ding is werk."""
+        """A PR on a repo you no longer work on is the oldest card, and therefore
+        shouts loudest every day. Not every open thing is work."""
         rows = [{"repository": {"name": "oud-project"}, "number": 1, "title": "x",
                  "updatedAt": "2026-01-01T00:00:00Z", "url": "", "isDraft": False,
                  "author": {"login": "a"}}]
@@ -88,7 +88,7 @@ class Summary(unittest.TestCase):
         self.assertEqual(s["proposal"]["count"], 0)
 
     def test_every_column_is_present_even_when_empty(self):
-        """Een lege kolom moet zichtbaar leeg zijn, niet afwezig."""
+        """An empty column must be visibly empty, not absent."""
         self.assertEqual(len(board_model.summarise([], COLUMNS)), 4)
 
 
@@ -107,12 +107,12 @@ class OpenspecCards(unittest.TestCase):
 
 class Snapshot(unittest.TestCase):
     def test_failing_source_becomes_an_error_not_silence(self):
-        """Stil niets tonen is niet te onderscheiden van 'er is niets te doen'."""
-        leeg = os.path.join(tempfile.mkdtemp(), "geen-cache.json")
+        """Silently showing nothing is indistinguishable from 'nothing to do'."""
+        empty = os.path.join(tempfile.mkdtemp(), "geen-cache.json")
         cfg = {"columns": COLUMNS,
                "sources": {"openspec_glob": "/bestaat/niet/*", "github_owner": "x",
                            "session_runs": "/bestaat/niet", "merged_days": 3,
-                           "pr_cache": leeg, "pr_cache_seconds": 600}}
+                           "pr_cache": empty, "pr_cache_seconds": 600}}
         board_sources.gh_json = lambda args: (_ for _ in ()).throw(RuntimeError("gh weg"))
         snap = board.build(cfg, now=1000.0)
         self.assertTrue(snap["errors"])
@@ -120,8 +120,8 @@ class Snapshot(unittest.TestCase):
         self.assertEqual(snap["cards"], [])
 
     def test_stale_cache_is_used_but_announced(self):
-        """Een oude cache is beter dan een leeg bord — zolang het bord zegt dat
-        hij oud is. Stil oude PR's tonen is de false-clear in vermomming."""
+        """An old cache is better than an empty board — as long as the board says
+        it is old. Silently showing old PRs is the false clear in disguise."""
         cache = os.path.join(tempfile.mkdtemp(), "prs.json")
         with open(cache, "w") as f:
             json.dump({"at": 0, "cards": [{"column": "review", "age_days": 1}]}, f)
@@ -135,8 +135,8 @@ class Snapshot(unittest.TestCase):
         self.assertIn("niet ververst", snap["errors"][0])
 
     def test_fresh_cache_skips_github(self):
-        """Dit is wat een lopende sessie zichtbaar maakt: de PR-kant hoeft niet
-        elke twee minuten opnieuw opgehaald te worden."""
+        """This is what makes a running session visible: the PR side need not be
+        fetched again every two minutes."""
         cache = os.path.join(tempfile.mkdtemp(), "prs.json")
         with open(cache, "w") as f:
             json.dump({"at": 999.0, "cards": []}, f)
@@ -144,9 +144,9 @@ class Snapshot(unittest.TestCase):
                "sources": {"openspec_glob": "/bestaat/niet/*", "github_owner": "x",
                            "session_runs": "/bestaat/niet", "merged_days": 3,
                            "pr_cache": cache, "pr_cache_seconds": 600}}
-        def boem(args):
-            raise AssertionError("gh had niet aangeroepen mogen worden")
-        board_sources.gh_json = boem
+        def boom(args):
+            raise AssertionError("gh should not have been called")
+        board_sources.gh_json = boom
         self.assertEqual(board.build(cfg, now=1000.0)["errors"], [])
 
 
@@ -155,8 +155,8 @@ if __name__ == "__main__":
 
 
 class Links(unittest.TestCase):
-    """Een kaart zonder link is een doodlopende kaart; een kaart naar een 404 is
-    erger. Daarom komt de URL uit de remote van de clone, niet uit de mapnaam."""
+    """A card without a link is a dead end; a card to a 404 is worse. That is why
+    the URL comes from the clone's remote, not from the directory name."""
 
     def test_openspec_card_links_to_the_change(self):
         d = tempfile.mkdtemp()

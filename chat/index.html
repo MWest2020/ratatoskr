@@ -72,15 +72,15 @@
   <div class="toast" id="toast"></div>
 
 <script>
-// Toetsenbord vs. invoerbalk. Op iOS verkleint het toetsenbord de VISUELE
-// viewport, maar `100dvh` is een LAYOUT-eenheid en beweegt niet mee: de shell
-// blijft even hoog, de invoerbalk zakt onder het toetsenbord en is weg. Mark,
-// 2026-09-07: "invoerveld weer weg". Daarom spiegelen we visualViewport.height
-// naar --app-h; de body gebruikt die als hoogte en krimpt dus wél mee.
-// Ondergrens 200px: een onzinnige meting mag de shell nooit dichtklappen.
+// Keyboard vs. composer. On iOS the keyboard shrinks the VISUAL viewport, but
+// `100dvh` is a LAYOUT unit and does not move with it: the shell stays the same
+// height, the composer sinks below the keyboard and is gone. Mark, 2026-09-07:
+// "invoerveld weer weg". So we mirror visualViewport.height into --app-h; the
+// body uses that as its height and therefore does shrink along.
+// Lower bound 200px: a nonsense measurement must never collapse the shell.
 (function(){
   const vv = window.visualViewport;
-  if(!vv) return;                                   // geen support -> 100dvh blijft
+  if(!vv) return;                                   // no support -> 100dvh stays
   const sync = ()=>{ const h = vv.height;
     if(h > 200) document.documentElement.style.setProperty("--app-h", h + "px"); };
   vv.addEventListener("resize", sync);

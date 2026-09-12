@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: EUPL-1.2
-"""Offline tests voor inloggen (chat/auth.py).
+"""Offline tests for logging in (chat/auth.py).
 
-Draaien vanuit chat/: `python3 -m unittest test_auth`. Geen relay of netwerk
-nodig; de database is een tijdelijk bestand.
+Run from chat/: `python3 -m unittest test_auth`. No relay or network needed; the
+database is a temporary file.
 """
 import os
 import tempfile
@@ -22,8 +22,8 @@ class Passwords(unittest.TestCase):
         self.assertFalse(auth.password_matches("iets anders", h))
 
     def test_same_password_gives_a_different_hash(self):
-        """Elk account zijn eigen salt, anders verraden gelijke hashes gelijke
-        wachtwoorden."""
+        """Every account its own salt, otherwise equal hashes give away equal
+        passwords."""
         a = auth.hash_password("hetzelfde wachtwoord", n=2 ** 12)
         b = auth.hash_password("hetzelfde wachtwoord", n=2 ** 12)
         self.assertNotEqual(a, b)
@@ -33,9 +33,9 @@ class Passwords(unittest.TestCase):
         self.assertFalse(auth.outdated(auth.hash_password("x" * 12)))
 
     def test_the_configured_parameters_really_run(self):
-        """scrypt weigert boven OpenSSL's geheugengrens (32 MB) met "memory
-        limit exceeded". Met N=2**15 gebeurde dat precies — dat merk je pas bij
-        de eerste echte login, dus staat het hier."""
+        """scrypt refuses above OpenSSL's memory limit (32 MB) with "memory limit
+        exceeded". With N=2**15 that happened exactly — you only notice at the
+        first real login, so it is here."""
         h = auth.hash_password("een wachtwoord van genoeg tekens")
         self.assertTrue(auth.password_matches("een wachtwoord van genoeg tekens", h))
 
@@ -91,7 +91,7 @@ class Sessions(unittest.TestCase):
             {"Cookie": "{}={}".format(auth.COOKIE, second)}))
 
     def test_only_the_hash_is_in_the_database(self):
-        """Wie het bestand leest heeft daar geen bruikbare sessie aan."""
+        """Whoever reads the file gets no usable session out of it."""
         token, _ = auth.start_session(self.pid)
         with store._connect() as con:
             rows = [r["hash"] for r in con.execute("SELECT hash FROM sessies")]
@@ -126,8 +126,8 @@ class Invites(unittest.TestCase):
         self.assertFalse(auth.invite_valid(token, "uitnodiging"))
 
     def test_the_kind_must_match(self):
-        """Een setup-link is geen uitnodiging: anders maakt de tweede persoon
-        zichzelf eigenaar."""
+        """A setup link is not an invitation: otherwise the second person makes
+        themselves the owner."""
         token = auth.new_invite("setup")
         self.assertFalse(auth.invite_valid(token, "uitnodiging"))
 
@@ -138,8 +138,8 @@ class Invites(unittest.TestCase):
 
 
 class OldToken(unittest.TestCase):
-    """Het migratiepad: zolang er niemand is mag het oude gedeelde token de
-    eigenaar aanmaken. Zodra er iemand is, nooit meer."""
+    """The migration path: as long as there is nobody the old shared token may
+    create the owner. Once someone exists, never again."""
 
     def setUp(self):
         self._old = os.environ.get("BOOMHUIS_APP_TOKEN")

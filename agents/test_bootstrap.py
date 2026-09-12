@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: EUPL-1.2
-"""Offline tests voor `bootstrap.py` (hub-resolutie op ROL, niet op naam).
-Draaien vanuit agents/: `python3 -m unittest test_bootstrap` (agents/ heeft geen
-__init__.py en de modules doen top-level imports, dus het pakket-pad werkt niet).
+"""Offline tests for `bootstrap.py` (hub resolution by ROLE, not by name).
+Run from agents/: `python3 -m unittest test_bootstrap` (agents/ has no
+__init__.py and the modules use top-level imports, so the package path does not
+work).
 """
 import unittest
 
@@ -10,10 +11,10 @@ import prompts
 
 
 class HubAndRoleTest(unittest.TestCase):
-    """De hub wordt op ROL gevonden. Drie plekken in de listener stonden op de
-    naam `coordinator`; na de hernoeming naar odin vielen die stil terug — de
-    reader op een agent met halve kanaal-zichtbaarheid, en de hub kreeg zijn
-    roster- en liveness-context niet meer."""
+    """The hub is found by ROLE. Three places in the listener used the name
+    `coordinator`; after the rename to odin they silently fell back — the reader
+    onto an agent with half the channel visibility, and the hub stopped getting
+    its roster and liveness context."""
 
     def _root(self, body):
         import tempfile, pathlib

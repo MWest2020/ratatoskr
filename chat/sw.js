@@ -1,15 +1,14 @@
 // Boomhuis PWA service worker.
-// - De PAGINA (navigatie/index.html): netwerk-eerst MET timeout → een herlaad
-//   toont online de laatste versie, maar een koude launch vóór de tailnet-tunnel
-//   op is valt binnen ~3s terug op de cache i.p.v. te hangen. De netwerk-fetch
-//   loopt na een timeout dóór en ververst de cache alsnog (waitUntil).
-// - Statics (iconen, manifest): cache-eerst met achtergrond-update.
-// - /api/*: NOOIT cachen (chat is realtime, git is waarheid).
-const CACHE = "boomhuis-shell-v20";  // v20: Engelse bestands- en klassenamen
-// Een versiebump wist bij `activate` elke oudere cache. Dat is het enige wat
-// een geïnstalleerde PWA die op de oude JS vastzit gegarandeerd loskrijgt:
-// netwerk-eerst helpt pas als de app draait, en dit was nu juist de bug
-// waarbij hij dat niet deed.
+// - The PAGE (navigation/index.html): network first WITH a timeout → online a
+//   reload shows the latest version, but a cold launch before the tailnet tunnel
+//   is up falls back on the cache within ~3s instead of hanging. The network fetch
+//   keeps running after a timeout and refreshes the cache anyway (waitUntil).
+// - Statics (icons, manifest): cache first with a background update.
+// - /api/*: NEVER cached (chat is realtime, git is the truth).
+const CACHE = "boomhuis-shell-v20";  // v20: English file and class names
+// A version bump wipes every older cache on `activate`. That is the only thing
+// that reliably unsticks an installed PWA stuck on the old JS: network first only
+// helps once the app runs, and that was exactly the bug where it did not.
 const NET_TIMEOUT = 3000;
 const SHELL = [
   "/",
@@ -34,8 +33,8 @@ const SHELL = [
 ];
 
 self.addEventListener("install", (e) => {
-  // Veerkrachtig: één falende shell-URL laat de hele install (en dus v2) niet
-  // sneuvelen — cache elk item los, negeer individuele fouten.
+  // Resilient: one failing shell URL must not sink the whole install (and so v2)
+  // — cache each item separately, ignore individual errors.
   e.waitUntil(
     caches.open(CACHE)
       .then((c) => Promise.all(SHELL.map((u) => c.add(u).catch(() => {}))))
@@ -52,15 +51,15 @@ self.addEventListener("activate", (e) => {
 });
 
 function putCache(req, res) {
-  // fire-and-forget mét .catch: een volle-opslag-QuotaExceededError mag geen
-  // unhandled rejection in de worker worden.
+  // fire-and-forget WITH a .catch: a storage-full QuotaExceededError must not
+  // become an unhandled rejection in the worker.
   caches.open(CACHE).then((c) => c.put(req, res)).catch(() => {});
 }
 
 function fromCache(req, isPage) {
-  // Altijd een Response teruggeven, nooit undefined. Alleen een PAGINA valt terug
-  // op "/" (de shell); een asset mag dat niet — dan krijg je HTML met de verkeerde
-  // content-type. Een asset zonder cache-hit → 503.
+  // Always return a Response, never undefined. Only a PAGE falls back on "/" (the
+  // shell); an asset must not — you would get HTML with the wrong content type. An
+  // asset without a cache hit → 503.
   return caches.match(req)
     .then((hit) => hit || (isPage ? caches.match("/") : null))
     .then((hit) => hit || new Response("offline", {
@@ -70,7 +69,7 @@ function fromCache(req, isPage) {
 function cacheFirst(req) {
   return caches.match(req).then((hit) => {
     if (hit) {
-      // achtergrond-update, maar serveer meteen de cache
+      // background update, but serve the cache straight away
       fetch(req).then((res) => { if (res && res.status === 200) putCache(req, res.clone()); }).catch(() => {});
       return hit;
     }
@@ -83,45 +82,46 @@ function cacheFirst(req) {
 
 function networkFirst(e, isNav) {
   const req = e.request;
-  // De fetch loopt volledig af en ververst de cache bij succes — óók als de race
-  // hieronder al door de timeout is beslist. waitUntil houdt de worker levend.
+  // The fetch runs to completion and refreshes the cache on success — even when
+  // the race below has already been decided by the timeout. waitUntil keeps the
+  // worker alive.
   const fresh = fetch(req.url, { cache: "no-store" }).then((res) => {
     if (res && res.ok) putCache(req, res.clone());
     return res;
   }).catch(() => null);
   e.waitUntil(fresh);
   const timeout = new Promise((resolve) => setTimeout(() => resolve(null), NET_TIMEOUT));
-  // isNav bepaalt de fallback: een navigatie mag terugvallen op "/" (de shell),
-  // een asset (app.js/app.css) niet — die krijgt z'n eigen cache of 503.
+  // isNav decides the fallback: a navigation may fall back on "/" (the shell), an
+  // asset (app.js/app.css) may not — that gets its own cache or a 503.
   return Promise.race([fresh, timeout]).then((res) => (res && res.ok) ? res : fromCache(req, isNav));
 }
 
-// De app-shell (HTML + app.css + app.js + app-ui.js) is netwerk-eerst zodat een
-// herlaad de laatste versie toont; sinds de JS/CSS losse assets zijn moeten die
-// dezelfde freshness krijgen als de pagina. Iconen/manifest blijven cache-eerst.
+// The app shell (HTML + app.css + app.js + app-ui.js) is network first so a
+// reload shows the latest version; now that the JS/CSS are separate assets they
+// need the same freshness as the page. Icons and manifest stay cache first.
 const FRESH_ASSETS = new Set(["/app.css", "/board.css", "/app.js", "/app-cache.js", "/app-connection.js", "/app-auth.js", "/login.js", "/app-modal.js", "/app-ui.js", "/app-repos.js", "/app-board.js", "/app-push.js"]);
 
-// Web Push: toon een notificatie bij een binnenkomende push.
+// Web Push: show a notification on an incoming push.
 self.addEventListener("push", (e) => {
   let d = { title: "Ratatoskr", body: "" };
   try { if (e.data) d = e.data.json(); } catch (_) { if (e.data) d.body = e.data.text(); }
-  // GEEN vaste tag: met een constante tag wist elke nieuwe melding de vorige
-  // (verdict B overschrijft verdict A). Alleen groeperen als de payload expliciet
-  // een tag meegeeft (dan mét renotify zodat 'ie alsnog opnieuw meldt).
+  // NO fixed tag: with a constant tag every new notification wiped the previous
+  // one (verdict B overwrites verdict A). Only group when the payload explicitly
+  // supplies a tag (then WITH renotify so it still notifies again).
   const opts = { body: d.body || "", icon: "/icon-192.png", badge: "/icon-192.png",
                  data: { url: d.url || "/" } };
   if (d.tag) { opts.tag = d.tag; opts.renotify = true; }
   e.waitUntil(self.registration.showNotification(d.title || "Ratatoskr", opts));
 });
-// Klik op de notificatie: focus een open venster of open de app.
+// Click on the notification: focus an open window or open the app.
 self.addEventListener("notificationclick", (e) => {
   e.notification.close();
   const url = (e.notification.data && e.notification.data.url) || "/";
   e.waitUntil(clients.matchAll({ type: "window", includeUncontrolled: true }).then((wins) => {
     for (const w of wins) {
       if ("focus" in w) {
-        // Bestaand venster: navigeer het óók naar de url uit de notificatie —
-        // enkel focus() liet d.url stil verdampen.
+        // Existing window: navigate it to the url from the notification too —
+        // focus() alone let d.url evaporate silently.
         const go = ("navigate" in w) ? w.navigate(url).catch(() => w) : Promise.resolve(w);
         return go.then((c) => (c || w).focus());
       }
@@ -133,11 +133,11 @@ self.addEventListener("notificationclick", (e) => {
 self.addEventListener("fetch", (e) => {
   const url = new URL(e.request.url);
   if (url.pathname.startsWith("/api/") || e.request.method !== "GET") {
-    return; // API/niet-GET: altijd live, nooit via de cache
+    return; // API or non-GET: always live, never through the cache
   }
   const isNav = e.request.mode === "navigate" ||
     url.pathname === "/" || url.pathname === "/index.html" ||
-    url.pathname === "/login";   // ook een pagina: netwerk-eerst
+    url.pathname === "/login";   // a page too: network first
   const fresh = isNav || FRESH_ASSETS.has(url.pathname);
   e.respondWith(fresh ? networkFirst(e, isNav) : cacheFirst(e.request));
 });

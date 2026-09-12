@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: EUPL-1.2
-// De Repos-lade: repo-lijst, PR-lijst, PR-detail, en "laat @reviewer kijken".
-// Apart van app-ui.js zodat beide onder de 200-regel-conventie blijven.
+// The Repos drawer: repo list, PR list, PR detail, and "let @reviewer look".
+// Separate from app-ui.js so both stay under the 200-line convention.
 //
-// Alles wat hier van GitHub komt — repo-beschrijving, PR-titel, branchnaam,
-// bestandsnaam, auteur — wordt met `el`/`add` uit app-modal.js gerenderd, dus via
-// textContent. Een PR-titel kan door iedereen gezet worden die een PR opent op een
-// publieke repo; met innerHTML zou dat HTML zijn in Marks PWA.
+// Everything coming from GitHub here — repo description, PR title, branch name,
+// file name, author — is rendered with `el`/`add` from app-modal.js, so through
+// textContent. A PR title can be set by anyone who opens a PR on a public repo;
+// with innerHTML that would be HTML in Mark's PWA.
 async function reviewPR(repo, num, title, url){
   const ok = await sendTo("review", `@reviewer bekijk PR ${repo}#${num} — ${title}\n${url}`);
   if(ok){ closeRepos(); const c=channels.find(x=>x.name==="review");
@@ -68,8 +68,8 @@ async function showPR(repo, num){
   for(const f of (p.files||[]))
     add(d, add(el("div","file"), `${String(f.status)[0].toUpperCase()} ${f.filename} `,
                el("span","add","+"+f.additions), " ", el("span","del","−"+f.deletions)));
-  // href alleen als het echt een GitHub-URL is; een javascript:-URL uit de payload
-  // zou anders klikbaar worden.
+  // href only when it really is a GitHub URL; a javascript: URL from the payload
+  // would otherwise become clickable.
   const wrap=document.createElement("div"); wrap.style.marginTop=".6rem";
   const a=el("a","gh","op GitHub openen ↗");
   a.href=/^https:\/\/github\.com\//.test(p.url||"") ? p.url : "https://github.com/";

@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: EUPL-1.2
-"""Opstart-helpers voor de listener: YAML-lezers en de handbook-def-parser. Apart
-zodat listener.py onder de ≤200-regel-conventie blijft. Puur: paden en urls komen
-als parameters binnen, geen module-globals van de listener.
+"""Start-up helpers for the listener: YAML readers and the handbook def parser.
+Separate so listener.py stays under the ≤200-line convention. Pure: paths and
+urls come in as parameters, no module globals from the listener.
 """
 import fcntl
 import os
@@ -12,15 +12,14 @@ import yaml
 
 
 def only_me(path="/tmp/boomhuis-listener.lock"):
-    """Eén listener per host, of niets. Geeft het open lock-bestand terug (dat moet
-    je vasthouden) of None als er al een draait.
+    """One listener per host, or nothing. Returns the open lock file (which you
+    must hold on to) or None when one is already running.
 
-    Waarom: twee listeners beantwoorden elk bericht twee keer en starten elke
-    werksessie twee keer. Gemeten 2026-09-11 — één `!sessie`-marker in
-    #architectuur, twee sessies. Oorzaak was een herstart die maar één van de
-    twee processen doodde; dit maakt dat onmogelijk in plaats van onwaarschijnlijk.
-    Het slot valt vanzelf weg als het proces stopt (flock, geen pidfile die na
-    een kill blijft liggen)."""
+    Why: two listeners answer every message twice and start every work session
+    twice. Measured 2026-09-11 — one `!sessie` marker in #architectuur, two
+    sessions. The cause was a restart that killed only one of the two processes;
+    this makes that impossible instead of unlikely. The lock disappears by itself
+    when the process stops (flock, not a pidfile that survives a kill)."""
     f = open(path, "w")
     try:
         fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -46,20 +45,20 @@ def load_identity_npubs(root):
 
 
 def hub_handle(root):
-    """De hub-agent: de ACTIEVE identiteit met rol `meta-agent`, of None.
+    """The hub agent: the ACTIVE identity with role `meta-agent`, or None.
 
-    Op rol en niet op naam. De hub heette tot 2026-09-07 `coordinator` en heet nu
-    `odin`; drie plekken in de listener stonden op de oude naam en vielen daardoor
-    stil terug op een andere agent. De rol is de stabiele eigenschap, en een
-    ingetrokken sleutel telt niet mee."""
+    By role, not by name. Until 2026-09-07 the hub was called `coordinator` and
+    is now `odin`; three places in the listener still used the old name and
+    silently fell back on another agent. The role is the stable property, and a
+    revoked key does not count."""
     d = load_yaml(os.path.join(root, "identities.yml"))["identities"]
     return next((h for h, v in d.items()
                  if v.get("rol") == "meta-agent" and v.get("status") == "actief"), None)
 
 
 def fetch_def(base, handle):
-    """Haal de canonieke definitie uit de handbook. Return {npub, channels,
-    system, provider} of None bij falen (fail-closed)."""
+    """Fetch the canonical definition from the handbook. Returns {npub, channels,
+    system, provider} or None on failure (fail-closed)."""
     url = f"{base}/{handle}.md"
     try:
         with urllib.request.urlopen(url, timeout=15) as r:
@@ -72,8 +71,8 @@ def fetch_def(base, handle):
         return None
     fm = yaml.safe_load(m.group(1)).get("agent", {})
     chat = fm.get("chat") or {}
-    channels = chat.get("channels") or []  # `or`: vangt óók `channels:` = YAML null
-    # systemprompt = de blockquote onder '## Chat-facet'
+    channels = chat.get("channels") or []  # `or` also catches `channels:` = YAML null
+    # system prompt = the blockquote under '## Chat-facet'
     body = s[m.end():]
     cf = re.search(r"##\s*Chat-facet.*?\n(.*?)(?:\n##\s|\Z)", body, re.S)
     system = ""
@@ -83,9 +82,10 @@ def fetch_def(base, handle):
             for ln in cf.group(1).splitlines() if ln.startswith(">")
         ).strip()
     provider = (fm.get("provider") or "claude-p")
-    # Model en tools komen uit de registry en worden afgedwongen (besluit Mark
-    # 2026-09-06). Fail-closed: zonder model draait de agent niet — anders valt hij
-    # stil terug op de omgevingsdefault en weet niemand waarop hij draaide.
+    # Model and tools come from the registry and are enforced (Mark's decision,
+    # 2026-09-06). Fail-closed: without a model the agent does not run — otherwise
+    # it silently falls back on the environment default and nobody knows what it
+    # ran on.
     tools = chat.get("tools") or {}
     return {"npub": fm.get("npub"), "channels": channels, "system": system,
             "provider": provider, "model": chat.get("model") or "",
@@ -94,10 +94,11 @@ def fetch_def(base, handle):
 
 
 def build_agents(cfg, base, npubs):
-    """De agents die deze listener draait: definitie uit de handbook, nsec uit env,
-    npub gelijk aan de registry, en een model in de def. Elk van die vier is
-    fail-closed — een agent die er niet doorheen komt draait niet, met de reden op
-    stdout. Zonder de model-check zou hij stil op de omgevingsdefault draaien."""
+    """The agents this listener runs: definition from the handbook, nsec from the
+    environment, npub matching the registry, and a model in the def. Each of those
+    four is fail-closed — an agent that does not pass does not run, with the
+    reason on stdout. Without the model check it would silently run on the
+    environment default."""
     agents = {}
     for handle in cfg.get("run", []):
         nsec = os.environ.get("NSEC_" + handle.upper(), "")

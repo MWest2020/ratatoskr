@@ -1,21 +1,22 @@
 #!/usr/bin/env bash
-# Post een bericht naar een boomhuis-kanaal (default #general) — de ping-lus.
-# Env: IDENT = identiteit (default 'bouwer'; de mens-identiteit + niet-actieve
-# sleutels worden geweigerd). CHAN = doelkanaal-naam uit channels.yml (default
-# 'general'), bv. CHAN=review of CHAN=runs. Bericht via arg of stdin.
-#   IDENT=reviewer CHAN=review ~/boomhuis/orchestrator/ping.sh 'verdict: ...' Geen secret in dit bestand: de nsec komt uit
-# SOPS. De IDENT-filter weigert de mens-identiteit (rol mens) en niet-actieve
-# identiteiten, zodat niemand zich als de mens (of ingetrokken) kan voordoen.
+# Post a message to a boomhuis channel (default #general) — the ping loop.
+# Env: IDENT = identity (default 'bouwer'; the human identity and inactive keys
+# are refused). CHAN = target channel name from channels.yml (default 'general'),
+# e.g. CHAN=review or CHAN=runs. The message comes from an arg or from stdin.
+#   IDENT=reviewer CHAN=review ~/boomhuis/orchestrator/ping.sh 'verdict: ...'
+# No secret in this file: the nsec comes from SOPS. The IDENT filter refuses the
+# human identity (role mens) and inactive identities, so nobody can pose as the
+# human (or as a revoked identity).
 #   IDENT=hubby ~/boomhuis/orchestrator/ping.sh 'mijlpaal: ...'
 set -euo pipefail
 IDENT="${IDENT:-bouwer}"
-CHAN="${CHAN:-general}"   # doelkanaal (naam uit channels.yml), default #general
+CHAN="${CHAN:-general}"   # target channel (name from channels.yml), default #general
 MSG="${1:-$(cat)}"
 export SOPS_AGE_KEY_FILE="${SOPS_AGE_KEY_FILE:-$HOME/.config/sops/age/keys.txt}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
-# python3 -c: het programma staat in de arg (vast, geen shell-interpolatie), IDENT
-# en ROOT gaan via env (geen injectie), en stdin blijft vrij voor de sops-pipe.
+# python3 -c: the program is in the arg (fixed, no shell interpolation), IDENT
+# and ROOT go through env (no injection), and stdin stays free for the sops pipe.
 NPUB=$(IDENT="$IDENT" ROOT="$ROOT" CHAN="$CHAN" python3 -c '
 import os, sys, yaml
 ident, root = os.environ["IDENT"], os.environ["ROOT"]
@@ -26,9 +27,9 @@ if e.get("rol") == "mens":
     sys.stderr.write("IDENT %r is de mens-identiteit — niet toegestaan via ping.sh\n" % ident); sys.exit(4)
 if e.get("status") != "actief":
     sys.stderr.write("IDENT %r is niet actief (status=%s)\n" % (ident, e.get("status"))); sys.exit(5)
-# #general is het hub-kanaal: daar praat Mark met odin, en met odin alleen
-# (besluit Mark 2026-09-07). Een sessie rapporteert in het projectkanaal, of in
-# #escalatie als er een besluit nodig is — niet in de hub.
+# #general is the hub channel: that is where Mark talks to odin, and to odin
+# alone (Mark, 2026-09-07). A session reports in the project channel, or in
+# #escalatie when a decision is needed — not in the hub.
 if e.get("rol") == "sessie" and os.environ.get("CHAN", "general") == "general":
     sys.stderr.write("IDENT %r is een sessie: #general is hub-only (odin). "
                      "Kies CHAN=<projectkanaal> of CHAN=escalatie.\n" % ident); sys.exit(8)
@@ -45,10 +46,10 @@ if not cid:
 print(cid)')
 NSEC=$(sops -d "$ROOT/secrets/identities.yaml" | IDENT="$IDENT" python3 -c 'import os,sys,yaml;print(yaml.safe_load(sys.stdin)["identities"][os.environ["IDENT"]]["nsec"])')
 
-# Relay via de community-host 192.168.178.60 (de relay is community-scoped op DEZE
-# host; het tailnet-IP geeft "no community configured for this host"). Vanaf een
-# tailnet-node werkt dit via de subnet-router; override met env BUZZ_RELAY_URL.
-# Eigen npub als --mention: staat vrije @-woorden toe (presentation-only).
+# Relay through the community host 192.168.178.60 (the relay is community-scoped
+# on THIS host; the tailnet IP gives "no community configured for this host").
+# From a tailnet node this works through the subnet router; override with env
+# BUZZ_RELAY_URL. Own npub as --mention: allows free @words (presentation-only).
 BUZZ_PRIVATE_KEY="$NSEC" BUZZ_RELAY_URL="${BUZZ_RELAY_URL:-ws://192.168.178.60:3000}" \
   ~/.local/bin/buzz messages send --channel "$CID" --content - --mention "$NPUB" <<<"$MSG" >/dev/null
 echo "[ping] verstuurd naar #$CHAN (als $IDENT)"

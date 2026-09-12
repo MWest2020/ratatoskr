@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: EUPL-1.2
-"""Tests voor het host-beheer (chat/adminctl.py).
+"""Tests for host-side administration (chat/adminctl.py).
 
-Draait het script als subproces, met een eigen database en het wachtwoord op
-stdin — dat is precies hoe het in het echt gebruikt wordt.
+Runs the script as a subprocess, with its own database and the password on
+stdin — which is exactly how it is used for real.
 """
 import os
 import subprocess
@@ -42,9 +42,9 @@ class Adminctl(unittest.TestCase):
         self.assertIn("al een account", out)
 
     def test_one_line_is_enough_without_a_terminal(self):
-        """`docker compose exec -T chat python3 adminctl.py owner mark` heeft
-        geen terminal; zonder deze tak strandt een verse installatie in een
-        EOFError precies wanneer hij zijn eerste account moet krijgen."""
+        """`docker compose exec -T chat python3 adminctl.py owner mark` has no
+        terminal; without this branch a fresh installation strands in an EOFError
+        exactly when it has to get its first account."""
         code, out = self.run_ctl("owner", "mies", stdin=WW)
         self.assertEqual(code, 0, out)
         _, listing = self.run_ctl("people")
@@ -71,18 +71,18 @@ class Adminctl(unittest.TestCase):
 
     def test_changing_the_password_revokes_sessions(self):
         self.run_ctl("owner", "mark", stdin=WW + WW)
-        # een sessie erbij, en kijken of die na de wijziging weg is
+        # add a session, and see whether it is gone after the change
         code, out = self.run_ctl("password", "mark",
                                  stdin="een nieuw lang wachtwoord\n" * 2)
         self.assertEqual(code, 0, out)
         self.assertIn("sessies zijn ingetrokken", out)
 
     def test_the_last_owner_stays(self):
-        """Jezelf verwijderen als enige eigenaar maakt de installatie
-        onbereikbaar; dat hoort niet per ongeluk te kunnen."""
+        """Deleting yourself as the only owner makes the installation
+        unreachable; that should not be possible by accident."""
         self.run_ctl("owner", "mark", stdin=WW + WW)
         code, out = self.run_ctl("delete", "mark")
-        self.assertEqual(code, 0, out)   # enige persoon: dan mag het wel, dat is opnieuw beginnen
+        self.assertEqual(code, 0, out)   # only person: then it is allowed, that is starting over
         _, listing = self.run_ctl("people")
         self.assertIn("nog niemand", listing)
 

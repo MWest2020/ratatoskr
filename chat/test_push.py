@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: EUPL-1.2
-"""Web-Push-opslag: de poort en de begrenzing.
+"""Web Push storage: the gate and the bound.
 
-De subscribe-route is onbeschermd achter het apparaat-token: elk tailnet-apparaat
-kan hem aanroepen. Wat hier misgaat, groeit dus stil in een bestand op de VM.
+The subscribe route is unprotected behind the device token: any tailnet device
+can call it. Whatever goes wrong here therefore grows quietly in a file on the VM.
 """
 import importlib
 import json
@@ -27,7 +27,7 @@ class PushTest(unittest.TestCase):
     def sub(self, ep="https://push.example/abc", p="p" * 10, a="a" * 10):
         return {"endpoint": ep, "keys": {"p256dh": p, "auth": a}}
 
-    # --- poort ---
+    # --- gate ---
     def test_a_valid_subscription_is_stored(self):
         self.assertTrue(self.push.add_subscription(self.sub()))
         self.assertEqual(len(self.push.load_subscriptions()), 1)
@@ -53,13 +53,13 @@ class PushTest(unittest.TestCase):
         self.assertEqual(set(stored), {"endpoint", "keys"})
         self.assertEqual(set(stored["keys"]), {"p256dh", "auth"})
 
-    # --- begrenzing en duurzaamheid ---
+    # --- bounds and durability ---
     def test_dedup_on_endpoint(self):
         self.push.add_subscription(self.sub(p="eerst"))
         self.push.add_subscription(self.sub(p="tweede"))
         subs = self.push.load_subscriptions()
         self.assertEqual(len(subs), 1)
-        self.assertEqual(subs[0]["keys"]["p256dh"], "tweede")   # nieuwste wint
+        self.assertEqual(subs[0]["keys"]["p256dh"], "tweede")   # newest wins
 
     def test_the_cap_drops_the_oldest(self):
         for i in range(5):
@@ -69,22 +69,22 @@ class PushTest(unittest.TestCase):
         self.assertEqual([s["endpoint"][-1] for s in subs], ["2", "3", "4"])
 
     def test_the_state_dir_is_created(self):
-        # Verse VM zonder de mkdir-stap: dit mag geen FileNotFoundError door
-        # do_POST heen gooien (traceback zonder HTTP-antwoord).
+        # Fresh VM without the mkdir step: this must not throw a
+        # FileNotFoundError through do_POST (a traceback without an HTTP answer).
         self.assertTrue(self.push.add_subscription(self.sub()))
         self.assertTrue(os.path.exists(self.push.SUBS_PATH))
 
     def test_the_file_is_0600(self):
         self.push.add_subscription(self.sub())
         mode = stat.S_IMODE(os.stat(self.push.SUBS_PATH).st_mode)
-        self.assertEqual(mode, 0o600, oct(mode))   # push-tokens per apparaat
+        self.assertEqual(mode, 0o600, oct(mode))   # per-device push tokens
 
     def test_a_broken_file_gives_an_empty_list(self):
         os.makedirs(os.path.dirname(self.push.SUBS_PATH), exist_ok=True)
         with open(self.push.SUBS_PATH, "w") as f:
             f.write("{geen json")
         self.assertEqual(self.push.load_subscriptions(), [])
-        self.assertTrue(self.push.add_subscription(self.sub()))   # herstelt
+        self.assertTrue(self.push.add_subscription(self.sub()))   # recovers
 
     def test_json_that_is_not_a_list_gives_an_empty_list(self):
         os.makedirs(os.path.dirname(self.push.SUBS_PATH), exist_ok=True)

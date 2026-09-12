@@ -1,10 +1,11 @@
 # SPDX-License-Identifier: EUPL-1.2
-"""De actielaag: wie tekent wat, en wat gebeurt er als de relay nee zegt.
+"""The action layer: who signs what, and what happens when the relay says no.
 
-Twee dingen die hier echt misgingen en die deze tests vastzetten:
-kanaalbeheer mag NOOIT met marks sleutel getekend worden (fail-closed i.p.v.
-terugvallen), en de hub wordt op rol gezocht — op naam brak dat stil na de
-hernoeming coordinator -> odin, waarna elk nieuw kanaal zonder hub ontstond.
+Two things that really went wrong here and that these tests pin down: channel
+management must NEVER be signed with Mark's key (fail-closed instead of falling
+back), and the hub is looked up by role — by name that broke silently after the
+rename coordinator -> odin, after which every new channel came into being without
+a hub.
 """
 import json
 import unittest
@@ -15,7 +16,7 @@ import roster
 
 
 class Fake:
-    """Vervangt buzz/buzz_admin en onthoudt de aanroepen."""
+    """Replaces buzz/buzz_admin and remembers the calls."""
 
     def __init__(self, answer=(0, "", ""), admin_off=False):
         self.answer, self.admin_off, self.calls = answer, admin_off, []
@@ -53,7 +54,7 @@ class ChannelAdminTest(Base):
         code, _ = actions.create_channel("bouwoverleg")
         self.assertEqual(code, 200)
         kinds = {c[0] for c in fake.calls}
-        self.assertEqual(kinds, {"admin"})            # geen enkele gewone buzz-call
+        self.assertEqual(kinds, {"admin"})            # not a single plain buzz call
 
     def test_without_the_orchestrator_key_there_is_no_silent_fallback(self):
         fake = Fake(admin_off=True)
@@ -61,17 +62,17 @@ class ChannelAdminTest(Base):
         code, payload = actions.create_channel("bouwoverleg")
         self.assertEqual(code, 503)
         self.assertIn("BUZZ_ORCHESTRATOR_KEY", payload["error"])
-        self.assertNotIn("buzz", {c[0] for c in fake.calls})  # niets met marks sleutel
+        self.assertNotIn("buzz", {c[0] for c in fake.calls})  # nothing with mark's key
 
     def test_the_name_is_validated_before_the_relay(self):
         fake = Fake(); self.install(fake)
         for name in ("", "met spatie", "a" * 40, "-begintfout", "../x", "a/b"):
             code, _ = actions.create_channel(name)
             self.assertEqual(code, 400, name)
-        self.assertEqual(fake.calls, [])              # niets bereikte de relay
+        self.assertEqual(fake.calls, [])              # nothing reached the relay
 
     def test_capitals_and_spaces_are_normalised(self):
-        # Bewust géén fout: de gebruiker typt "Bouw " en krijgt #bouw.
+        # Deliberately not an error: the user types "Bouw " and gets #bouw.
         fake = Fake((0, json.dumps({"channel_id": "n"}), "")); self.install(fake)
         code, payload = actions.create_channel("  Bouw  ")
         self.assertEqual((code, payload["name"]), (200, "bouw"))
@@ -82,10 +83,10 @@ class ChannelAdminTest(Base):
         _, payload = actions.create_channel("bouwoverleg")
         self.assertTrue(payload["hub_added"])
         add = [c for c in fake.calls if c[1][:2] == ["channels", "add-member"]]
-        self.assertEqual(add[0][1][5], "pk-odin")     # --pubkey van de hub
+        self.assertEqual(add[0][1][5], "pk-odin")     # --pubkey of the hub
 
     def test_the_create_does_not_fail_without_a_hub(self):
-        # De add is best-effort: het kanaal bestaat al. Wél zichtbaar in het antwoord.
+        # The add is best effort: the channel already exists. Visible in the answer.
         fake = Fake((0, json.dumps({"channel_id": "nieuw"}), ""))
         self.install(fake, hub=None)
         code, payload = actions.create_channel("bouwoverleg")
@@ -122,7 +123,7 @@ class SendTest(Base):
     def test_a_message_signs_with_the_process_identity(self):
         fake = Fake(); self.install(fake)
         self.assertEqual(actions.send("c1", "hoi")[0], 200)
-        self.assertEqual({c[0] for c in fake.calls}, {"buzz"})  # mark, niet de orchestrator
+        self.assertEqual({c[0] for c in fake.calls}, {"buzz"})  # mark, not the orchestrator
 
     def test_an_unknown_mention_returns_a_choice(self):
         err = (1, "", "mention '@bouwer' does not match any channel member")
@@ -130,14 +131,14 @@ class SendTest(Base):
         code, payload = actions.send("c1", "hoi @bouwer")
         self.assertEqual(code, 409)
         self.assertEqual(payload["missing_agent"], "bouwer")
-        self.assertTrue(payload["known"])            # bestaat -> "toevoegen" mag
+        self.assertTrue(payload["known"])            # exists -> "add" is allowed
         self.assertTrue(payload["can_force"])
 
     def test_an_unknown_mention_that_is_not_an_agent(self):
         err = (1, "", "mention '@niemand' does not match any channel member")
         fake = Fake(err); self.install(fake, agents={})
         _, payload = actions.send("c1", "hoi @niemand")
-        self.assertFalse(payload["known"])           # alleen "toch versturen"
+        self.assertFalse(payload["known"])           # only "send anyway"
 
     def test_force_uses_a_real_member_as_anchor(self):
         fake = Fake(); self.install(fake)

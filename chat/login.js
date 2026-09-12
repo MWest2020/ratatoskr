@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: EUPL-1.2
-// Eén pagina, drie situaties: inloggen, de eerste persoon aanmaken (setup), en
-// een uitnodiging gebruiken. Ze verschillen alleen in welk endpoint er
-// aangeroepen wordt en welke velden je ziet — een aparte pagina per geval
-// levert drie keer hetzelfde formulier op.
+// One page, three situations: logging in, creating the first person (setup), and
+// using an invitation. They differ only in which endpoint is called and which
+// fields you see — a separate page per case gives you the same form three times.
 
 const params = new URLSearchParams(location.search);
 const setupToken = params.get("setup") || "";
@@ -18,13 +17,13 @@ else if (setupToken) mode = "setup";
 
 async function determineMode(){
   if (mode !== "inloggen") return;
-  // Verse installatie zonder setup-link in de URL: dan is het enige zinnige
-  // scherm "maak de eigenaar aan", met het oude gedeelde token als sleutel.
+  // A fresh installation without a setup link in the URL: then the only sensible
+  // screen is "create the owner", with the old shared token as the key.
   try{
     const r = await fetch("/api/status");
     const s = await r.json();
     if ((s.personen || 0) === 0){ mode = "setup"; $("tokenField").hidden = false; }
-  }catch(e){ /* laat het inlogscherm staan */ }
+  }catch(e){ /* leave the login screen as it is */ }
 }
 
 function render(){
@@ -60,8 +59,8 @@ async function submit(e){
     const d = await r.json().catch(() => ({}));
     if (r.ok){ location.replace(back.startsWith("/") ? back : "/"); return; }
     if (d.totp){
-      // Naam en wachtwoord klopten; nu de tweede factor. Het veld verschijnt
-      // pas hier, zodat wie geen tweede factor heeft er ook geen ziet.
+      // Name and password were right; now the second factor. The field only
+      // appears here, so anyone without a second factor never sees one.
       $("codeField").hidden = false;
       $("code").focus();
       message(d.error === "code nodig" ? "Vul de code uit je app in." : "Die code klopt niet.");

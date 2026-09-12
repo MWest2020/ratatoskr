@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: EUPL-1.2
-// Sessie in plaats van apparaat-token. De server zet een HttpOnly-cookie, dus
-// JavaScript ziet die niet en kan hem ook niet lekken; wat de app wél nodig
-// heeft is het sessiegebonden token dat bij elk statuswijzigend verzoek mee moet.
+// A session instead of a device token. The server sets an HttpOnly cookie, so
+// JavaScript never sees it and cannot leak it; what the app does need is the
+// session-bound token that has to accompany every state-changing request.
 //
-// Een 401 betekent "jij mag hier niet (meer)" en is iets anders dan een
-// netwerkfout, die "ik kan er niet bij" betekent. Ze verdienen een ander
-// antwoord: het eerste stuurt naar inloggen (en wist wat er lokaal bewaard is,
-// zodat de volgende persoon op dit apparaat niets van de vorige leest), het
-// tweede laat de app staan waar hij staat.
+// A 401 means "you may not be here (any more)" and is something other than a
+// network error, which means "I cannot reach it". They deserve different answers:
+// the first sends you to the login page (and clears what is stored locally, so
+// the next person on this device reads nothing of the previous one), the second
+// leaves the app where it is.
 
 let csrfToken = "";
 
-/** De sessie, of `null` bij een 401 (echt uitgelogd), of `undefined` als we er
-    niet bij konden. Dat onderscheid is de hele grap: uitgelogd stuurt naar
-    inloggen, geen netwerk laat de app staan waar hij staat. */
+/** The session, or `null` on a 401 (really logged out), or `undefined` when we
+    could not reach it. That distinction is the whole point: logged out goes to the
+    login page, no network leaves the app where it is. */
 async function fetchSession(){
   let r;
   try{ r = await fetch("/api/sessie", { headers: { "Accept": "application/json" } }); }
@@ -27,14 +27,14 @@ async function fetchSession(){
   }catch(e){ return undefined; }
 }
 
-/** Naar de inlogpagina, met een verwijzing terug naar waar je was. */
+/** To the login page, with a pointer back to where you were. */
 function goToLogin(){
   if(typeof clearSnapshots === "function") clearSnapshots();
   const back = location.pathname + location.search + location.hash;
   location.replace("/login?terug=" + encodeURIComponent(back));
 }
 
-/** Alleen aanroepen bij een échte 401, niet bij een netwerkfout. */
+/** Only call this on a real 401, not on a network error. */
 function loggedOut(){
   goToLogin();
 }
@@ -50,8 +50,8 @@ async function postJSON(path, body){
   });
   if(r.status === 401){ loggedOut(); }
   if(r.status === 403 && !csrfToken){
-    // Sessietoken kwijt (bijvoorbeeld na een herstart van de app): ophalen en
-    // één keer opnieuw. Lukt dat niet, dan is de sessie echt weg.
+    // Session token lost (after an app restart, for instance): fetch it and try
+    // once more. If that fails, the session is really gone.
     const s = await fetchSession();
     if(s){
       return await fetch(path, {
@@ -71,7 +71,7 @@ async function logOut(everywhere){
   location.replace("/login");
 }
 
-// Wie ben je, en mag je uitnodigen — de eigenaar wel, de rest niet.
+// Who are you, and may you invite — the owner may, the rest may not.
 function showWhoYouAre(session){
   const who = $("#whoAmI");
   if(who && session && session.naam) who.textContent = "ingelogd als " + session.naam;
@@ -84,7 +84,7 @@ function showWhoYouAre(session){
       if(!r.ok || !d.pad){ toast(d.error || "uitnodigen mislukte"); return; }
       const link = location.origin + d.pad;
       try{ await navigator.clipboard.writeText(link); toast("uitnodiging gekopieerd"); }
-      catch(e){ toast(link); }   // geen klembord: dan maar tonen
+      catch(e){ toast(link); }   // no clipboard: then just show it
     };
   }
   const pw = $("#passwordBtn");
@@ -93,8 +93,8 @@ function showWhoYouAre(session){
   if(out) out.onclick = () => logOut(false);
 }
 
-/** Wachtwoord wijzigen. Twee velden in een pop-up; window.prompt kan niet, dat
-    blokkeren browsers in een geïnstalleerde PWA. */
+/** Change your password. Two fields in a pop-up; window.prompt is out, browsers
+    block that in an installed PWA. */
 function changePassword(){
   const ov = el("div", "modal-ov");
   const box = el("div", "modal");
@@ -116,7 +116,7 @@ function changePassword(){
     const d = await r.json().catch(() => ({}));
     ok.disabled = false;
     if(!r.ok){ toast(d.error || "wijzigen mislukte"); return; }
-    // De server gaf een nieuwe sessie; die zit al in de cookie, het token hier.
+    // The server gave a new session; it is already in the cookie, the token here.
     if(d.csrf) csrfToken = d.csrf;
     close();
     toast("wachtwoord gewijzigd — andere apparaten zijn uitgelogd");

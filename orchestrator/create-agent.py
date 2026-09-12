@@ -1,17 +1,17 @@
 # /// script
 # dependencies = ["coincurve>=20", "bech32>=1.2", "pyyaml>=6"]
 # ///
-"""Maak een nieuwe chat-agent aan — automatiseert de volledige dans.
+"""Create a new chat agent — automates the whole dance.
 
-Na een coordinator-voorstel dat Mark goedkeurt:
+After a coordinator proposal that Mark approves:
   uv run orchestrator/create-agent.py --name ontwerper --channels general,architectuur \
       --mandate "Sparringpartner voor frontend/UX en design-systemen." \
       --system "Je bent 'ontwerper', ... Kort, Nederlands."
 
-Doet: keypair genereren → handbook-def op een BRANCH + PR (CODEOWNERS = Mark) →
-boomhuis identities.yml + secrets (SOPS) → relay- en kanaal-bot-lid → run-lijst.
-De agent gaat pas LIVE nadat Mark de handbook-PR merget (guardrail: de listener
-leest de def van main) en de listener herstart.
+Does: generate a keypair → handbook def on a BRANCH + PR (CODEOWNERS = Mark) →
+boomhuis identities.yml + secrets (SOPS) → relay and channel bot membership →
+run list. The agent only goes LIVE after Mark merges the handbook PR (guardrail:
+the listener reads the def from main) and the listener restarts.
 """
 import argparse
 import os
@@ -43,16 +43,16 @@ def npub_nsec():
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--name", required=True)
-    ap.add_argument("--channels", required=True, help="komma-gescheiden, bv. general,architectuur")
+    ap.add_argument("--channels", required=True, help="comma-separated, e.g. general,architectuur")
     ap.add_argument("--mandate", required=True)
-    ap.add_argument("--system", required=True, help="chat-facet systemprompt")
+    ap.add_argument("--system", required=True, help="chat facet system prompt")
     a = ap.parse_args()
     name = a.name.lower()
     chans = [c.strip() for c in a.channels.split(",") if c.strip()]
     pub, npub, priv, nsec = npub_nsec()
     print(f"[create] {name}: npub={npub}")
 
-    # 1) handbook-def op een branch + PR
+    # 1) handbook def on a branch + PR
     br = f"add-agent-{name}"
     run(["git", "checkout", "-q", "main"], cwd=HANDBOOK)
     run(["git", "checkout", "-q", "-b", br], cwd=HANDBOOK)
@@ -115,7 +115,7 @@ Geen — {name} draait alleen in de chat.
     run(["sops", "-e", "-i", tmp], env=env)
     os.replace(tmp, secp)
 
-    # 3) run-lijst
+    # 3) run list
     ap_ = os.path.join(BOOMHUIS, "agents", "agents.yml")
     rd = yaml.safe_load(open(ap_))
     if name not in rd["run"]:
@@ -123,15 +123,15 @@ Geen — {name} draait alleen in de chat.
     head = open(ap_).read().split("run:")[0]
     open(ap_, "w").write(head + "run:\n" + "".join(f"  - {h}\n" for h in rd["run"]))
 
-    # 4) relay- en kanaal-bot-lid (als mark)
+    # 4) relay and channel bot membership (as mark)
     mark_nsec = next(v["nsec"] for k, v in sd["identities"].items() if k == "mark")
     run(["ssh", "-o", "BatchMode=yes", "buzz-relay",
          f"cd /opt/buzz-relay && docker compose exec -T relay buzz-admin add-member --pubkey {pub} --role member"])
     benv = dict(os.environ, BUZZ_PRIVATE_KEY=mark_nsec, BUZZ_RELAY_URL=RELAY)
     buzz = os.path.expanduser("~/.local/bin/buzz")
     import time
-    time.sleep(2)  # relay-lidmaatschap laten propageren vóór kanaal-adds
-    # kanaal-id's uit channels.yml (bron), niet uit een geparste list
+    time.sleep(2)  # let relay membership propagate before the channel adds
+    # channel ids from channels.yml (the source), not from a parsed list
     chdef = yaml.safe_load(open(os.path.join(BOOMHUIS, "channels.yml"))).get("channels", {})
     for c in chans:
         cid = chdef.get(c, {}).get("id") or (GENERAL if c == "general" else None)
@@ -140,7 +140,7 @@ Geen — {name} draait alleen in de chat.
             continue
         r = run([buzz, "channels", "add-member", "--channel", cid, "--pubkey", pub, "--role", "bot"], env=benv)
         print(f"[create] {c}-bot: {'ok' if 'accepted' in r.stdout and 'true' in r.stdout else r.stdout[:80] or r.stderr[:80]}")
-    # eigen profielnaam
+    # own profile name
     run([buzz, "users", "set-profile", "--name", name, "--about", a.mandate[:120]],
         env=dict(os.environ, BUZZ_PRIVATE_KEY=nsec, BUZZ_RELAY_URL=RELAY))
 

@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: EUPL-1.2
-"""Offline tests voor `providers.py` (welk model deed het werk).
-Draaien vanuit agents/: `python3 -m unittest test_providers` (agents/ heeft geen
-__init__.py en de modules doen top-level imports, dus het pakket-pad werkt niet).
+"""Offline tests for `providers.py` (which model did the work).
+Run from agents/: `python3 -m unittest test_providers` (agents/ has no
+__init__.py and the modules use top-level imports, so the package path does not
+work).
 """
 import unittest
 
@@ -9,10 +10,10 @@ import providers
 
 
 class ModelReportingTest(unittest.TestCase):
-    """De statistiekregel is het enige waarop je kunt aflezen of het gedeclareerde
-    model afgedwongen wordt. Hij nam de EERSTE sleutel uit modelUsage; een run die
-    meerdere modellen aanraakt noemde dan willekeurig één. Waargenomen 2026-09-07:
-    odin werd als haiku gerapporteerd terwijl de handbook sonnet declareert."""
+    """The stats line is the only place you can read whether the declared model is
+    enforced. It took the FIRST key from modelUsage; a run touching several models
+    then named an arbitrary one. Observed 2026-09-07: odin was reported as haiku
+    while the handbook declares sonnet."""
 
     def u(self, **kv):
         return {m: {"inputTokens": i, "outputTokens": 1} for m, i in kv.items()}
@@ -32,8 +33,8 @@ class ModelReportingTest(unittest.TestCase):
             self.assertEqual(providers.main_model(empty, "sonnet"), "sonnet")
 
     def test_all_token_fields_count(self):
-        # cache-tokens zijn vaak veruit de grootste post; alleen inputTokens
-        # vergelijken zou het verkeerde model aanwijzen.
+        # cache tokens are often by far the biggest item; comparing inputTokens
+        # alone would point at the wrong model.
         usage = {"a": {"inputTokens": 5}, "b": {"inputTokens": 1, "cacheReadInputTokens": 9000}}
         self.assertEqual(providers.main_model(usage, None), "b")
 
@@ -45,7 +46,7 @@ class ModelReportingTest(unittest.TestCase):
         self.assertTrue(providers.model_matches("sonnet", "claude-sonnet-5"))
         self.assertTrue(providers.model_matches("haiku", "claude-haiku-4-5-20251001"))
         self.assertFalse(providers.model_matches("sonnet", "claude-haiku-4-5"))
-        self.assertTrue(providers.model_matches("", "wat dan ook"))   # niets gevraagd
+        self.assertTrue(providers.model_matches("", "wat dan ook"))   # nothing requested
 
 
 if __name__ == "__main__":

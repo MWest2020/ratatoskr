@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: EUPL-1.2
-"""De identiteitsregistry zoals de chat-backend hem leest.
+"""The identity registry as the chat backend reads it.
 
-`identities.yml` wordt hier met regexen gelezen (stdlib, geen yaml-dependency op
-de VM). Dat werkt, maar het betekent dat de vorm van dat bestand een contract is.
-Deze tests pinnen dat contract, inclusief de twee eigenschappen waar vandaag echt
-iets van afhing: ingetrokken sleutels tellen niet mee, en de hub wordt op ROL
-gevonden zodat een hernoeming niets breekt.
+`identities.yml` is read here with regexes (stdlib, no yaml dependency on the
+VM). That works, but it means the shape of that file is a contract. These tests
+pin that contract, including the two properties something really depended on
+today: revoked keys do not count, and the hub is found by ROLE so a rename breaks
+nothing.
 """
 import unittest
 
@@ -50,7 +50,7 @@ class ParseTest(unittest.TestCase):
                          ["bouwer", "mark", "odin", "odin-worker"])
 
     def test_revoked_is_dropped(self):
-        self.assertNotIn("bb22", self.m)          # de oude coordinator-sleutel
+        self.assertNotIn("bb22", self.m)          # the old coordinator key
 
     def test_without_a_pubkey_is_dropped(self):
         self.assertFalse(any(v["name"] == "security" for v in self.m.values()))
@@ -59,8 +59,8 @@ class ParseTest(unittest.TestCase):
         self.assertEqual(self.m["cc33"], {"name": "odin", "rol": "meta-agent"})
 
     def test_a_name_with_a_hyphen(self):
-        # odin-worker heette versum; de hernoeming introduceerde een streepje in
-        # een handle en de blok-regex moet dat aankunnen.
+        # odin-worker used to be versum; the rename introduced a hyphen in a
+        # handle and the block regex has to cope with that.
         self.assertEqual(self.m["ee55"]["name"], "odin-worker")
 
     def test_a_quoted_status_counts_too(self):
@@ -72,8 +72,8 @@ class ParseTest(unittest.TestCase):
 
 
 class HubTest(unittest.TestCase):
-    """hub_pubkey() vindt de hub op rol. Op naam zoeken brak vandaag drie keer:
-    `coordinator` bestond niet meer en alles viel stil terug."""
+    """hub_pubkey() finds the hub by role. Looking it up by name broke three times
+    today: `coordinator` no longer existed and everything silently fell back."""
 
     def _with(self, reg):
         roster._cache.update(t=9e18, data=roster._parse_identities(reg), ttl=9e18)
@@ -97,9 +97,9 @@ class HubTest(unittest.TestCase):
         self._with(REG)
         self.assertIsNotNone(roster.agent_pubkey("odin"))       # meta-agent
         self.assertIsNotNone(roster.agent_pubkey("bouwer"))     # chat-agent
-        self.assertIsNone(roster.agent_pubkey("mark"))          # de mens
-        self.assertIsNone(roster.agent_pubkey("odin-worker"))   # een sessie
-        self.assertIsNone(roster.agent_pubkey("coordinator"))   # ingetrokken
+        self.assertIsNone(roster.agent_pubkey("mark"))          # the human
+        self.assertIsNone(roster.agent_pubkey("odin-worker"))   # a session
+        self.assertIsNone(roster.agent_pubkey("coordinator"))   # revoked
 
     def test_agent_pubkey_is_case_insensitive(self):
         self._with(REG)

@@ -2,13 +2,14 @@
 # /// script
 # dependencies = ["pywebpush>=1.14", "pyyaml>=6"]
 # ///
-"""Stuur een Web Push naar alle boomhuis-subscriptions (vanaf agent-lxc).
+"""Send a Web Push to every boomhuis subscription (from agent-lxc).
 
-De VM bewaart de subscriptions (/var/lib/boomhuis/push_subs.json, buiten de
-deploy-checkout); dit script leest ze via ssh en verstuurt met pywebpush + de
-VAPID-private-key uit SOPS. De VM-backend blijft zo dependency-loos. Aanroep:
+The VM keeps the subscriptions (/var/lib/boomhuis/push_subs.json, outside the
+deploy checkout); this script reads them over ssh and sends with pywebpush plus
+the VAPID private key from SOPS. That keeps the VM backend dependency-free. Call
+it as:
   uv run orchestrator/push-notify.py --title "PR #7" --url / --body "verdict: FAIL"
-  echo "bericht" | uv run orchestrator/push-notify.py --title "Boomhuis"
+  echo "message" | uv run orchestrator/push-notify.py --title "Boomhuis"
 """
 import argparse
 import json
@@ -20,9 +21,9 @@ from pywebpush import webpush, WebPushException
 import yaml
 
 BOOMHUIS = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-# Lezen/prunen van de subs gebeurt via één vastgepinde VM-helper (sudoers pint
-# precies dit pad), zodat de sender geen `sudo sh`/`sudo python3 -c` — feitelijk
-# een root-shell — nodig heeft. De helper draait als root en schrijft 0600.
+# Reading and pruning the subs goes through one pinned VM helper (sudoers pins
+# exactly this path), so the sender needs no `sudo sh`/`sudo python3 -c` — which
+# is effectively a root shell. The helper runs as root and writes 0600.
 SUBS_ADMIN = os.environ.get("PUSH_SUBS_ADMIN", "/usr/local/bin/boomhuis-push-subs")
 
 
@@ -36,10 +37,10 @@ def vapid():
 
 
 def subscriptions():
-    # De helper print de subs (of [] als er nog geen bestand is). Een gefaalde
-    # ssh-hop (255), sudo-weigering of leesfout geeft rc != 0 — dat mag NIET als
-    # "0 subs" doorgaan, anders meldt de sender vals succes terwijl er wél abonnees
-    # zijn. Alleen een expliciete lege/[]-uitvoer is echt 0 subs.
+    # The helper prints the subs (or [] when there is no file yet). A failed ssh
+    # hop (255), a sudo refusal or a read error gives rc != 0 — that must NOT pass
+    # as "0 subs", otherwise the sender reports false success while there are
+    # subscribers. Only an explicitly empty or [] output is really 0 subs.
     r = subprocess.run(["ssh", "-o", "BatchMode=yes", "buzz-relay",
                         "sudo", "-n", SUBS_ADMIN, "read"],
                        capture_output=True, text=True)
@@ -57,8 +58,8 @@ def subscriptions():
 
 
 def prune(dead):
-    """Verwijder verlopen endpoints (404/410) via de VM-helper (race-veilig: de VM
-    herleest zelf)."""
+    """Remove expired endpoints (404/410) through the VM helper (race-safe: the VM
+    re-reads by itself)."""
     if not dead:
         return
     r = subprocess.run(["ssh", "-o", "BatchMode=yes", "buzz-relay",
@@ -75,7 +76,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--title", default="Boomhuis")
     ap.add_argument("--url", default="/")
-    ap.add_argument("--body", default=None, help="anders van stdin")
+    ap.add_argument("--body", default=None, help="otherwise read from stdin")
     a = ap.parse_args()
     body = a.body if a.body is not None else sys.stdin.read().strip()
     v = vapid()
@@ -83,11 +84,11 @@ def main():
     if not subs:
         print("[push] geen subscriptions — niets te versturen."); return
     payload = json.dumps({"title": a.title, "body": body[:300], "url": a.url})
-    # Per abonnee de push-service noemen. "1/1 verstuurd" zegt niets over WELK
-    # toestel; een fcm.googleapis.com-endpoint is Chrome (Android of desktop),
-    # web.push.apple.com is Safari/iOS. Waargenomen 2026-09-08: één abonnement,
-    # FCM, HTTP 201 — en toch niets op de iPhone, want die had zich nooit
-    # aangemeld. Zonder deze regel is dat onzichtbaar.
+    # Name the push service per subscriber. "1/1 sent" says nothing about WHICH
+    # device; an fcm.googleapis.com endpoint is Chrome (Android or desktop),
+    # web.push.apple.com is Safari/iOS. Observed 2026-09-08: one subscription,
+    # FCM, HTTP 201 — and still nothing on the iPhone, because it had never
+    # subscribed. Without this line that is invisible.
     for s_ in subs:
         host = (s_.get("endpoint") or "").split("/")[2:3]
         print(f"[push] abonnee: {host[0] if host else '?'}")
@@ -96,30 +97,30 @@ def main():
     for s in subs:
         ep = s.get("endpoint") or ""
         try:
-            # Urgency high + een TTL van een uur. Waargenomen 2026-09-08: twee
-            # pushes kwamen pas veel later en tegelijk aan op een Android-toestel.
-            # Zonder Urgency-header behandelt de push-service een bericht als
-            # "normal" en mag hij het vasthouden tot het toestel uit doze komt.
-            # Voor een chatbericht is dat het verkeerde gedrag: te laat is hier
-            # hetzelfde als niet. De TTL begrenst de andere kant — een melding van
-            # gisteren wil je niet alsnog.
+            # Urgency high plus a TTL of an hour. Observed 2026-09-08: two pushes
+            # arrived much later and at the same time on an Android device.
+            # Without an Urgency header the push service treats a message as
+            # "normal" and may hold it until the device leaves doze. For a chat
+            # message that is the wrong behaviour: too late is the same as never.
+            # The TTL bounds the other side — you do not want yesterday's
+            # notification after all.
             r = webpush(subscription_info=s, data=payload, vapid_private_key=v["private"],
                         vapid_claims={"sub": v.get("subject", "mailto:boomhuis@localhost")},
                         ttl=3600, headers={"Urgency": "high"})
-            # De statuscode erbij: 201 betekent "de push-service heeft 'm
-            # aangenomen", NIET "het toestel heeft 'm getoond". Dat onderscheid
-            # kostte een half uur zoeken.
+            # The status code with it: 201 means "the push service accepted it",
+            # NOT "the device showed it". That distinction cost half an hour of
+            # searching.
             print(f"[push] {ep.split('/')[2]}: HTTP {getattr(r, 'status_code', '?')} (aangenomen "
                   f"door de push-service; aflevering is niet te bevestigen)")
             sent += 1
         except WebPushException as e:
-            # 404/410 = de push-service kent dit endpoint niet meer → weg ermee.
+            # 404/410 = the push service no longer knows this endpoint → drop it.
             code = getattr(getattr(e, "response", None), "status_code", None)
             if code in (404, 410):
                 dead.append(ep)
             print(f"[push] sub faalde ({ep[:40]}): {e}", file=sys.stderr)
-        except Exception as e:  # noqa: BLE001 — één kapotte sub (bv. ongeldige
-            # keys) mag de rest van de batch nooit meesleuren.
+        except Exception as e:  # noqa: BLE001 — one broken sub (e.g. invalid
+            # keys) must never drag the rest of the batch down with it.
             print(f"[push] sub-fout ({ep[:40]}): {type(e).__name__}: {e}", file=sys.stderr)
     prune(dead)
     print(f"[push] verstuurd naar {sent}/{len(subs)} subscription(s)")

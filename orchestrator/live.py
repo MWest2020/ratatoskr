@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
-"""Genereer knowledge/_live.md — 'wat er nu draait', als context voor de coordinator.
+"""Generate knowledge/_live.md — 'what is running now', as context for the hub.
 
-Bronnen: de draaiende chat-agents (agents.yml), open handover-batons
-(handover/*.md met status != afgehandeld/gearchiveerd) en — als een cluster is
-gekoppeld (env KUBECTL gezet) — de habitat-Jobs. Zonder cluster: expliciet
-gemeld, zodat de coordinator niet doet alsof hij het weet. Draai periodiek
-(systemd-timer) of on-demand.
+Sources: the running chat agents (agents.yml), open handover batons
+(handover/*.md with status != afgehandeld/gearchiveerd) and — when a cluster is
+connected (env KUBECTL set) — the habitat Jobs. Without a cluster: said
+explicitly, so the hub does not pretend to know. Run periodically (systemd timer)
+or on demand.
+
+The generated document itself is Dutch: it is read by the agents in the Dutch
+channels (ADR-0001).
 """
 import glob
 import subprocess
@@ -39,7 +42,7 @@ def open_batons():
 
 
 def open_changes():
-    """OpenSpec-changes op propose (niet gearchiveerd) = open werk."""
+    """OpenSpec changes at propose (not archived) = open work."""
     d = os.path.join(ROOT, "openspec", "changes")
     if not os.path.isdir(d):
         return []
@@ -48,7 +51,7 @@ def open_changes():
 
 
 def open_prs():
-    """Open PR's op boomhuis via gh (leeg als gh faalt/ontbreekt)."""
+    """Open PRs on boomhuis through gh (empty when gh fails or is missing)."""
     try:
         r = subprocess.run(["gh", "pr", "list", "--repo", "MWest2020/boomhuis",
                             "--state", "open", "--json", "number,title"],
@@ -60,8 +63,8 @@ def open_prs():
 
 
 def habitat_jobs():
-    """Habitat-Jobs (namespace 'agents'), alleen als een cluster is gekoppeld via
-    env KUBECTL (bv. 'ssh jumpy kubectl'). HABITAT_NS overschrijft de namespace."""
+    """Habitat Jobs (namespace 'agents'), only when a cluster is connected through
+    env KUBECTL (e.g. 'ssh jumpy kubectl'). HABITAT_NS overrides the namespace."""
     kubectl = os.environ.get("KUBECTL")
     if not kubectl:
         return None
@@ -75,12 +78,12 @@ def habitat_jobs():
 
 
 def checkout_state():
-    """Waar komt dit bestand vandaan? Een liveness-bestand dat uit een achterlopende
-    of vuile werkkopie komt, meldt werk dat niet bestaat en agents die niet draaien.
-    Dat gebeurde: `~/boomhuis` stond 52 commits achter met ongecommitte
-    wijzigingen, en `_live.md` toonde daardoor @archivaris als draaiend en een
-    change als open die allang gearchiveerd was. Geen `git fetch` hier — dit draait
-    op een timer; we vergelijken met wat de checkout al van origin weet."""
+    """Where does this file come from? A liveness file produced from a stale or
+    dirty working copy reports work that does not exist and agents that are not
+    running. That happened: `~/boomhuis` was 52 commits behind with uncommitted
+    changes, and `_live.md` therefore showed @archivaris as running and a change
+    as open that had long been archived. No `git fetch` here — this runs on a
+    timer; we compare against what the checkout already knows of origin."""
     def git(*a):
         try:
             return subprocess.run(["git", "-C", ROOT, *a], capture_output=True,

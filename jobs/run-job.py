@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Draai één recurring job: context ophalen → claude -p → post naar het kanaal.
+"""Run one recurring job: fetch context → claude -p → post to the channel.
 
-Config: jobs/jobs.yml. Privésleutel van de post-identiteit komt via env
-NSEC_<IDENTITY> (run-jobs.sh exporteert die uit SOPS). Aanroep:
-    python3 jobs/run-job.py <jobnaam>
+Config: jobs/jobs.yml. The private key of the posting identity comes through env
+NSEC_<IDENTITY> (run-jobs.sh exports it from SOPS). Call it as:
+    python3 jobs/run-job.py <jobname>
 """
 import os
 import subprocess
@@ -39,9 +39,9 @@ def main():
                                capture_output=True, text=True, timeout=60)
             context = (p.stdout or "").strip()[:6000]
         except subprocess.TimeoutExpired:
-            # Een trage context (relay/gh) mag de job niet laten crashen. Maar ook
-            # niet stil als "niks" doorgaan: geef een expliciete LEESFOUT als context,
-            # zodat een storing nooit als "geen blokkades / niks gedaan" leest.
+            # A slow context (relay/gh) must not crash the job. But it must not
+            # silently pass as "nothing" either: give an explicit READ ERROR as
+            # context, so a failure never reads as "no blockers / nothing done".
             context = ("(LEESFOUT: context-time-out — signaal onvolledig; "
                        "lees dit NIET als 'geen blokkades' of 'niks gebeurd')")
             print(f"[job {name}] context_cmd time-out — LEESFOUT-context", flush=True)
@@ -63,15 +63,15 @@ def main():
     env = dict(os.environ)
     env["BUZZ_PRIVATE_KEY"] = nsec
     env["BUZZ_RELAY_URL"] = RELAY
-    # eigen npub als --mention zodat willekeurige @woorden geen post-fout geven
+    # own npub as --mention so arbitrary @words do not cause a post error
     ids = yaml.safe_load(open(os.path.join(os.path.dirname(HERE),
                                            "identities.yml")))["identities"]
     npub = ids.get(job["identity"], {}).get("npub", "")
     args = [BUZZ, "messages", "send", "--channel", job["channel"], "--content", "-"]
     if npub:
         args += ["--mention", npub]
-    # send-resultaat wél checken: een trage/weigerende relay mag niet crashen én niet
-    # vals "gepost" melden.
+    # Do check the send result: a slow or refusing relay must neither crash nor
+    # falsely report "posted".
     try:
         sr = subprocess.run(args, env=env, input=answer, capture_output=True,
                             text=True, timeout=25)

@@ -1,14 +1,14 @@
 # SPDX-License-Identifier: EUPL-1.2
-"""Wie is dit, en mag die hier zijn.
+"""Who is this, and may they be here.
 
-Alles met de standaardbibliotheek: `hashlib.scrypt` voor wachtwoorden, `hmac`
-voor TOTP (RFC 6238), `secrets` voor sessies. Geen cryptobibliotheek, want de
-VM-backend is bewust dependency-loos — en zelfgeschreven crypto is precies de
-slimme valkuil waar dit project tegen waarschuwt. Passkeys en OIDC komen als
-tweede credential bovenop dezelfde sessielaag; zie de change `inloggen-per-persoon`.
+All standard library: `hashlib.scrypt` for passwords, `hmac` for TOTP (RFC 6238),
+`secrets` for sessions. No crypto library, because the VM backend is deliberately
+dependency-free — and hand-rolled crypto is exactly the clever trap this project
+warns against. Passkeys and OIDC arrive as a second credential on top of the same
+session layer; see the change `inloggen-per-persoon`.
 
-Het gedeelde schrijf-token uit de vorige versie is weg als authenticatiemiddel;
-het mag alleen nog éénmalig de eigenaar aanmaken (`setup_token_valid`).
+The shared write token from the previous version is gone as an authentication
+means; it may only create the owner, once (`setup_token_valid`).
 """
 import base64
 import hashlib
@@ -23,24 +23,24 @@ import settings
 
 COOKIE = "bh_session"
 CSRF_HEADER = "X-CSRF-Token"
-SESSION_TTL = 30 * 24 * 3600      # verlengd bij gebruik; een PWA die je wekelijks
-                                  # opent hoort niet elke keer opnieuw te vragen
+SESSION_TTL = 30 * 24 * 3600      # extended on use; a PWA you open weekly should
+                                  # not ask again every single time
 INVITE_TTL = 7 * 24 * 3600
 SETUP_TTL = 24 * 3600
 
-# Parameters van vandaag. Ze staan bij elke hash, dus ze kunnen omhoog zonder
-# iemand buiten te sluiten: bij een geslaagde login met oudere parameters wordt
-# de hash herberekend.
+# Today's parameters. They sit next to every hash, so they can go up without
+# locking anyone out: on a successful login with older parameters the hash is
+# recomputed.
 #
-# N=2**14 en niet hoger, om twee redenen die je pas bij het draaien merkt:
-# scrypt gebruikt 128*N*r bytes (hier 16 MB), en OpenSSL weigert boven de 32 MB
-# met "memory limit exceeded" — 2**15 valt daar precies buiten. En elke
-# gelijktijdige login kost dat geheugen echt, dus het is ook een rem op hoeveel
-# inlogpogingen een installatie tegelijk aankan.
+# N=2**14 and no higher, for two reasons you only notice when running it: scrypt
+# uses 128*N*r bytes (16 MB here), and OpenSSL refuses above 32 MB with "memory
+# limit exceeded" — 2**15 falls just outside. And every concurrent login really
+# costs that memory, so it is also a brake on how many login attempts an
+# installation can take at once.
 SCRYPT_N, SCRYPT_R, SCRYPT_P = 2 ** 14, 8, 1
 
 
-# --- wachtwoorden -----------------------------------------------------------
+# --- passwords --------------------------------------------------------------
 
 def hash_password(password, n=SCRYPT_N, r=SCRYPT_R, p=SCRYPT_P):
     salt = secrets.token_bytes(16)
@@ -69,7 +69,7 @@ def password_matches(password, stored):
 
 
 def outdated(stored):
-    """True wanneer deze hash met lichtere parameters is gemaakt dan we nu willen."""
+    """True when this hash was made with lighter parameters than we want now."""
     try:
         n, r, p, _, _ = _parse(stored)
     except (ValueError, TypeError):
@@ -77,7 +77,7 @@ def outdated(stored):
     return (n, r, p) != (SCRYPT_N, SCRYPT_R, SCRYPT_P)
 
 
-# --- tweede factor (TOTP, RFC 6238) -----------------------------------------
+# --- second factor (TOTP, RFC 6238) -----------------------------------------
 
 def new_totp_secret():
     return base64.b32encode(secrets.token_bytes(20)).decode().rstrip("=")
@@ -92,8 +92,8 @@ def _totp(secret, counter):
 
 
 def totp_matches(secret, code, last=None, now=None, drift=1):
-    """Geldig binnen ±`drift` stappen. Geeft (ok, counter) terug; die counter
-    moet bewaard worden, anders is dezelfde code twee keer bruikbaar."""
+    """Valid within ±`drift` steps. Returns (ok, counter); that counter must be
+    stored, otherwise the same code can be used twice."""
     if not code or not code.strip().isdigit():
         return False, None
     code = code.strip()
@@ -107,16 +107,16 @@ def totp_matches(secret, code, last=None, now=None, drift=1):
     return False, None
 
 
-# --- sessies ----------------------------------------------------------------
+# --- sessions ---------------------------------------------------------------
 
 def _hash(token):
-    """In de database staat alleen de hash: wie het bestand leest, heeft daar
-    geen bruikbare sessie aan."""
+    """Only the hash is in the database: whoever reads the file gets no usable
+    session out of it."""
     return hashlib.sha256(token.encode()).hexdigest()
 
 
 def start_session(pid):
-    """Geeft (sessietoken, csrf-token). Het token zelf zien we hierna nooit meer."""
+    """Returns (session token, csrf token). We never see the token itself again."""
     token = secrets.token_urlsafe(32)
     csrf = secrets.token_urlsafe(24)
     store.create_session(_hash(token), pid, csrf, store.now() + SESSION_TTL)
@@ -124,15 +124,15 @@ def start_session(pid):
 
 
 def session_from_cookie(headers):
-    """De sessierij bij dit verzoek, of None. Verlengt en passant."""
+    """The session row for this request, or None. Extends it along the way."""
     token = _cookie(headers, COOKIE)
     if not token:
         return None
     row = store.session(_hash(token))
     if row is None:
         return None
-    # Verlengen bij gebruik, maar niet bij elk verzoek schrijven: dat is een
-    # write per poll van vier seconden.
+    # Extend on use, but do not write on every request: that would be one write
+    # per four-second poll.
     if store.now() - row["gezien"] > 3600:
         store.extend_session(row["hash"], store.now() + SESSION_TTL)
     return row
@@ -161,8 +161,8 @@ def _cookie(headers, name):
 
 
 def cookie_header(token, host, delete=False):
-    """Set-Cookie. Secure blijft weg op localhost, anders kun je niet lokaal
-    ontwikkelen; overal elders staat hij aan."""
+    """Set-Cookie. Secure is left off on localhost, otherwise you cannot develop
+    locally; everywhere else it is on."""
     local = host.split(":")[0] in ("localhost", "127.0.0.1", "[::1]")
     parts = ["{}={}".format(COOKIE, "" if delete else token),
              "Path=/", "HttpOnly", "SameSite=Lax"]
@@ -177,7 +177,7 @@ def csrf_matches(headers, session):
     return bool(session) and hmac.compare_digest(sent, session["csrf"])
 
 
-# --- eerste start en uitnodigingen ------------------------------------------
+# --- first start and invitations --------------------------------------------
 
 def new_invite(kind="uitnodiging"):
     ttl = SETUP_TTL if kind == "setup" else INVITE_TTL
@@ -196,8 +196,8 @@ def use_invite(token):
 
 
 def setup_token_valid(token):
-    """Migratiepad: zolang er niemand is, mag het oude gedeelde schrijf-token
-    de eigenaar aanmaken. Daarna nooit meer — er is dan een persoon."""
+    """Migration path: as long as there is nobody, the old shared write token may
+    create the owner. Never again after that — there is a person by then."""
     old = settings.read("APP_TOKEN").strip()
     if not old or store.person_count() > 0:
         return False

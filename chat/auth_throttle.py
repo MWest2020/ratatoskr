@@ -1,25 +1,26 @@
 # SPDX-License-Identifier: EUPL-1.2
-"""De rem op inlogpogingen.
+"""The brake on login attempts.
 
-Een self-hosted installatie heeft geen WAF voor zich staan, dus de rem hoort in
-de app. Oplopende wachttijd per sleutel — dat is de gebruikersnaam én de bron,
-elk apart: één account platleggen lukt dan niet door vanaf één adres te rammen,
-en één adres blokkeren niet door namen te raden.
+A self-hosted installation has no WAF in front of it, so the brake belongs in the
+app. A rising wait per key — that is the user name AND the source, each on its
+own: you cannot then take one account down by hammering from one address, nor
+block one address by guessing names.
 
-Deelt de tabel `pogingen` met auth_store; een los bestand omdat het een eigen
-zorg is (en omdat auth_store anders over de 200 regels uit CLAUDE.md gaat).
+Shares the table `pogingen` with auth_store; a separate file because it is a
+concern of its own (and because auth_store would otherwise go over the 200 lines
+from CLAUDE.md).
 """
 from auth_store import _connect, now
 
 def blocked_for(key):
-    """Seconden die deze sleutel nog moet wachten (0 = mag)."""
+    """Seconds this key still has to wait (0 = go ahead)."""
     with _connect() as con:
         row = con.execute("SELECT * FROM pogingen WHERE sleutel = ?", (key,)).fetchone()
         return max(0, row["tot"] - now()) if row else 0
 
 
 def note_failure(key, wait_from=3, max_wait=300):
-    """Tel de mislukking en zet de wachttijd. Oplopend, met een plafond."""
+    """Count the failure and set the wait. Rising, with a ceiling."""
     with _connect() as con:
         row = con.execute("SELECT * FROM pogingen WHERE sleutel = ?", (key,)).fetchone()
         count = (row["aantal"] if row else 0) + 1

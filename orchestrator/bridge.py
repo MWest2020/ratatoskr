@@ -1,23 +1,23 @@
 #!/usr/bin/env python3
-"""Boomhuis → habitat brug (add-habitat-bridge, deel B) — Mark poortwachter.
+"""Boomhuis → habitat bridge (add-habitat-bridge, part B) — Mark is the gate.
 
-Poortwachter-model: NIETS dispatcht autonoom. Alleen een expliciet
-bevestigingsbericht van MARK in #bouw van de vorm
+Gatekeeper model: NOTHING dispatches autonomously. Only an explicit confirmation
+message from MARK in #bouw of the form
 
-    !dispatch <rol> <change> <repo>
+    !dispatch <role> <change> <repo>
 
-zet iets in gang. De orchestrator neemt dan het laatste `bouwer`-plan uit de
-thread als taak/context, commit dat als taakbestand in de doelrepo (git), en
-draait `dispatch.sh` met `HABITAT_TASK_REF` — MAAR alleen als BRIDGE_LIVE=1.
-Zonder die vlag post de brug het exacte dispatch-commando terug zodat Mark het
-zelf (gesuperviseerd) draait. Zo blijft de cage-fire menselijk-gepoort.
+sets anything in motion. The orchestrator then takes the last `bouwer` plan from
+the thread as task/context, commits it as a task file in the target repo (git),
+and runs `dispatch.sh` with `HABITAT_TASK_REF` — BUT only when BRIDGE_LIVE=1.
+Without that flag the bridge posts the exact dispatch command back so Mark runs
+it himself, supervised. That keeps the cage fire human-gated.
 
 Env:
-  BUZZ_PRIVATE_KEY   orchestrator-nsec (uit SOPS)
+  BUZZ_PRIVATE_KEY   orchestrator nsec (from SOPS)
   BUZZ_RELAY_URL     ws://192.168.178.60:3000
-  BRIDGE_LIVE        1 = draai dispatch.sh echt; anders alleen voorbereiden+tonen
-  DISPATCH_SH        pad naar habitat dispatch/dispatch.sh (host met kubectl)
-  WORKER_IMAGE       gepinde worker-image-SHA (voor dispatch.sh)
+  BRIDGE_LIVE        1 = really run dispatch.sh; otherwise only prepare and show
+  DISPATCH_SH        path to habitat dispatch/dispatch.sh (host with kubectl)
+  WORKER_IMAGE       pinned worker image SHA (for dispatch.sh)
 """
 import json
 import os
@@ -68,8 +68,8 @@ def last_bouwer_plan(msgs, before_ts):
 
 
 def handle(msgs, m):
-    """Verwerk een bevestigd !dispatch van Mark. Poortwachter is al gepasseerd
-    (afzender == mark). Bereidt de dispatch voor; vuurt alleen bij BRIDGE_LIVE."""
+    """Handle a confirmed !dispatch from Mark. The gate has already been passed
+    (sender == mark). Prepares the dispatch; only fires when BRIDGE_LIVE is set."""
     mm = CMD.search(m.get("content", ""))
     if not mm:
         return
@@ -78,17 +78,17 @@ def handle(msgs, m):
     if not plan:
         post(BOUW, f"⚠️ geen bouwer-plan gevonden vóór je !dispatch — vraag @bouwer eerst een change-voorstel.")
         return
-    # taak/context wordt door de orchestrator in de DOELREPO gecommit (git); hier
-    # tonen we het pad-contract. De echte git-write + dispatch.sh draait alleen
-    # gesuperviseerd (BRIDGE_LIVE) of Mark draait het zelf.
+    # task/context is committed by the orchestrator in the TARGET REPO (git);
+    # here we only show the path contract. The real git write + dispatch.sh runs
+    # only supervised (BRIDGE_LIVE), or Mark runs it himself.
     task_ref = f".habitat/task-{change}.md"
     cmd = (f"HABITAT_TASK_REF={task_ref} {DISPATCH_SH or '<dispatch.sh>'} "
            f"{role} {change} {repo}")
     if LIVE and DISPATCH_SH:
         post(BOUW, f"🚀 dispatch (live) — rol={role} change={change} repo={repo}\n"
                    f"taak-ref: {task_ref}")
-        # (De echte git-write van het plan naar de doelrepo + dispatch.sh-aanroep
-        #  horen hier; bewust gated tot de eerste gesuperviseerde run.)
+        # (The real git write of the plan to the target repo + the dispatch.sh
+        #  call belong here; deliberately gated until the first supervised run.)
         r = subprocess.run(["bash", "-c", cmd], capture_output=True, text=True)
         post(BOUW, f"dispatch-resultaat (exit {r.returncode}):\n{(r.stdout or r.stderr)[-500:]}")
     else:
@@ -109,7 +109,7 @@ def main():
             if m.get("id") in seen:
                 continue
             seen.add(m.get("id"))
-            # POORTWACHTER: alleen Mark's expliciete !dispatch telt
+            # GATE: only Mark's explicit !dispatch counts
             if m.get("pubkey") == MARK and CMD.search(m.get("content", "")):
                 print(f"[bridge] !dispatch van mark: {m.get('content','')[:60]}", flush=True)
                 handle(msgs, m)

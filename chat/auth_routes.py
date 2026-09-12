@@ -1,15 +1,15 @@
 # SPDX-License-Identifier: EUPL-1.2
-"""De HTTP-kant van inloggen: routes die géén sessie vereisen, plus de gate.
+"""The HTTP side of logging in: routes that need no session, plus the gate.
 
-`server.py` blijft dun: het roept `open_route()` voor de paden die zonder
-sessie mogen, en `gate()` voor al het andere onder /api/.
+`server.py` stays thin: it calls `open_route()` for the paths allowed without a
+session, and `gate()` for everything else under /api/.
 
-Antwoorden zijn opzettelijk karig. Een onbekende naam en een fout wachtwoord
-geven hetzelfde: "inloggen mislukt". Wie wil weten of een naam bestaat, komt er
-hier niet achter.
+Answers are deliberately stingy. An unknown name and a wrong password give the
+same thing: "inloggen mislukt". Whoever wants to know whether a name exists does
+not find out here.
 
-De paden en de veldnamen in de JSON blijven Nederlands: dat is het contract met
-de al geïnstalleerde PWA. Zie ADR-0001; die omzetting is een aparte change.
+The paths and the JSON field names stay Dutch: that is the contract with the PWA
+that is already installed. See ADR-0001; that conversion is a change of its own.
 """
 import json
 import os
@@ -21,13 +21,13 @@ import settings
 
 FAILED = {"error": "inloggen mislukt"}
 
-# Paden die zonder sessie moeten kunnen — anders kun je nooit inloggen.
+# Paths that must work without a session — otherwise you can never log in.
 OPEN = ("/api/login", "/api/setup", "/api/uitnodiging/gebruik", "/api/status")
 
 
 def _source(h):
-    """Het adres waar dit verzoek vandaan komt, voor de rem. Achter een reverse
-    proxy is dat de proxy, dus X-Forwarded-For gaat voor."""
+    """The address this request comes from, for the throttle. Behind a reverse
+    proxy that is the proxy, so X-Forwarded-For takes precedence."""
     forwarded = (h.headers.get("X-Forwarded-For") or "").split(",")[0].strip()
     return forwarded or h.client_address[0]
 
@@ -46,8 +46,8 @@ def _json(h, code, payload, extra=None):
 
 
 def status(h):
-    """Wat de inlogpagina moet weten vóór er iemand is: is dit een verse
-    installatie, en eist deze persoon straks een tweede factor?"""
+    """What the login page needs to know before anyone exists: is this a fresh
+    installation, and will this person demand a second factor?"""
     return _json(h, 200, {"personen": store.person_count()})
 
 
@@ -69,8 +69,8 @@ def log_in(h, body):
         return _json(h, 429, {"error": "te veel pogingen", "wacht": wait})
 
     p = store.person_by_name(name) if name else None
-    # Ook bij een onbekende naam een hash uitrekenen: anders verraadt de
-    # antwoordtijd of het account bestaat.
+    # Compute a hash for an unknown name too: otherwise the response time gives
+    # away whether the account exists.
     stored = p["hash"] if p else auth.hash_password("x", n=2 ** 14)
     good = auth.password_matches(password, stored) and p is not None
 
@@ -82,9 +82,9 @@ def log_in(h, body):
     if p["totp"]:
         code = (body.get("code") or "").strip()
         if not code:
-            # Naam en wachtwoord klopten; dat de app nu om een code vraagt lekt
-            # niets extra's. Geen mislukking tellen: dan zou elke login met
-            # tweede factor de rem aanzetten.
+            # Name and password were right; the app asking for a code now leaks
+            # nothing extra. Do not count a failure: that would make every login
+            # with a second factor engage the brake.
             return _json(h, 401, {"error": "code nodig", "totp": True})
         ok, counter = auth.totp_matches(p["totp"], code, last=p["totp_laatste"])
         if not ok:
@@ -122,17 +122,17 @@ def _create_account(h, name, password, owner):
 
 
 def setup(h, body):
-    """De eerste persoon. Alleen zolang er niemand is."""
+    """The first person. Only as long as there is nobody."""
     if store.person_count() > 0:
         return _json(h, 403, {"error": "er is al een account"})
     token = body.get("token") or ""
-    # Twee sleutels passen: de afgedrukte setup-link, en éénmalig het oude
-    # gedeelde schrijf-token van een bestaande installatie.
+    # Two keys fit: the printed setup link, and once the old shared write token
+    # of an existing installation.
     if not (auth.invite_valid(token, "setup") or auth.setup_token_valid(token)):
         throttle.note_failure("bron:" + _source(h))
         return _json(h, 403, {"error": "ongeldige of verlopen setup-link"})
     answer = _create_account(h, body.get("naam"), body.get("wachtwoord"), owner=True)
-    auth.use_invite(token)               # eenmalig, ook als het het oude token was
+    auth.use_invite(token)               # single-use, also for the old token
     store.revoke_invites("setup")
     return answer
 
@@ -142,13 +142,13 @@ def use_invite(h, body):
     if not auth.invite_valid(token, "uitnodiging"):
         throttle.note_failure("bron:" + _source(h))
         return _json(h, 403, {"error": "ongeldige of verlopen uitnodiging"})
-    if not auth.use_invite(token):        # markeer eerst: eenmalig, ook bij een race
+    if not auth.use_invite(token):        # mark first: single-use, even in a race
         return _json(h, 403, {"error": "ongeldige of verlopen uitnodiging"})
     return _create_account(h, body.get("naam"), body.get("wachtwoord"), owner=False)
 
 
 def open_route(h, path, body=None):
-    """Routes die zonder sessie mogen. True = afgehandeld."""
+    """Routes allowed without a session. True = handled."""
     if path == "/api/status":
         return status(h)
     if path == "/api/login" and body is not None:
@@ -161,8 +161,8 @@ def open_route(h, path, body=None):
 
 
 def gate(h, path, writes):
-    """De sessiecontrole. Geeft de sessierij terug, of None als er al een
-    antwoord verstuurd is."""
+    """The session check. Returns the session row, or None when an answer has
+    already been sent."""
     s = auth.session_from_cookie(h.headers)
     if s is None:
         _json(h, 401, {"error": "inloggen vereist"})
@@ -174,11 +174,10 @@ def gate(h, path, writes):
 
 
 def print_setup_link_at_start():
-    """Bij een verse installatie: druk een eenmalige setup-link af.
+    """On a fresh installation: print a one-time setup link.
 
-    Geen standaardwachtwoord — dat is het ding waar elk zelfgehost product op
-    stukloopt. Bestaat er al een oud gedeeld schrijf-token, dan zeggen we dat
-    dat éénmalig ook werkt.
+    No default password — that is the thing every self-hosted product breaks on.
+    If an old shared write token exists, we say that it works once too.
     """
     if store.person_count() > 0:
         return

@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: EUPL-1.2
 //
-// Inloggen in een echte browser, tegen de echte VM. api.sh bewijst wat een
-// vreemde NIET mag; dit bewijst de andere kant: dat een mens erin komt, erin
-// blijft, er weer uit kan, en dat er dan niets van hem achterblijft.
+// Logging in in a real browser, against the real VM. api.sh proves what a
+// stranger may NOT do; this proves the other side: that a human gets in, stays
+// in, can get out again, and that nothing of them is left behind afterwards.
 //
-//   SETUP_TOKEN=<token uit de serveruitvoer> \
-//   NODE_PATH=<pad>/node_modules node chat/e2e/login-flow.js
+//   SETUP_TOKEN=<token from the server output> \
+//   NODE_PATH=<path>/node_modules node chat/e2e/login-flow.js
 //
-// Vraagt een verse installatie: de setup-link werkt één keer. Draai hem tegen
-// een testinstallatie, of maak er eentje leeg met een lege auth.db.
+// Wants a fresh installation: the setup link works once. Run it against a test
+// installation, or make one empty with an empty auth.db.
 const { chromium, devices } = require('playwright');
 const EXE=process.env.PW_CHROME
   || '/home/agent/.cache/ms-playwright/chromium-1234/chrome-linux64/chrome';
@@ -30,10 +30,9 @@ const t=(n,c,x='')=>{ if(c){ok++;console.log('  ok   '+n);} else {fail++;console
   t('de app stuurt naar inloggen', /\/login/.test(p.url()), p.url());
 
   console.log('— het formulier toont alleen wat nodig is');
-  // Het hidden-attribuut verliest van elke eigen display-regel; zonder de
-  // [hidden]-regel in app.css stonden "Code uit je app" en "Setup-token"
-  // gewoon in beeld. Daarom een test op wat er ECHT zichtbaar is, niet op
-  // het attribuut.
+  // The hidden attribute loses against any display rule of our own; without the
+  // [hidden] rule in app.css "Code uit je app" and "Setup-token" were simply
+  // visible. Hence a test on what is REALLY visible, not on the attribute.
   await p.goto(URL_+'/login', {waitUntil:'load', timeout:45000});
   await p.waitForTimeout(2000);
   const visible = await p.evaluate(() =>

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: EUPL-1.2
-// Web Push: aanmelden voor telefoon-notificaties. Apart bestand (app-ui.js zat op
-// de 200-regel-grens). Laadt ná app.js/app-ui.js, dus `toast` is beschikbaar.
+// Web Push: subscribing to phone notifications. A separate file (app-ui.js sat
+// at the 200-line limit). Loads after app.js/app-ui.js, so `toast` is available.
 function urlB64ToUint8Array(b64){
   const pad="=".repeat((4-b64.length%4)%4);
   const s=(b64+pad).replace(/-/g,"+").replace(/_/g,"/");
@@ -8,10 +8,10 @@ function urlB64ToUint8Array(b64){
   for(let i=0;i<raw.length;i++) arr[i]=raw.charCodeAt(i);
   return arr;
 }
-// Vergelijk de key waarmee een bestaande subscription is aangemaakt met de key die
-// de server NU serveert. Zonder deze check overleeft een verouderde subscription
-// een VAPID-rotatie: de browser hergebruikt 'm, elke send krijgt 403 en het
-// toestel is stil dood.
+// Compare the key an existing subscription was created with against the key the
+// server serves NOW. Without this check a stale subscription survives a VAPID
+// rotation: the browser reuses it, every send gets a 403 and the device is
+// silently dead.
 function sameServerKey(buf, wanted){
   if(!buf) return false;
   const cur=new Uint8Array(buf);
@@ -19,10 +19,10 @@ function sameServerKey(buf, wanted){
   for(let i=0;i<cur.length;i++) if(cur[i]!==wanted[i]) return false;
   return true;
 }
-// Zorg dat er een geldige subscription bij de server bekend is en POST 'm. Eén pad
-// voor de eerste aanmelding én het stille zelfherstel: een ingetrokken subscription
-// (getSubscription()===null) of een key-mismatch (rotatie) leidt tot opnieuw
-// abonneren i.p.v. stil falen.
+// Make sure the server knows a valid subscription, and POST it. One path for the
+// first subscribe AND for silent self-repair: a revoked subscription
+// (getSubscription()===null) or a key mismatch (rotation) leads to subscribing
+// again instead of failing quietly.
 async function ensurePushSubscription(){
   const {key}=await (await fetch("/api/push/vapid")).json();
   if(!key) throw new Error("geen VAPID-key");
@@ -30,7 +30,7 @@ async function ensurePushSubscription(){
   const reg=await navigator.serviceWorker.ready;
   let sub=await reg.pushManager.getSubscription();
   if(sub && !sameServerKey(sub.options && sub.options.applicationServerKey, wanted)){
-    await sub.unsubscribe().catch(()=>{}); sub=null;  // VAPID-paar gewijzigd
+    await sub.unsubscribe().catch(()=>{}); sub=null;  // the VAPID pair changed
   }
   if(!sub){
     sub=await reg.pushManager.subscribe({userVisibleOnly:true, applicationServerKey:wanted});
@@ -50,10 +50,10 @@ async function enablePush(btn){
 }
 if("serviceWorker" in navigator && "PushManager" in window && "Notification" in window){
   if(Notification.permission==="granted"){
-    // Al toegestaan: stil borgen dat de server onze (juiste) subscription kent.
+    // Already granted: quietly ensure the server knows our (correct) subscription.
     ensurePushSubscription().catch(()=>{});
   }else if(Notification.permission!=="denied"){
-    // Nog niet beslist: toon een 🔔-knop.
+    // Not decided yet: show a 🔔 button.
     const pb=document.createElement("button");
     pb.id="pushBtn"; pb.textContent="🔔"; pb.title="meldingen aanzetten";
     pb.onclick=()=>enablePush(pb);

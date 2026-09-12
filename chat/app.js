@@ -5,7 +5,7 @@ let channels = [], current = null, lastCount = 0, pollTimer = null;
 function toast(t){ const e=$("#toast"); e.textContent=t; e.style.display="block";
   setTimeout(()=>e.style.display="none", 2600); }
 
-// --- ongelezen-teller per kanaal (per device via localStorage) ---
+// --- unread counter per channel (per device, through localStorage) ---
 let overview = {}; // id -> {count}
 function seenMap(){ try{ return JSON.parse(localStorage.getItem("bh_seen")||"{}"); }catch(e){ return {}; } }
 function markSeen(id, count){ const m=seenMap(); m[id]=count;
@@ -23,20 +23,20 @@ function renderBadges(){
 async function loadOverview(){
   try{ const d=await (await fetch("/api/overview")).json();
     const chans=d.channels||[];
-    if(!chans.length) return;  // lege/gefaalde overview (bv. 502) → niets bijwerken
+    if(!chans.length) return;  // empty or failed overview (e.g. 502) → update nothing
     overview={};
     const sm=seenMap(); let changed=false;
-    for(const c of chans){          // overzicht kan deels zijn (falende kanalen overgeslagen)
+    for(const c of chans){          // the overview may be partial (failing channels skipped)
       overview[c.id]={count:c.count};
-      if(sm[c.id]==null){ sm[c.id]=c.count; changed=true; } // baseline: nog nooit geopend → nu gelezen
+      if(sm[c.id]==null){ sm[c.id]=c.count; changed=true; } // baseline: never opened → read now
     }
     if(changed){ try{ localStorage.setItem("bh_seen", JSON.stringify(sm)); }catch(e){} }
     renderBadges();
   }catch(e){}
 }
 
-// Geeft false terug als de kanalen niet te halen zijn (koude start vóór de
-// tunnel op is). Niet gooien: de aanroeper hangt de hele app eraan op.
+// Returns false when the channels cannot be fetched (a cold start before the
+// tunnel is up). Do not throw: the caller hangs the whole app on this.
 async function loadChannels(){
   let response, data;
   try{ response = await fetch("/api/channels"); }
@@ -52,13 +52,13 @@ async function loadChannels(){
     row.className="chan"+(current&&c.id===current.id?" active":"");
     row.dataset.id=c.id;
     row.innerHTML=`<span class="hash">#</span><span class="cmeta"><span class="cn"></span><span class="cdesc"></span></span><span class="unread" hidden></span>`;
-    row.querySelector(".cn").textContent=c.name;  // textContent: geen HTML-injectie via kanaalnaam
+    row.querySelector(".cn").textContent=c.name;  // textContent: no HTML injection via a channel name
     const cd=row.querySelector(".cdesc");
-    if(c.description) cd.textContent=c.description; else cd.remove();  // beschrijving = waar het kanaal voor is
-    // Klikdoel is de HELE rij, niet de losse spans: de rij is volledige breedte
-    // met padding, dus alles naast de tekst was dood oppervlak — je tikte een
-    // kanaal aan, er gebeurde niets, en de lade bleef over de invoerbalk staan.
-    // De verwijderknop hieronder stopt de propagatie en houdt zijn eigen actie.
+    if(c.description) cd.textContent=c.description; else cd.remove();  // the description says what the channel is for
+    // The click target is the WHOLE row, not the individual spans: the row is
+    // full width with padding, so everything next to the text was dead surface —
+    // you tapped a channel, nothing happened, and the drawer stayed over the
+    // composer. The delete button below stops propagation and keeps its own action.
     row.onclick=()=>{ selectChannel(c); closeDrawer(); };
     if(c.name!=="general"){
       const del=document.createElement("button");
@@ -75,8 +75,8 @@ async function loadChannels(){
     }
     wrap.appendChild(row);
   }
-  // prune bh_seen op de AUTHORITATIEVE, niet-lege kanaallijst (niet op het
-  // mogelijk-gedeeltelijke overzicht) — zo wist een deel-storing geen leesstatus.
+  // prune bh_seen on the AUTHORITATIVE, non-empty channel list (not on the
+  // possibly partial overview) — that way a partial outage wipes no read state.
   if(channels.length){ try{ const sm=seenMap(); const ids=new Set(channels.map(c=>c.id));
     let ch=false; for(const k of Object.keys(sm)){ if(!ids.has(k)){ delete sm[k]; ch=true; } }
     if(ch) localStorage.setItem("bh_seen", JSON.stringify(sm)); }catch(e){} }
@@ -95,12 +95,12 @@ async function createChannel(name){
 }
 
 function selectChannel(c){
-  if(current && current.id===c.id) return;      // geen herlaad-lus via hashchange
+  if(current && current.id===c.id) return;      // no reload loop through hashchange
   current=c; lastCount=0; $("#chanName").textContent=c.name;
-  saveLastChannel(c);       // zodat offline bekend is wat er open stond
-  // Hash meeschrijven: een herstart van de PWA (iOS bevriest hem op de
-  // achtergrond) brengt je terug in het kanaal waar je was, en een melding kan
-  // hierheen linken.
+  saveLastChannel(c);       // so offline knows what was open
+  // Write the hash along: a restart of the PWA (iOS freezes it in the
+  // background) brings you back to the channel you were in, and a notification
+  // can link here.
   if(decodeURIComponent(location.hash.slice(1))!==c.name)
     history.replaceState(null,"","#"+encodeURIComponent(c.name));
   $("#msgs").innerHTML='<div class="empty">laden…</div>';
@@ -115,8 +115,8 @@ async function refresh(force){
   let response, data;
   try{ response = await fetch("/api/messages?channel="+current.id); }
   catch(e){ noteConnectionError(e); showNoConnection(); return; }
-  // 401 is geen verbindingsprobleem maar een uitlog: naar inloggen, en wat er
-  // lokaal bewaard staat gaat weg.
+  // A 401 is not a connection problem but a logout: go to the login page, and
+  // what is stored locally is cleared.
   if(response.status === 401){ loggedOut(); return; }
   try{ data = await response.json(); }
   catch(e){ noteConnectionError(e); showNoConnection(); return; }
@@ -125,12 +125,12 @@ async function refresh(force){
   if(!force && msgs.length===lastCount) return;
   lastCount=msgs.length;
   if(current){ markSeen(current.id, msgs.length); renderBadges(); }
-  saveSnapshot(current.id, msgs);     // voor als er straks geen verbinding is
+  saveSnapshot(current.id, msgs);     // for when there is no connection later
   renderMessages(msgs, force);
 }
 
-// Ook gebruikt door de offline-weergave, die dezelfde berichten toont maar
-// met een gedateerde balk erboven.
+// Also used by the offline view, which shows the same messages but with a dated
+// bar above them.
 function renderMessages(msgs, force){
   const box=$("#msgs");
   const near = box.scrollHeight - box.scrollTop - box.clientHeight < 120;
@@ -140,8 +140,8 @@ function renderMessages(msgs, force){
     const row=document.createElement("div");
     row.className="row"+(m.mine?" mine":"");
     const cls = m.author==="mark"?"author-mark":(m.author==="orchestrator"?"author-orchestrator":"");
-    // Afzendernaam via textContent: hij valt terug op "npub:"+8 tekens uit de
-    // relay-payload, en die is niet van ons.
+    // Sender name through textContent: it falls back on "npub:" plus 8
+    // characters from the relay payload, and that is not ours.
     add(row, add(el("div","meta"), el("span",cls,m.author), " · "+fmtTime(m.ts)),
              el("div","bubble", m.content));
     box.appendChild(row);
@@ -151,8 +151,8 @@ function renderMessages(msgs, force){
 
 async function send(text){ return await _postSend(text, current.id, false, new Set()); }
 
-// cid wordt door de hele retry-flow vastgepind (server stuurt 'm mee in de 409),
-// zodat een kanaalwissel het bericht niet naar het verkeerde kanaal stuurt.
+// The cid is pinned through the whole retry flow (the server sends it along in
+// the 409), so switching channels does not send the message to the wrong one.
 async function _postSend(text, cid, force, added){
   let r;
   try {
@@ -160,27 +160,27 @@ async function _postSend(text, cid, force, added){
   } catch(e){ toast("netwerkfout — bericht niet verstuurd"); return false; }
   const j = await r.json().catch(()=>({}));
   if(r.ok && !j.error) return true;
-  // 401 apart: dat is geen storing maar een ontbrekend apparaat-token, en die
-  // verwarring was precies het probleem.
+  // 401 separately: that is not an outage but a missing device token, and that
+  // confusion was exactly the problem.
   if(r.status===401){ toast("schrijf-token nodig — voer 'm in om te kunnen posten"); return false; }
   if(j.missing_agent){
     const who=j.missing_agent, tgt=j.channel||cid;
     const tc=(typeof channels!=="undefined")&&channels.find(x=>x.id===tgt);
-    const ch=tc?"#"+tc.name:"dit kanaal";  // ook juist als het doelkanaal ≠ open kanaal
-    // 409 ná een force = mention echt onhoudbaar → stoppen (geen tweede pop-up, geen loop).
+    const ch=tc?"#"+tc.name:"dit kanaal";  // right even when the target ≠ open channel
+    // a 409 AFTER a force = the mention is truly untenable → stop (no second pop-up, no loop).
     if(force){ toast("@"+who+" kan hier niet — bericht niet verstuurd"); return false; }
-    // Bekende agent, nog niet toegevoegd → toevoegen, dan NORMAAL opnieuw versturen
-    // zodat de relay @who naar het verse lid resolvet en 'm ook echt triggert.
+    // A known agent, not yet added → add it, then send again NORMALLY so the
+    // relay resolves @who to the fresh member and really triggers it.
     if(j.known && !added.has(who)){
       const ok = await modalConfirm("@"+who+" zit niet in "+ch+".",
         "Toevoegen en je bericht versturen?", "Toevoegen");
       if(!ok) return false;
-      if(!await addAgent(who, tgt)) return false;   // addAgent toont zelf de serverfout
+      if(!await addAgent(who, tgt)) return false;   // addAgent shows the server error
       added.add(who);
       return await _postSend(text, tgt, false, added);
     }
-    // Geen agent, óf net toegevoegd maar de relay ziet 't nog niet (409 op dezelfde
-    // who) → toch als platte tekst versturen (force-anker; @who blijft dan tekst).
+    // Not an agent, OR just added but the relay does not see it yet (a 409 on the
+    // same who) → send as plain text anyway (force anchor; @who then stays text).
     if(j.can_force){
       const just=added.has(who);
       const ok = await modalConfirm(
@@ -194,5 +194,5 @@ async function _postSend(text, cid, force, added){
   }
   toast(j.error||"versturen mislukt"); return false;
 }
-// modalConfirm + addAgent staan in app-modal.js (houdt app.js ≤200 regels).
+// modalConfirm and addAgent live in app-modal.js (keeps app.js ≤200 lines).
 

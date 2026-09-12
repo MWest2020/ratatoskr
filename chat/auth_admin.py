@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: EUPL-1.2
-"""Routes achter de sessie: uitnodigen, en je eigen tweede factor.
+"""Routes behind the session: inviting, and your own second factor.
 
-Uitnodigen mag alleen de eigenaar. Zelf-registratie bestaat niet: één
-installatie is één team, en de grens is de installatie.
+Only the owner may invite. Self-registration does not exist: one installation is
+one team, and the installation is the boundary.
 """
 import auth
 import auth_store as store
@@ -14,7 +14,7 @@ def _person(session):
 
 
 def invite(h, session):
-    """Maak een eenmalige, verlopende uitnodiging. Alleen de eigenaar."""
+    """Create a single-use, expiring invitation. Owner only."""
     if not _person(session)["eigenaar"]:
         return _json(h, 403, {"error": "alleen de eigenaar kan uitnodigen"})
     token = auth.new_invite("uitnodiging")
@@ -32,12 +32,12 @@ def revoke_invites(h, session):
 
 
 def change_password(h, session, body):
-    """Je eigen wachtwoord. Het huidige moet mee: anders is een geleende
-    sessie genoeg om iemand permanent buiten te sluiten.
+    """Your own password. The current one must come along: otherwise a borrowed
+    session is enough to lock someone out permanently.
 
-    Alle sessies gaan eruit, ook deze — en er komt meteen een nieuwe voor dit
-    apparaat terug. Wie het oude wachtwoord had, is dus overal weg, en jij hoeft
-    niet opnieuw in te loggen."""
+    All sessions are revoked, this one included — and a fresh one for this device
+    comes straight back. Whoever had the old password is gone everywhere, and you
+    do not have to log in again."""
     p = _person(session)
     current = body.get("huidig") or ""
     new = body.get("nieuw") or ""
@@ -53,8 +53,8 @@ def change_password(h, session, body):
 
 
 def totp_start(h, session):
-    """Geef een geheim terug; het gaat pas aan als er een kloppende code komt.
-    Anders sluit een verkeerd overgetypt geheim je uit je eigen account."""
+    """Return a secret; it only turns on once a matching code arrives. Otherwise
+    a mistyped secret locks you out of your own account."""
     secret = auth.new_totp_secret()
     name = _person(session)["naam"]
     return _json(h, 200, {
@@ -80,7 +80,7 @@ def totp_off(h, session):
 
 
 def route(h, path, session, body=None):
-    """True wanneer dit pad hier hoort en is afgehandeld."""
+    """True when this path belongs here and has been handled."""
     if body is None:
         return False
     if path == "/api/uitnodiging":

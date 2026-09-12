@@ -1,17 +1,17 @@
 # SPDX-License-Identifier: EUPL-1.2
-"""Push-melding bij een nieuw bericht.
+"""Push notification on a new message.
 
-De bestaande push-keten (orchestrator/push-notify.py → VAPID → telefoon) vuurde
-alleen op run-verdicts en escalaties. Mark wil ook weten dát er iets in een kanaal
-staat, zonder de app open te houden.
+The existing push chain (orchestrator/push-notify.py → VAPID → phone) only fired
+on run verdicts and escalations. Mark also wants to know THAT something is in a
+channel, without keeping the app open.
 
-Wat NIET meldt: zijn eigen berichten (die schreef hij zelf), de ⋯-tussenstanden
-(telemetrie, geen bericht) en #statistics (idem). Wat wél: een agent-antwoord of
-een bericht van iemand anders.
+What does NOT notify: his own messages (he wrote those), the ⋯ progress lines
+(telemetry, not a message) and #statistics (likewise). What does: an agent answer
+or a message from someone else.
 
-Per kanaal hoogstens één push per COOLDOWN seconden; wat in die tijd binnenkomt
-wordt geteld en gaat mee in de volgende ("+2 meer"). Anders trilt de telefoon bij
-elke regel van een agent die net drie keer antwoordt.
+At most one push per channel per COOLDOWN seconds; whatever arrives in that time
+is counted and rides along on the next one ("+2 more"). Otherwise the phone
+buzzes on every line of an agent that happens to answer three times.
 """
 import os
 import subprocess
@@ -20,17 +20,17 @@ import time
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SENDER = os.path.join(ROOT, "orchestrator", "push-notify.py")
 COOLDOWN = int(os.environ.get("PUSH_COOLDOWN_SECONDS", "45"))
-SILENT = ("statistics",)          # kanalen die nooit pushen
+SILENT = ("statistics",)          # channels that never push
 PROGRESS_PREFIX = "⋯"
 
-_last: dict = {}                # kanaalnaam -> (tijdstip, onderdrukt aantal)
+_last: dict = {}                # channel name -> (timestamp, suppressed count)
 
 
 def should_notify(cname, author, content, me):
-    """Is dit een bericht waar een mens iets aan heeft?"""
+    """Is this a message a human has any use for?"""
     if cname in SILENT:
         return False
-    if author == me:                       # eigen bericht
+    if author == me:                       # own message
         return False
     if (content or "").lstrip().startswith(PROGRESS_PREFIX):
         return False
@@ -38,11 +38,11 @@ def should_notify(cname, author, content, me):
 
 
 def push(cname, author, content):
-    """Stuur één melding; faalt stil (een melding mag de listener nooit hinderen)."""
+    """Send one notification; fails silently (it must never get in the way)."""
     now = time.time()
     t, missed = _last.get(cname, (0.0, 0))
     if now - t < COOLDOWN:
-        _last[cname] = (t, missed + 1)     # binnen de cooldown: alleen tellen
+        _last[cname] = (t, missed + 1)     # inside the cooldown: only count
         return False
     body = (content or "").strip().replace("\n", " ")
     if len(body) > 140:
@@ -51,13 +51,13 @@ def push(cname, author, content):
         body += f"  (+{missed} eerder)"
     _last[cname] = (now, 0)
     try:
-        # Kanaal in de URL: een melding over #bouw hoorde je in #bouw te zetten,
-        # niet op de app-root (= het eerste kanaal). Als HASH, want die gaat niet
-        # naar de server en geeft dus geen tweede cache-entry in de sw.
+        # Channel in the URL: a notification about #bouw should land you in
+        # #bouw, not on the app root (= the first channel). As a HASH, because
+        # that never reaches the server and so adds no second cache entry in the sw.
         subprocess.run(["uv", "run", SENDER, "--title", f"#{cname} · {author}",
                         "--url", f"/#{cname}", "--body", body],
                        cwd=ROOT, capture_output=True, text=True, timeout=30)
         return True
-    except Exception as e:                 # sender weg, netwerk stuk, uv ontbreekt
+    except Exception as e:                 # sender gone, network down, uv missing
         print(f"[listener] push mislukt (#{cname}): {e}", flush=True)
         return False

@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: EUPL-1.2
-"""Offline tests voor werksessies: marker, machtiging, grenzen, oogst.
+"""Offline tests for work sessions: register, limits, harvest, report.
 
-Draaien: cd agents && python3 -m unittest test_sessions
-Geen relay, geen claude — alles wat hier getest wordt is puur of gebruikt een
-nep-proces, zodat dit in CI kan.
+Run with: cd agents && python3 -m unittest test_sessions
+No relay, no claude — everything tested here is pure or uses a fake process, so
+this can run in CI.
 """
 import os
 import tempfile
@@ -27,7 +27,7 @@ CFG = {
 
 
 class ExtraPaths(unittest.TestCase):
-    """Een tweede leespad is een tweede vergunning, geen verruiming van de eerste."""
+    """A second read path is a second permit, not a widening of the first."""
 
     def test_read_paths_get_their_own_scope(self):
         out = providers.scoped(["Read", "Grep", "WebFetch"], ["/data/bron/"])
@@ -61,9 +61,9 @@ class Limits(unittest.TestCase):
             self.assertEqual(sessions.load(d).get("types"), {})
 
     def test_real_sessions_yml_is_readable(self):
-        """Elk type declareert wie mag starten en onder wiens naam gepost wordt.
-        Of het schrijfgereedschap mag hebben hangt af van `writes` — dat staat in
-        de Writing-tests hieronder."""
+        """Every type declares who may start it and whose name it posts under.
+        Whether it may have writing tools depends on `writes` — that is in the
+        Writing tests below."""
         cfg = sessions.load(os.path.dirname(os.path.abspath(__file__)))
         self.assertIn("zettelkast", cfg["types"])
         for name, t in cfg["types"].items():
@@ -72,7 +72,7 @@ class Limits(unittest.TestCase):
 
 
 class FakeProc:
-    """Genoeg proces om de oogst te testen zonder claude te draaien."""
+    """Just enough process to test the harvest without running claude."""
 
     def __init__(self, rc=None):
         self.rc, self.pid, self.returncode = rc, os.getpid(), rc
@@ -88,7 +88,7 @@ class Harvest(unittest.TestCase):
             f.write("".join(lines))
         return {"type": "zettelkast", "starter": "odin", "requester": "mark",
                 "cid": "c", "cname": "general",
-                "proc": FakeProc(rc), "path": path, "out": open(os.devnull, "w"),  # noqa: SIM115 (de Register sluit hem)
+                "proc": FakeProc(rc), "path": path, "out": open(os.devnull, "w"),  # noqa: SIM115 (the Register closes it)
                 "offset": 0, "t0": time.time(), "identity": "odin", "n": 0, "tp": 0.0,
                 "max_s": max_s, "res": None}
 
@@ -107,7 +107,7 @@ class Harvest(unittest.TestCase):
         self.assertIn("4 beurten", posts[-1])
 
     def test_empty_answer_says_so_explicitly(self):
-        """Stil niets posten leest als 'niets te melden' — dat is de false-clear."""
+        """Silently posting nothing reads as 'nothing to report' — the false clear."""
         s = self._session([])
         posts = []
         self._reg(s).tick(lambda x, t: posts.append(t))
@@ -130,10 +130,10 @@ class Harvest(unittest.TestCase):
         self.assertIn("Grep", posts[0])
 
     def test_exceeding_the_budget_cuts_off(self):
-        s = self._session([], rc=None, max_s=-1)   # negatief budget → meteen over
+        s = self._session([], rc=None, max_s=-1)   # negative budget → over at once
         posts = []
         reg = self._reg(s)
-        reg._stop = lambda x: None                # niet echt onze eigen pid killen
+        reg._stop = lambda x: None                # do not really kill our own pid
         reg.tick(lambda x, t: posts.append(t))
         self.assertIn("afgekapt", posts[-1])
         self.assertEqual(reg.running, [])
@@ -143,7 +143,7 @@ if __name__ == "__main__":
     unittest.main()
 
 class Writing(unittest.TestCase):
-    """Een schrijvend type krijgt meer, een lezend type krijgt dat nooit."""
+    """A writing type gets more, a reading type never does."""
 
     def test_reading_type_never_gets_write_tools(self):
         cfg = sessions.load(os.path.dirname(os.path.abspath(__file__)))
@@ -151,20 +151,20 @@ class Writing(unittest.TestCase):
             if t.get("writes"):
                 continue
             for tool in t.get("tools") or []:
-                self.assertNotIn(tool, sessions.FORBIDDEN, f"{name} declareert {tool}")
+                self.assertNotIn(tool, sessions.FORBIDDEN, f"{name} declares {tool}")
 
     def test_writing_type_still_never_gets_task_or_killshell(self):
-        """Task spawnt agents buiten elk zicht; KillShell raakt vreemde processen."""
+        """Task spawns agents out of all sight; KillShell touches foreign processes."""
         cfg = sessions.load(os.path.dirname(os.path.abspath(__file__)))
         for name, t in cfg["types"].items():
             for tool in t.get("tools") or []:
-                self.assertNotIn(tool, sessions.ALWAYS_FORBIDDEN, f"{name} declareert {tool}")
+                self.assertNotIn(tool, sessions.ALWAYS_FORBIDDEN, f"{name} declares {tool}")
 
     def test_build_type_is_declared_writing_and_narrowly_started(self):
         cfg = sessions.load(os.path.dirname(os.path.abspath(__file__)))
         build = cfg["types"]["build"]
         self.assertTrue(build["writes"])
-        # Het recht om te lezen geeft geen recht om te bouwen.
+        # The right to read gives no right to build.
         self.assertNotIn("odin", build["starters"])
 
 

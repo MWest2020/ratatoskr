@@ -1,17 +1,20 @@
-# Werksessies — langere, LEZENDE claude-runs die vanuit een kanaal gestart worden.
+# Work sessions — longer, READ-ONLY claude runs started from a channel.
 #
-# Het type `boomhuis` heet sinds 2026-09-11 `ratatoskr`; er was nog geen ander
-# dan Mark die 'm gebruikte, dus geen alias.
+# The type `boomhuis` has been called `ratatoskr` since 2026-09-11; nobody but
+# Mark was using it, so there is no alias.
 #
-# Een sessie is nooit een vrije opdracht: het is een TYPE uit dit bestand. Het type
-# bepaalt de werkmap, de tools, het model en het tijdbudget; de starter kiest alleen
-# het type en geeft een opdracht in vrije tekst mee. Zo staat alles wat een sessie
-# KAN doen in git, in één reviewbaar bestand.
+# A session is never a free-form assignment: it is a TYPE from this file. The type
+# decides the working directory, the tools, the model and the time budget; the
+# starter only picks the type and adds a task in free text. That way everything a
+# session CAN do lives in git, in one reviewable file.
 #
-# Starten:  !sessie <type> <opdracht>      (los op een regel, in een kanaal)
-# Grenzen:  lezend gereedschap, pad-begrensd tot `werkmap`, gestripte omgeving,
-#           geen Write/Edit/Bash, geen push. Iets veranderen loopt via een
-#           OpenSpec-change en een habitat-run — niet via een sessie.
+# Starting: !sessie <type> <task>          (on its own line, in a channel)
+# Limits:   read-only tools, path-bounded to `workdir`, a stripped environment,
+#           no Write/Edit/Bash, no push. Changing something goes through an
+#           OpenSpec change and a habitat run — not through a session.
+#
+# The `system:` and `prompt:` bodies below stay Dutch on purpose: they steer a
+# Dutch conversation in the channel (ADR-0001).
 
 max_concurrent: 2
 
@@ -21,7 +24,7 @@ types:
     model: sonnet
     max_seconds: 900
     starters: [mark, orchestrator, odin]
-    identity: odin          # onder wiens naam voortgang en resultaat gepost worden
+    identity: odin          # whose name progress and results are posted under
     description: >-
       leest Marks zettelkast-vault (sources/, wiki/, journal/) en beoordeelt wat er
       met gedeelde clips moet gebeuren; mag een gedeelde link ophalen
@@ -64,7 +67,7 @@ types:
       beoordeelt materiaal (een gedeelde link, een clip, een repo) tegen de eigen
       skill-bibliotheek: zit hier een SKILL.md in, en vult die een gat?
     tools: [Read, Grep, Glob, WebFetch]
-    also_reads:                # tweede LEES-vergunning, even strak begrensd
+    also_reads:                # a second READ permit, bounded just as tightly
       - /home/agent/zettelkast/sources
     system: |
       Je bent een werksessie van Ratatoskr, gestart vanuit een chatkanaal. Je
@@ -102,11 +105,11 @@ types:
       leest de Ratatoskr-repo zoals die draait (code, specs, changes), mag externe
       documentatie erbij halen, en levert een onderbouwd voorstel; schrijft zelf
       geen change en geen code
-    # WebFetch erbij omdat de vraag vaak "kunnen we dit lenen?" is, en dat kun je
-    # niet beantwoorden zonder de documentatie van dat iets te lezen. Risico blijft
-    # wat design.md al benoemt: opgehaalde tekst is ongereviewd en kan sturen. Wat
-    # het begrenst: geen schrijfrechten, geen shell, geen sleutels, en de opbrengst
-    # is een voorstel dat een mens leest.
+    # WebFetch is included because the question is often "can we borrow this?",
+    # and you cannot answer that without reading the documentation of that thing.
+    # The risk stays what design.md already names: fetched text is unreviewed and
+    # can steer. What bounds it: no write access, no shell, no keys, and the
+    # output is a proposal a human reads.
     tools: [Read, Grep, Glob, WebFetch]
     system: |
       Je bent een werksessie van Ratatoskr, gestart vanuit een chatkanaal. Je
@@ -138,15 +141,15 @@ types:
       Beantwoord die op basis van de repo. Begin met "🌳 ratatoskr-sessie".
 
   build:
-    # SCHRIJVENDE sessie: krijgt een verse worktree van origin/main op een eigen
-    # branch, met een pre-push-hook die alles behalve die branch weigert. Hij
-    # eindigt in een pull request — mergen blijft mensenwerk.
+    # A WRITING session: gets a fresh worktree of origin/main on a branch of its
+    # own, with a pre-push hook that refuses everything but that branch. It ends
+    # in a pull request — merging stays human work.
     writes: true
-    # Bij een schrijvend type is `workdir` de CLONE waaruit de worktree komt,
-    # niet de map waarin gewerkt wordt.
+    # For a writing type `workdir` is the CLONE the worktree comes from, not the
+    # directory that is worked in.
     workdir: /home/agent/ratatoskr
     model: sonnet
-    max_seconds: 3600         # bouwen met tests duurt langer dan lezen
+    max_seconds: 3600         # building with tests takes longer than reading
     starters: [mark, orchestrator]
     identity: odin
     description: >-

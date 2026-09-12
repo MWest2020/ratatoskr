@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: EUPL-1.2
-"""De terugval van RATATOSKR_ op BOOMHUIS_ is de enige weg terug na een
-mislukte uitrol, dus die is getest en niet aangenomen."""
+"""The fallback from RATATOSKR_ to BOOMHUIS_ is the only way back after a failed
+rollout, so it is tested and not assumed."""
 import os
 import unittest
 
@@ -28,7 +28,7 @@ class Reading(unittest.TestCase):
         self.assertEqual(settings.read("PROEF"), "nieuw")
 
     def test_empty_counts_as_absent(self):
-        """Een per ongeluk lege regel in .env mag de terugval niet blokkeren."""
+        """An accidentally empty line in .env must not block the fallback."""
         os.environ["RATATOSKR_PROEF"] = ""
         os.environ["BOOMHUIS_PROEF"] = "oud"
         self.assertEqual(settings.read("PROEF"), "oud")

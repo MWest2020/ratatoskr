@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: EUPL-1.2
-"""Kanaalbeheer tekent als orchestrator, of het gebeurt niet.
+"""Channel management signs as the orchestrator, or it does not happen.
 
-De regel die deze tests bewaken: er is geen pad waarlangs kanaal-maken,
--verwijderen of leden-toevoegen alsnog met marks mens-sleutel wordt getekend.
-Ontbreekt de orchestrator-sleutel, dan is het antwoord 503 — geen stille terugval.
+The rule these tests guard: there is no path along which creating or deleting a
+channel, or adding a member, still gets signed with Mark's human key. Without the
+orchestrator key the answer is a 503 — no silent fallback.
 """
 import importlib
 import os
@@ -25,7 +25,7 @@ class AdminKeyTest(unittest.TestCase):
     def test_without_a_key_management_is_off(self):
         b = self._load(None)
         rc, _out, err = b.buzz_admin(["channels", "list"])
-        self.assertIsNone(rc)                 # None = "niet geprobeerd"
+        self.assertIsNone(rc)                 # None = "not attempted"
         self.assertIn("BUZZ_ORCHESTRATOR_KEY", err)
 
     def test_with_a_key_the_call_signs_with_that_key(self):
@@ -64,7 +64,7 @@ class AdminKeyTest(unittest.TestCase):
             b.buzz(["messages", "send"])
         finally:
             b.subprocess.run = orig
-        self.assertIsNone(seen["env"])  # geen override → mark blijft de afzender
+        self.assertIsNone(seen["env"])  # no override → mark stays the sender
 
 
 if __name__ == "__main__":
@@ -72,9 +72,9 @@ if __name__ == "__main__":
 
 
 class HubLookupTest(unittest.TestCase):
-    """De hub wordt op ROL gevonden, niet op naam — anders breekt elke hernoeming
-    het toevoegen van de hub aan een nieuw kanaal, en wel STIL (de add is
-    best-effort). Precies dat gebeurde na coordinator -> odin."""
+    """The hub is found by ROLE, not by name — otherwise every rename breaks
+    adding the hub to a new channel, and SILENTLY at that (the add is best
+    effort). Exactly that happened after coordinator -> odin."""
 
     def _map(self, text):
         import roster
@@ -90,10 +90,10 @@ class HubLookupTest(unittest.TestCase):
     def test_a_revoked_hub_does_not_count(self):
         m = self._map(self.REG)
         metas = [pk for pk, i in m.items() if i.get("rol") == "meta-agent"]
-        self.assertEqual(metas, ["cc"])          # odin, niet de ingetrokken coordinator
+        self.assertEqual(metas, ["cc"])          # odin, not the revoked coordinator
 
     def test_renaming_does_not_break_the_lookup(self):
-        # zelfde registry, andere naam voor dezelfde rol
+        # same registry, different name for the same role
         m = self._map(self.REG.replace("  odin:", "  wodan:"))
         metas = [i["name"] for i in m.values() if i.get("rol") == "meta-agent"]
         self.assertEqual(metas, ["wodan"])

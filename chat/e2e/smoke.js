@@ -1,19 +1,19 @@
-// Rooktest in een ECHTE browser: doet de app het, of staat hij stil?
+// Smoke test in a REAL browser: does the app work, or does it stand still?
 //
-// Waarom dit bestaat, precies: op 2026-09-11 draaide Marks installatie een halve
-// dag met een chat die de relay niet kon bereiken. `api.sh` gaf 38/38 groen (die
-// suite draait zonder sessie en raakt de relay-code niet) en de server was
-// gezond op elk HTTP-niveau — maar de app stond op "laden…" en crashte op
-// `Cannot read properties of undefined (reading 'name')`. Alleen een browser die
-// écht inlogt ziet dat.
+// Why this exists, precisely: on 2026-09-11 Mark's installation ran for half a
+// day with a chat that could not reach the relay. `api.sh` reported 38/38 green
+// (that suite runs without a session and does not touch the relay code) and the
+// server was healthy at every HTTP level — but the app sat on "laden…" and
+// crashed on `Cannot read properties of undefined (reading 'name')`. Only a
+// browser that really logs in sees that.
 //
-// De vier dingen die het toen zouden hebben gevangen, en die deze test eist:
-//   1. geen JS-fout bij het laden,
-//   2. de kanaallijst is gevuld,
-//   3. #msgs staat niet meer op "laden…",
-//   4. de app POLT ook echt (anders leeft hij niet, hij ziet er alleen zo uit).
+// The four things that would have caught it then, and that this test demands:
+//   1. no JS error while loading,
+//   2. the channel list is filled,
+//   3. #msgs is no longer on "laden…",
+//   4. the app really POLLS (otherwise it is not alive, it only looks it).
 //
-//   NODE_PATH=<pad>/node_modules PW_CHROME=<chrome> \
+//   NODE_PATH=<path>/node_modules PW_CHROME=<chrome> \
 //   RATATOSKR_URL=https://… NAAM=… WW=… node chat/e2e/smoke.js
 const { chromium, devices } = require('playwright');
 const EXE = process.env.PW_CHROME
@@ -42,7 +42,7 @@ const t = (naam, cond, extra = '') => {
   let apiCalls = 0;
   p.on('pageerror', (e) => errors.push('PAGEERROR: ' + e.message));
   p.on('console', (m) => {
-    // Een 401 hoort bij scenario's die de app zelf afhandelt; de rest telt.
+    // A 401 belongs to scenarios the app handles itself; the rest counts.
     if (m.type() === 'error' && !/401/.test(m.text())) errors.push('console: ' + m.text().slice(0, 160));
   });
   p.on('response', (r) => { if (new global.URL(r.url()).pathname.startsWith('/api/')) apiCalls++; });
@@ -63,7 +63,7 @@ const t = (naam, cond, extra = '') => {
   }));
   t('geen JS-fouten', errors.length === 0, errors.slice(0, 3).join(' | '));
   t('kanaallijst gevuld', st.channels > 0, `${st.channels} kanalen`);
-  // "laden…" is exact het beeld van de storing: shell staat, JS is dood.
+  // "laden…" is exactly the picture of the outage: shell up, JS dead.
   t('berichten geladen (niet op "laden…")', !/^laden/.test(st.msgs), JSON.stringify(st.msgs));
   t('service worker actief', st.sw);
 
@@ -76,10 +76,10 @@ const t = (naam, cond, extra = '') => {
     text: (document.querySelector('#boardView') || {}).textContent.slice(0, 80),
   }));
   t('bord opent', board.open);
-  // Vier kolommen, ook als er niets in staat: een lege kolom hoort zichtbaar
-  // leeg te zijn, niet afwezig.
+  // Four columns, even when they are empty: an empty column should be visibly
+  // empty, not absent.
   t('vier kolommen', board.columns === 4, `${board.columns} kolommen: ${board.text}`);
-  // Een bord vol kaarten waar je niet op kunt klikken is een plaatje.
+  // A board full of cards you cannot click is a picture.
   const clickable = await p.evaluate(() => ({
     cards: document.querySelectorAll('.bcard').length,
     linked: document.querySelectorAll('.bcard.blink').length,

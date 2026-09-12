@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: EUPL-1.2
-"""Agent/kanaal-acties voor de chat-backend, apart van server.py (routing) zodat
-beide onder de =<200-regel-conventie blijven. Elke functie geeft (status, payload).
+"""Agent/channel actions for the chat backend, separate from server.py (routing)
+so both stay under the ≤200-line convention. Every function returns (status,
+payload).
 """
 import json
 import re
@@ -14,11 +15,11 @@ _MENTION_ERR = re.compile(r"mention '@([A-Za-z0-9_-]+)' does not match")
 
 
 def _a_member_of(cid):
-    """Een pubkey die écht LID is van DIT kanaal (anker voor de force-mention).
-    Deterministisch (gesorteerd) en bij voorkeur een NIET-agent-lid, zodat het
-    anker sowieso niet met een agent te verwarren is. Het lid wordt niet ge-@t in
-    de content, dus de listener (die op @handle in de tekst triggert) reageert er
-    niet op; de voorkeur is een extra gordel."""
+    """A pubkey that really IS a MEMBER of THIS channel (anchor for the forced
+    mention). Deterministic (sorted) and preferably a non-agent member, so the
+    anchor cannot be confused with an agent at all. The member is not @-ed in the
+    content, so the listener (which triggers on @handle in the text) does not
+    react to it; the preference is an extra belt."""
     members = sorted(p for p in channel_member_pubkeys(cid) if p)  # stabiel per call
     if not members:
         return None
@@ -27,7 +28,7 @@ def _a_member_of(cid):
 
 
 def add_agent(cid, name):
-    """Voeg een agent (naam→pubkey uit de registry) als bot toe."""
+    """Add an agent (name→pubkey from the registry) as a bot."""
     if not valid_cid(cid):
         return 400, {"error": "onbekend kanaal"}
     pk = roster.agent_pubkey(name)
@@ -43,11 +44,11 @@ def add_agent(cid, name):
 
 
 def send(cid, content, force=False):
-    """Verstuur een bericht. Zonder --mention resolvet de relay een @agent naar het
-    lid en triggert 'm; een @naam die geen lid is geeft een 409 met een keuze
-    (toevoegen als 't een agent is, of 'toch versturen'). Met `force` geven we een
-    écht bestaand kanaal-lid (`_a_member_of`) als anker-mention mee zodat álle
-    @woorden presentation-only worden — voor @here, een geplakte handle, e.d."""
+    """Send a message. Without --mention the relay resolves an @agent to the
+    member and triggers it; an @name that is not a member gives a 409 with a
+    choice (add it when it is an agent, or 'send anyway'). With `force` we pass a
+    genuinely existing channel member (`_a_member_of`) as the anchor mention so
+    ALL @words become presentation-only — for @here, a pasted handle, and so on."""
     if not valid_cid(cid):
         return 400, {"error": "onbekend kanaal"}
     content = (content or "").strip()
@@ -57,7 +58,7 @@ def send(cid, content, force=False):
     if force:
         anchor = _a_member_of(cid)
         if anchor:
-            args += ["--mention", anchor]  # echt lid → maakt @woorden presentation-only
+            args += ["--mention", anchor]  # a real member → @words presentation-only
     rc, out, err = buzz(args, stdin=content)
     if rc == 0:
         return 200, {"ok": True}
@@ -66,21 +67,21 @@ def send(cid, content, force=False):
         who = m.group(1)
         return 409, {
             "missing_agent": who,
-            "known": roster.agent_pubkey(who) is not None,  # alleen échte agents → toevoegen
-            "can_force": True,                              # 'toch versturen' (presentation-only) mag
+            "known": roster.agent_pubkey(who) is not None,  # only real agents → add
+            "can_force": True,                              # 'send anyway' is allowed
             "channel": cid,
         }
     return 502, {"error": (err or out or "").strip()[:200]}
 
 
 def _add_hub(create_out):
-    """Best-effort: de hub-agent als lid van een net-gemaakt kanaal. Mag NOOIT
-    raisen — het kanaal bestaat al. Faalt stil-maar-zichtbaar (log naar stderr,
-    return None/False), zodat een add-fout niet de hele create doet omvallen.
+    """Best effort: the hub agent as a member of a freshly created channel. Must
+    NEVER raise — the channel already exists. Fails quietly but visibly (log to
+    stderr, return None/False), so an add error does not topple the whole create.
 
-    De hub wordt op ROL opgezocht (`meta-agent`), niet op naam: na de hernoeming
-    coordinator -> odin gaf de naam-variant `geen cid/pubkey` en kwam er in geen
-    enkel nieuw kanaal nog een hub te zitten."""
+    The hub is looked up by ROLE (`meta-agent`), not by name: after the rename
+    coordinator -> odin the name variant gave `geen cid/pubkey` and no new channel
+    got a hub any more."""
     try:
         d = json.loads(create_out)
         cid = d.get("channel_id") or d.get("id")  # relay gebruikt beide
@@ -93,14 +94,14 @@ def _add_hub(create_out):
         if ar is None or ar != 0:
             sys.stderr.write(f"[create] hub-add faalde: {(ae or _o).strip()[:120]}\n")
         return ar == 0
-    except Exception as e:  # noqa: BLE001 — create is al geslaagd; add is bijzaak
+    except Exception as e:  # noqa: BLE001 — the create succeeded; the add is a side issue
         sys.stderr.write(f"[create] hub-add fout: {e}\n")
         return False
 
 
 def create_channel(name):
-    """Maak een open kanaal + voeg de hub-agent standaard toe (best-effort:
-    mislukt de add, dan bestaat het kanaal nog steeds; `hub_added` meldt 't)."""
+    """Create an open channel and add the hub agent by default (best effort: if
+    the add fails the channel still exists; `hub_added` says so)."""
     name = (name or "").strip().lower()
     if not _NAME_RE.match(name):
         return 400, {"error": "naam: a-z 0-9 _ - (max 31)"}

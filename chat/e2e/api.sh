@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
-# End-to-end van de gate, tegen de VM: wat mag zonder sessie, en wat niet.
+# End-to-end of the gate, against the VM: what is allowed without a session, and
+# what is not.
 #
-# Sinds `inloggen-per-persoon` zit ook lezen achter de sessie. Deze suite draait
-# daarom bewust ZONDER cookie: hij bewijst dat er niets uitlekt aan wie niet
-# ingelogd is. De ingelogde kant zit in chat/e2e/login-flow.js, want daar heb je
-# een browser voor nodig.
+# Since `inloggen-per-persoon` reading sits behind the session too. This suite
+# therefore runs deliberately WITHOUT a cookie: it proves that nothing leaks to
+# someone who is not logged in. The logged-in side lives in
+# chat/e2e/login-flow.js, because that needs a browser.
 H=${RATATOSKR_URL:-${BOOMHUIS_URL:-https://boomhuis-relay.tail8f7877.ts.net}}
 ok=0; fail=0
-t(){ # naam, verwachte code, curl-args...
+t(){ # name, expected code, curl args...
   local naam=$1 verw=$2; shift 2
   local code; code=$(curl -sk -o /tmp/e2e.body -w '%{http_code}' --max-time 25 "$@")
   if [ "$code" = "$verw" ]; then ok=$((ok+1)); printf '  ok   %-42s %s\n' "$naam" "$code"
@@ -29,9 +30,9 @@ t "GET /api/prs (geldige repo)"   401 "$H/api/prs?repo=MWest2020/boomhuis"
 t "GET /api/pr  (geldige repo)"   401 "$H/api/pr?repo=MWest2020/boomhuis&num=45"
 t "GET /api/pinned?channel=netnl" 401 "$H/api/pinned?channel=netnl"
 
-# De gate komt vóór het valideren van parameters: een vreemde krijgt overal
-# hetzelfde 401 en kan dus niet eens uitproberen hoe de invoercontrole reageert.
-# Dat die controle klópt staat in de unittests (chat/test_server.py), mét sessie.
+# The gate comes before parameter validation: a stranger gets the same 401
+# everywhere and so cannot even probe how the input checks react. That those
+# checks are right is in the unit tests (chat/test_server.py), with a session.
 for q in "prs?repo=boomhuis" "prs?repo=../etc" "prs" "pr?repo=MWest2020/boomhuis" \
          "pinned?channel=../../etc" "messages" "messages?channel=nietbestaand"; do
   t "GET /api/$q (gate vóór validatie)" 401 "$H/api/$q"; done

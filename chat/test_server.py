@@ -1,16 +1,16 @@
 # SPDX-License-Identifier: EUPL-1.2
-"""HTTP-routing: een ECHTE server op localhost, met de relay- en GitHub-laag
-gestubd. Geen mock van de handler zelf, want juist de routing en de volgorde van
-de checks zijn wat hier misging.
+"""HTTP routing: a REAL server on localhost, with the relay and GitHub layers
+stubbed. No mock of the handler itself, because the routing and the order of the
+checks are exactly what went wrong here.
 
-De invariant die deze tests bewaken: **niets is open behalve de inlogroutes en
-de shell; elk verzoek onder /api/ vereist een sessie, en elke POST daarbovenop
-een sessiegebonden token**. En er komt nooit een rauwe upstream-fout terug op
-een invoerfout van de gebruiker.
+The invariant these tests guard: **nothing is open except the login routes and
+the shell; every request under /api/ needs a session, and every POST needs a
+session-bound token on top**. And a raw upstream error never comes back on a
+user input error.
 
-Lezen was ooit open omdat het tailnet het afschermde. Sinds
-`inloggen-per-persoon` niet meer: in die routes staan kanaalnamen, berichten en
-agent-verkeer.
+Reading was once open because the tailnet shielded it. Since
+`inloggen-per-persoon` no longer: those routes carry channel names, messages and
+agent traffic.
 """
 import json
 import os
@@ -26,7 +26,7 @@ import tempfile
 os.environ["BOOMHUIS_AUTH_DB"] = os.path.join(tempfile.mkdtemp(), "auth.db")
 os.environ.pop("BOOMHUIS_APP_TOKEN", None)
 
-import auth      # noqa: E402  — na het zetten van de env
+import auth      # noqa: E402  — after setting the env
 import auth_store as store  # noqa: E402
 import buzzcli   # noqa: E402
 import github    # noqa: E402
@@ -52,8 +52,8 @@ def _stub():
     server.actions.buzz = server.buzz
     server.actions.buzz_admin = server.buzz_admin
     server.actions.valid_cid = buzzcli.valid_cid
-    # Een momentopname van het werk-overzicht, zodat /api/board echt iets serveert
-    # in plaats van de 404 die een verse installatie geeft.
+    # A snapshot of the work overview, so /api/board really serves something
+    # instead of the 404 a fresh installation gives.
     path = os.path.join(tempfile.mkdtemp(), "board.json")
     with open(path, "w") as f:
         json.dump({"generated_at": time.time(), "columns": [], "cards": []}, f)
@@ -81,9 +81,8 @@ class ServerTest(unittest.TestCase):
         cls.srv.shutdown()
 
     def call(self, path, data=None, raw=None, session=True, csrf=True):
-        """`session=False` doet alsof je niet ingelogd bent, `csrf=False` alsof
-        het sessietoken ontbreekt — de twee manieren waarop een verzoek hoort
-        te stranden."""
+        """`session=False` pretends you are not logged in, `csrf=False` that the
+        session token is missing — the two ways a request should strand."""
         body = raw if raw is not None else (json.dumps(data).encode() if data is not None else None)
         req = urllib.request.Request(self.base + path, data=body,
                                      method="POST" if body is not None else "GET")
@@ -99,9 +98,9 @@ class ServerTest(unittest.TestCase):
         except urllib.error.HTTPError as e:
             return e.code, e.read().decode()
 
-    # --- werk-overzicht ---
+    # --- work overview ---
     def test_board_without_a_snapshot_is_404_with_an_explanation(self):
-        """Een leeg bord moet te onderscheiden zijn van een kapotte producent."""
+        """An empty board must be distinguishable from a broken producer."""
         old = server.board.PATH
         server.board.PATH = "/bestaat/niet/board.json"
         try:
@@ -111,34 +110,34 @@ class ServerTest(unittest.TestCase):
         self.assertEqual(code, 404)
         self.assertIn("hint", body)
 
-    # --- Android-app ---
+    # --- Android app ---
     def test_assetlinks_is_open(self):
-        """Chrome haalt dit op vóór er een gebruiker is; achter de sessie zou de
-        app altijd met een adresbalk starten."""
+        """Chrome fetches this before there is a user; behind the session the app
+        would always start with an address bar."""
         code, body = self.call("/.well-known/assetlinks.json", session=False)
         self.assertEqual(code, 200)
         d = json.loads(body)
         self.assertEqual(d[0]["target"]["namespace"], "android_app")
         self.assertTrue(d[0]["target"]["sha256_cert_fingerprints"][0].count(":") == 31,
-                        "vingerafdruk hoort 32 hex-paren te zijn")
+                        "a fingerprint should be 32 hex pairs")
 
     def test_apk_is_open(self):
-        """Een APK-download start vaak buiten de sessie (downloadmanager, een
-        doorgestuurde link in een andere app) en draagt het cookie dan niet mee.
-        Achter de gate is de link onbruikbaar precies wanneer je 'm nodig hebt;
-        het bestand bevat niets geheims."""
+        """An APK download often starts outside the session (download manager, a
+        forwarded link in another app) and then does not carry the cookie. Behind
+        the gate the link is useless exactly when you need it; the file holds
+        nothing secret."""
         code, _ = self.call("/ratatoskr.apk", session=False)
         self.assertIn(code, (200, 404))
         self.assertNotEqual(code, 401)
 
     def test_apk_without_a_file_is_404_not_500(self):
-        """Een installatie zonder app hoort netjes te zeggen dat hij er niet is."""
+        """An installation without an app should say cleanly that it is not there."""
         code, body = self.call("/ratatoskr.apk")
         self.assertIn(code, (200, 404))
         if code == 404:
             self.assertIn("geen app", body)
 
-    # --- lezen zit achter de sessie ---
+    # --- reading sits behind the session ---
     READ_ROUTES = ("/api/channels", "/api/agents", "/api/channel-members",
                   "/api/push/vapid", "/api/overview", "/api/repos", "/api/board",
                   f"/api/messages?channel={CID}", "/api/pinned?channel=general")
@@ -151,11 +150,11 @@ class ServerTest(unittest.TestCase):
         for path in self.READ_ROUTES:
             code, body = self.call(path, session=False)
             self.assertEqual(code, 401, path)
-            self.assertNotIn("general", body, path)  # geen gegevens in het antwoord
+            self.assertNotIn("general", body, path)  # no data in the answer
 
     def test_the_shell_stays_open(self):
-        """De pagina en zijn scripts bevatten niets geheims, en de inlogpagina
-        moet zonder sessie te laden zijn — anders kun je nooit inloggen."""
+        """The page and its scripts hold nothing secret, and the login page has to
+        load without a session — otherwise you can never log in."""
         for path in ("/", "/login", "/app.js", "/login.js", "/sw.js"):
             self.assertEqual(self.call(path, session=False)[0], 200, path)
 
@@ -191,7 +190,7 @@ class ServerTest(unittest.TestCase):
         code, body = self.call("/api/pinned?channel=../../etc")
         self.assertEqual((code, json.loads(body)), (200, {"content": ""}))
 
-    # --- schrijven gaat eerst langs de poort ---
+    # --- writing goes past the gate first ---
     WRITE_ROUTES = ("/api/send", "/api/channels/create", "/api/channels/delete",
                      "/api/channel/add-member", "/api/push/subscribe", "/api/onbekend")
 

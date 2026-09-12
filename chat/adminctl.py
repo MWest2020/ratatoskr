@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: EUPL-1.2
-"""Accounts beheren vanaf de host, zonder browser.
+"""Manage accounts from the host, without a browser.
 
-Bestaat omdat de webweg een kip-en-ei heeft: je kunt pas inloggen als er een
-account is, en als je de app niet kunt bereiken kom je er niet. Dit draait op de
-machine waar de installatie staat — wie daar bij kan, kan sowieso alles.
+Exists because the web route has a chicken-and-egg problem: you can only log in
+once there is an account, and if you cannot reach the app you never get there.
+This runs on the machine the installation is on — whoever can get at that can do
+everything anyway.
 
     sudo -E python3 adminctl.py owner mark
     sudo -E python3 adminctl.py invite
@@ -12,9 +13,9 @@ machine waar de installatie staat — wie daar bij kan, kan sowieso alles.
     sudo -E python3 adminctl.py password mark
     sudo -E python3 adminctl.py delete gast
 
-Het wachtwoord wordt gevraagd (twee keer, niet zichtbaar) en staat nergens in
-je shell-geschiedenis. `-E` zodat RATATOSKR_AUTH_DB en RATATOSKR_URL uit de
-omgeving meekomen; zonder die eerste pakt hij het standaardpad.
+The password is asked for (twice, not echoed) and is nowhere in your shell
+history. `-E` so RATATOSKR_AUTH_DB and RATATOSKR_URL come along from the
+environment; without the first it takes the default path.
 """
 import getpass
 import os
@@ -24,9 +25,9 @@ import settings
 
 
 def _from_env_file(key):
-    """De service leest zijn instellingen uit chat.env; dit script draait
-    ernaast en zou anders het standaardpad en `<jouw url>` pakken terwijl beide
-    gewoon naast hem liggen. Beide naamgevingen, nieuw eerst."""
+    """The service reads its settings from chat.env; this script runs beside it
+    and would otherwise take the default path and `<jouw url>` while both are
+    lying right next to it. Both namings, new first."""
     for name in (settings.NEW + key, settings.OLD + key):
         value = _from_file(name)
         if value:
@@ -47,7 +48,7 @@ def _from_file(key):
     return ""
 
 
-# Vóór het importeren van auth_store: die leest het pad bij het laden.
+# Before importing auth_store: that reads the path at load time.
 if not settings.is_set("AUTH_DB"):
     from_file = _from_env_file("AUTH_DB")
     if from_file:
@@ -60,20 +61,20 @@ MIN_LENGTH = 12
 
 
 def _ask_password(name):
-    # Geen terminal — `docker compose exec -T`, een installatiescript, een
-    # ansible-taak: dan komt het wachtwoord van stdin. Zonder deze tak eindigt
-    # `adminctl eigenaar` daar in een EOFError, en dat is precies het moment
-    # waarop een verse installatie zijn eerste account moet krijgen.
-    # Één regel, niet twee: de herhaalvraag is een typefout-vangnet voor mensen.
+    # No terminal — `docker compose exec -T`, an install script, an ansible task:
+    # then the password comes from stdin. Without this branch `adminctl owner`
+    # ends there in an EOFError, and that is exactly the moment a fresh
+    # installation has to get its first account.
+    # One line, not two: the repeat question is a typo net for humans.
     if not sys.stdin.isatty():
         first = sys.stdin.readline().rstrip("\n")
         if not first:
             sys.exit("geen wachtwoord op stdin (en geen terminal om het te vragen)")
         if len(first) < MIN_LENGTH:
             sys.exit("wachtwoord moet minstens {} tekens zijn".format(MIN_LENGTH))
-        # Staat er een tweede regel, dan is dat een bevestiging en moet hij
-        # kloppen (zo werkte het altijd al bij aanleveren via een pipe). Eén
-        # regel is óók goed: een installatiescript maakt geen typefouten.
+        # If there is a second line, it is a confirmation and it has to match
+        # (that is how supplying it through a pipe always worked). One line is
+        # fine too: an install script makes no typos.
         second = sys.stdin.readline().rstrip("\n")
         if second and second != first:
             sys.exit("de twee wachtwoorden verschillen")
@@ -92,15 +93,15 @@ def _base_url():
 
 
 def owner(name):
-    """De eerste persoon. Alleen zolang er niemand is — daarna is uitnodigen
-    de weg, want een tweede eigenaar maken hoort niet stilletjes te kunnen."""
+    """The first person. Only as long as there is nobody — after that inviting is
+    the way, because making a second owner should not be possible quietly."""
     if store.person_count() > 0:
         sys.exit("er is al een account; gebruik 'invite' of 'password'")
     pid = store.create_person(name, auth.hash_password(_ask_password(name)),
                               owner=True)
     if pid is None:
         sys.exit("die naam bestaat al")
-    store.revoke_invites("setup")   # de afgedrukte setup-link vervalt hiermee
+    store.revoke_invites("setup")   # this voids the printed setup link
     print("eigenaar '{}' aangemaakt. Inloggen: {}/login".format(name, _base_url()))
 
 
@@ -134,7 +135,7 @@ def password(name):
     if p is None:
         sys.exit("onbekende naam")
     store.set_hash(p["id"], auth.hash_password(_ask_password(name)))
-    store.revoke_all_sessions(p["id"])    # wie het oude had, is eruit
+    store.revoke_all_sessions(p["id"])    # whoever had the old one is out
     print("wachtwoord van '{}' gewijzigd; alle sessies zijn ingetrokken".format(name))
 
 

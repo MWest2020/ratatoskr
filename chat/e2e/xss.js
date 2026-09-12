@@ -1,9 +1,9 @@
-// Playwright hoeft niet in deze repo te staan; wijs er met NODE_PATH naar:
-//   NODE_PATH=<pad>/node_modules node chat/e2e/xss.js
+// Playwright need not live in this repo; point at it with NODE_PATH:
+//   NODE_PATH=<path>/node_modules node chat/e2e/xss.js
 const { logIn } = require('./login');
 const { chromium, devices } = require('playwright');
 const fs=require('fs');
-const D=require('path').join(__dirname,'..')+'/';   // de werkkopie van chat/
+const D=require('path').join(__dirname,'..')+'/';   // the working copy of chat/
 const EXE='/home/agent/.cache/ms-playwright/chromium-1234/chrome-linux64/chrome';
 const PAYLOAD = '<img src=x onerror="window.__XSS=1"><script>window.__XSS=1</script>';
 (async()=>{
@@ -17,7 +17,7 @@ const PAYLOAD = '<img src=x onerror="window.__XSS=1"><script>window.__XSS=1</scr
         body: fs.readFileSync(dir+f,'utf8')}); }catch(e){ r.continue(); } });
     if (dir) await ctx.route('https://boomhuis-relay.tail8f7877.ts.net/', r=>r.fulfill({status:200,
         contentType:'text/html', body: fs.readFileSync(dir+'index.html','utf8')}));
-    // vervalste GitHub-payloads met een kwaadaardige titel/branch/bestandsnaam
+    // forged GitHub payloads with a malicious title/branch/file name
     await ctx.route(/\/api\/repos/, r=>r.fulfill({status:200,contentType:'application/json',
       body: JSON.stringify({repos:[{name:'x',full_name:'MWest2020/x',private:false,open_issues:1,
         description:PAYLOAD}]})}));
@@ -47,7 +47,7 @@ const PAYLOAD = '<img src=x onerror="window.__XSS=1"><script>window.__XSS=1</scr
       imgs: document.querySelectorAll('#reposDrawer img').length,
       href: (document.querySelector('.gh')||{}).href || '(geen)',
       titleText: (document.querySelector('.rn')||{}).textContent || '(geen)'}));
-    const textOk = /img src=x/.test(String(r.titleText));     // payload zichtbaar ALS TEKST
+    const textOk = /img src=x/.test(String(r.titleText));     // payload visible AS TEXT
     if (r.xss)            { fail++; console.log(`  FAIL ${tag}: de payload is UITGEVOERD`); }
     else                    console.log(`  ok   ${tag}: payload niet uitgevoerd`);
     if (r.imgs)           { fail++; console.log(`  FAIL ${tag}: ${r.imgs} element(en) uit de payload gerenderd`); }

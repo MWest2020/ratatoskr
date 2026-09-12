@@ -1,10 +1,9 @@
 # SPDX-License-Identifier: EUPL-1.2
-"""Tests voor de HTTP-kant van inloggen (chat/auth_routes.py).
+"""Tests for the HTTP side of logging in (chat/auth_routes.py).
 
-Zonder server: de routes krijgen een stand-in van de handler die opschrijft wat
-er verstuurd zou zijn. Wat hier bewezen moet worden is niet "het werkt" maar
-"het weigert" — geen sessie, verkeerd wachtwoord, geen CSRF, gebruikte
-uitnodiging.
+Without a server: the routes get a stand-in handler that records what would have
+been sent. What has to be proven here is not "it works" but "it refuses" — no
+session, wrong password, no CSRF, a spent invitation.
 """
 import json
 import os
@@ -19,7 +18,7 @@ import auth_store as store  # noqa: E402
 
 
 class _Handler:
-    """Genoeg van BaseHTTPRequestHandler om de routes te draaien."""
+    """Just enough of BaseHTTPRequestHandler to run the routes."""
 
     def __init__(self, headers=None, source="10.0.0.1"):
         self.headers = headers or {}
@@ -29,7 +28,7 @@ class _Handler:
         self.set_cookie = []
         self._buffer = b""
 
-    # de routes gebruiken deze vier
+    # the routes use these four
     def send_response(self, code):
         self.code = code
 
@@ -55,9 +54,9 @@ def _post(fn, body, headers=None, source="10.0.0.1"):
 
 
 class LogIn(unittest.TestCase):
-    """Elk geval zijn eigen account én eigen bron-adres: mislukte pogingen
-    remmen zowel de naam als het adres af, dus tests die dat delen zetten
-    elkaar klem. Dat is het gedrag dat we willen — maar niet in de weg."""
+    """Every case its own account AND its own source address: failed attempts
+    throttle both the name and the address, so tests that share those block each
+    other. That is the behaviour we want — just not in the way."""
 
     def setUp(self):
         self.name = "route-" + os.urandom(4).hex()
@@ -88,8 +87,8 @@ class LogIn(unittest.TestCase):
     def test_the_throttle_kicks_in(self):
         for _ in range(6):
             _post(routes.log_in, {"naam": self.name, "wachtwoord": "mis"}, source=self.source)
-        # Zelfs mét het juiste wachtwoord: de rem gaat vóór de controle, anders
-        # is hij geen rem maar een vertraging.
+        # Even WITH the right password: the brake comes before the check,
+        # otherwise it is not a brake but a delay.
         h = _post(routes.log_in, {"naam": self.name, "wachtwoord": "een goed wachtwoord"},
                   source=self.source)
         self.assertEqual(h.code, 429)
@@ -152,8 +151,8 @@ if __name__ == "__main__":
 
 
 class ChangePassword(unittest.TestCase):
-    """Je eigen wachtwoord, mét het huidige erbij: anders is een geleende
-    sessie genoeg om iemand permanent buiten te sluiten."""
+    """Your own password, with the current one alongside: otherwise a borrowed
+    session is enough to lock someone out permanently."""
 
     def setUp(self):
         import auth_admin
@@ -180,14 +179,14 @@ class ChangePassword(unittest.TestCase):
         self.assertEqual(h.code, 400)
 
     def test_changing_revokes_all_sessions_and_gives_a_new_one(self):
-        second, _ = auth.start_session(self.pid)    # ander apparaat
+        second, _ = auth.start_session(self.pid)    # another device
         h = self._change("het oude wachtwoord", "een nieuw lang wachtwoord")
         self.assertEqual(h.code, 200)
         self.assertTrue(auth.password_matches("een nieuw lang wachtwoord",
                                               store.person(self.pid)["hash"]))
-        # het andere apparaat is eruit
+        # the other device is out
         self.assertIsNone(auth.session_from_cookie(
             {"Cookie": "{}={}".format(auth.COOKIE, second)}))
-        # en dit apparaat kreeg een verse sessie mee
+        # and this device got a fresh session
         self.assertTrue(h.set_cookie and auth.COOKIE in h.set_cookie[0])
         self.assertIn("csrf", h.payload)

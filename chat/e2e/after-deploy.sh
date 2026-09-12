@@ -1,19 +1,19 @@
 #!/usr/bin/env bash
-# Wat je draait NA elke uitrol. Drie lagen, in oplopende echtheid:
+# What you run AFTER every rollout. Three layers, in increasing realism:
 #
-#   1. api.sh        — wat een vreemde niet mag (zonder sessie)
-#   2. connection.sh — praat de chat met de relay (ingelogd, HTTP)
-#   3. smoke.js      — doet de app het in een echte browser (ingelogd, JS)
+#   1. api.sh        — what a stranger may not do (without a session)
+#   2. connection.sh — does the chat talk to the relay (logged in, HTTP)
+#   3. smoke.js      — does the app work in a real browser (logged in, JS)
 #
-# Waarom alle drie: op 2026-09-11 gaf laag 1 een halve dag 38/38 groen terwijl de
-# app stilstond. Laag 1 raakt geen relay-code, laag 2 ziet geen JS, en alleen
-# laag 3 ziet wat een mens ziet. Eén laag is geen test van een uitrol.
+# Why all three: on 2026-09-11 layer 1 was 38/38 green for half a day while the
+# app stood still. Layer 1 touches no relay code, layer 2 sees no JS, and only
+# layer 3 sees what a human sees. One layer is not a test of a rollout.
 #
 #   RATATOSKR_URL=https://… NAAM=… WW=… bash chat/e2e/after-deploy.sh
 #
-# smoke.js vergt Playwright + een Chromium; staat die elders, zet dan NODE_PATH
-# en PW_CHROME (zie chat/e2e/README.md). Ontbreekt Playwright, dan zegt dit
-# script dat hardop en faalt — een overgeslagen laag is geen groene uitrol.
+# smoke.js needs Playwright plus a Chromium; if those live elsewhere, set
+# NODE_PATH and PW_CHROME (see chat/e2e/README.md). Without Playwright this script
+# says so out loud and fails — a skipped layer is not a green rollout.
 set -u
 HERE="$(cd "$(dirname "$0")" && pwd)"
 fout=0

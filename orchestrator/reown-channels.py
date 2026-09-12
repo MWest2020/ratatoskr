@@ -1,15 +1,15 @@
 # SPDX-License-Identifier: EUPL-1.2
-"""Geef de orchestrator mede-eigenaarschap van mens-owned kanalen.
+"""Give the orchestrator co-ownership of human-owned channels.
 
-Waarom: de web-chat tekende kanaal-aanmaak als `mark` (de mens), dus die kanalen
-zijn mens-owned. Alleen een eigenaar mag een kanaal beheren (beschrijving, topic,
-delete), en geautomatiseerd kanaalbeheer met marks mens-sleutel is
-impersonatie-adjacent. Zie change `reown-channels-to-orchestrator`.
+Why: the web chat signed channel creation as `mark` (the human), so those
+channels are human-owned. Only an owner may manage a channel (description, topic,
+delete), and automated channel management with Mark's human key is
+impersonation-adjacent. See change `reown-channels-to-orchestrator`.
 
-Dit is de ENIGE plek waar marks sleutel gebruikt mag worden, en uitsluitend voor
-`channels add-member --role owner` — nooit om te posten. Eenmalig te draaien; na
-`fix-channels-create-as-orchestrator` ontstaan er geen nieuwe mens-owned kanalen
-meer. Idempotent: een kanaal dat de orchestrator al bezit wordt overgeslagen.
+This is the ONLY place Mark's key may be used, and solely for
+`channels add-member --role owner` — never to post. Run once; after
+`fix-channels-create-as-orchestrator` no new human-owned channels appear.
+Idempotent: a channel the orchestrator already owns is skipped.
 
     SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt python3 orchestrator/reown-channels.py [--dry-run]
 """
@@ -43,10 +43,10 @@ def _buzz(args, nsec):
 
 
 def _owners_of(cid, nsec):
-    """Alle pubkeys met rol `owner`. De relay staat MEERDERE eigenaren toe: een
-    overdracht voegt een eigenaar toe, hij vervangt er geen. Een eerdere versie
-    las hier "de" eigenaar (de eerste in de lijst) en meldde daardoor mislukt
-    terwijl de orchestrator er allang bij stond."""
+    """All pubkeys with role `owner`. The relay allows MULTIPLE owners: a transfer
+    adds an owner, it does not replace one. An earlier version read "the" owner
+    here (the first in the list) and therefore reported failure while the
+    orchestrator had long been among them."""
     p = _buzz(["channels", "members", "--channel", cid], nsec)
     if p.returncode != 0:
         return None
@@ -84,7 +84,7 @@ def main():
         if dry:
             print(f"[reown] #{name}: ZOU overdragen mark -> orchestrator")
             continue
-        # Alleen hier marks sleutel, en alleen voor deze ene rolwijziging.
+        # Mark's key only here, and only for this one role change.
         p = _buzz(["channels", "add-member", "--channel", cid,
                    "--pubkey", orch, "--role", "owner"], secrets["mark"]["nsec"])
         if p.returncode != 0:

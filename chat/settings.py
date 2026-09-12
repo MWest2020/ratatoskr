@@ -1,15 +1,14 @@
 # SPDX-License-Identifier: EUPL-1.2
-"""Instellingen uit de omgeving, onder één naam gelezen.
+"""Settings from the environment, read under one name.
 
-De app heet Ratatoskr, dus de instellingen heten `RATATOSKR_*`. De oude
-`BOOMHUIS_*`-namen blijven werken, en dat is geen beleefdheid: bij een
-hernoeming draait er een nieuw image tegen een `.env` die nog de oude namen
-heeft. Zonder terugval valt zo'n installatie stil op een lege database-URL of
-een uitnodigingslink die nergens heen wijst — precies op het moment dat je
-terug wilt kunnen.
+The app is called Ratatoskr, so the settings are called `RATATOSKR_*`. The old
+`BOOMHUIS_*` names keep working, and that is not politeness: after a rename a new
+image runs against a `.env` that still has the old names. Without a fallback such
+an installation dies on an empty database URL or an invitation link that points
+nowhere — exactly at the moment you want to be able to go back.
 
-Alles leest via deze functie, zodat er bij een volgende hernoeming geen
-leesplek kan achterblijven.
+Everything reads through this function, so a next rename cannot leave a read site
+behind.
 """
 import os
 
@@ -18,10 +17,10 @@ OLD = "BOOMHUIS_"
 
 
 def read(name, default=""):
-    """`read("URL")` → RATATOSKR_URL, anders BOOMHUIS_URL, anders `default`.
+    """`read("URL")` → RATATOSKR_URL, else BOOMHUIS_URL, else `default`.
 
-    Een lege string telt als afwezig: een instelling die per ongeluk leeg in
-    `.env` staat mag de terugval niet blokkeren."""
+    An empty string counts as absent: a setting that is accidentally empty in
+    `.env` must not block the fallback."""
     for prefix in (NEW, OLD):
         value = os.environ.get(prefix + name, "")
         if value != "":
@@ -30,11 +29,11 @@ def read(name, default=""):
 
 
 def set_value(name, value):
-    """Alleen voor tests en `adminctl`, die een pad uit een env-bestand in de
-    omgeving zet voordat de opslaglaag geladen wordt. Zet de NIEUWE naam."""
+    """Only for tests and `adminctl`, which put a path from an env file into the
+    environment before the storage layer is loaded. Sets the NEW name."""
     os.environ[NEW + name] = value
 
 
 def is_set(name):
-    """Staat deze instelling ergens (oud of nieuw)?"""
+    """Is this setting set anywhere (old or new)?"""
     return read(name) != ""

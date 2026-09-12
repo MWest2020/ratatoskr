@@ -1,20 +1,20 @@
 # SPDX-License-Identifier: EUPL-1.2
-"""Opslag voor personen, sessies en uitnodigingen — SQLite uit de stdlib.
+"""Storage for people, sessions and invitations — SQLite from the stdlib.
 
-Waarom SQLite en geen JSON zoals de push-registraties: dit bestand wordt door
-meerdere verzoeken tegelijk geschreven (de server is threading), en een JSON die
-je bij elke schrijf helemaal herschrijft verliest dan gegevens. SQLite doet dat
-atomair en zit in de standaardbibliotheek, dus de backend blijft dependency-loos.
+Why SQLite and not JSON like the push registrations: this file is written by
+several requests at once (the server is threading), and a JSON file you rewrite
+wholesale on every write loses data. SQLite does that atomically and is in the
+standard library, so the backend stays dependency-free.
 
-Het bestand staat buiten de checkout (`/var/lib/boomhuis`), net als
-`push_subs.json`: een redeploy mag geen accounts wissen.
+The file lives outside the checkout (`/var/lib/boomhuis`), like `push_subs.json`:
+a redeploy must not wipe accounts.
 
-Per aanroep één verbinding. Dat is bij dit volume ruim snel genoeg en het
-voorkomt het gedoe met `check_same_thread` op een gedeelde verbinding.
+One connection per call. At this volume that is more than fast enough and it
+avoids the trouble with `check_same_thread` on a shared connection.
 
-De tabel- en kolomnamen zijn Nederlands en blijven dat: ze staan in de database
-van elke draaiende installatie, en hernoemen zonder migratie sluit iedereen
-buiten. Zie ADR-0001; dat is een aparte change.
+The table and column names are Dutch and stay that way: they are in the database
+of every running installation, and renaming them without a migration locks
+everyone out. See ADR-0001; that is a change of its own.
 """
 import os
 import sqlite3
@@ -43,7 +43,7 @@ CREATE TABLE IF NOT EXISTS sessies (
 );
 CREATE TABLE IF NOT EXISTS uitnodigingen (
   hash TEXT PRIMARY KEY,
-  soort TEXT NOT NULL,          -- 'setup' of 'uitnodiging'
+  soort TEXT NOT NULL,          -- 'setup' or 'uitnodiging'
   verloopt INTEGER NOT NULL,
   gebruikt INTEGER NOT NULL DEFAULT 0
 );
@@ -51,7 +51,7 @@ CREATE TABLE IF NOT EXISTS pogingen (
   sleutel TEXT PRIMARY KEY,
   aantal INTEGER NOT NULL,
   tot INTEGER NOT NULL
-);   -- gevuld door auth_throttle.py
+);   -- filled by auth_throttle.py
 """
 
 
@@ -73,7 +73,7 @@ def now():
     return int(time.time())
 
 
-# --- personen ---------------------------------------------------------------
+# --- people -----------------------------------------------------------------
 
 def person_count():
     with _connect() as con:
@@ -81,7 +81,7 @@ def person_count():
 
 
 def create_person(name, hash_, owner=False):
-    """Geeft het id, of None wanneer de naam al bestaat."""
+    """Returns the id, or None when the name already exists."""
     try:
         with _connect() as con:
             cur = con.execute(
@@ -118,7 +118,7 @@ def set_totp_counter(pid, counter):
         con.execute("UPDATE personen SET totp_laatste = ? WHERE id = ?", (counter, pid))
 
 
-# --- sessies ----------------------------------------------------------------
+# --- sessions ---------------------------------------------------------------
 
 def create_session(hash_, pid, csrf, expires):
     with _connect() as con:
@@ -128,7 +128,7 @@ def create_session(hash_, pid, csrf, expires):
 
 
 def session(hash_):
-    """De sessie, of None als hij niet bestaat of verlopen is."""
+    """The session, or None when it does not exist or has expired."""
     with _connect() as con:
         row = con.execute("SELECT * FROM sessies WHERE hash = ?", (hash_,)).fetchone()
         if row is None:
@@ -160,7 +160,7 @@ def purge_sessions():
         con.execute("DELETE FROM sessies WHERE verloopt <= ?", (now(),))
 
 
-# --- uitnodigingen ----------------------------------------------------------
+# --- invitations ------------------------------------------------------------
 
 def create_invite(hash_, kind, expires):
     with _connect() as con:
@@ -169,7 +169,7 @@ def create_invite(hash_, kind, expires):
 
 
 def invite(hash_):
-    """Alleen een ongebruikte, niet-verlopen uitnodiging komt terug."""
+    """Only an unused, unexpired invitation comes back."""
     with _connect() as con:
         return con.execute(
             "SELECT * FROM uitnodigingen WHERE hash = ? AND gebruikt = 0 AND verloopt > ?",
@@ -177,7 +177,7 @@ def invite(hash_):
 
 
 def use_invite(hash_):
-    """Markeer als gebruikt. False wanneer hij al op was — dat maakt hem eenmalig."""
+    """Mark as used. False when it was already spent — that makes it single-use."""
     with _connect() as con:
         cur = con.execute(
             "UPDATE uitnodigingen SET gebruikt = 1 WHERE hash = ? AND gebruikt = 0 "

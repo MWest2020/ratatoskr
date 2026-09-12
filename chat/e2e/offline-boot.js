@@ -1,15 +1,14 @@
 // SPDX-License-Identifier: EUPL-1.2
 //
-// Koude start zonder tunnel: de service worker serveert de gecachete shell,
-// maar de API is onbereikbaar. Vóór `herstel-na-koude-start` sneuvelde
-// init() op de eerste fetch, werd de poll-timer nooit gezet en bleef het
-// scherm voorgoed op "laden…" staan — ook nadat het netwerk terugkwam.
+// Cold start without a tunnel: the service worker serves the cached shell, but
+// the API is unreachable. Before `herstel-na-koude-start` init() died on the
+// first fetch, the poll timer was never set and the screen stayed on "laden…"
+// forever — even once the network came back.
 //
-// Deze test blokkeert /api/* bij het laden, meet dat de app het zégt in
-// plaats van te blijven laden, deblokkeert, en meet dat hij zich herstelt
-// zonder herlaad.
+// This test blocks /api/* while loading, measures that the app SAYS so instead
+// of going on loading, unblocks, and measures that it recovers without a reload.
 //
-//   NODE_PATH=<pad>/node_modules node chat/e2e/offline-boot.js
+//   NODE_PATH=<path>/node_modules node chat/e2e/offline-boot.js
 const { chromium, devices } = require('playwright');
 const { logIn } = require('./login');
 const EXE = process.env.PW_CHROME
@@ -21,7 +20,7 @@ const t = (naam, cond, extra = '') => {
   else { fail++; console.log(`  FAIL ${naam} ${extra}`); }
 };
 
-// Wacht tot een voorwaarde waar is, of geef op na `ms`.
+// Wait until a condition is true, or give up after `ms`.
 async function until(page, fn, ms = 15000) {
   const deadline = Date.now() + ms;
   while (Date.now() < deadline) {
@@ -36,12 +35,12 @@ async function until(page, fn, ms = 15000) {
   const ctx = await b.newContext({ ...devices['iPhone 13'], ignoreHTTPSErrors: true });
   const p = await ctx.newPage();
 
-  // Eerst inloggen — mét netwerk, want zonder sessie is er geen app om offline
-  // te krijgen.
+  // Log in first — WITH network, because without a session there is no app to
+  // take offline.
   await logIn(p);
 
-  // De storing: alles behalve /api/ mag laden (dat is wat de service worker
-  // uit de cache zou serveren); de API is er niet.
+  // The outage: everything but /api/ may load (that is what the service worker
+  // would serve from cache); the API is not there.
   let apiDown = true;
   await ctx.route('**/api/**', (route) => (apiDown ? route.abort('failed') : route.continue()));
 
@@ -60,7 +59,7 @@ async function until(page, fn, ms = 15000) {
   t('blijft niet stil op "laden…" staan',
     !/^laden…$/.test(await p.evaluate(msgsText)),
     await p.evaluate(msgsText));
-  // De melding moet bruikbaar zijn: welk adres, welke fout, en een uitweg.
+  // The message has to be usable: which address, which error, and a way out.
   t('melding noemt het adres', (await p.evaluate(msgsText)).includes(await p.evaluate(() => location.origin)),
     await p.evaluate(msgsText));
   t('knop "opnieuw proberen" staat er',
@@ -83,8 +82,8 @@ async function until(page, fn, ms = 15000) {
     await p.evaluate(msgsText));
 
   console.log('— laatst bekende berichten');
-  // Nu is er verse data opgehaald (dus een momentopname). Blokkeer de API
-  // opnieuw en herlaad: de berichten horen er nog te staan, gedateerd.
+  // Fresh data has now been fetched (so there is a snapshot). Block the API again
+  // and reload: the messages should still be there, dated.
   apiDown = true;
   await p.reload({ waitUntil: 'load', timeout: 45000 });
   await p.waitForTimeout(5000);
@@ -107,11 +106,11 @@ async function until(page, fn, ms = 15000) {
     await p.evaluate(msgsText));
 
   console.log('— de uitweg');
-  // Verversen moet een geregistreerde service worker en gevulde caches echt
-  // opruimen; dat is het enige wat een vastgelopen PWA loskrijgt.
-  // Een oude cache erbij zetten is de eerlijke test: na het verversen laadt de
-  // app opnieuw en registreert hij zijn worker weer (dat hoort), dus tellen
-  // zegt niets — of de OUDE troep weg is, wel.
+  // Refreshing has to really clean up a registered service worker and filled
+  // caches; that is the only thing that unsticks a jammed PWA.
+  // Adding an old cache is the honest test: after the refresh the app loads again
+  // and re-registers its worker (as it should), so counting says nothing — whether
+  // the OLD junk is gone does.
   const before = await p.evaluate(async () => {
     await caches.open('boomhuis-shell-oud');
     return {

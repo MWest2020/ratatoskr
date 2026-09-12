@@ -1,14 +1,14 @@
 # SPDX-License-Identifier: EUPL-1.2
-"""Werksessies: een langere claude-run die vanuit een kanaal start.
+"""Work sessions: a longer claude run started from a channel.
 
-Een chat-beurt is één `claude -p` van 150s met Read/Grep/Glob. Dat is te klein
-voor werk ("lees deze twaalf clips en zeg wat eruit moet"). Een werksessie is
-hetzelfde subprocess, maar met minuten, een eigen werkmap en een eigen toolset —
-en alles daarvan staat in `sessions.yml`, niet in de prompt.
+A chat turn is one `claude -p` of 150s with Read/Grep/Glob. That is too small
+for work ("read these twelve clips and say what has to go"). A work session is
+the same subprocess, but with minutes, its own working directory and its own
+toolset — and all of that lives in `sessions.yml`, not in the prompt.
 
-Niet-blokkerend: de sessie draait losgekoppeld met stdout naar een runbestand;
-`tick()` leest per listener-tick het nieuwe stuk. Zo bevriest een sessie van een
-kwartier de chat niet.
+Non-blocking: the session runs detached with stdout going to a run file;
+`tick()` reads the new part on every listener tick. That way a quarter-hour
+session does not freeze the chat.
 """
 import json
 import os
@@ -24,25 +24,25 @@ import work_tree
 
 CLAUDE = os.environ.get("CLAUDE_BIN", "claude")
 RUNS = os.environ.get("SESSIE_RUNS", "/tmp/boomhuis-sessies")
-# Marker lezen/knippen en de machtiging staan in session_gate.py (puur);
-# hier blijft alleen wat processen en bestanden aanraakt.
+# Reading/stripping the marker and the authorisation live in session_gate.py
+# (pure); what stays here is only what touches processes and files.
 read_marker = session_gate.read_marker
 strip_marker = session_gate.strip_marker
 
-# Nooit aan een LEZENDE sessie, ook niet als een type ze per ongeluk in `tools`
-# zet. Een schrijvende sessie (`writes: true`) heeft ze wél nodig — die werkt in
-# een eigen worktree met een pre-push-hook als hek, zie work_tree.py.
+# Never given to a READING session, not even when a type puts them in `tools` by
+# mistake. A writing session (`writes: true`) does need them — it works in a
+# worktree of its own with a pre-push hook as the fence, see work_tree.py.
 FORBIDDEN = ["Write", "Edit", "NotebookEdit", "Bash", "Task", "KillShell"]
-# Ook een schrijvende sessie krijgt deze niet: Task spawnt agents buiten elk
-# zicht, KillShell raakt processen die niet van hem zijn.
+# A writing session does not get these either: Task spawns agents out of all
+# sight, KillShell touches processes that are not its own.
 ALWAYS_FORBIDDEN = ["Task", "KillShell"]
-# Waar de worktrees van schrijvende sessies komen — buiten elke draaiende checkout.
+# Where the worktrees of writing sessions go — outside every running checkout.
 WORKTREE_BASE = os.environ.get("SESSIE_WERKMAPPEN", "/home/agent/sessie-werk")
 PROGRESS_MAX, PROGRESS_GAP = 6, 25
 
 
 def load(here):
-    """sessions.yml lezen. Ontbreekt het bestand → geen types (fail-closed)."""
+    """Read sessions.yml. No file → no types (fail-closed)."""
     try:
         return bootstrap.load_yaml(os.path.join(here, "sessions.yml")) or {}
     except OSError:
@@ -50,7 +50,7 @@ def load(here):
 
 
 class Register:
-    """De lopende sessies. Het runbestand ís de status; er is geen aparte wachtrij."""
+    """The running sessions. The run file IS the status; there is no queue."""
 
     def __init__(self, cfg, runs=RUNS):
         self.cfg = cfg
@@ -59,10 +59,10 @@ class Register:
         os.makedirs(runs, exist_ok=True)
 
     def start(self, type_name, task, starter, requester, cname, cid, message_id=""):
-        """Start losgekoppeld. Return (sessie, "") of (None, reason).
+        """Start detached. Returns (session, "") or (None, reason).
 
-        `starter` schreef de marker, `requester` is degene namens wie het gaat —
-        bij een mens die zelf typt zijn ze gelijk."""
+        `starter` wrote the marker, `requester` is the person it is done for —
+        for a human typing it themselves the two are the same."""
         ok, reason = session_gate.may_start(self.cfg, type_name, starter, requester,
                                             self.running)
         if not ok:
@@ -72,9 +72,9 @@ class Register:
         workdir = t.get("workdir") or ""
         branch = ""
         if writes:
-            # Verse worktree op een eigen branch, mét pre-push-hook. Faalt dat,
-            # dan start er niets: liever geen sessie dan een sessie die in een
-            # draaiende checkout schrijft.
+            # A fresh worktree on its own branch, WITH a pre-push hook. If that
+            # fails nothing starts: better no session than one that writes in a
+            # running checkout.
             try:
                 workdir, branch = work_tree.create(workdir, WORKTREE_BASE,
                                                   type_name, requester)
@@ -91,15 +91,15 @@ class Register:
                "--disallowedTools", ",".join(forbidden)]
         if t.get("model"):
             cmd += ["--model", t["model"]]
-        # Bestandsnaam op de REQUESTER: anders heet elke door odin gestarte sessie
-        # odin, en is achteraf niet te zien voor wie hij liep.
+        # File name after the REQUESTER: otherwise every session odin starts is
+        # called odin, and afterwards you cannot see who it ran for.
         path = os.path.join(self.runs, f"{type_name}-{requester}-{int(time.time())}.jsonl")
         prompt = (t.get("prompt") or "{task}").replace("{task}", task)
         try:
             out = open(path, "w")
-            # Eerste regel: wie, namens wie, waar. Vóór het proces start, zodat de
-            # herkomst er ook staat als de sessie meteen sneuvelt. De tick slaat
-            # onbekende types over, dus dit stoort niets.
+            # First line: who, on whose behalf, where. Before the process starts,
+            # so the provenance is there even if the session dies immediately.
+            # The tick skips unknown types, so this disturbs nothing.
             json.dump({"type": "boomhuis_session", "session_type": type_name,
                        "starter": starter, "requester": requester, "channel": cname,
                        "message": message_id, "writes": writes, "branch": branch,
@@ -127,13 +127,13 @@ class Register:
         return s, ""
 
     def _new_events(self, s):
-        """Wat er sinds de vorige tick in het runbestand bij kwam."""
+        """What was added to the run file since the previous tick."""
         evs = []
         try:
             with open(s["path"]) as f:
                 f.seek(s["offset"])
                 for line in f:
-                    if not line.endswith("\n"):   # halve regel: volgende tick opnieuw
+                    if not line.endswith("\n"):   # half a line: retry next tick
                         break
                     s["offset"] += len(line)
                     try:
@@ -145,8 +145,8 @@ class Register:
         return evs
 
     def tick(self, post):
-        """Voortgang en afronding. `post(sessie, tekst)` doet het posten; deze
-        module kent geen sleutels. Return het aantal afgeronde sessies."""
+        """Progress and completion. `post(session, text)` does the posting; this
+        module knows no keys. Returns the number of finished sessions."""
         done = 0
         for s in list(self.running):
             for ev in self._new_events(s):

@@ -1,7 +1,9 @@
-# Recurring jobs — geplande claude -p-taken die naar een kanaal posten.
-# Elk job: kanaal-id, post-identiteit (handle, nsec via SOPS), prompt, en een
-# optioneel context_cmd (shell op de host; stdout wordt context voor claude -p).
-# Het schema staat in de bijbehorende systemd-timer, niet hier.
+# Recurring jobs — scheduled claude -p tasks that post to a channel.
+# Each job: channel id, posting identity (handle, nsec through SOPS), prompt, and
+# an optional context_cmd (shell on the host; stdout becomes context for
+# claude -p). The schedule lives in the matching systemd timer, not here.
+#
+# The prompts stay Dutch: they steer a Dutch digest in the channel (ADR-0001).
 
 jobs:
   news_from_zettelkast:
@@ -59,18 +61,18 @@ jobs:
       en wáár lopen we VAST (FAILs, blokkades, dingen die op Mark wachten). Max
       5-7 concrete punten, Nederlands, geen opsmuk. Begin met "☀️ Standup".
     context_cmd: |
-      export BUZZ_PRIVATE_KEY="${NSEC_ORCHESTRATOR:-}"   # eigen sleutel, alleen om te LEZEN; gaat niet naar de output
+      export BUZZ_PRIVATE_KEY="${NSEC_ORCHESTRATOR:-}"   # own key, to READ only; never reaches the output
       cid() { python3 -c "import yaml,sys;print(yaml.safe_load(open('/home/agent/ratatoskr/channels.yml'))['channels']['$1']['id'])" 2>/dev/null; }
-      # Een LEESFOUT (relay/auth/gh weg, of een onverwachte respons-shape) moet
-      # ZICHTBAAR zijn, niet stil als "leeg" doorgaan — anders leest claude -p het
-      # als "geen blokkades" (false-clear). Sorteer op created_at vóór de laatste N.
+      # A READ ERROR (relay/auth/gh gone, or an unexpected response shape) has to
+      # be VISIBLE, not pass quietly as "empty" — otherwise claude -p reads it as
+      # "no blockers" (a false clear). Sort on created_at before the last N.
       rd() { "${BUZZ_BIN:-buzz}" messages get --channel "$1" 2>/dev/null | python3 -c "import sys,json; d=json.load(sys.stdin); print('(LEESFOUT: '+str(d.get('message') or d.get('error') or 'onverwachte respons')[:80]+')') if isinstance(d,dict) and (d.get('error') or 'messages' not in d) else [print((m.get('content') or '').replace(chr(10),' ')[:140]) for m in sorted((d if isinstance(d,list) else d.get('messages',[])), key=lambda m: m.get('created_at',0))[-$2:]]" 2>/dev/null || echo "(LEESFOUT: kanaal onbereikbaar — niet als 'geen blokkades' lezen)"; }
       echo '== blokkades / besluiten (#escalatie) =='
       rd "$(cid escalatie)" 6
       echo '== recente review-verdicts (#review) =='
       rd "$(cid review)" 5
-      # Goedkope secties eerst, de dure PR-lijst laatst: bij de 6000-tekenskap in
-      # run-job.py valt dan hooguit de staart van de PR-lijst weg, niet de rest.
+      # Cheap sections first, the expensive PR list last: with the 6000-character
+      # cap in run-job.py at most the tail of the PR list falls off, not the rest.
       echo '== open OpenSpec-changes =='
       for p in /home/agent/*/openspec/changes/*/proposal.md; do
         [ -f "$p" ] || continue
@@ -78,8 +80,8 @@ jobs:
         echo "[$r] $(basename "$(dirname "$p")")"
       done 2>/dev/null | head -30
       echo '== open PRs — wachten op merge (MWest2020) =='
-      # --json/--jq: een lege set geeft [] + exit 0 (geen output), alleen een echte
-      # fout geeft non-zero → LEESFOUT. Zo telt "geen open PRs" niet als storing.
+      # --json/--jq: an empty set gives [] + exit 0 (no output), only a real error
+      # gives non-zero → READ ERROR. That way "no open PRs" is not a failure.
       gh search prs --owner=MWest2020 --state=open --limit 20 --json repository,number,title \
         --jq '.[] | "[\(.repository.name)] #\(.number) \(.title)"' 2>/dev/null \
         || echo "(LEESFOUT: kon open PR's niet ophalen — gh/netwerk?)"
@@ -100,8 +102,8 @@ jobs:
         git -C "$d" log --all --oneline --since=midnight 2>/dev/null | sed "s#^#[$(basename "$d")] #"
       done | head -60
       echo '== vandaag gemerged =='
-      # --owner (niet 'org:', want MWest2020 is een user-account) + --json/--jq zodat
-      # een lege set geen valse LEESFOUT geeft.
+      # --owner (not 'org:', because MWest2020 is a user account) + --json/--jq so
+      # an empty set gives no false READ ERROR.
       gh search prs --owner=MWest2020 "merged:>=$(date +%F)" --limit 20 --json repository,number,title \
         --jq '.[] | "[\(.repository.name)] #\(.number) \(.title)"' 2>/dev/null \
         || echo "(LEESFOUT: kon merges niet ophalen — gh/netwerk?)"
@@ -127,19 +129,18 @@ jobs:
       grep "^$(date +%F)" wiki/log.md 2>/dev/null | cut -c1-450 || true
       echo '== commits van vandaag =='
       git log --oneline --since=midnight 2>/dev/null | head -20         || echo "(LEESFOUT: git log mislukt)"
-      # new_sources.py noemt elke ongeciteerde bron. Bij een URL-share is dat
-      # bijna altijd het CLIPbestand terwijl de fetch-snapshot ervan allang
-      # verwerkt is. Zonder deze splitsing meldt de job elke dag dezelfde
-      # niet-bestaande achterstand.
+      # new_sources.py names every uncited source. On a URL share that is almost
+      # always the CLIP file while its fetch snapshot has long been processed.
+      # Without this split the job reports the same non-existent backlog daily.
       echo '== bronnen: afgehandeld vs open =='
-      lijst=$(python3 scripts/new_sources.py 2>/dev/null) ||         { echo "(LEESFOUT: new_sources.py faalde)"; exit 0; }
-      for f in $lijst; do
+      files=$(python3 scripts/new_sources.py 2>/dev/null) ||         { echo "(LEESFOUT: new_sources.py faalde)"; exit 0; }
+      for f in $files; do
         b=$(basename "$f" .md)
-        # Een VERMELDING is geen afhandeling. De capture-run schrijft ook regels
-        # als "capture overgeslagen, wacht op Mark: <clips>", en die noemen
-        # precies de clips die nog OPEN staan. Zonder deze uitzondering telde de
-        # job die als afgehandeld en verdwenen ze uit beeld — een false-clear
-        # (gemeten 2026-09-11, de job meldde 0 open terwijl er 10 openstonden).
+        # A MENTION is not a resolution. The capture run also writes lines like
+        # "capture overgeslagen, wacht op Mark: <clips>", and those name exactly
+        # the clips that are still OPEN. Without this exception the job counted
+        # them as done and they disappeared from view — a false clear (measured
+        # 2026-09-11, the job reported 0 open while 10 were open).
         if grep -r "$b" wiki/log.md journal/ 2>/dev/null \
              | grep -v "overgeslagen\|wacht op" | grep -q .; then
           echo "AFGEHANDELD $f"

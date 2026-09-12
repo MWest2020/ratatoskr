@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: EUPL-1.2
-"""Offline tests voor de POORT van een werksessie: marker, machtiging, clausule.
+"""Offline tests for the GATE of a work session: marker, authorisation, clause.
 
-De runner (register, oogst, grenzen, rapport) staat in test_sessions.py. Die
-splitsing volgt de code: session_gate.py is puur, sessions.py raakt processen aan.
+The runner (register, harvest, limits, report) lives in test_sessions.py. That
+split follows the code: session_gate.py is pure, sessions.py touches processes.
 
-Draaien: cd agents && python3 -m unittest test_session_gate
+Run with: cd agents && python3 -m unittest test_session_gate
 """
 import os
 import tempfile
@@ -33,7 +33,7 @@ class Marker(unittest.TestCase):
         self.assertEqual(session_gate.read_marker("!sessie zettelkast"), ("zettelkast", ""))
 
     def test_only_the_first_counts(self):
-        """Eén bericht zet hoogstens één sessie in gang."""
+        """One message sets at most one session in motion."""
         t = "!sessie zettelkast een\n!sessie zettelkast twee"
         self.assertEqual(session_gate.read_marker(t)[1], "een")
 
@@ -41,7 +41,7 @@ class Marker(unittest.TestCase):
         self.assertIsNone(session_gate.read_marker("praat over !sessie in een zin"))
 
     def test_stripping_removes_the_line(self):
-        """Een geposte marker mag niet opnieuw gelezen kunnen worden."""
+        """A posted marker must not be readable again."""
         out = session_gate.strip_marker("voor\n!sessie zettelkast doe iets\nna")
         self.assertNotIn("!sessie", out)
         self.assertIn("voor", out)
@@ -66,17 +66,17 @@ class Authorisation(unittest.TestCase):
         self.assertIn("roodteam", reason)
 
     def test_agent_on_behalf_of_someone_not_allowed(self):
-        """Odin mag starten, maar niet namens wie zelf niet op starters staat."""
+        """Odin may start, but not for someone who is not a starter themselves."""
         ok, reason = self.may(requester="roodteam")
         self.assertFalse(ok)
         self.assertIn("namens", reason)
 
     def test_unknown_sender_is_refused(self):
-        """PUB2NAME geeft '?' voor een onbekende pubkey — die staat nooit in starters."""
+        """PUB2NAME gives '?' for an unknown pubkey — never a listed starter."""
         self.assertFalse(self.may(starter="?", requester="?")[0])
 
     def test_one_session_per_requester(self):
-        """De limiet gaat per vrager: twee mensen via odin mag wél."""
+        """The limit is per requester: two people through odin is fine."""
         ok, reason = self.may(running=[{"requester": "mark"}])
         self.assertFalse(ok)
         self.assertIn("al een sessie", reason)
@@ -95,7 +95,7 @@ class Authorisation(unittest.TestCase):
         self.assertEqual(self.may(), (True, ""))
 
 class Clause(unittest.TestCase):
-    """Een agent die geen starter is, hoort niet te lezen dat hij sessies kan starten."""
+    """An agent that is no starter should not read that it can start sessions."""
 
     def test_starter_gets_the_types(self):
         t = prompts.session_clause(CFG, "odin")
@@ -109,8 +109,8 @@ class Clause(unittest.TestCase):
         self.assertEqual(prompts.session_clause({"types": {}}, "odin"), "")
 
 class OneListener(unittest.TestCase):
-    """Twee listeners = elk bericht dubbel beantwoord en elke sessie dubbel
-    gestart. Gemeten 2026-09-11 in #architectuur: één marker, twee sessies."""
+    """Two listeners = every message answered twice and every session started
+    twice. Measured 2026-09-11 in #architectuur: one marker, two sessions."""
 
     def test_second_instance_gets_nothing(self):
         import bootstrap
@@ -118,7 +118,7 @@ class OneListener(unittest.TestCase):
         first = bootstrap.only_me(path)
         self.assertIsNotNone(first)
         self.assertIsNone(bootstrap.only_me(path))
-        first.close()                       # slot vrij
+        first.close()                       # lock released
         second = bootstrap.only_me(path)
         self.assertIsNotNone(second)
         second.close()

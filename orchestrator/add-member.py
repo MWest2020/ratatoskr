@@ -1,20 +1,21 @@
 # SPDX-License-Identifier: EUPL-1.2
-"""Voeg een pubkey toe als lid van een kanaal — via de kanaaleigenaar-nsec uit SOPS.
+"""Add a pubkey as a member of a channel — through the channel owner nsec in SOPS.
 
-Kleine, auditeerbare tegenhanger van de add-member-stap in create-session-identity:
-geen inline geheim-extractie op de shell (die tript de classifier), maar één script
-dat de nsec uit secrets/identities.yaml haalt en `buzz channels add-member` draait.
+A small, auditable counterpart to the add-member step in
+create-session-identity: no inline secret extraction on the shell (that trips the
+classifier), but one script that pulls the nsec out of secrets/identities.yaml
+and runs `buzz channels add-member`.
 
   python3 orchestrator/add-member.py --chan escalatie --name odin-worker
 
---chan/--name lossen kanaal en identiteit op uit channels.yml/identities.yml, dus
-je hoeft geen UUID of pubkey te plakken (die breken in een terminal over meerdere
-regels, en dan faalt het commando stil-verkeerd).
+--chan/--name resolve the channel and the identity from
+channels.yml/identities.yml, so you need not paste a UUID or a pubkey (those
+break across lines in a terminal, and then the command fails silently wrong).
 
---role default 'member' (een sessie is een deelnemer, geen listener-bot).
---owner default 'orchestrator': kanaalbeheer tekent als agent, niet als de mens
-(zie change reown-channels-to-orchestrator). Voor een kanaal dat nog mens-owned
-is: IDENT=mark ervoor, tot reown-channels.py gedraaid heeft.
+--role defaults to 'member' (a session is a participant, not a listener bot).
+--owner defaults to 'orchestrator': channel management signs as an agent, not as
+the human (see change reown-channels-to-orchestrator). For a channel that is
+still human-owned: IDENT=mark in front, until reown-channels.py has run.
 """
 import argparse
 import json
@@ -29,7 +30,7 @@ RELAY = os.environ.get("BUZZ_RELAY_URL", "ws://192.168.178.60:3000")
 
 
 def _resolve_channel(name):
-    """Kanaal-UUID uit channels.yml op naam (kort commando i.p.v. lange UUID)."""
+    """Channel UUID from channels.yml by name (a short command instead of a UUID)."""
     doc = yaml.safe_load(open(os.path.join(BOOMHUIS, "channels.yml"))) or {}
     ch = (doc.get("channels") or {}).get(name)
     if not ch or "id" not in ch:
@@ -38,7 +39,7 @@ def _resolve_channel(name):
 
 
 def _resolve_pubkey(name):
-    """Pubkey uit de PUBLIEKE identities.yml op identiteitsnaam."""
+    """Pubkey from the PUBLIC identities.yml by identity name."""
     doc = yaml.safe_load(open(os.path.join(BOOMHUIS, "identities.yml"))) or {}
     ident = (doc.get("identities") or {}).get(name)
     if not ident or "pubkey_hex" not in ident:
@@ -48,15 +49,15 @@ def _resolve_pubkey(name):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--channel", help="kanaal-UUID (of gebruik --chan <naam>)")
-    ap.add_argument("--chan", help="kanaalnaam uit channels.yml (kort)")
+    ap.add_argument("--channel", help="channel UUID (or use --chan <name>)")
+    ap.add_argument("--chan", help="channel name from channels.yml (short)")
     ap.add_argument("--all-channels", action="store_true",
-                    help="voeg toe aan ELK kanaal in channels.yml (idempotent)")
-    ap.add_argument("--pubkey", help="pubkey_hex (of gebruik --name <identiteit>)")
-    ap.add_argument("--name", help="identiteitsnaam uit identities.yml (kort)")
+                    help="add to EVERY channel in channels.yml (idempotent)")
+    ap.add_argument("--pubkey", help="pubkey_hex (or use --name <identity>)")
+    ap.add_argument("--name", help="identity name from identities.yml (short)")
     ap.add_argument("--role", default="member", choices=["member", "bot"])
     ap.add_argument("--owner", default=os.environ.get("IDENT", "orchestrator"),
-                    help="identiteit die het kanaal bezit (default orchestrator)")
+                    help="identity that owns the channel (default orchestrator)")
     a = ap.parse_args()
     a.pubkey = a.pubkey or (_resolve_pubkey(a.name) if a.name else None)
     if not a.pubkey:
@@ -93,7 +94,7 @@ def main():
             accepted = bool(json.loads(r.stdout).get("accepted"))
         except (ValueError, AttributeError):
             accepted = False
-        # 'al lid' is geen fout: idempotent doorgaan.
+        # 'already a member' is not an error: carry on, idempotently.
         if accepted or "already" in out.lower() or "member" in out.lower():
             ok += 1
             print(f"[add-member] #{name}: ok")
