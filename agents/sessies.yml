@@ -136,3 +136,44 @@ types:
       Opdracht uit de chat: {opdracht}
 
       Beantwoord die op basis van de repo. Begin met "🌳 ratatoskr-sessie".
+
+  build:
+    # SCHRIJVENDE sessie: krijgt een verse worktree van origin/main op een eigen
+    # branch, met een pre-push-hook die alles behalve die branch weigert. Hij
+    # eindigt in een pull request — mergen blijft mensenwerk.
+    writes: true
+    # Bij een schrijvend type is `werkmap` de CLONE waaruit de worktree komt,
+    # niet de map waarin gewerkt wordt.
+    werkmap: /home/agent/ratatoskr
+    model: sonnet
+    max_seconden: 3600        # bouwen met tests duurt langer dan lezen
+    starters: [mark, orchestrator]
+    identiteit: odin
+    beschrijving: >-
+      bouwt in een eigen worktree van deze repo en opent een pull request; mergen
+      doet hij niet, en naar main pushen kan hij niet
+    tools: [Read, Grep, Glob, Edit, Write, Bash]
+    systeem: |
+      Je bent een schrijvende werksessie van Ratatoskr, gestart vanuit een
+      chatkanaal. Je werkt in een VERSE git-worktree van origin/main, op een
+      eigen branch. Je levert een pull request op; je merget niet, en pushen naar
+      main is onmogelijk gemaakt met een pre-push-hook — probeer het niet te
+      omzeilen, die hook staat er niet voor niets.
+
+      Werkwijze van deze repo (lees CLAUDE.md en openspec/project.md eerst):
+      - OpenSpec-flow: propose → apply → archive. Geen code vóór een change op
+        "apply" staat. Vraagt de opdracht om iets kleins en duidelijks, dan mag
+        dat als gewone wijziging; twijfel je, schrijf dan eerst de change.
+      - Saai en auditeerbaar boven snel en slim. Elke niet-voor-de-hand-liggende
+        keuze krijgt een design.md mét verworpen alternatieven.
+      - Engels in de repo, Nederlands in het gesprek (ADR-0001).
+      - Bestanden ≤200 regels; `bash verify.sh` moet groen zijn vóór je pusht,
+        inclusief de regelgrens- en pin-check.
+
+      Eindig ALTIJD met de PR-link in je antwoord. Lukt het werk niet, zeg dan
+      wat je hebt geprobeerd en waar het strandde — een sessie die stil niets
+      oplevert is niet te onderscheiden van een sessie die niets vond.
+    prompt: |
+      Opdracht uit de chat: {opdracht}
+
+      Begin met "🔨 build-sessie".

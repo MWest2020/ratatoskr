@@ -48,13 +48,31 @@ De chat blijft gewoon werken terwijl een sessie loopt — hij draait losgekoppel
 
 ## Wat een sessie mag
 
-Lezen. Meer niet. Geen `Write`, geen `Edit`, geen `Bash`, geen push, en de
-lees-tools zijn pad-begrensd tot de werkmap van het type. De omgeving is
-gestript: geen nsecs, geen tokens.
+Er zijn twee soorten, en dat staat per type in `sessies.yml`.
 
-Concludeert een sessie dat er iets moet veranderen, dan **stelt hij dat voor**.
-Veranderen loopt via een OpenSpec-change en een habitat-run; de poortwachter van
-de brug (`!dispatch`, alleen door Mark) blijft daarvoor de enige weg.
+**Lezende sessies** (`zettelkast`, `skill-forge`, `ratatoskr`) lezen en verder
+niets. Geen `Write`, geen `Edit`, geen `Bash`, geen push; de lees-tools zijn
+pad-begrensd tot de werkmap van het type. Concluderen ze dat er iets moet
+veranderen, dan **stellen ze dat voor**.
+
+**Schrijvende sessies** (`build`, `writes: true`) krijgen een **verse
+git-worktree van `origin/main` op een eigen branch**, buiten elke draaiende
+checkout, en mogen daarbinnen schrijven, `git` draaien en tests draaien. Ze
+eindigen met een **pull request** en posten de link in het kanaal.
+
+Wat ze niet kunnen: naar `main` pushen. Dat is geen afspraak maar een hek — er
+staat een `pre-push`-hook in de worktree die alles behalve de eigen branch
+weigert. Reden: een schrijvende sessie heeft `Bash` nodig, en dan is "push niet
+naar main" in een prompt niets waard; alles wat in zijn context komt — een
+README, een issue, een opgehaalde pagina — kan die instructie sturen. Een hook
+kan dat niet.
+
+Mergen blijft mensenwerk, en de poortwachter van de habitat-brug (`!dispatch`)
+verandert niet: dat is de weg voor gekooide runs, dit is de lichte weg ernaast
+met een voorstel als uitkomst.
+
+Schrijven is een **apart recht**: `build` heeft zijn eigen `starters`-lijst, dus
+wie `zettelkast` mag starten mag daarmee nog niet bouwen.
 
 ## Types
 
@@ -66,6 +84,9 @@ prompt-truc.
 | type | werkmap | doet |
 |---|---|---|
 | `zettelkast` | `~/zettelkast` | leest de vault en beoordeelt wat er met gedeelde clips moet gebeuren |
+| `skill-forge` | `~/skill-forge` | legt materiaal naast de eigen skill-bibliotheek |
+| `ratatoskr` | de listener-checkout | leest deze repo en levert een onderbouwd voorstel |
+| `build` | een verse worktree | **schrijft**, draait tests, opent een pull request |
 
 ## Grenzen
 
