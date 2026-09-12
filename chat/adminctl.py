@@ -55,6 +55,7 @@ if not settings.is_set("AUTH_DB"):
         settings.set_value("AUTH_DB", from_file)
 
 import auth  # noqa: E402
+import auth_factors  # noqa: E402
 import auth_store as store  # noqa: E402
 
 MIN_LENGTH = 12
@@ -97,7 +98,7 @@ def owner(name):
     the way, because making a second owner should not be possible quietly."""
     if store.person_count() > 0:
         sys.exit("there is already an account; use 'invite' or 'password'")
-    pid = store.create_person(name, auth.hash_password(_ask_password(name)),
+    pid = store.create_person(name, auth_factors.hash_password(_ask_password(name)),
                               owner=True)
     if pid is None:
         sys.exit("that name already exists")
@@ -134,7 +135,7 @@ def password(name):
     p = store.person_by_name(name)
     if p is None:
         sys.exit("unknown name")
-    store.set_hash(p["id"], auth.hash_password(_ask_password(name)))
+    store.set_hash(p["id"], auth_factors.hash_password(_ask_password(name)))
     store.revoke_all_sessions(p["id"])    # whoever had the old one is out
     print("password of '{}' changed; all sessions have been revoked".format(name))
 

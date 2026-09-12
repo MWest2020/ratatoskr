@@ -1,68 +1,18 @@
 # SPDX-License-Identifier: EUPL-1.2
-"""Offline tests for logging in (chat/auth.py).
+"""Offline tests for sessions, cookies and invitations (chat/auth.py). Passwords
+and TOTP are in test_auth_factors.py.
 
 Run from chat/: `python3 -m unittest test_auth`. No relay or network needed; the
 database is a temporary file.
 """
 import os
 import tempfile
-import time
 import unittest
 
 os.environ.setdefault("BOOMHUIS_AUTH_DB", os.path.join(tempfile.mkdtemp(), "auth.db"))
 
 import auth  # noqa: E402
 import auth_store as store  # noqa: E402
-
-
-class Passwords(unittest.TestCase):
-    def test_matches_and_does_not_match(self):
-        h = auth.hash_password("een lang genoeg wachtwoord", n=2 ** 12)
-        self.assertTrue(auth.password_matches("een lang genoeg wachtwoord", h))
-        self.assertFalse(auth.password_matches("iets anders", h))
-
-    def test_same_password_gives_a_different_hash(self):
-        """Every account its own salt, otherwise equal hashes give away equal
-        passwords."""
-        a = auth.hash_password("hetzelfde wachtwoord", n=2 ** 12)
-        b = auth.hash_password("hetzelfde wachtwoord", n=2 ** 12)
-        self.assertNotEqual(a, b)
-
-    def test_lighter_parameters_count_as_outdated(self):
-        self.assertTrue(auth.outdated(auth.hash_password("x" * 12, n=2 ** 12)))
-        self.assertFalse(auth.outdated(auth.hash_password("x" * 12)))
-
-    def test_the_configured_parameters_really_run(self):
-        """scrypt refuses above OpenSSL's memory limit (32 MB) with "memory limit
-        exceeded". With N=2**15 that happened exactly — you only notice at the
-        first real login, so it is here."""
-        h = auth.hash_password("een wachtwoord van genoeg tekens")
-        self.assertTrue(auth.password_matches("een wachtwoord van genoeg tekens", h))
-
-    def test_a_broken_hash_grants_no_access(self):
-        for junk in ("", "geen$hash", "argon2$1$2$3$4$5", None):
-            self.assertFalse(auth.password_matches("wat dan ook", junk))
-
-
-class SecondFactor(unittest.TestCase):
-    def test_code_matches_within_the_drift(self):
-        secret = auth.new_totp_secret()
-        now = time.time()
-        code = auth._totp(secret, int(now // 30))
-        self.assertTrue(auth.totp_matches(secret, code, now=now)[0])
-
-    def test_a_code_cannot_be_used_twice(self):
-        secret = auth.new_totp_secret()
-        now = time.time()
-        code = auth._totp(secret, int(now // 30))
-        ok, counter = auth.totp_matches(secret, code, now=now)
-        self.assertTrue(ok)
-        self.assertFalse(auth.totp_matches(secret, code, last=counter, now=now)[0])
-
-    def test_nonsense_is_refused(self):
-        secret = auth.new_totp_secret()
-        for code in ("", "abcdef", "12345", None):
-            self.assertFalse(auth.totp_matches(secret, code)[0])
 
 
 class Sessions(unittest.TestCase):
