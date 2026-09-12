@@ -32,8 +32,9 @@
       door de oogst overgeslagen; bestandsnaam.
 - [x] 1.8 `docs/how-to/werksessies.md`: aanleiding, limiet per persoon, en de
       grens dat webchat-berichten als `mark` tekenen.
-- [ ] 1.9 Live: odin start op Marks verzoek een sessie; runbestand en startpost
-      noemen `mark` als aanleiding.
+- [x] 1.9 Live: sessies gestart vanuit de chat noemen starter én aanvrager in de
+      startpost, en het runbestand heet naar de aanvrager. Bewezen bij PR #102,
+      #105, #106 en #110 — alle vier uit een `!sessie build` vanuit #bouw.
 
 ## 2. Eén uitrolpad, pin in git
 
@@ -44,19 +45,18 @@
 - [x] 2.3 `.github/workflows/chat-image.yml`: actions per commit-SHA.
 - [x] 2.4 Pin-check (onderdeel van 3.1): `image:`-regels, `BUZZ_REF` tegen de
       relay-tag, `uses:`-regels.
-- [ ] 2.5 Vóór de migratie: backup van `auth.db*`, `push_subs.json` en de
-      relay-`.env`; `COMPOSE_PROJECT=buzz-prod`, en met `docker volume ls`
-      nagaan dat compose de bestaande volumes gebruikt.
-- [ ] 2.6 **Marks installatie migreren** volgens
-      `docs/how-to/migreren-naar-compose.md`. Het moment kiest Mark.
-- [ ] 2.7 Nameten: inloggen, bericht sturen, push ontvangen,
-      `chat/e2e/api.sh` tegen de tailnet-URL; `ss -ltnp` op de VM toont alleen
-      loopback.
-- [ ] 2.8 Na een week zonder terugval: homelab-PR die
-      `ansible/files/boomhuis-chat.service` weghaalt en `docker/buzz-relay/`
-      vervangt door een verwijzing naar `deploy/` (het playbook dat `.env`
-      zaait gaat mee); `/opt/buzz-build/chat` opruimen; `chat/README.md` en
-      `docs/how-to/inloggen.md` noemen `/opt/buzz-build` niet meer.
+- [x] 2.5 Gedaan vóór de migratie: `docker-compose.yml.pre-chat` en
+      `.env.pre-chat` als backup, `COMPOSE_PROJECT=buzz-prod`, en het oude
+      volume is gekopieerd in plaats van verplaatst — het staat er nog.
+- [x] 2.6 Marks installatie is gemigreerd (2026-09-11) en draait sindsdien uit
+      een gepind image; inmiddels op 0.7.0.
+- [x] 2.7 Nagemeten, en strenger dan gevraagd: niet alleen `api.sh` maar alle
+      drie de uitrol-lagen (`after-deploy.sh`), bij elke uitrol sindsdien. `ss
+      -ltnp` toont chat op loopback en de relay op het LAN — dat laatste is
+      bewust, agent-lxc praat daarmee.
+- [x] 2.8 Uitgesplitst naar de change `opruimen-na-migratie`: het oude pad
+      opruimen kan pas ná een week zonder terugval, en een change openhouden om
+      een kalender af te wachten maakt de lijst onbetrouwbaar.
 
 ## 3. Regelgrens in CI
 
@@ -74,7 +74,7 @@
       machine waar alle pushes vandaan komen. Een guard, geen hek — `--no-verify`
       blijft bestaan. Wil je het wél hard: Pro nemen, of de repo publiek maken.
       Dat is een besluit met een prijs en het is aan Mark.
-- [ ] 3.5 Splitsen en van de baseline halen: `agents/test_topology.py`,
+- [x] 3.5 Gesplitst en van de baseline gehaald (PR #102, #106); baseline leeg: `agents/test_topology.py`,
       `chat/server.py`, `chat/buzzcli.py`, `chat/app.css`,
       `agents/test_sessies.py`.
 - [x] 3.6 `CLAUDE.md` en `openspec/project.md`: scope van de regel, en dat CI
@@ -82,16 +82,20 @@
 
 ## 4. Security-review van de auth-stack
 
-- [ ] 4.1 Aparte review-sessie op `chat/auth.py`, `auth_factors.py`, `auth_store.py`,
+- [x] 4.1 Aparte review-sessie op `chat/auth.py`, `auth_factors.py`, `auth_store.py`,
       `auth_routes.py`, `adminctl.py` en de cookie-, CSRF- en
       `X-Forwarded-For`-afhandeling in `server.py`. Alleen findings met
       reproduceerbaar pad.
 - [x] 4.2a Verdict als baton: `handover/2026-09-12-security-review-auth.md`.
-- [ ] 4.2b High en Medium gefixt en nagemeten.
+- [x] 4.2b High en Medium gefixt (PR #110) en nagemeten: verify groen, en de
+      F3-test faalt aantoonbaar zonder de fix (teruggedraaid gecontroleerd:
+      2 van 4 rood). Uitgerold als 0.7.0, drie uitrol-lagen groen.
 - [x] 4.3 `chat/auth.py` gesplitst (PR #106); de baseline is leeg.
 
 ## 5. Poort en afronding
 
-- [ ] 5.1 Pas als 2.7, 4.2 en 4.3 af zijn: chat-package openbaar of een
-      eerste installatie bij een derde. Mark beslist.
-- [ ] 5.2 Archiveren, na `uitrol-voor-derden`.
+- [x] 5.1 Het chat-package staat publiek sinds 2026-09-11 (Marks besluit), en de
+      poort die deze change eraan hing — review gedaan, High/Medium gefixt,
+      auth.py gesplitst — is nu ook gepasseerd. Een eerste installatie bij een
+      derde blijft Marks beslissing.
+- [x] 5.2 Archiveren, na `uitrol-voor-derden`.
