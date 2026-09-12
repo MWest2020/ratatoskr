@@ -2,20 +2,18 @@
 """The HTTP side of logging in: routes that need no session, plus the gate.
 
 `server.py` stays thin: it calls `open_route()` for the paths allowed without a
-session, and `gate()` for everything else under /api/.
-
-Answers are deliberately stingy. An unknown name and a wrong password give the
-same thing: "sign-in failed". Whoever wants to know whether a name exists does
-not find out here.
-
-The paths and the JSON field names stay Dutch: that is the contract with the PWA
-that is already installed. See ADR-0001; that conversion is a change of its own.
+session, and `gate()` for everything else under /api/. Answers are
+deliberately stingy — an unknown name and a wrong password both give
+"sign-in failed" — and the paths and JSON field names stay Dutch: that is the
+contract with the already-installed PWA. See ADR-0001; that conversion is a
+change of its own.
 """
 import json
 import os
 
 import auth
 import auth_factors
+import auth_hashguard as hashguard
 import auth_store as store
 import auth_throttle as throttle
 import settings
@@ -25,12 +23,19 @@ FAILED = {"error": "sign-in failed"}
 # Paths that must work without a session — otherwise you can never log in.
 OPEN = ("/api/login", "/api/setup", "/api/uitnodiging/gebruik", "/api/status")
 
+# Fixed at import: a fresh dummy per request would itself cost a second
+# scrypt call, making unknown names slower rather than equal (see log_in()).
+_DUMMY_HASH = auth_factors.hash_password("geen-account-met-deze-naam")
+
 
 def _source(h):
-    """The address this request comes from, for the throttle. Behind a reverse
-    proxy that is the proxy, so X-Forwarded-For takes precedence."""
-    forwarded = (h.headers.get("X-Forwarded-For") or "").split(",")[0].strip()
-    return forwarded or h.client_address[0]
+    """The request's source, for the throttle. Trust X-Forwarded-For only
+    from a loopback peer (proxy on the same machine), then its LAST element —
+    an appending proxy leaves the client's own, spoofable value up front."""
+    peer = h.client_address[0]
+    if peer not in ("127.0.0.1", "::1"):
+        return peer
+    return (h.headers.get("X-Forwarded-For") or "").split(",")[-1].strip() or peer
 
 
 def _json(h, code, payload, extra=None):
@@ -47,8 +52,7 @@ def _json(h, code, payload, extra=None):
 
 
 def status(h):
-    """What the login page needs to know before anyone exists: is this a fresh
-    installation, and will this person demand a second factor?"""
+    """What the login page needs to know before anyone exists: is this fresh?"""
     return _json(h, 200, {"personen": store.person_count()})
 
 
@@ -70,10 +74,11 @@ def log_in(h, body):
         return _json(h, 429, {"error": "too many attempts", "wacht": wait})
 
     p = store.person_by_name(name) if name else None
-    # Compute a hash for an unknown name too: otherwise the response time gives
-    # away whether the account exists.
-    stored = p["hash"] if p else auth_factors.hash_password("x", n=2 ** 14)
-    good = auth_factors.password_matches(password, stored) and p is not None
+    stored = p["hash"] if p else _DUMMY_HASH
+    matched = hashguard.guarded(auth_factors.password_matches, password, stored)
+    if matched is None:
+        return _json(h, 429, {"error": "too busy, try again"})
+    good = matched and p is not None
 
     if not good:
         for k in keys:
@@ -83,9 +88,8 @@ def log_in(h, body):
     if p["totp"]:
         code = (body.get("code") or "").strip()
         if not code:
-            # Name and password were right; the app asking for a code now leaks
-            # nothing extra. Do not count a failure: that would make every login
-            # with a second factor engage the brake.
+            # Name and password were right, so this leaks nothing extra. Do not
+            # count a failure: that would brake every login with a second factor.
             return _json(h, 401, {"error": "code required", "totp": True})
         ok, counter = auth_factors.totp_matches(p["totp"], code, last=p["totp_laatste"])
         if not ok:
@@ -114,7 +118,10 @@ def _create_account(h, name, password, owner):
     name = (name or "").strip()
     if len(name) < 2 or len(password or "") < 12:
         return _json(h, 400, {"error": "name at least 2 characters, password at least 12"})
-    pid = store.create_person(name, auth_factors.hash_password(password), owner)
+    hashed = hashguard.guarded(auth_factors.hash_password, password)
+    if hashed is None:
+        return _json(h, 429, {"error": "too busy, try again"})
+    pid = store.create_person(name, hashed, owner)
     if pid is None:
         return _json(h, 409, {"error": "that name already exists"})
     token, csrf = auth.start_session(pid)
@@ -127,13 +134,16 @@ def setup(h, body):
     if store.person_count() > 0:
         return _json(h, 403, {"error": "there is already an account"})
     token = body.get("token") or ""
-    # Two keys fit: the printed setup link, and once the old shared write token
-    # of an existing installation.
-    if not (auth.invite_valid(token, "setup") or auth.setup_token_valid(token)):
+    # Two keys fit: the printed setup link, or once the old shared write token.
+    via_invite = auth.invite_valid(token, "setup")
+    if not (via_invite or auth.setup_token_valid(token)):
         throttle.note_failure("bron:" + _source(h))
         return _json(h, 403, {"error": "invalid or expired setup link"})
+    # Mark first, like use_invite() below; the legacy token has no invite row
+    # to mark, so the unique index on personen.eigenaar covers that branch.
+    if via_invite and not auth.use_invite(token):
+        return _json(h, 403, {"error": "invalid or expired setup link"})
     answer = _create_account(h, body.get("naam"), body.get("wachtwoord"), owner=True)
-    auth.use_invite(token)               # single-use, also for the old token
     store.revoke_invites("setup")
     return answer
 
@@ -162,8 +172,7 @@ def open_route(h, path, body=None):
 
 
 def gate(h, path, writes):
-    """The session check. Returns the session row, or None when an answer has
-    already been sent."""
+    """The session check. Returns the session row, or None when already answered."""
     s = auth.session_from_cookie(h.headers)
     if s is None:
         _json(h, 401, {"error": "sign-in required"})
@@ -175,11 +184,9 @@ def gate(h, path, writes):
 
 
 def print_setup_link_at_start():
-    """On a fresh installation: print a one-time setup link.
-
-    No default password — that is the thing every self-hosted product breaks on.
-    If an old shared write token exists, we say that it works once too.
-    """
+    """On a fresh installation: print a one-time setup link. No default
+    password — that is the thing every self-hosted product breaks on. If an
+    old shared write token exists, we say that it works once too."""
     if store.person_count() > 0:
         return
     store.revoke_invites("setup")
