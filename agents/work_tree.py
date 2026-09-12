@@ -52,15 +52,34 @@ def _run(args, cwd=None):
 
 
 def install_hook(worktree, branch):
-    """De hook in de worktree zetten. Een worktree heeft geen eigen .git-map maar
-    een .git-BESTAND dat naar de administratie wijst; de hooks staan daar."""
-    gitdir = _run(["git", "-C", worktree, "rev-parse", "--git-path", "hooks"]).strip()
-    hooks = gitdir if os.path.isabs(gitdir) else os.path.join(worktree, gitdir)
-    os.makedirs(hooks, exist_ok=True)
-    pad = os.path.join(hooks, "pre-push")
+    """De hook in een EIGEN hooks-map van deze worktree zetten.
+
+    Waarom niet gewoon `.git/hooks`: dat is de GEDEELDE map van de hele clone.
+    Gemeten 2026-09-12, pijnlijk: de hook van een sessie blokkeerde daardoor mijn
+    eigen push vanuit een andere worktree van dezelfde clone — "deze sessie mag
+    alleen refs/heads/session/… pushen". Twee sessies zouden elkaars hook
+    bovendien overschrijven.
+
+    Git heeft hier een mechanisme voor: `extensions.worktreeConfig` zet
+    `core.hooksPath` per worktree in plaats van voor de hele repo.
+    """
+    eigen = os.path.join(worktree, ".session-hooks")
+    os.makedirs(eigen, exist_ok=True)
+    _run(["git", "-C", worktree, "config", "extensions.worktreeConfig", "true"])
+    _run(["git", "-C", worktree, "config", "--worktree", "core.hooksPath", eigen])
+    pad = os.path.join(eigen, "pre-push")
     with open(pad, "w") as f:
         f.write(HOOK % branch)
     os.chmod(pad, 0o755)
+    # Niet meecommitten: het hek hoort bij de sessie, niet bij de branch. In een
+    # worktree is `.git` een BESTAND, geen map — dus het pad opvragen aan git.
+    exclude = _run(["git", "-C", worktree, "rev-parse", "--git-path",
+                    "info/exclude"]).strip()
+    if not os.path.isabs(exclude):
+        exclude = os.path.join(worktree, exclude)
+    os.makedirs(os.path.dirname(exclude), exist_ok=True)
+    with open(exclude, "a") as f:
+        f.write("\n.session-hooks/\n")
     return pad
 
 
