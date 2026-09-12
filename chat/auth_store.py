@@ -34,6 +34,10 @@ CREATE TABLE IF NOT EXISTS personen (
   eigenaar INTEGER NOT NULL DEFAULT 0,
   gemaakt INTEGER NOT NULL
 );
+-- One owner, ever — also the backstop for the legacy setup-token race that
+-- has no invite row to gate on (see auth_routes.py's setup()).
+CREATE UNIQUE INDEX IF NOT EXISTS idx_personen_een_eigenaar
+  ON personen(eigenaar) WHERE eigenaar = 1;
 CREATE TABLE IF NOT EXISTS sessies (
   hash TEXT PRIMARY KEY,
   persoon INTEGER NOT NULL,
