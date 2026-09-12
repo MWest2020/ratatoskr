@@ -3,8 +3,10 @@
 stays under the ≤200-line convention. Pure: every dependency (root path, fleet,
 name map) comes in as a parameter, no module globals from the listener.
 
-The prompt TEXT stays Dutch: it steers a Dutch conversation with Mark. Only the
-code around it is English (ADR-0001).
+`build_prompt` and `roster_text` stay Dutch: they steer a Dutch conversation
+with Mark. `LIMIT_CLAUSE` and `session_clause` are English (ADR-0001): they are
+the repo's own instructions to an agent about its own conventions (the LIMIT
+marker, the `!sessie` protocol), not the conversation itself.
 """
 import os
 import re
@@ -74,15 +76,15 @@ def session_clause(cfg, handle, requester=None):
         return ""
     lines = "\n".join(f"- `{n}` — {t.get('description') or t.get('workdir', '')}"
                      for n, t in sorted(types.items()))
-    return ("\n\nJe kunt zelf een WERKSESSIE starten: een langere, LEZENDE claude-run "
-            "met eigen gereedschap en eigen werkmap, die zijn resultaat in dit kanaal "
-            "post. Zet daarvoor als LAATSTE regel van je antwoord precies:\n"
-            "!sessie <type> <opdracht in een zin>\n"
-            f"Beschikbare types:\n{lines}\n"
-            "Doe dat alleen als het gevraagde werk echt uitzoeken vergt — voor een "
-            "gesprek antwoord je zelf. Hoogstens één sessie per antwoord, en zeg in "
-            "je eigen woorden dat je 'm start. Een sessie leest en stelt voor; hij "
-            "verandert niets.")
+    return ("\n\nYou can start a WORK SESSION yourself: a longer, READING claude run "
+            "with its own tools and its own working directory, that posts its result "
+            "in this channel. To do that, make the LAST line of your answer exactly:\n"
+            "!sessie <type> <task in one sentence>\n"
+            f"Available types:\n{lines}\n"
+            "Only do that when the requested work really needs looking into — for a "
+            "conversation you answer yourself. At most one session per answer, and "
+            "say in your own words that you're starting it. A session reads and "
+            "proposes; it changes nothing.")
 
 
 def build_prompt(handle, chan, recent, trigger, pub2name):
@@ -100,11 +102,11 @@ def build_prompt(handle, chan, recent, trigger, pub2name):
 # nothing to refuse — the agent notices and says so in prose. Hence we ask for one
 # machine-readable line, so the listener can lift it into #escalatie per run
 # instead of a limitation disappearing into a chat line.
-LIMIT_MARKER = "LIMITATIE:"
+LIMIT_MARKER = "LIMIT:"
 LIMIT_CLAUSE = (
-    "\n\nAls je iets niet kunt doen omdat een tool ontbreekt of geweigerd wordt, "
-    "begin je antwoord dan met één regel:\n"
-    f"{LIMIT_MARKER} <wat je miste, in een halve zin>\n"
-    "Daarna gewoon je antwoord. Gebruik die regel alleen daarvoor — niet voor "
-    "inhoudelijke onzekerheid, en niet als je de vraag wél kon beantwoorden."
+    "\n\nIf you cannot do something because a tool is missing or denied, "
+    "start your answer with one line:\n"
+    f"{LIMIT_MARKER} <what you missed, in half a sentence>\n"
+    "Then just your answer. Use that line only for that — not for substantive "
+    "uncertainty, and not if you could answer the question after all."
 )

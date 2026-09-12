@@ -104,7 +104,7 @@ class Harvest(unittest.TestCase):
         self._reg(s).tick(lambda x, t: posts.append(t))
         self.assertIn("gevonden: 1 clip", posts[-1])
         self.assertIn("$0.12", posts[-1])
-        self.assertIn("4 beurten", posts[-1])
+        self.assertIn("4 turns", posts[-1])
 
     def test_empty_answer_says_so_explicitly(self):
         """Silently posting nothing reads as 'nothing to report' — the false clear."""
@@ -112,7 +112,7 @@ class Harvest(unittest.TestCase):
         posts = []
         self._reg(s).tick(lambda x, t: posts.append(t))
         self.assertTrue(posts)
-        self.assertIn("zonder antwoord", posts[-1])
+        self.assertIn("without an answer", posts[-1])
 
     def test_half_a_line_waits_for_the_next_tick(self):
         s = self._session(['{"type":"result","result":"af"}\n{"type":"resu'])

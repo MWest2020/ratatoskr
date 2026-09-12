@@ -88,14 +88,14 @@ def main():
             print(f"[listener] sessie geweigerd ({starter}→{requester}/{type_name}): {reason}",
                   flush=True)
             c = AGENTS.get(HUB) or next(iter(AGENTS.values()))
-            send(cid, f"⛔ geen sessie: {reason}", c["nsec"], c["npub"])
+            send(cid, f"⛔ no session: {reason}", c["nsec"], c["npub"])
             return
-        on_behalf = "" if starter == requester else f" namens @{requester}"
+        on_behalf = "" if starter == requester else f" on behalf of @{requester}"
         print(f"[listener] sessie {type_name} gestart door {starter}{on_behalf} in #{cname}",
               flush=True)
-        session_post(s, f"▶️ sessie `{type_name}` gestart door @{starter}{on_behalf} "
+        session_post(s, f"▶️ session `{type_name}` started by @{starter}{on_behalf} "
                         f"(max {s['max_s'] // 60} min) — "
-                        f"opdracht: {task[:120] or '(geen)'}")
+                        f"task: {task[:120] or '(none)'}")
 
     reporting.report_missing_memberships(run, AGENTS, CHANNELS, PUB2NAME)
     name2pub = {h: p for p, h in PUB2NAME.items()}   # so we do not answer agents
