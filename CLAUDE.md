@@ -38,8 +38,16 @@ zelf niets uit — executie is habitat, kennis is handbook.
   identifiers worden in één aparte change omgezet, niet gaandeweg.
 - **Interfaceteksten zijn standaard Engels**, met Nederlands als optie. Nieuwe
   teksten meteen Engels; de bestaande gaan in één change naar een taallaag.
-- Python via `uv`, nooit `pip`. Bestanden ≤ 200 regels. Bare scripts, geen
-  ceremonie.
-- Immutable images: `BUZZ_IMAGE` gepind per SHA of semver-tag, nooit `:main` of
-  `:latest`.
+- Python via `uv`, nooit `pip`. Bare scripts, geen ceremonie.
+- **Bestanden ≤ 200 regels**, gehandhaafd door `scripts/line_limit.py` (in
+  `verify.sh` en in CI). Scope: `.py .js .sh .css .html` en `Dockerfile`.
+  Markdown, YAML en JSON tellen niet mee — dat is proza of data, en "splits je
+  config op" is geen verbetering. Uitzonderingen staan mét reden in dat script.
+  Wat bij invoering al te lang was staat op een baseline die alleen korter mag
+  worden.
+- **Immutable images: de pin staat letterlijk in `deploy/docker-compose.yml`**,
+  niet in `.env` — een pin op de host staat niet in git, en dan lopen "wat
+  draait er" en "wat zegt de repo" uiteen. Geen variabele, geen `:-fallback`,
+  minstens major.minor. GitHub-actions op commit-SHA. `scripts/pin_check.py`
+  bewaakt alle drie.
 - Licentie: EUPL-1.2. Nieuwe bronbestanden krijgen een SPDX-header.

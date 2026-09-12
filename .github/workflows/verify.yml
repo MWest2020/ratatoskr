@@ -1,0 +1,34 @@
+# Wat zonder de installatie kan: unittests, de regelgrens en de pins.
+#
+# Wat hier NIET kan: de drie uitrol-lagen uit chat/e2e/. Die praten met een
+# echte relay achter een tailnet, en daar komt geen GitHub-runner. Dat is geen
+# gat maar een grens: zie chat/e2e/README.md.
+name: verify
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      # Actions op commit-SHA (pin_check.py bewaakt dit); `# v4` is voor mensen.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
+        with:
+          version: "0.9.7"
+
+      - name: Unittests
+        run: uv run --with pyyaml bash verify.sh
+
+      - name: Regelgrens
+        run: uv run --with pyyaml python3 scripts/line_limit.py
+
+      - name: Pins
+        run: uv run --with pyyaml python3 scripts/pin_check.py

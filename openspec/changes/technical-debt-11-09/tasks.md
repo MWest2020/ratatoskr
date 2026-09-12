@@ -2,10 +2,10 @@
 
 ## 0. Afstemmen met lopend werk
 
-- [ ] 0.1 Stand van PR #71 vastleggen: deze taken gaan uit van de bestanden die
+- [x] 0.1 Stand van PR #71 vastleggen: deze taken gaan uit van de bestanden die
       #71 introduceert (`deploy/`, `chat/Dockerfile`, `chat-image.yml`, de
       extra sessietypes). Landt #71 later, dan deze taken daarop bijstellen.
-- [ ] 0.2 `uitrol-voor-derden` bijwerken: Marks installatie uit "Wat hier NIET
+- [x] 0.2 `uitrol-voor-derden` bijwerken: Marks installatie uit "Wat hier NIET
       in zit" naar de scope; taak 6.1 wordt "uitvoeren"; het scenario "Een
       upgrade is een diff" noemt het compose-bestand, niet het env-bestand.
 
@@ -37,12 +37,12 @@
 
 ## 2. Eén uitrolpad, pin in git
 
-- [ ] 2.1 `deploy/docker-compose.yml`: elk `image:` letterlijk, zonder
+- [x] 2.1 `deploy/docker-compose.yml`: elk `image:` letterlijk, zonder
       variabele; drijvende tags naar minstens major.minor.
-- [ ] 2.2 `CHAT_IMAGE` en `BUZZ_IMAGE` uit `deploy/.env.example`;
+- [x] 2.2 `CHAT_IMAGE` en `BUZZ_IMAGE` uit `deploy/.env.example`;
       `docs/how-to/installeren.md`: een upgrade is een nieuwe compose-versie.
-- [ ] 2.3 `.github/workflows/chat-image.yml`: actions per commit-SHA.
-- [ ] 2.4 Pin-check (onderdeel van 3.1): `image:`-regels, `BUZZ_REF` tegen de
+- [x] 2.3 `.github/workflows/chat-image.yml`: actions per commit-SHA.
+- [x] 2.4 Pin-check (onderdeel van 3.1): `image:`-regels, `BUZZ_REF` tegen de
       relay-tag, `uses:`-regels.
 - [ ] 2.5 Vóór de migratie: backup van `auth.db*`, `push_subs.json` en de
       relay-`.env`; `COMPOSE_PROJECT=buzz-prod`, en met `docker volume ls`
@@ -60,17 +60,17 @@
 
 ## 3. Regelgrens in CI
 
-- [ ] 3.1 Check-script (bare, ≤ 200 regels, SPDX-header): scope `*.py *.js
+- [x] 3.1 Check-script (bare, ≤ 200 regels, SPDX-header): scope `*.py *.js
       *.sh *.css *.html Dockerfile`; uitgezonderde categorieën met reden;
       baseline met de huidige overschrijdingen.
-- [ ] 3.2 `verify.sh` draait de check.
-- [ ] 3.3 `.github/workflows/verify.yml`: op PR en push naar `main`; Python via
+- [x] 3.2 `verify.sh` draait de check.
+- [x] 3.3 `.github/workflows/verify.yml`: op PR en push naar `main`; Python via
       `uv` met pyyaml; actions per SHA.
 - [ ] 3.4 Mark: de check verplicht maken voor merge (branch protection).
 - [ ] 3.5 Splitsen en van de baseline halen: `agents/test_topology.py`,
       `chat/server.py`, `chat/buzzcli.py`, `chat/app.css`,
       `agents/test_sessies.py`.
-- [ ] 3.6 `CLAUDE.md` en `openspec/project.md`: scope van de regel, en dat CI
+- [x] 3.6 `CLAUDE.md` en `openspec/project.md`: scope van de regel, en dat CI
       hem handhaaft.
 
 ## 4. Security-review van de auth-stack

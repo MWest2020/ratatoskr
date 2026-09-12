@@ -23,6 +23,21 @@ op een open protocol. Doel: één persoon die met een zwerm rollen bouwt,
 reviewt, ontwerpt en vermarkt — asynchroon, herleidbaar, vanaf desktop en
 telefoon.
 
+## Handhaving (besloten 2026-09-12)
+
+Conventies die niemand controleert, houden niet. Drie staan nu in `verify.sh`
+én in CI (`.github/workflows/verify.yml`):
+
+- **Regelgrens 200** — `scripts/line_limit.py`, met een baseline van wat bij
+  invoering al te lang was. Die lijst mag alleen korter worden.
+- **Pins** — `scripts/pin_check.py`: images letterlijk in het compose-bestand
+  (niet in `.env`, dat staat op de host en niet in git), actions op commit-SHA,
+  en `BUZZ_REF` gelijk aan de relay-tag.
+- **Unittests** van `chat/`, `agents/` en `jobs/`.
+
+Wat NIET in CI kan: de drie uitrol-lagen uit `chat/e2e/`. Die praten met een
+echte relay achter een tailnet. Dat is een uitrol-stap, geen push-stap.
+
 ## Architectuur (besloten)
 
 ```
