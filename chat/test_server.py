@@ -31,6 +31,7 @@ import auth_store as store  # noqa: E402
 import buzzcli   # noqa: E402
 import github    # noqa: E402
 import push      # noqa: E402
+import read_routes  # noqa: E402
 import server    # noqa: E402
 
 CID = "11111111-2222-3333-4444-555555555555"
@@ -39,17 +40,17 @@ CID = "11111111-2222-3333-4444-555555555555"
 def _stub():
     buzzcli.list_channels = lambda: [("general", CID)]
     buzzcli.valid_cid = lambda c: c == CID
-    server.valid_cid = buzzcli.valid_cid
-    server.list_channels_meta = lambda: [{"name": "general", "id": CID, "description": "hub"}]
-    server.agent_roster = lambda: [{"handle": "odin", "pubkey": "pk", "rol": "meta-agent"}]
-    server.channel_roster = lambda: {"general": ["odin"]}
-    server.channel_overview = lambda: [{"name": "general", "id": CID, "count": 1}]
-    server.author = lambda pk: "odin"
-    server.buzz = lambda args, stdin=None, timeout=25, key=None: (
+    server.valid_cid = read_routes.valid_cid = buzzcli.valid_cid
+    read_routes.list_channels_meta = lambda: [{"name": "general", "id": CID, "description": "hub"}]
+    read_routes.agent_roster = lambda: [{"handle": "odin", "pubkey": "pk", "rol": "meta-agent"}]
+    read_routes.channel_roster = lambda: {"general": ["odin"]}
+    read_routes.channel_overview = lambda: [{"name": "general", "id": CID, "count": 1}]
+    read_routes.author = lambda pk: "odin"
+    read_routes.buzz = lambda args, stdin=None, timeout=25, key=None: (
         0, json.dumps([{"id": "m1", "pubkey": "pk", "content": "hoi", "created_at": 2},
                        {"id": "m0", "pubkey": "pk", "content": "eerder", "created_at": 1}]), "")
     server.buzz_admin = lambda args, stdin=None, timeout=25: (0, "{}", "")
-    server.actions.buzz = server.buzz
+    server.actions.buzz = read_routes.buzz
     server.actions.buzz_admin = server.buzz_admin
     server.actions.valid_cid = buzzcli.valid_cid
     # A snapshot of the work overview, so /api/board really serves something
@@ -57,7 +58,7 @@ def _stub():
     path = os.path.join(tempfile.mkdtemp(), "board.json")
     with open(path, "w") as f:
         json.dump({"generated_at": time.time(), "columns": [], "cards": []}, f)
-    server.board.PATH = path
+    read_routes.board.PATH = path
     github.list_repos = lambda limit=30: [{"full_name": "MWest2020/x"}]
     github.list_prs = lambda full: [{"number": 1}]
     github.get_pr = lambda full, n: {"number": n}
@@ -101,12 +102,12 @@ class ServerTest(unittest.TestCase):
     # --- work overview ---
     def test_board_without_a_snapshot_is_404_with_an_explanation(self):
         """An empty board must be distinguishable from a broken producer."""
-        old = server.board.PATH
-        server.board.PATH = "/bestaat/niet/board.json"
+        old = read_routes.board.PATH
+        read_routes.board.PATH = "/bestaat/niet/board.json"
         try:
             code, body = self.call("/api/board")
         finally:
-            server.board.PATH = old
+            read_routes.board.PATH = old
         self.assertEqual(code, 404)
         self.assertIn("hint", body)
 

@@ -3,5 +3,4 @@
 230 chat/app.css
 204 chat/auth.py
 210 chat/buzzcli.py
-236 chat/server.py
 236 chat/test_server.py

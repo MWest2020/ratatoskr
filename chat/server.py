@@ -2,24 +2,22 @@
 """Boomhuis chat backend — HTTP routing plus static PWA assets.
 
 Thin: the buzz/relay data layer lives in buzzcli.py, the GitHub read layer in
-github.py. Here only the serving of the PWA shell and the /api/* routes.
+github.py, the read routes in read_routes.py. Here only the serving of the PWA
+shell, the session gate, and the write routes.
 """
 import json
 import os
-import re
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import urlparse
 
-import github  # GitHub read layer (repo/PR view + pinned context)
-import push    # Web Push — subscription storage + VAPID public key
-from buzzcli import (buzz, buzz_admin, list_channels, list_channels_meta, valid_cid, author,
-                     channel_overview, agent_roster, channel_roster, ME)
+import push    # Web Push — subscription storage
+from buzzcli import buzz_admin, valid_cid
 import actions  # send/add-member/create actions (the server stays thin)
 import auth          # sessions, passwords, TOTP
-import board         # work overview (snapshot from jobs/board.py)
 import auth_admin    # inviting and the second factor (behind the session)
 import auth_routes   # logging in, setup, using an invite, and the gate
+import read_routes   # the GET routes under /api/ that read data
 import settings      # RATATOSKR_*/BOOMHUIS_* from the environment
 import statics       # the allowlist of files we serve
 
@@ -85,80 +83,8 @@ class H(BaseHTTPRequestHandler):
             if auth_routes.gate(self, u.path, writes=False) is None:
                 return None
 
-        if u.path == "/api/channels":
-            return self._send(200, json.dumps(list_channels_meta()))
-        if u.path == "/api/agents":
-            return self._send(200, json.dumps({"agents": agent_roster()}))
-        if u.path == "/api/channel-members":
-            try:
-                return self._send(200, json.dumps({"channels": channel_roster()}))
-            except Exception as e:
-                return self._send(502, json.dumps({"error": str(e)[:200]}))
-        if u.path == "/api/push/vapid":
-            return self._send(200, json.dumps({"key": push.vapid_public()}))
-        if u.path == "/api/board":
-            payload, code = board.read()
-            return self._send(code, json.dumps(payload))
-        if u.path == "/api/overview":
-            try:
-                return self._send(200, json.dumps({"channels": channel_overview()}))
-            except Exception as e:
-                return self._send(502, json.dumps({"error": str(e)[:200]}))
-        if u.path == "/api/repos":
-            try:
-                return self._send(200, json.dumps({"repos": github.list_repos()}))
-            except Exception as e:
-                return self._send(502, json.dumps({"error": str(e)[:200]}))
-        if u.path == "/api/prs":
-            repo = (parse_qs(u.query).get("repo") or [""])[0]
-            if not github.valid_repo(repo):
-                return self._send(400, json.dumps({"error": "repo: expected owner/name"}))
-            try:
-                return self._send(200, json.dumps({"prs": github.list_prs(repo)}))
-            except Exception as e:
-                return self._send(502, json.dumps({"error": str(e)[:200]}))
-        if u.path == "/api/pr":
-            q = parse_qs(u.query)
-            repo = (q.get("repo") or [""])[0]
-            num = (q.get("num") or [""])[0]
-            if not github.valid_repo(repo) or not num.isdigit():
-                return self._send(400, json.dumps({"error": "repo: owner/name, num: a number"}))
-            try:
-                return self._send(200, json.dumps(github.get_pr(repo, int(num))))
-            except Exception as e:
-                return self._send(502, json.dumps({"error": str(e)[:200]}))
-        if u.path == "/api/pinned":
-            # Pinned context = knowledge/<channel>.md from the boomhuis repo (one
-            # source of truth; update through git push). Empty = no pin.
-            name = (parse_qs(u.query).get("channel") or [""])[0].lower()
-            if not re.match(r"^[a-z0-9][a-z0-9_-]{0,30}$", name):
-                return self._send(200, json.dumps({"content": ""}))
-            try:
-                return self._send(200, json.dumps(
-                    {"content": github.get_file(f"knowledge/{name}.md")}))
-            except Exception:
-                return self._send(200, json.dumps({"content": ""}))
-        if u.path == "/api/messages":
-            cid = (parse_qs(u.query).get("channel") or [""])[0]
-            if not valid_cid(cid):
-                return self._send(400, json.dumps({"error": "unknown channel"}))
-            rc, out, err = buzz(["messages", "get", "--channel", cid])
-            if rc != 0:
-                return self._send(502, json.dumps({"error": err.strip()[:200]}))
-            try:
-                raw = json.loads(out)
-            except Exception:
-                raw = []
-            msgs = raw if isinstance(raw, list) else raw.get("messages", [])
-            out_msgs = [{
-                "id": m.get("id"),
-                "author": author(m.get("pubkey", "")),
-                "mine": m.get("pubkey") == ME,
-                "content": m.get("content", ""),
-                "ts": m.get("created_at", 0),
-            } for m in msgs]
-            out_msgs.sort(key=lambda x: x["ts"])
-            return self._send(200, json.dumps({"messages": out_msgs}))
+        if read_routes.route(self, u):
+            return None
         return self._send(404, json.dumps({"error": "not found"}))
 
     def do_POST(self):
