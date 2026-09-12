@@ -16,8 +16,8 @@ from urllib.parse import parse_qs
 import board   # work overview (snapshot from jobs/board.py)
 import github  # GitHub read layer (repo/PR view + pinned context)
 import push    # Web Push — VAPID public key
-from buzzcli import (buzz, list_channels_meta, valid_cid, author,
-                     channel_overview, agent_roster, channel_roster, ME)
+from buzzcli import buzz, list_channels_meta, valid_cid, author, ME
+from fanout import channel_overview, agent_roster, channel_roster
 
 
 def route(h, u):
