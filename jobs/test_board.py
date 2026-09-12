@@ -5,6 +5,7 @@ GitHub en zonder klok.
 
 Draaien: cd jobs && python3 -m unittest test_board
 """
+import json
 import os
 import sys
 import tempfile
@@ -13,6 +14,8 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import board  # noqa: E402
+import board_model  # noqa: E402
+import board_sources  # noqa: E402
 
 COLUMNS = [{"key": "proposal", "title": "voorstel", "stale_days": 14},
            {"key": "building", "title": "bouwen", "stale_days": 3},
@@ -22,46 +25,46 @@ COLUMNS = [{"key": "proposal", "title": "voorstel", "stale_days": 14},
 
 class Column(unittest.TestCase):
     def test_merged_wins(self):
-        self.assertEqual(board.pr_column({"merged": True, "draft": True}), "merged")
+        self.assertEqual(board_model.pr_column({"merged": True, "draft": True}), "merged")
 
     def test_draft_is_building(self):
-        self.assertEqual(board.pr_column({"draft": True}), "building")
+        self.assertEqual(board_model.pr_column({"draft": True}), "building")
 
     def test_open_non_draft_is_waiting_on_a_human(self):
         """In deze flow blijft een open PR staan tot iemand 'm merget."""
-        self.assertEqual(board.pr_column({"draft": False}), "review")
+        self.assertEqual(board_model.pr_column({"draft": False}), "review")
 
     def test_missing_draft_flag_is_review(self):
-        self.assertEqual(board.pr_column({}), "review")
+        self.assertEqual(board_model.pr_column({}), "review")
 
 
 class Age(unittest.TestCase):
     def test_days(self):
-        now = 1000 * board.DAY
-        self.assertAlmostEqual(board.age_days(now - 2 * board.DAY, now), 2.0)
+        now = 1000 * board_model.DAY
+        self.assertAlmostEqual(board_model.age_days(now - 2 * board_model.DAY, now), 2.0)
 
     def test_never_negative(self):
         """Een klok die achterloopt mag geen kaart uit de toekomst opleveren."""
         now = 100.0
-        self.assertEqual(board.age_days(now + 5000, now), 0.0)
+        self.assertEqual(board_model.age_days(now + 5000, now), 0.0)
 
     def test_missing_timestamp_is_zero(self):
-        self.assertEqual(board.age_days(None, 123.0), 0.0)
+        self.assertEqual(board_model.age_days(None, 123.0), 0.0)
 
 
 class Stale(unittest.TestCase):
     def test_over_threshold(self):
-        self.assertTrue(board.is_stale({"column": "review", "age_days": 3}, COLUMNS))
+        self.assertTrue(board_model.is_stale({"column": "review", "age_days": 3}, COLUMNS))
 
     def test_under_threshold(self):
-        self.assertFalse(board.is_stale({"column": "review", "age_days": 1}, COLUMNS))
+        self.assertFalse(board_model.is_stale({"column": "review", "age_days": 1}, COLUMNS))
 
     def test_zero_threshold_is_never_stale(self):
         """De uitgangskolom: daar mag alles liggen."""
-        self.assertFalse(board.is_stale({"column": "merged", "age_days": 999}, COLUMNS))
+        self.assertFalse(board_model.is_stale({"column": "merged", "age_days": 999}, COLUMNS))
 
     def test_unknown_column_is_never_stale(self):
-        self.assertFalse(board.is_stale({"column": "x", "age_days": 999}, COLUMNS))
+        self.assertFalse(board_model.is_stale({"column": "x", "age_days": 999}, COLUMNS))
 
 
 class Ignore(unittest.TestCase):
@@ -71,22 +74,22 @@ class Ignore(unittest.TestCase):
         rows = [{"repository": {"name": "oud-project"}, "number": 1, "title": "x",
                  "updatedAt": "2026-01-01T00:00:00Z", "url": "", "isDraft": False,
                  "author": {"login": "a"}}]
-        board.gh_json = lambda args: rows if "--state=open" in args else []
-        self.assertEqual(board.pr_cards("owner", 3, time.time(), {"oud-project"}), [])
-        self.assertEqual(len(board.pr_cards("owner", 3, time.time(), set())), 1)
+        board_sources.gh_json = lambda args: rows if "--state=open" in args else []
+        self.assertEqual(board_sources.pr_cards("owner", 3, time.time(), {"oud-project"}), [])
+        self.assertEqual(len(board_sources.pr_cards("owner", 3, time.time(), set())), 1)
 
 
 class Summary(unittest.TestCase):
     def test_counts_and_stale(self):
         cards = [{"column": "review", "stale": True}, {"column": "review", "stale": False},
                  {"column": "building", "stale": False}]
-        s = {c["key"]: c for c in board.summarise(cards, COLUMNS)}
+        s = {c["key"]: c for c in board_model.summarise(cards, COLUMNS)}
         self.assertEqual((s["review"]["count"], s["review"]["stale"]), (2, 1))
         self.assertEqual(s["proposal"]["count"], 0)
 
     def test_every_column_is_present_even_when_empty(self):
         """Een lege kolom moet zichtbaar leeg zijn, niet afwezig."""
-        self.assertEqual(len(board.summarise([], COLUMNS)), 4)
+        self.assertEqual(len(board_model.summarise([], COLUMNS)), 4)
 
 
 class OpenspecCards(unittest.TestCase):
@@ -97,7 +100,7 @@ class OpenspecCards(unittest.TestCase):
         for p in (levend, dood):
             os.makedirs(p)
             open(os.path.join(p, "proposal.md"), "w").write("x")
-        got = board.openspec_cards(os.path.join(d, "home/agent/*/openspec/changes/*/proposal.md"),
+        got = board_sources.openspec_cards(os.path.join(d, "home/agent/*/openspec/changes/*/proposal.md"),
                                    time.time())
         self.assertEqual([c["title"] for c in got], ["nieuw"])
 
@@ -108,7 +111,7 @@ class Snapshot(unittest.TestCase):
         cfg = {"columns": COLUMNS,
                "sources": {"openspec_glob": "/bestaat/niet/*", "github_owner": "x",
                            "session_runs": "/bestaat/niet", "merged_days": 3}}
-        board.gh_json = lambda args: (_ for _ in ()).throw(RuntimeError("gh weg"))
+        board_sources.gh_json = lambda args: (_ for _ in ()).throw(RuntimeError("gh weg"))
         snap = board.build(cfg, now=1000.0)
         self.assertTrue(snap["errors"])
         self.assertIn("gh weg", snap["errors"][0])
@@ -117,3 +120,40 @@ class Snapshot(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class Links(unittest.TestCase):
+    """Een kaart zonder link is een doodlopende kaart; een kaart naar een 404 is
+    erger. Daarom komt de URL uit de remote van de clone, niet uit de mapnaam."""
+
+    def test_openspec_card_links_to_the_change(self):
+        d = tempfile.mkdtemp()
+        clone = os.path.join(d, "home", "agent", "repo")
+        change = os.path.join(clone, "openspec", "changes", "iets")
+        os.makedirs(change)
+        open(os.path.join(change, "proposal.md"), "w").write("x")
+        board_sources.repo_url = lambda c: "https://github.com/MWest2020/repo"
+        got = board_sources.openspec_cards(os.path.join(d, "home/agent/*/openspec/changes/*/proposal.md"),
+                                   time.time())
+        self.assertEqual(got[0]["url"],
+                         "https://github.com/MWest2020/repo/tree/main/openspec/changes/iets")
+
+    def test_no_remote_means_no_url_not_a_guess(self):
+        d = tempfile.mkdtemp()
+        change = os.path.join(d, "home", "agent", "repo", "openspec", "changes", "iets")
+        os.makedirs(change)
+        open(os.path.join(change, "proposal.md"), "w").write("x")
+        board_sources.repo_url = lambda c: ""
+        got = board_sources.openspec_cards(os.path.join(d, "home/agent/*/openspec/changes/*/proposal.md"),
+                                   time.time())
+        self.assertEqual(got[0]["url"], "")
+
+    def test_session_card_carries_its_channel(self):
+        d = tempfile.mkdtemp()
+        pad = os.path.join(d, "zettelkast-mark-1.jsonl")
+        with open(pad, "w") as f:
+            f.write(json.dumps({"type": "boomhuis_sessie", "kanaal": "general",
+                                "requester": "mark"}) + "\n")
+        got = board_sources.session_cards(d, time.time())
+        self.assertEqual(got[0]["channel"], "general")
+        self.assertEqual(got[0]["who"], "mark")

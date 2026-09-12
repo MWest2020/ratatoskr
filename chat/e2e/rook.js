@@ -79,6 +79,13 @@ const t = (naam, cond, extra = '') => {
   // Vier kolommen, ook als er niets in staat: een lege kolom hoort zichtbaar
   // leeg te zijn, niet afwezig.
   t('vier kolommen', bord.kolommen === 4, `${bord.kolommen} kolommen: ${bord.tekst}`);
+  // Een bord vol kaarten waar je niet op kunt klikken is een plaatje.
+  const klikbaar = await p.evaluate(() => ({
+    kaarten: document.querySelectorAll('.bcard').length,
+    linkbaar: document.querySelectorAll('.bcard.blink').length,
+  }));
+  t('kaarten linken door', klikbaar.kaarten === 0 || klikbaar.linkbaar > 0,
+    `${klikbaar.linkbaar}/${klikbaar.kaarten} klikbaar`);
   await p.click('#boardClose');
   await p.waitForTimeout(500);
 

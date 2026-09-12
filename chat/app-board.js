@@ -24,8 +24,23 @@ function boardCard(c) {
             el("span", "bage", ageLabel(c.age_days || 0)));
   if (c.who) add(meta, el("span", "bwho", "@" + c.who));
   add(row, meta, el("div", "btitle", c.title || ""));
-  if (c.url) row.onclick = () => window.open(c.url, "_blank", "noopener");
-  else if (c.source) row.title = c.source;
+
+  // Elke kaart gaat érgens heen. Een PR of een change opent op GitHub; een
+  // werksessie heeft geen URL maar wel een kanaal, dus daar springt de app
+  // heen. Kan een kaart nergens heen, dan is hij zichtbaar niet klikbaar —
+  // een kaart die wel klikbaar lijkt en niets doet is erger dan geen link.
+  if (c.url) {
+    row.classList.add("blink");
+    row.onclick = () => window.open(c.url, "_blank", "noopener");
+  } else if (c.channel) {
+    row.classList.add("blink");
+    row.onclick = () => {
+      const ch = channels.find((x) => x.name === c.channel);
+      if (ch) { closeBoard(); selectChannel(ch); }
+    };
+  } else if (c.source) {
+    row.title = c.source;
+  }
   return row;
 }
 
