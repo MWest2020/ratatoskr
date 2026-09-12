@@ -50,9 +50,9 @@ def _pr_cards_cached(src, now, cache_path, max_age):
     except Exception as e:
         # No fresh PRs? Fall back on the cache, however old — but say so.
         try:
-            return json.load(open(cache_path))["cards"], [f"PR's niet ververst: {e}"]
+            return json.load(open(cache_path))["cards"], [f"PRs not refreshed: {e}"]
         except (OSError, ValueError, KeyError):
-            return [], [f"PR's niet opgehaald: {e}"]
+            return [], [f"PRs not fetched: {e}"]
     tmp = cache_path + ".tmp"
     with open(tmp, "w") as f:
         json.dump({"at": now, "cards": cards}, f)
@@ -74,7 +74,7 @@ def build(cfg, now=None):
     try:
         cards += board_sources.session_cards(src["session_runs"], now)
     except Exception as e:
-        errors.append(f"werksessies niet gelezen: {e}")
+        errors.append(f"work sessions not read: {e}")
     for c in cards:
         c["stale"] = is_stale(c, cols)
     cards.sort(key=lambda c: (-c["stale"], -c["age_days"]))
@@ -96,8 +96,8 @@ def main():
     with open(tmp, "w") as f:
         f.write(text)
     os.replace(tmp, a.out)
-    print(f"[board] {len(data['cards'])} kaarten -> {a.out}"
-          + (f" ({len(data['errors'])} leesfout(en))" if data["errors"] else ""))
+    print(f"[board] {len(data['cards'])} cards -> {a.out}"
+          + (f" ({len(data['errors'])} read error(s))" if data["errors"] else ""))
 
 
 if __name__ == "__main__":

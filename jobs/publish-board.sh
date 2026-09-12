@@ -24,9 +24,9 @@ if [ -n "${BOARD_SSH:-}" ]; then
     v=\$(docker volume inspect -f \"{{.Mountpoint}}\" $VOL) || exit 1
     cat > \$v/board.json.tmp && chown 10001:10001 \$v/board.json.tmp &&
     mv \$v/board.json.tmp \$v/board.json'" < "$TMP"
-  echo "[board] geplaatst op $BOARD_SSH:$VOL"
+  echo "[board] placed on $BOARD_SSH:$VOL"
 else
   DEST="${BOARD_OUT:-/var/lib/ratatoskr/board.json}"
   install -m 0644 "$TMP" "$DEST"
-  echo "[board] geschreven naar $DEST"
+  echo "[board] written to $DEST"
 fi

@@ -132,7 +132,7 @@ class Snapshot(unittest.TestCase):
         board_sources.gh_json = lambda args: (_ for _ in ()).throw(RuntimeError("gh weg"))
         snap = board.build(cfg, now=1000.0)
         self.assertEqual(len(snap["cards"]), 1)
-        self.assertIn("niet ververst", snap["errors"][0])
+        self.assertIn("not refreshed", snap["errors"][0])
 
     def test_fresh_cache_skips_github(self):
         """This is what makes a running session visible: the PR side need not be

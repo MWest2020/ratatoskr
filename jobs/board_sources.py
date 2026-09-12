@@ -146,7 +146,7 @@ def session_cards(runs_dir, now):
         # running session is a card that says nothing, and that is exactly what
         # Mark missed: "tijdens bouwen verwacht ik updates".
         cards.append({"id": "session:" + os.path.basename(path),
-                      "repo": "werksessie", "title": f"{typ} · {who}",
+                      "repo": "work session", "title": f"{typ} · {who}",
                       "column": "building",
                       "via": "session (writes)" if writes else "session",
                       "age_days": age_days(ts, now), "activity": last_activity(content),
