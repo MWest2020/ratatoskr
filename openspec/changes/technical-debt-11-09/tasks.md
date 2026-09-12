@@ -66,7 +66,14 @@
 - [x] 3.2 `verify.sh` draait de check.
 - [x] 3.3 `.github/workflows/verify.yml`: op PR en push naar `main`; Python via
       `uv` met pyyaml; actions per SHA.
-- [ ] 3.4 Mark: de check verplicht maken voor merge (branch protection).
+- [x] 3.4 De check verplicht maken voor merge. **Niet via branch protection**:
+      GitHub biedt protected branches en rulesets op een PRIVATE repo alleen
+      onder een betaald plan (gemeten 2026-09-12: *"Upgrade to GitHub Pro or make
+      this repository public"*). In plaats daarvan `scripts/install_hooks.sh`:
+      een pre-push-guard die `verify.sh` draait vóór een push naar `main`, op de
+      machine waar alle pushes vandaan komen. Een guard, geen hek — `--no-verify`
+      blijft bestaan. Wil je het wél hard: Pro nemen, of de repo publiek maken.
+      Dat is een besluit met een prijs en het is aan Mark.
 - [ ] 3.5 Splitsen en van de baseline halen: `agents/test_topology.py`,
       `chat/server.py`, `chat/buzzcli.py`, `chat/app.css`,
       `agents/test_sessies.py`.

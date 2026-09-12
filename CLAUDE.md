@@ -48,5 +48,7 @@ zelf niets uit — executie is habitat, kennis is handbook.
   niet in `.env` — een pin op de host staat niet in git, en dan lopen "wat
   draait er" en "wat zegt de repo" uiteen. Geen variabele, geen `:-fallback`,
   minstens major.minor. GitHub-actions op commit-SHA. `scripts/pin_check.py`
-  bewaakt alle drie.
+  bewaakt alle drie. Lokale guard: `bash scripts/install_hooks.sh` draait
+  `verify.sh` vóór een push naar `main` — branch protection kan niet op een
+  private repo zonder GitHub Pro.
 - Licentie: EUPL-1.2. Nieuwe bronbestanden krijgen een SPDX-header.
