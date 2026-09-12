@@ -100,7 +100,10 @@ types:
   ratatoskr:
     workdir: /home/agent/ratatoskr-listener
     model: sonnet
-    max_seconds: 900
+    max_seconds: 1800
+    # 900 was te krap: een security-review van vijf bestanden liep op 2026-09-12
+    # in de time-out en leverde niets. Een repo-brede leessessie is trager dan een
+    # vault-scan, en een half rapport is geen rapport.
     starters: [mark, orchestrator, odin]
     identity: odin
     description: >-
