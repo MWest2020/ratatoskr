@@ -23,7 +23,9 @@ APK_NAME = "ratatoskr.apk"
 
 FILES = {
     "/app.css": ("app.css", "text/css"),
+    "/repos.css": ("repos.css", "text/css"),
     "/board.css": ("board.css", "text/css"),
+    "/login.css": ("login.css", "text/css"),
     "/app.js": ("app.js", "text/javascript"),
     "/app-cache.js": ("app-cache.js", "text/javascript"),
     "/app-connection.js": ("app-connection.js", "text/javascript"),

@@ -1,0 +1,38 @@
+/* SPDX-License-Identifier: EUPL-1.2 */
+/* Repos drawer (app-repos.js) — a full-screen modal with a close button and a
+   level-back, then the repo, PR list and PR detail views inside it. */
+#reposDrawer{position:absolute; inset:0; background:rgba(0,0,0,.55); z-index:20;
+  display:none; opacity:0; transition:opacity .15s}
+#reposDrawer.open{display:block; opacity:1}
+#reposDrawer .sheet{position:absolute; inset:0; background:var(--panel);
+  display:flex; flex-direction:column;
+  padding:calc(.6rem + env(safe-area-inset-top)) .7rem calc(.7rem + env(safe-area-inset-bottom));
+  transform:translateY(100%); transition:transform .18s}
+#reposDrawer.open .sheet{transform:none}
+#reposDrawer .dhead{display:flex; align-items:center; gap:.5rem; flex:0 0 auto;
+  padding-bottom:.5rem; border-bottom:1px solid var(--line); margin-bottom:.5rem}
+#reposDrawer .dhead .title{color:var(--ink); font-weight:700; font-size:1rem;
+  text-transform:none; letter-spacing:0; padding:0; flex:1;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+#reposDrawer .dclose{background:var(--panel2); color:var(--ink);
+  border:1px solid var(--line); border-radius:10px; padding:.35rem .6rem;
+  font-size:1rem; font-weight:700; flex:0 0 auto; line-height:1}
+#reposDrawer #repoView{flex:1 1 auto; overflow-y:auto}
+/* repo/PR view */
+.rrow{padding:.6rem .7rem; border:1px solid var(--line); border-radius:12px;
+  margin-bottom:.5rem; background:var(--panel2); cursor:pointer}
+.rrow:active{background:var(--other)}
+.rrow .rn{font-weight:700}
+.rrow .rn .own{color:var(--muted); font-weight:400}
+.rrow .rd{color:var(--muted); font-size:.8rem; margin-top:.15rem; line-height:1.35}
+.rrow .badge{float:right; font-family:"IBM Plex Mono",monospace; font-size:.72rem;
+  background:var(--mine); border-radius:999px; padding:.1rem .5rem; color:var(--accent)}
+.rback{color:var(--accent2); font-size:.85rem; cursor:pointer; margin-bottom:.5rem;
+  display:inline-block; font-weight:600}
+.prdet .st{color:var(--muted); font-size:.82rem; margin:.2rem 0 .5rem}
+.prdet .add{color:#8ecf8e} .prdet .del{color:var(--danger)}
+.prdet .file{font-family:"IBM Plex Mono",monospace; font-size:.76rem; padding:.2rem 0;
+  border-bottom:1px solid var(--line); word-break:break-all}
+.rrow .rev, .prdet .rev{background:var(--accent); color:#15130f; border:0;
+  border-radius:10px; padding:.4rem .7rem; font-weight:700; font-size:.82rem; margin-top:.6rem}
+.prdet a.gh{color:var(--accent2); font-size:.85rem; word-break:break-all}

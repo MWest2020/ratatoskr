@@ -1,4 +1,3 @@
 # Bestanden die bij invoering van de regelgrens al te lang waren.
 # Deze lijst mag alleen KORTER worden; groeien = alsnog rood.
-230 chat/app.css
 204 chat/auth.py

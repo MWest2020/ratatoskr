@@ -127,42 +127,6 @@
   .toast{position:absolute; bottom:5rem; left:50%; transform:translateX(-50%);
     background:var(--danger); color:#1a1710; padding:.4rem .8rem; border-radius:10px;
     font-size:.85rem; font-weight:700; z-index:30; display:none}
-  /* repos drawer — a full-screen modal with a close button and a level-back */
-  #reposDrawer{position:absolute; inset:0; background:rgba(0,0,0,.55); z-index:20;
-    display:none; opacity:0; transition:opacity .15s}
-  #reposDrawer.open{display:block; opacity:1}
-  #reposDrawer .sheet{position:absolute; inset:0; background:var(--panel);
-    display:flex; flex-direction:column;
-    padding:calc(.6rem + env(safe-area-inset-top)) .7rem calc(.7rem + env(safe-area-inset-bottom));
-    transform:translateY(100%); transition:transform .18s}
-  #reposDrawer.open .sheet{transform:none}
-  #reposDrawer .dhead{display:flex; align-items:center; gap:.5rem; flex:0 0 auto;
-    padding-bottom:.5rem; border-bottom:1px solid var(--line); margin-bottom:.5rem}
-  #reposDrawer .dhead .title{color:var(--ink); font-weight:700; font-size:1rem;
-    text-transform:none; letter-spacing:0; padding:0; flex:1;
-    white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-  #reposDrawer .dclose{background:var(--panel2); color:var(--ink);
-    border:1px solid var(--line); border-radius:10px; padding:.35rem .6rem;
-    font-size:1rem; font-weight:700; flex:0 0 auto; line-height:1}
-  #reposDrawer #repoView{flex:1 1 auto; overflow-y:auto}
-  /* repo/PR view */
-  .rrow{padding:.6rem .7rem; border:1px solid var(--line); border-radius:12px;
-    margin-bottom:.5rem; background:var(--panel2); cursor:pointer}
-  .rrow:active{background:var(--other)}
-  .rrow .rn{font-weight:700}
-  .rrow .rn .own{color:var(--muted); font-weight:400}
-  .rrow .rd{color:var(--muted); font-size:.8rem; margin-top:.15rem; line-height:1.35}
-  .rrow .badge{float:right; font-family:"IBM Plex Mono",monospace; font-size:.72rem;
-    background:var(--mine); border-radius:999px; padding:.1rem .5rem; color:var(--accent)}
-  .rback{color:var(--accent2); font-size:.85rem; cursor:pointer; margin-bottom:.5rem;
-    display:inline-block; font-weight:600}
-  .prdet .st{color:var(--muted); font-size:.82rem; margin:.2rem 0 .5rem}
-  .prdet .add{color:#8ecf8e} .prdet .del{color:var(--danger)}
-  .prdet .file{font-family:"IBM Plex Mono",monospace; font-size:.76rem; padding:.2rem 0;
-    border-bottom:1px solid var(--line); word-break:break-all}
-  .rrow .rev, .prdet .rev{background:var(--accent); color:#15130f; border:0;
-    border-radius:10px; padding:.4rem .7rem; font-weight:700; font-size:.82rem; margin-top:.6rem}
-  .prdet a.gh{color:var(--accent2); font-size:.85rem; word-break:break-all}
   /* pinned context */
   #pinned{flex:0 0 auto; background:var(--panel2); border-bottom:1px solid var(--line);
     padding:.5rem .8rem; font-size:.85rem; color:var(--ink)}
@@ -200,26 +164,12 @@
 .modal-add{flex:1;background:var(--accent);color:var(--bg);border:0;border-radius:10px;padding:.5rem;font-weight:700;cursor:pointer}
 .modal-cancel{flex:1;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:.5rem;cursor:pointer}
 
-  /* --- login page --- */
-  .loginpage{display:flex; align-items:center; justify-content:center;
-    min-height:100vh; padding:1rem}
-  .logincard{width:min(24rem,100%); display:flex; flex-direction:column; gap:.6rem}
-  .logincard h1{margin:0; font-size:1.3rem}
-  .logincard form{display:flex; flex-direction:column; gap:.6rem; padding:0}
   /* The hidden attribute loses against any display rule of our own: the browser
-     sets display:none without !important, and .field below sets display:flex.
+     sets display:none without !important, and .field (login.css) sets display:flex.
      Without this rule "Code uit je app" and "Setup-token" were always visible on
      the login page, while they should only appear when they are needed. Applies
-     to the whole app, not only here. */
+     to the whole app, not only the login page. */
   [hidden]{display:none !important}
-  .field{display:flex; flex-direction:column; gap:.25rem; font-size:.8rem;
-    color:var(--muted)}
-  .field input{padding:.6rem .7rem; border-radius:8px; border:1px solid var(--muted);
-    background:transparent; color:inherit; font-size:1rem}
-  .logincard button{background:var(--accent); color:#1a1710; border:none;
-    border-radius:8px; padding:.6rem; font-size:1rem; cursor:pointer}
-  .logincard button:disabled{opacity:.5}
-  .loginerror{color:#e06c6c; font-size:.85rem; margin:0}
 
   /* foot of the channel drawer: who you are, invite, log out */
   .drawerfoot{display:flex; align-items:center; gap:.5rem; flex-wrap:wrap;

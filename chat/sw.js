@@ -5,7 +5,7 @@
 //   keeps running after a timeout and refreshes the cache anyway (waitUntil).
 // - Statics (icons, manifest): cache first with a background update.
 // - /api/*: NEVER cached (chat is realtime, git is the truth).
-const CACHE = "boomhuis-shell-v20";  // v20: English file and class names
+const CACHE = "boomhuis-shell-v21";  // v21: repos.css and login.css split out of app.css
 // A version bump wipes every older cache on `activate`. That is the only thing
 // that reliably unsticks an installed PWA stuck on the old JS: network first only
 // helps once the app runs, and that was exactly the bug where it did not.
@@ -14,7 +14,9 @@ const SHELL = [
   "/",
   "/index.html",
   "/app.css",
+  "/repos.css",
   "/board.css",
+  "/login.css",
   "/app.js",
   "/app-cache.js",
   "/app-connection.js",
@@ -99,7 +101,7 @@ function networkFirst(e, isNav) {
 // The app shell (HTML + app.css + app.js + app-ui.js) is network first so a
 // reload shows the latest version; now that the JS/CSS are separate assets they
 // need the same freshness as the page. Icons and manifest stay cache first.
-const FRESH_ASSETS = new Set(["/app.css", "/board.css", "/app.js", "/app-cache.js", "/app-connection.js", "/app-auth.js", "/login.js", "/app-modal.js", "/app-ui.js", "/app-repos.js", "/app-board.js", "/app-push.js"]);
+const FRESH_ASSETS = new Set(["/app.css", "/repos.css", "/board.css", "/login.css", "/app.js", "/app-cache.js", "/app-connection.js", "/app-auth.js", "/login.js", "/app-modal.js", "/app-ui.js", "/app-repos.js", "/app-board.js", "/app-push.js"]);
 
 // Web Push: show a notification on an incoming push.
 self.addEventListener("push", (e) => {
