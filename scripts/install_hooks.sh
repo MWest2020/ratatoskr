@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
 # Install a pre-push guard in this clone: pushing to `main` runs verify.sh first.
 #
-# Why this exists instead of branch protection: GitHub only offers protected
-# branches and rulesets on private repositories under a paid plan (measured
-# 2026-09-12: "Upgrade to GitHub Pro or make this repository public"). So the
-# gate lives where the pushes actually come from — this machine.
+# This is the gate, by choice. Mark does not want GitHub-side branch protection
+# and has said so four times, so do not propose it again: the check runs where
+# the pushes actually come from, which is this machine.
 #
 # It is a guard, not a fence. Someone determined can use --no-verify, and a
 # writing work session has its own hooksPath and is unaffected (see

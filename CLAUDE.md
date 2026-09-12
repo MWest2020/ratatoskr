@@ -49,6 +49,7 @@ zelf niets uit — executie is habitat, kennis is handbook.
   draait er" en "wat zegt de repo" uiteen. Geen variabele, geen `:-fallback`,
   minstens major.minor. GitHub-actions op commit-SHA. `scripts/pin_check.py`
   bewaakt alle drie. Lokale guard: `bash scripts/install_hooks.sh` draait
-  `verify.sh` vóór een push naar `main` — branch protection kan niet op een
-  private repo zonder GitHub Pro.
+  `verify.sh` vóór een push naar `main`. **Dat is de poort, en dat blijft het.**
+  Niet voorstellen om dit bij GitHub af te dwingen — Mark wil dat niet, en dat is
+  vier keer gezegd.
 - Licentie: EUPL-1.2. Nieuwe bronbestanden krijgen een SPDX-header.
