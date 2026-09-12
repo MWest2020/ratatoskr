@@ -5,6 +5,7 @@ Only the owner may invite. Self-registration does not exist: one installation is
 one team, and the installation is the boundary.
 """
 import auth
+import auth_factors
 import auth_store as store
 from auth_routes import _json
 
@@ -41,11 +42,11 @@ def change_password(h, session, body):
     p = _person(session)
     current = body.get("huidig") or ""
     new = body.get("nieuw") or ""
-    if not auth.password_matches(current, p["hash"]):
+    if not auth_factors.password_matches(current, p["hash"]):
         return _json(h, 403, {"error": "the current password is wrong"})
     if len(new) < 12:
         return _json(h, 400, {"error": "new password at least 12 characters"})
-    store.set_hash(p["id"], auth.hash_password(new))
+    store.set_hash(p["id"], auth_factors.hash_password(new))
     store.revoke_all_sessions(p["id"])
     token, csrf = auth.start_session(p["id"])
     return _json(h, 200, {"status": "changed", "csrf": csrf},
@@ -55,7 +56,7 @@ def change_password(h, session, body):
 def totp_start(h, session):
     """Return a secret; it only turns on once a matching code arrives. Otherwise
     a mistyped secret locks you out of your own account."""
-    secret = auth.new_totp_secret()
+    secret = auth_factors.new_totp_secret()
     name = _person(session)["naam"]
     return _json(h, 200, {
         "geheim": secret,
@@ -66,7 +67,7 @@ def totp_start(h, session):
 
 def totp_confirm(h, session, body):
     secret = (body.get("geheim") or "").strip()
-    ok, counter = auth.totp_matches(secret, body.get("code") or "") if secret else (False, None)
+    ok, counter = auth_factors.totp_matches(secret, body.get("code") or "") if secret else (False, None)
     if not ok:
         return _json(h, 400, {"error": "the code is wrong"})
     store.set_totp(session["persoon"], secret)

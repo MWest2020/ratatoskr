@@ -13,6 +13,7 @@ import unittest
 os.environ.setdefault("BOOMHUIS_AUTH_DB", os.path.join(tempfile.mkdtemp(), "auth.db"))
 
 import auth  # noqa: E402
+import auth_factors  # noqa: E402
 import auth_routes as routes  # noqa: E402
 import auth_store as store  # noqa: E402
 
@@ -61,7 +62,7 @@ class LogIn(unittest.TestCase):
     def setUp(self):
         self.name = "route-" + os.urandom(4).hex()
         self.source = "10.{}.{}.{}".format(*os.urandom(3))
-        self.pid = store.create_person(self.name, auth.hash_password("een goed wachtwoord"))
+        self.pid = store.create_person(self.name, auth_factors.hash_password("een goed wachtwoord"))
 
     def test_a_good_password_gives_a_cookie(self):
         h = _post(routes.log_in, {"naam": self.name, "wachtwoord": "een goed wachtwoord"},
@@ -158,7 +159,7 @@ class ChangePassword(unittest.TestCase):
         import auth_admin
         self.admin = auth_admin
         self.name = "ww-" + os.urandom(4).hex()
-        self.pid = store.create_person(self.name, auth.hash_password("het oude wachtwoord"))
+        self.pid = store.create_person(self.name, auth_factors.hash_password("het oude wachtwoord"))
         self.token, self.csrf = auth.start_session(self.pid)
         self.session = auth.session_from_cookie(
             {"Cookie": "{}={}".format(auth.COOKIE, self.token)})
@@ -171,7 +172,7 @@ class ChangePassword(unittest.TestCase):
     def test_not_without_the_current_password(self):
         h = self._change("iets anders", "een nieuw lang wachtwoord")
         self.assertEqual(h.code, 403)
-        self.assertTrue(auth.password_matches("het oude wachtwoord",
+        self.assertTrue(auth_factors.password_matches("het oude wachtwoord",
                                               store.person(self.pid)["hash"]))
 
     def test_not_a_too_short_new_password(self):
@@ -182,7 +183,7 @@ class ChangePassword(unittest.TestCase):
         second, _ = auth.start_session(self.pid)    # another device
         h = self._change("het oude wachtwoord", "een nieuw lang wachtwoord")
         self.assertEqual(h.code, 200)
-        self.assertTrue(auth.password_matches("een nieuw lang wachtwoord",
+        self.assertTrue(auth_factors.password_matches("een nieuw lang wachtwoord",
                                               store.person(self.pid)["hash"]))
         # the other device is out
         self.assertIsNone(auth.session_from_cookie(

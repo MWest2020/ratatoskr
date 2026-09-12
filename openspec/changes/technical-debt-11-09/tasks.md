@@ -82,7 +82,7 @@
 
 ## 4. Security-review van de auth-stack
 
-- [ ] 4.1 Aparte review-sessie op `chat/auth.py`, `auth_store.py`,
+- [ ] 4.1 Aparte review-sessie op `chat/auth.py`, `auth_factors.py`, `auth_store.py`,
       `auth_routes.py`, `adminctl.py` en de cookie-, CSRF- en
       `X-Forwarded-For`-afhandeling in `server.py`. Alleen findings met
       reproduceerbaar pad.

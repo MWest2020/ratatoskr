@@ -14,7 +14,7 @@ from urllib.parse import urlparse
 import push    # Web Push — subscription storage
 from buzzcli import buzz_admin, valid_cid
 import actions  # send/add-member/create actions (the server stays thin)
-import auth          # sessions, passwords, TOTP
+import auth          # sessions, cookies, invitations
 import auth_admin    # inviting and the second factor (behind the session)
 import auth_routes   # logging in, setup, using an invite, and the gate
 import read_routes   # the GET routes under /api/ that read data

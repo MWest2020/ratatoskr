@@ -20,6 +20,7 @@ os.environ["BOOMHUIS_AUTH_DB"] = os.path.join(tempfile.mkdtemp(), "auth.db")
 os.environ.pop("BOOMHUIS_APP_TOKEN", None)
 
 import auth      # noqa: E402  — after setting the env
+import auth_factors  # noqa: E402
 import auth_store as store  # noqa: E402
 import buzzcli   # noqa: E402
 import github    # noqa: E402
@@ -71,7 +72,7 @@ class LiveServerCase(unittest.TestCase):
         cls.srv = ThreadingHTTPServer(("127.0.0.1", 0), server.H)
         cls.base = "http://127.0.0.1:%d" % cls.srv.server_address[1]
         threading.Thread(target=cls.srv.serve_forever, daemon=True).start()
-        pid = store.create_person(cls.PERSON, auth.hash_password("een goed wachtwoord"))
+        pid = store.create_person(cls.PERSON, auth_factors.hash_password("een goed wachtwoord"))
         cls.session, cls.csrf = auth.start_session(pid)
 
     @classmethod

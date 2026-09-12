@@ -15,6 +15,7 @@ import json
 import os
 
 import auth
+import auth_factors
 import auth_store as store
 import auth_throttle as throttle
 import settings
@@ -71,8 +72,8 @@ def log_in(h, body):
     p = store.person_by_name(name) if name else None
     # Compute a hash for an unknown name too: otherwise the response time gives
     # away whether the account exists.
-    stored = p["hash"] if p else auth.hash_password("x", n=2 ** 14)
-    good = auth.password_matches(password, stored) and p is not None
+    stored = p["hash"] if p else auth_factors.hash_password("x", n=2 ** 14)
+    good = auth_factors.password_matches(password, stored) and p is not None
 
     if not good:
         for k in keys:
@@ -86,7 +87,7 @@ def log_in(h, body):
             # nothing extra. Do not count a failure: that would make every login
             # with a second factor engage the brake.
             return _json(h, 401, {"error": "code required", "totp": True})
-        ok, counter = auth.totp_matches(p["totp"], code, last=p["totp_laatste"])
+        ok, counter = auth_factors.totp_matches(p["totp"], code, last=p["totp_laatste"])
         if not ok:
             for k in keys:
                 throttle.note_failure(k)
@@ -95,8 +96,8 @@ def log_in(h, body):
 
     for k in keys:
         throttle.clear_attempts(k)
-    if auth.outdated(p["hash"]):
-        store.set_hash(p["id"], auth.hash_password(password))
+    if auth_factors.outdated(p["hash"]):
+        store.set_hash(p["id"], auth_factors.hash_password(password))
     token, csrf = auth.start_session(p["id"])
     return _json(h, 200, {"naam": p["naam"], "csrf": csrf},
                  [("Set-Cookie", auth.cookie_header(token, h.headers.get("Host", "")))])
@@ -113,7 +114,7 @@ def _create_account(h, name, password, owner):
     name = (name or "").strip()
     if len(name) < 2 or len(password or "") < 12:
         return _json(h, 400, {"error": "name at least 2 characters, password at least 12"})
-    pid = store.create_person(name, auth.hash_password(password), owner)
+    pid = store.create_person(name, auth_factors.hash_password(password), owner)
     if pid is None:
         return _json(h, 409, {"error": "that name already exists"})
     token, csrf = auth.start_session(pid)
