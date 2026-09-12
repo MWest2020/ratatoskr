@@ -32,12 +32,11 @@ zelf niets uit — executie is habitat, kennis is handbook.
 
 ## Conventies
 
-- **Code is Engels, proza is Nederlands** — inclusief de commentaren, want die
-  leggen uit *waarom* iets zo is. Zie [ADR-0001](docs/adr/0001-code-in-het-engels.md)
-  voor wat er precies onder "code" valt en wat niet. Bestaande Nederlandse
-  identifiers worden in één aparte change omgezet, niet gaandeweg.
-- **Interfaceteksten zijn standaard Engels**, met Nederlands als optie. Nieuwe
-  teksten meteen Engels; de bestaande gaan in één change naar een taallaag.
+- **Engels in de repo, Nederlands in het gesprek.** Alles wat blijft staan —
+  code, commentaar, docs, commit-teksten, interfaceteksten — is Engels; wat we
+  tegen elkaar zeggen is Nederlands. Zie
+  [ADR-0001](docs/adr/0001-code-in-het-engels.md). Nieuw werk meteen Engels; het
+  bestaande Nederlands gaat in één aparte change om, niet gaandeweg.
 - Python via `uv`, nooit `pip`. Bare scripts, geen ceremonie.
 - **Bestanden ≤ 200 regels**, gehandhaafd door `scripts/line_limit.py` (in
   `verify.sh` en in CI). Scope: `.py .js .sh .css .html` en `Dockerfile`.

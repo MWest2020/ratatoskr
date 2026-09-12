@@ -4,7 +4,7 @@ datum: 2026-09-11
 beslisser: Mark
 ---
 
-# ADR-0001 — Code in het Engels, proza in het Nederlands
+# ADR-0001 — Engels in de repo, Nederlands in het gesprek
 
 ## Context
 
@@ -37,14 +37,16 @@ Engels: bestandsnamen, modulenamen, functie- en variabelenamen, klassen,
 constanten, CLI-subcommando's, veldnamen in YAML/JSON die code leest, en
 testnamen.
 
-Nederlands: documentatie, `design.md`/`proposal.md`, README's, commit-teksten,
-PR-beschrijvingen, chatberichten, en de **commentaren in de code**.
+**Tweede herziening (2026-09-12).** De eerste versie hield documentatie,
+commit-teksten en commentaar in het Nederlands, met als redenering dat Mark ze
+in het Nederlands schrijft en leest. Dat bleek de verkeerde afleiding. Mark:
+*"default is engels. ik praat alleen nederlands met jou."*
 
-Die laatste is bewust. Het commentaar in deze repo legt uit *waarom* iets zo is
-— welke storing eronder zat, welk alternatief is verworpen, welke meting het
-besluit droeg. Dat is proza, het is het waardevolste wat er staat, en Mark
-schrijft en leest het in het Nederlands. Een codebase met Engelse namen en
-Nederlandse uitleg is normaal in Nederland; het omgekeerde is dat niet.
+Dus: **Engels is de standaard voor alles wat in de repo geschreven staat** —
+code, commentaar, documentatie, `design.md`, README's, commit-teksten,
+PR-beschrijvingen. Nederlands is de taal van het *gesprek*, niet van de
+artefacten. Dat onderscheid is het hele punt: wat blijft staan wordt door
+anderen gelezen, wat we tegen elkaar zeggen niet.
 
 Strings die een **gebruiker** ziet zijn **standaard Engels**, met Nederlands als
 optie. Dat is een herziening: de eerste versie van deze ADR zette de interface op
@@ -61,6 +63,9 @@ slechter dan niet omgezet.
 ## Gevolgen
 
 - **Nieuwe en gewijzigde code volgt de regel meteen.**
+- **Nieuwe repo's beginnen meteen in het Engels.** Draupnir (twee dagen oud) is
+  op 2026-09-12 volledig omgezet; dat kostte een half uur en over een maand had
+  het een dag gekost.
 - **Bestaande code wordt in één aparte, mechanische change omgezet**, niet
   gaandeweg. Half omgezet is slechter dan niet omgezet: dan moet je bij elke
   naam raden in welke taal hij staat. Die change raakt `chat/`, `agents/`,
@@ -74,11 +79,11 @@ slechter dan niet omgezet.
 
 ## Verworpen alternatieven
 
-- **Alles Engels, ook commentaar en docs.** Consistent, en het is wat de meeste
-  open source doet. Verworpen: het commentaar is hier uitleg voor Mark, geschreven
-  op het moment dat de meting vers is. Dat in een tweede taal opschrijven maakt
-  het korter en armer, en armoede in de uitleg is precies wat deze repo niet
-  wil.
+- **Commentaar en docs in het Nederlands** (de eerste versie van deze ADR).
+  Verworpen na een dag: het argument was "Mark leest het in het Nederlands",
+  maar Mark leest Engels net zo goed en de artefacten zijn voor iedereen ná ons.
+  De vrees dat uitleg in een tweede taal armer wordt, blijft staan als
+  aandachtspunt — niet als reden om het niet te doen.
 - **Alles Nederlands, zoals het gegroeid was.** Intern verdedigbaar zolang één
   persoon het leest. Onhoudbaar zodra er een derde installeert of meebouwt, en
   dat is expliciet de richting.
