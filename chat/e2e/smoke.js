@@ -79,13 +79,30 @@ const t = (naam, cond, extra = '') => {
   // Four columns, even when they are empty: an empty column should be visibly
   // empty, not absent.
   t('vier kolommen', board.columns === 4, `${board.columns} kolommen: ${board.text}`);
-  // A board full of cards you cannot click is a picture.
-  const clickable = await p.evaluate(() => ({
-    cards: document.querySelectorAll('.bcard').length,
-    linked: document.querySelectorAll('.bcard.blink').length,
-  }));
-  t('kaarten linken door', clickable.cards === 0 || clickable.linked > 0,
-    `${clickable.linked}/${clickable.cards} klikbaar`);
+  // A board full of cards you cannot click is a picture. The previous version of
+  // this check passed on ZERO cards, so an empty board counted as green — which
+  // is exactly the failure Mark found while this suite reported 9/9.
+  const brd = await p.evaluate(() => {
+    const card = (el) => ({
+      via: ((el.querySelector('.bvia') || {}).textContent || '').trim(),
+      clickable: el.classList.contains('blink'),
+    });
+    return {
+      cards: [...document.querySelectorAll('.bcard')].map(card),
+      heads: [...document.querySelectorAll('.bcol')].map((c) => ({
+        title: ((c.querySelector('.bcoltitle') || {}).textContent || '').trim(),
+        says: parseInt((c.querySelector('.bcount') || {}).textContent || '0', 10),
+        shows: c.querySelectorAll('.bcard').length,
+      })),
+    };
+  });
+  t('bord is niet leeg', brd.cards.length > 0, `${brd.cards.length} kaarten`);
+  t('elke kaart is klikbaar', brd.cards.every((c) => c.clickable),
+    `${brd.cards.filter((c) => !c.clickable).length} zonder doel`);
+  t('elke kaart zegt hoe hij gebouwd wordt', brd.cards.every((c) => c.via));
+  // A header that says 3 while showing 1 card is worse than no header.
+  const off = brd.heads.filter((h) => h.says !== h.shows);
+  t('kolomtelling klopt met wat er staat', off.length === 0, JSON.stringify(off));
   await p.click('#boardClose');
   await p.waitForTimeout(500);
 
