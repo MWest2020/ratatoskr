@@ -33,6 +33,10 @@ sources:
   # running session visible while it builds.
   pr_cache: /tmp/board-prs.json
   pr_cache_seconds: 600
+  # Een runbestand dat zo lang niet meer groeide en geen resultaat heeft, hoort
+  # bij een proces dat weg is. Ruim boven de langste stilte die een werkende
+  # sessie kan hebben (denken tussen twee tool-aanroepen).
+  session_stale_seconds: 300
   # How many days back "merged" is still shown.
   merged_days: 3
   # Repos that do not belong on the board. Not every open thing is work, and not

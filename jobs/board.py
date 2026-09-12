@@ -72,7 +72,8 @@ def build(cfg, now=None):
     cards += pr
     errors += pr_errors
     try:
-        cards += board_sources.session_cards(src["session_runs"], now)
+        cards += board_sources.session_cards(
+            src["session_runs"], now, src.get("session_stale_seconds", 300))
     except Exception as e:
         errors.append(f"work sessions not read: {e}")
     for c in cards:
