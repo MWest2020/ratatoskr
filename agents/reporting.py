@@ -5,7 +5,8 @@ Separate from listener.py so that file stays under the ≤200-line convention.
 `send` comes in as a callable (the listener owns the buzz environment and the
 keys); this file knows only the format and the policy.
 
-The reported TEXT stays Dutch: it lands in the Dutch channels.
+The reported TEXT is English (ADR-0001): it is the repo's own status text, not
+a conversation with Mark.
 """
 import time
 
@@ -59,7 +60,7 @@ def report_run(send, channels, handle, cname, cfg, r):
             # enforced. Showing only "what ran" hides exactly that.
             model = actual if not requested else (
                 f"{requested}→{actual}" + ("" if providers.model_matches(requested, actual)
-                                            else "  ⚠ WIJKT AF"))
+                                            else "  ⚠ DIFFERS"))
             line = (f"{handle} · #{cname} · {model} · "
                     f"{r.get('turns', 0)} turns · ${r.get('cost', 0.0):.2f}")
             send(stats, line, cfg["nsec"], cfg["npub"])
@@ -82,18 +83,19 @@ def report_run(send, channels, handle, cname, cfg, r):
         # even on a timeout — and then the report points at a button that fixes
         # nothing.
         if denials or limit:
-            advice = ("beslissen: rol verruimen in de handbook-def "
-                      f"({', '.join(tools) if tools else 'de gemelde tool'}), of laten staan.")
+            advice = ("decide: widen the role in the handbook def "
+                      f"({', '.join(tools) if tools else 'the reported tool'}), or leave it.")
         elif err == "timeout":
-            advice = (f"beslissen: de vraag was te groot voor één beurt "
-                      f"({providers.MAX_TURN_S}s). Opknippen, of als dit vaker gebeurt "
-                      f"het zware werk als habitat-run doen — dat heeft 30 minuten.")
+            advice = (f"decide: the question was too big for one turn "
+                      f"({providers.MAX_TURN_S}s). Split it up, or if this keeps "
+                      f"happening do the heavy work as a habitat run instead — that has "
+                      f"30 minutes.")
         else:
-            advice = "beslissen: storing bekijken in het listener-log; geen rolkwestie."
-        msg = (f"limitatie · {handle} in #{cname} · model {r.get('model') or '?'}\n"
-               + (f"zelf gemeld: {limit}\n" if limit else "")
-               + (f"geweigerd: {', '.join(tools)} ({len(denials)}x)\n" if denials else "")
-               + (f"storing: {err}\n" if err else "")
+            advice = "decide: check the listener log; not a role issue."
+        msg = (f"limitation · {handle} in #{cname} · model {r.get('model') or '?'}\n"
+               + (f"self-reported: {limit}\n" if limit else "")
+               + (f"denied: {', '.join(tools)} ({len(denials)}x)\n" if denials else "")
+               + (f"error: {err}\n" if err else "")
                + advice)
         send(esc, msg, cfg["nsec"], cfg["npub"])
     except Exception as e:
