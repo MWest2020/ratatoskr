@@ -86,8 +86,9 @@
       `auth_routes.py`, `adminctl.py` en de cookie-, CSRF- en
       `X-Forwarded-For`-afhandeling in `server.py`. Alleen findings met
       reproduceerbaar pad.
-- [ ] 4.2 Verdict als baton in `handover/`; High en Medium gefixt en nagemeten.
-- [ ] 4.3 `chat/auth.py` splitsen; de baseline is leeg.
+- [x] 4.2a Verdict als baton: `handover/2026-09-12-security-review-auth.md`.
+- [ ] 4.2b High en Medium gefixt en nagemeten.
+- [x] 4.3 `chat/auth.py` gesplitst (PR #106); de baseline is leeg.
 
 ## 5. Poort en afronding
 
