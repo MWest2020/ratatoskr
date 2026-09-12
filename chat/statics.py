@@ -23,6 +23,7 @@ APK_NAAM = "ratatoskr.apk"
 
 BESTANDEN = {
     "/app.css": ("app.css", "text/css"),
+    "/board.css": ("board.css", "text/css"),
     "/app.js": ("app.js", "text/javascript"),
     "/app-cache.js": ("app-cache.js", "text/javascript"),
     "/app-verbinding.js": ("app-verbinding.js", "text/javascript"),
