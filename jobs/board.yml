@@ -28,6 +28,11 @@ sources:
   github_owner: MWest2020
   # Runbestanden van werksessies (zie agents/sessies.py).
   session_runs: /tmp/boomhuis-sessies
+  # PR's komen van GitHub en veranderen traag; sessies veranderen elke minuut.
+  # Door de PR-kant te cachen kan de momentopname elke twee minuten draaien —
+  # en dát is wat een lopende sessie zichtbaar maakt terwijl hij bouwt.
+  pr_cache: /tmp/board-prs.json
+  pr_cache_seconds: 600
   # Hoeveel dagen terug "gemerged" nog getoond wordt.
   merged_days: 3
   # Repo's die niet op het bord horen. Niet elk open ding is werk, en niet elk

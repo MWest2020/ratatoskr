@@ -15,8 +15,10 @@ Open het met de knop **📋 Board** in de kop.
 Bovenaan staat of er iets vastzit. Zo niet, dan staat dat er ook — "Nothing is
 stuck" is een uitkomst, geen lege pagina.
 
-Elke kaart draagt de repo, een titel, wie eraan werkt en **hoe lang hij al in die
-kolom staat**. Dat laatste is het punt. Dat er twaalf dingen open staan wist je;
+Elke kaart draagt de repo, een titel, wie eraan werkt, **hoe hij gebouwd wordt**
+(`session`, `session (schrijft)`, `pull request`, `openspec`) en **hoe lang hij
+al in die kolom staat**. Een lopende werksessie toont er bovendien bij waar hij
+op dít moment mee bezig is — de laatste tool-aanroep uit zijn runbestand. Dat laatste is het punt. Dat er twaalf dingen open staan wist je;
 dat PR #71 al drie dagen op review wacht terwijl de rest doorstroomt, niet. Staat
 een kaart langer dan de drempel van zijn kolom, dan kleurt hij op.
 
@@ -37,6 +39,14 @@ Drempels en bronnen staan in [`jobs/board.yml`](../../jobs/board.yml). Hoe lang
 "te lang" is, is een oordeel dat verandert — dat hoort niet in code.
 
 ## Hoe het gemaakt wordt
+
+Zolang het bord openstaat haalt de app elke 30 seconden een verse momentopname,
+en de producent draait elke twee minuten. Je ziet een sessie dus echt vooruitgaan
+terwijl hij bouwt.
+
+Dat kan omdat de twee bronnen los staan: sessies liggen lokaal en zijn gratis te
+lezen, PR's komen van GitHub en worden tien minuten gecachet. Lukt het verversen
+van die cache niet, dan gebruikt het bord de oude — en zegt erbij dát hij oud is.
 
 Eén producent, buiten de chat:
 
