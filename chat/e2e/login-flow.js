@@ -39,13 +39,13 @@ const t=(n,c,x='')=>{ if(c){ok++;console.log('  ok   '+n);} else {fail++;console
     [...document.querySelectorAll('.field')].filter(v => v.offsetParent !== null)
       .map(v => v.querySelector('span').textContent));
   t('alleen naam en wachtwoord op het inlogscherm',
-    JSON.stringify(visible) === JSON.stringify(['Naam','Wachtwoord']),
+    JSON.stringify(visible) === JSON.stringify(['Name','Password']),
     JSON.stringify(visible));
 
   console.log('— eerste account via de setup-link');
   await p.goto(URL_+'/login?setup='+SETUP, {waitUntil:'load', timeout:45000});
   await p.waitForTimeout(1500);
-  t('setup-scherm', (await p.locator('#title').textContent()).includes('Eerste account'));
+  t('setup-scherm', (await p.locator('#title').textContent()).includes('First account'));
   await p.fill('#name','testeigenaar'); await p.fill('#password', WW);
   await p.click('#submit');
   await p.waitForTimeout(6000);

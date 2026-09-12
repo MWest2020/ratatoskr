@@ -12,7 +12,9 @@
 
 const SNAPSHOT_PREFIX = "bh_snap_";
 // Without a channel list (which comes from the API) the app does not know
-// offline which channel was open. Hence this separate pointer.
+// offline which channel was open. Hence this separate pointer. The KEY stays
+// Dutch: it is in the localStorage of every installed app, and renaming it would
+// leave a stale copy behind that clearSnapshots() no longer removes.
 const LAST_CHANNEL = "bh_laatste_kanaal";
 const MAX_MESSAGES = 50;   // enough to pick up the thread, small enough for localStorage
 const MAX_CHANNELS = 12;
@@ -75,9 +77,9 @@ function showSnapshot(cid){
   if(!box) return true;
   const bar = document.createElement("div");
   bar.className = "dated";
-  const time = new Date(snap.ts).toLocaleString("nl-NL",
+  const time = new Date(snap.ts).toLocaleString("en-GB",
     { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
-  bar.textContent = "offline — laatst bijgewerkt " + time;
+  bar.textContent = "offline — last updated " + time;
   box.insertBefore(bar, box.firstChild);
   return true;
 }

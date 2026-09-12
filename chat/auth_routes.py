@@ -5,7 +5,7 @@
 session, and `gate()` for everything else under /api/.
 
 Answers are deliberately stingy. An unknown name and a wrong password give the
-same thing: "inloggen mislukt". Whoever wants to know whether a name exists does
+same thing: "sign-in failed". Whoever wants to know whether a name exists does
 not find out here.
 
 The paths and the JSON field names stay Dutch: that is the contract with the PWA
@@ -19,7 +19,7 @@ import auth_store as store
 import auth_throttle as throttle
 import settings
 
-FAILED = {"error": "inloggen mislukt"}
+FAILED = {"error": "sign-in failed"}
 
 # Paths that must work without a session — otherwise you can never log in.
 OPEN = ("/api/login", "/api/setup", "/api/uitnodiging/gebruik", "/api/status")
@@ -54,7 +54,7 @@ def status(h):
 def session_info(h):
     s = auth.session_from_cookie(h.headers)
     if s is None:
-        return _json(h, 401, {"error": "geen sessie"})
+        return _json(h, 401, {"error": "no session"})
     p = store.person(s["persoon"])
     return _json(h, 200, {"naam": p["naam"], "eigenaar": bool(p["eigenaar"]),
                           "csrf": s["csrf"], "totp": bool(p["totp"])})
@@ -66,7 +66,7 @@ def log_in(h, body):
     keys = ["naam:" + name.lower(), "bron:" + _source(h)]
     wait = max(throttle.blocked_for(k) for k in keys)
     if wait:
-        return _json(h, 429, {"error": "te veel pogingen", "wacht": wait})
+        return _json(h, 429, {"error": "too many attempts", "wacht": wait})
 
     p = store.person_by_name(name) if name else None
     # Compute a hash for an unknown name too: otherwise the response time gives
@@ -85,12 +85,12 @@ def log_in(h, body):
             # Name and password were right; the app asking for a code now leaks
             # nothing extra. Do not count a failure: that would make every login
             # with a second factor engage the brake.
-            return _json(h, 401, {"error": "code nodig", "totp": True})
+            return _json(h, 401, {"error": "code required", "totp": True})
         ok, counter = auth.totp_matches(p["totp"], code, last=p["totp_laatste"])
         if not ok:
             for k in keys:
                 throttle.note_failure(k)
-            return _json(h, 401, {"error": "inloggen mislukt", "totp": True})
+            return _json(h, 401, {"error": "sign-in failed", "totp": True})
         store.set_totp_counter(p["id"], counter)
 
     for k in keys:
@@ -112,10 +112,10 @@ def log_out(h, body):
 def _create_account(h, name, password, owner):
     name = (name or "").strip()
     if len(name) < 2 or len(password or "") < 12:
-        return _json(h, 400, {"error": "naam minstens 2 tekens, wachtwoord minstens 12"})
+        return _json(h, 400, {"error": "name at least 2 characters, password at least 12"})
     pid = store.create_person(name, auth.hash_password(password), owner)
     if pid is None:
-        return _json(h, 409, {"error": "die naam bestaat al"})
+        return _json(h, 409, {"error": "that name already exists"})
     token, csrf = auth.start_session(pid)
     return _json(h, 201, {"naam": name, "csrf": csrf},
                  [("Set-Cookie", auth.cookie_header(token, h.headers.get("Host", "")))])
@@ -124,13 +124,13 @@ def _create_account(h, name, password, owner):
 def setup(h, body):
     """The first person. Only as long as there is nobody."""
     if store.person_count() > 0:
-        return _json(h, 403, {"error": "er is al een account"})
+        return _json(h, 403, {"error": "there is already an account"})
     token = body.get("token") or ""
     # Two keys fit: the printed setup link, and once the old shared write token
     # of an existing installation.
     if not (auth.invite_valid(token, "setup") or auth.setup_token_valid(token)):
         throttle.note_failure("bron:" + _source(h))
-        return _json(h, 403, {"error": "ongeldige of verlopen setup-link"})
+        return _json(h, 403, {"error": "invalid or expired setup link"})
     answer = _create_account(h, body.get("naam"), body.get("wachtwoord"), owner=True)
     auth.use_invite(token)               # single-use, also for the old token
     store.revoke_invites("setup")
@@ -141,9 +141,9 @@ def use_invite(h, body):
     token = body.get("token") or ""
     if not auth.invite_valid(token, "uitnodiging"):
         throttle.note_failure("bron:" + _source(h))
-        return _json(h, 403, {"error": "ongeldige of verlopen uitnodiging"})
+        return _json(h, 403, {"error": "invalid or expired invitation"})
     if not auth.use_invite(token):        # mark first: single-use, even in a race
-        return _json(h, 403, {"error": "ongeldige of verlopen uitnodiging"})
+        return _json(h, 403, {"error": "invalid or expired invitation"})
     return _create_account(h, body.get("naam"), body.get("wachtwoord"), owner=False)
 
 
@@ -165,10 +165,10 @@ def gate(h, path, writes):
     already been sent."""
     s = auth.session_from_cookie(h.headers)
     if s is None:
-        _json(h, 401, {"error": "inloggen vereist"})
+        _json(h, 401, {"error": "sign-in required"})
         return None
     if writes and not auth.csrf_matches(h.headers, s):
-        _json(h, 403, {"error": "ontbrekend of ongeldig sessietoken"})
+        _json(h, 403, {"error": "missing or invalid session token"})
         return None
     return s
 
@@ -184,8 +184,8 @@ def print_setup_link_at_start():
     store.revoke_invites("setup")
     token = auth.new_invite("setup")
     base = settings.read("URL").rstrip("/")
-    print("[chat] nog geen account. Maak de eigenaar aan via:", flush=True)
-    print("[chat]   {}/login?setup={}".format(base or "<jouw boomhuis-url>", token),
+    print("[chat] no account yet. Create the owner through:", flush=True)
+    print("[chat]   {}/login?setup={}".format(base or "<your boomhuis url>", token),
           flush=True)
     if settings.read("APP_TOKEN").strip():
-        print("[chat]   (of eenmalig met het oude APP_TOKEN)", flush=True)
+        print("[chat]   (or once with the old APP_TOKEN)", flush=True)

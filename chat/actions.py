@@ -30,10 +30,10 @@ def _a_member_of(cid):
 def add_agent(cid, name):
     """Add an agent (name→pubkey from the registry) as a bot."""
     if not valid_cid(cid):
-        return 400, {"error": "onbekend kanaal"}
+        return 400, {"error": "unknown channel"}
     pk = roster.agent_pubkey(name)
     if not pk:
-        return 404, {"error": f"'{name}' is geen agent (sessies/mark voeg je niet zo toe)"}
+        return 404, {"error": f"'{name}' is not an agent (sessions and mark are not added this way)"}
     rc, out, err = buzz_admin(["channels", "add-member", "--channel", cid,
                                "--pubkey", pk, "--role", "bot"])
     if rc is None:
@@ -50,10 +50,10 @@ def send(cid, content, force=False):
     genuinely existing channel member (`_a_member_of`) as the anchor mention so
     ALL @words become presentation-only — for @here, a pasted handle, and so on."""
     if not valid_cid(cid):
-        return 400, {"error": "onbekend kanaal"}
+        return 400, {"error": "unknown channel"}
     content = (content or "").strip()
     if not content:
-        return 400, {"error": "leeg bericht"}
+        return 400, {"error": "empty message"}
     args = ["messages", "send", "--channel", cid, "--content", "-"]
     if force:
         anchor = _a_member_of(cid)
@@ -104,7 +104,7 @@ def create_channel(name):
     the add fails the channel still exists; `hub_added` says so)."""
     name = (name or "").strip().lower()
     if not _NAME_RE.match(name):
-        return 400, {"error": "naam: a-z 0-9 _ - (max 31)"}
+        return 400, {"error": "name: a-z 0-9 _ - (max 31)"}
     rc, out, err = buzz_admin(["channels", "create", "--name", name,
                                "--type", "stream", "--visibility", "open"])
     if rc is None:

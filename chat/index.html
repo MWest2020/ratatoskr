@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="nl">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
@@ -22,32 +22,32 @@
     <button id="boardBtn">📋 Board</button>
     <button id="reposBtn">📦 Repos</button>
     <button id="agentsBtn">🤖 Agents</button>
-    <button id="switch">Kanalen</button>
+    <button id="switch">Channels</button>
   </header>
 
   <div id="drawer"><div class="sheet">
-    <div class="title">Ratatoskr · kanalen</div>
+    <div class="title">Ratatoskr · channels</div>
     <div id="chanList"></div>
     <form id="newChan" class="newchan">
-      <input id="newChanName" placeholder="nieuw kanaal…" autocomplete="off"
+      <input id="newChanName" placeholder="new channel…" autocomplete="off"
              maxlength="31" pattern="[a-z0-9][a-z0-9_-]*">
       <button type="submit">+</button>
     </form>
     <div class="drawerfoot">
       <span id="whoAmI" class="agenthint"></span>
-      <button id="inviteBtn" type="button" hidden>Iemand uitnodigen</button>
-      <button id="passwordBtn" type="button">Wachtwoord</button>
-      <button id="logoutBtn" type="button">Uitloggen</button>
+      <button id="inviteBtn" type="button" hidden>Invite someone</button>
+      <button id="passwordBtn" type="button">Password</button>
+      <button id="logoutBtn" type="button">Sign out</button>
     </div>
   </div></div>
 
   <div id="agentsDrawer"><div class="sheet">
-    <div class="title">Wie zit waar</div>
-    <div class="tabs"><button id="tabAgents" class="tab on">per agent</button><button id="tabChannels" class="tab">per kanaal</button></div>
+    <div class="title">Who is where</div>
+    <div class="tabs"><button id="tabAgents" class="tab on">per agent</button><button id="tabChannels" class="tab">per channel</button></div>
     <div id="agentList"></div>
     <div id="channelMembers" hidden></div>
-    <div class="agenthint">Noem een agent met <b>@naam</b> in een kanaal om te praten.
-      "Per kanaal" toont wie er echt in een kanaal zit (agents én sessies).</div>
+    <div class="agenthint">Mention an agent with <b>@name</b> in a channel to talk to it.
+      "Per channel" shows who is really in a channel (agents and sessions).</div>
   </div></div>
 
   <div id="boardDrawer"><div class="sheet">
@@ -56,16 +56,16 @@
   </div></div>
 
   <div id="reposDrawer"><div class="sheet">
-    <div class="dhead"><span class="title" id="repoTitle">Repo's · GitHub</span><button class="dclose" id="reposClose" title="sluiten">✕</button></div>
-    <div id="repoView"><div class="agenthint">laden…</div></div>
+    <div class="dhead"><span class="title" id="repoTitle">Repos · GitHub</span><button class="dclose" id="reposClose" title="close">✕</button></div>
+    <div id="repoView"><div class="agenthint">loading…</div></div>
   </div></div>
 
   <div id="pinned" hidden></div>
 
-  <div id="msgs"><div class="empty">laden…</div></div>
+  <div id="msgs"><div class="empty">loading…</div></div>
 
   <form id="composer">
-    <textarea id="input" rows="1" placeholder="Bericht aan het kanaal…" autocomplete="off"></textarea>
+    <textarea id="input" rows="1" placeholder="Message to the channel…" autocomplete="off"></textarea>
     <button type="submit" id="send">➤</button>
   </form>
 

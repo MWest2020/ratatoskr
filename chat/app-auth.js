@@ -74,16 +74,16 @@ async function logOut(everywhere){
 // Who are you, and may you invite — the owner may, the rest may not.
 function showWhoYouAre(session){
   const who = $("#whoAmI");
-  if(who && session && session.naam) who.textContent = "ingelogd als " + session.naam;
+  if(who && session && session.naam) who.textContent = "signed in as " + session.naam;
   const invite = $("#inviteBtn");
   if(invite && session && session.eigenaar){
     invite.hidden = false;
     invite.onclick = async () => {
       const r = await postJSON("/api/uitnodiging", {});
       const d = await r.json().catch(() => ({}));
-      if(!r.ok || !d.pad){ toast(d.error || "uitnodigen mislukte"); return; }
+      if(!r.ok || !d.pad){ toast(d.error || "inviting failed"); return; }
       const link = location.origin + d.pad;
-      try{ await navigator.clipboard.writeText(link); toast("uitnodiging gekopieerd"); }
+      try{ await navigator.clipboard.writeText(link); toast("invitation copied"); }
       catch(e){ toast(link); }   // no clipboard: then just show it
     };
   }
@@ -99,13 +99,13 @@ function changePassword(){
   const ov = el("div", "modal-ov");
   const box = el("div", "modal");
   const current = el("input", "modal-in"); current.type = "password";
-  current.placeholder = "huidig wachtwoord"; current.autocomplete = "current-password";
+  current.placeholder = "current password"; current.autocomplete = "current-password";
   const fresh = el("input", "modal-in"); fresh.type = "password";
-  fresh.placeholder = "nieuw wachtwoord (min. 12 tekens)";
+  fresh.placeholder = "new password (min. 12 characters)";
   fresh.autocomplete = "new-password";
   const row = el("div", "modal-row");
-  const ok = el("button", "modal-add", "Wijzigen");
-  const cancel = el("button", "modal-cancel", "Annuleren");
+  const ok = el("button", "modal-add", "Change");
+  const cancel = el("button", "modal-cancel", "Cancel");
   const close = () => ov.remove();
   cancel.onclick = close;
   ov.onclick = (e) => { if(e.target === ov) close(); };
@@ -115,15 +115,15 @@ function changePassword(){
       { huidig: current.value, nieuw: fresh.value });
     const d = await r.json().catch(() => ({}));
     ok.disabled = false;
-    if(!r.ok){ toast(d.error || "wijzigen mislukte"); return; }
+    if(!r.ok){ toast(d.error || "the change failed"); return; }
     // The server gave a new session; it is already in the cookie, the token here.
     if(d.csrf) csrfToken = d.csrf;
     close();
-    toast("wachtwoord gewijzigd — andere apparaten zijn uitgelogd");
+    toast("password changed — other devices have been signed out");
   };
   add(row, ok, cancel);
-  add(box, el("div", "modal-t", "Wachtwoord wijzigen"),
-      el("div", "modal-sub", "Alle andere apparaten worden uitgelogd."),
+  add(box, el("div", "modal-t", "Change password"),
+      el("div", "modal-sub", "All other devices will be signed out."),
       current, fresh, row);
   add(ov, box);
   document.body.append(ov);

@@ -82,7 +82,7 @@ const t=(naam,cond,extra='')=>{ if(cond){ok++;console.log(`  ok   ${naam}`);} el
   // that the app KNOWS who you are and that the way out is visible.
   await p.click('#switch'); await p.waitForTimeout(800);
   t('de lade noemt wie je bent',
-    /ingelogd als/i.test(await p.locator('#whoAmI').textContent().catch(()=>'')),
+    /signed in as/i.test(await p.locator('#whoAmI').textContent().catch(()=>'')),
     await p.locator('#whoAmI').textContent().catch(()=>'(leeg)'));
   t('uitlogknop staat er', (await p.locator('#logoutBtn').count())>0);
 

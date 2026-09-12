@@ -62,13 +62,13 @@ async function loadChannels(){
     row.onclick=()=>{ selectChannel(c); closeDrawer(); };
     if(c.name!=="general"){
       const del=document.createElement("button");
-      del.className="del"; del.textContent="🗑"; del.title="verwijder #"+c.name;
+      del.className="del"; del.textContent="🗑"; del.title="delete #"+c.name;
       del.onclick=async(e)=>{ e.stopPropagation();
-        if(!confirm("Kanaal #"+c.name+" verwijderen?")) return;
+        if(!confirm("Delete channel #"+c.name+"?")) return;
         const r=await postJSON("/api/channels/delete",{channel:c.id});
         const j=await r.json().catch(()=>({}));
-        if(!r.ok||j.error){ toast(j.error||"verwijderen mislukt"); return; }
-        if(current&&current.id===c.id){ current=null; $("#msgs").innerHTML='<div class="empty">kies een kanaal</div>'; }
+        if(!r.ok||j.error){ toast(j.error||"delete failed"); return; }
+        if(current&&current.id===c.id){ current=null; $("#msgs").innerHTML='<div class="empty">pick a channel</div>'; }
         await loadChannels();
       };
       row.appendChild(del);
@@ -87,8 +87,8 @@ async function loadChannels(){
 async function createChannel(name){
   const r=await postJSON("/api/channels/create",{name});
   const j=await r.json().catch(()=>({}));
-  if(!r.ok||j.error){ toast(j.error||"aanmaken mislukt"); return false; }
-  if(j.coordinator_added===false) toast("kanaal aangemaakt — coordinator toevoegen mislukte");
+  if(!r.ok||j.error){ toast(j.error||"creating failed"); return false; }
+  if(j.coordinator_added===false) toast("channel created — adding the coordinator failed");
   await loadChannels();
   const c=channels.find(x=>x.name===name); if(c) selectChannel(c);
   return true;
@@ -103,12 +103,12 @@ function selectChannel(c){
   // can link here.
   if(decodeURIComponent(location.hash.slice(1))!==c.name)
     history.replaceState(null,"","#"+encodeURIComponent(c.name));
-  $("#msgs").innerHTML='<div class="empty">laden…</div>';
+  $("#msgs").innerHTML='<div class="empty">loading…</div>';
   loadPinned(c.name);
   refresh(true);
 }
 const fmtTime = ts => { const d=new Date(ts*1000);
-  return d.toLocaleString("nl-NL",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}); };
+  return d.toLocaleString("en-GB",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}); };
 
 async function refresh(force){
   if(!current) return;
@@ -134,7 +134,7 @@ async function refresh(force){
 function renderMessages(msgs, force){
   const box=$("#msgs");
   const near = box.scrollHeight - box.scrollTop - box.clientHeight < 120;
-  if(msgs.length===0){ box.innerHTML='<div class="empty">Nog geen berichten — begin het gesprek.</div>'; return; }
+  if(msgs.length===0){ box.innerHTML='<div class="empty">No messages yet — start the conversation.</div>'; return; }
   box.innerHTML="";
   for(const m of msgs){
     const row=document.createElement("div");
@@ -157,23 +157,23 @@ async function _postSend(text, cid, force, added){
   let r;
   try {
     r = await postJSON("/api/send",{channel:cid, content:text, force:force});
-  } catch(e){ toast("netwerkfout — bericht niet verstuurd"); return false; }
+  } catch(e){ toast("network error — message not sent"); return false; }
   const j = await r.json().catch(()=>({}));
   if(r.ok && !j.error) return true;
   // 401 separately: that is not an outage but a missing device token, and that
   // confusion was exactly the problem.
-  if(r.status===401){ toast("schrijf-token nodig — voer 'm in om te kunnen posten"); return false; }
+  if(r.status===401){ toast("sign-in required — sign in to post"); return false; }
   if(j.missing_agent){
     const who=j.missing_agent, tgt=j.channel||cid;
     const tc=(typeof channels!=="undefined")&&channels.find(x=>x.id===tgt);
-    const ch=tc?"#"+tc.name:"dit kanaal";  // right even when the target ≠ open channel
+    const ch=tc?"#"+tc.name:"this channel";  // right even when the target ≠ open channel
     // a 409 AFTER a force = the mention is truly untenable → stop (no second pop-up, no loop).
-    if(force){ toast("@"+who+" kan hier niet — bericht niet verstuurd"); return false; }
+    if(force){ toast("@"+who+" cannot be used here — message not sent"); return false; }
     // A known agent, not yet added → add it, then send again NORMALLY so the
     // relay resolves @who to the fresh member and really triggers it.
     if(j.known && !added.has(who)){
-      const ok = await modalConfirm("@"+who+" zit niet in "+ch+".",
-        "Toevoegen en je bericht versturen?", "Toevoegen");
+      const ok = await modalConfirm("@"+who+" is not in "+ch+".",
+        "Add it and send your message?", "Add");
       if(!ok) return false;
       if(!await addAgent(who, tgt)) return false;   // addAgent shows the server error
       added.add(who);
@@ -184,15 +184,15 @@ async function _postSend(text, cid, force, added){
     if(j.can_force){
       const just=added.has(who);
       const ok = await modalConfirm(
-        "@"+who+(just?" is toegevoegd maar nog niet zichtbaar":" is geen kanaal-lid")+" in "+ch+".",
-        just?"Nu toch als platte tekst versturen?":"Toch versturen? De @-tekst blijft dan gewoon tekst.",
-        "Versturen");
+        "@"+who+(just?" was added but is not visible yet":" is not a channel member")+" in "+ch+".",
+        just?"Send as plain text anyway?":"Send anyway? The @text then stays plain text.",
+        "Send");
       if(ok) return await _postSend(text, tgt, true, added);
       return false;
     }
-    toast("@"+who+" kan hier niet"); return false;
+    toast("@"+who+" cannot be used here"); return false;
   }
-  toast(j.error||"versturen mislukt"); return false;
+  toast(j.error||"sending failed"); return false;
 }
 // modalConfirm and addAgent live in app-modal.js (keeps app.js ≤200 lines).
 

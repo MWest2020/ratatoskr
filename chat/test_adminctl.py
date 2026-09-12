@@ -30,16 +30,16 @@ class Adminctl(unittest.TestCase):
     def test_create_an_owner_and_see_it_back(self):
         code, out = self.run_ctl("owner", "mark", stdin=WW + WW)
         self.assertEqual(code, 0, out)
-        self.assertIn("aangemaakt", out)
+        self.assertIn("created", out)
         _, listing = self.run_ctl("people")
         self.assertIn("mark", listing)
-        self.assertIn("eigenaar", listing)
+        self.assertIn("owner", listing)
 
     def test_a_second_owner_is_refused(self):
         self.run_ctl("owner", "mark", stdin=WW + WW)
         code, out = self.run_ctl("owner", "iemand", stdin=WW + WW)
         self.assertEqual(code, 1)
-        self.assertIn("al een account", out)
+        self.assertIn("already an account", out)
 
     def test_one_line_is_enough_without_a_terminal(self):
         """`docker compose exec -T chat python3 adminctl.py owner mark` has no
@@ -54,12 +54,12 @@ class Adminctl(unittest.TestCase):
         code, out = self.run_ctl("owner", "mark",
                                  stdin=WW + "iets heel anders hier\n")
         self.assertEqual(code, 1)
-        self.assertIn("verschillen", out)
+        self.assertIn("differ", out)
 
     def test_a_short_password_is_refused(self):
         code, out = self.run_ctl("owner", "mark", stdin="kort\nkort\n")
         self.assertEqual(code, 1)
-        self.assertIn("minstens", out)
+        self.assertIn("at least", out)
 
     def test_an_invite_only_after_an_owner(self):
         code, _ = self.run_ctl("invite")
@@ -75,7 +75,7 @@ class Adminctl(unittest.TestCase):
         code, out = self.run_ctl("password", "mark",
                                  stdin="een nieuw lang wachtwoord\n" * 2)
         self.assertEqual(code, 0, out)
-        self.assertIn("sessies zijn ingetrokken", out)
+        self.assertIn("sessions have been revoked", out)
 
     def test_the_last_owner_stays(self):
         """Deleting yourself as the only owner makes the installation
@@ -84,13 +84,13 @@ class Adminctl(unittest.TestCase):
         code, out = self.run_ctl("delete", "mark")
         self.assertEqual(code, 0, out)   # only person: then it is allowed, that is starting over
         _, listing = self.run_ctl("people")
-        self.assertIn("nog niemand", listing)
+        self.assertIn("nobody yet", listing)
 
     def test_deleting_an_unknown_name(self):
         self.run_ctl("owner", "mark", stdin=WW + WW)
         code, out = self.run_ctl("delete", "bestaat-niet")
         self.assertEqual(code, 1)
-        self.assertIn("onbekende naam", out)
+        self.assertIn("unknown name", out)
 
     def test_a_nonsense_command_shows_the_usage(self):
         code, out = self.run_ctl("dansen")

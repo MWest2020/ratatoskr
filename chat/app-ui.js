@@ -17,19 +17,19 @@ async function loadAgents(){
         chips.appendChild(ch);
       }
       el.appendChild(chips);
-    } else { const none=document.createElement("div"); none.className="none"; none.textContent="in geen enkel kanaal"; el.appendChild(none); }
+    } else { const none=document.createElement("div"); none.className="none"; none.textContent="in no channel at all"; el.appendChild(none); }
     wrap.appendChild(el);
   }
 }
 async function loadChannelMembers(){
   const wrap=$("#channelMembers");
   if(wrap.dataset.loaded){ return; }
-  wrap.innerHTML='<div class="agenthint">laden…</div>';
+  wrap.innerHTML='<div class="agenthint">loading…</div>';
   let data; try{ data=await (await fetch("/api/channel-members")).json(); }
-  catch(e){ wrap.innerHTML='<div class="agenthint">kon leden niet laden.</div>'; return; }
+  catch(e){ wrap.innerHTML='<div class="agenthint">could not load members.</div>'; return; }
   wrap.innerHTML="";
   const chans=data.channels||[];
-  if(!chans.length){ wrap.innerHTML='<div class="agenthint">geen kanalen (relay onbereikbaar?).</div>'; return; }
+  if(!chans.length){ wrap.innerHTML='<div class="agenthint">no channels (relay unreachable?).</div>'; return; }
   wrap.dataset.loaded="1";
   // Own classes (krow/kname/kmem): NOT .agent/.nm/.chip, those carry ::before @/#
   // which would turn #netnl into "@#netnl". DOM + textContent = no HTML injection.
@@ -49,7 +49,7 @@ async function loadChannelMembers(){
         chips.appendChild(ch);
       }
       el.appendChild(chips);
-    } else { const none=document.createElement("div"); none.className="knone"; none.textContent="geen leden"; el.appendChild(none); }
+    } else { const none=document.createElement("div"); none.className="knone"; none.textContent="no members"; el.appendChild(none); }
     wrap.appendChild(el);
   }
 }
@@ -66,7 +66,7 @@ function closeRepos(){ $("#reposDrawer").classList.remove("open"); }
 
 async function sendTo(channelName, text){
   const c = channels.find(x=>x.name===channelName);
-  if(!c){ toast("kanaal #"+channelName+" bestaat niet"); return false; }
+  if(!c){ toast("channel #"+channelName+" does not exist"); return false; }
   // through _postSend so this path also gets the mention pop-up and 409 handling
   // (e.g. @reviewer who is not a member of #review yet).
   return await _postSend(text, c.id, false, new Set());
@@ -116,7 +116,7 @@ async function loadPinned(name){
     content=(d.content||"").trim(); }catch(e){ content=""; }
   if(!content){ el.hidden=true; el.innerHTML=""; return; }
   const lines=content.split("\n");
-  let title="Vastgezette context", body=content;
+  let title="Pinned context", body=content;
   if(lines[0] && lines[0].startsWith("#")){
     title=lines[0].replace(/^#+\s*/,"").replace(/^📌\s*/,"");
     body=lines.slice(1).join("\n").replace(/^>.*$/gm,"").trim();
@@ -139,7 +139,7 @@ function channelFromHash(){
 
 // Keeps trying until the channels are in. On a phone the tailnet tunnel comes up
 // later than the app: the service worker then serves the cached shell and the
-// first fetch fails. Without this retry the screen stayed on "laden…" forever
+// first fetch fails. Without this retry the screen stayed on "loading…" forever
 // after that, even once the network was back.
 let channelsIn=false, retry=null;
 async function loadWhatThereIs(){
@@ -191,7 +191,7 @@ let deferredPrompt=null;
 window.addEventListener("beforeinstallprompt", e=>{
   e.preventDefault(); deferredPrompt=e;
   const b=document.createElement("button");
-  b.textContent="Installeer";
+  b.textContent="Install";
   b.style.cssText="margin-left:.4rem;background:var(--accent);color:#15130f;border:0;border-radius:10px;padding:.4rem .7rem;font-size:.85rem;font-weight:700";
   b.onclick=async()=>{ b.remove(); if(!deferredPrompt)return; deferredPrompt.prompt();
     await deferredPrompt.userChoice; deferredPrompt=null; };

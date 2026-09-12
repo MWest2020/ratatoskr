@@ -11,12 +11,12 @@ const back = params.get("terug") || "/";
 const $ = (id) => document.getElementById(id);
 const message = (text) => { $("message").textContent = text; $("message").hidden = !text; };
 
-let mode = "inloggen";
-if (invite) mode = "uitnodiging";
+let mode = "signin";
+if (invite) mode = "invite";
 else if (setupToken) mode = "setup";
 
 async function determineMode(){
-  if (mode !== "inloggen") return;
+  if (mode !== "signin") return;
   // A fresh installation without a setup link in the URL: then the only sensible
   // screen is "create the owner", with the old shared token as the key.
   try{
@@ -28,16 +28,16 @@ async function determineMode(){
 
 function render(){
   const titles = {
-    inloggen: ["Inloggen", "Ratatoskr is alleen voor mensen met een account."],
-    setup: ["Eerste account", "Dit boomhuis heeft nog niemand. Maak de eigenaar aan."],
-    uitnodiging: ["Welkom", "Kies een naam en een wachtwoord van minstens 12 tekens."],
+    signin: ["Sign in", "Ratatoskr is only for people with an account."],
+    setup: ["First account", "This boomhuis has nobody yet. Create the owner."],
+    invite: ["Welcome", "Pick a name and a password of at least 12 characters."],
   };
   const [t, u] = titles[mode];
   $("title").textContent = t;
   $("intro").textContent = u;
-  $("submit").textContent = mode === "inloggen" ? "Inloggen" : "Account maken";
-  $("name").autocomplete = mode === "inloggen" ? "username" : "off";
-  $("password").autocomplete = mode === "inloggen" ? "current-password" : "new-password";
+  $("submit").textContent = mode === "signin" ? "Sign in" : "Create account";
+  $("name").autocomplete = mode === "signin" ? "username" : "off";
+  $("password").autocomplete = mode === "signin" ? "current-password" : "new-password";
 }
 
 async function submit(e){
@@ -47,7 +47,7 @@ async function submit(e){
   const body = { naam: $("name").value, wachtwoord: $("password").value };
   let path = "/api/login";
   if (mode === "setup"){ path = "/api/setup"; body.token = setupToken || $("token").value; }
-  if (mode === "uitnodiging"){ path = "/api/uitnodiging/gebruik"; body.token = invite; }
+  if (mode === "invite"){ path = "/api/uitnodiging/gebruik"; body.token = invite; }
   if (!$("codeField").hidden) body.code = $("code").value;
 
   try{
@@ -63,14 +63,14 @@ async function submit(e){
       // appears here, so anyone without a second factor never sees one.
       $("codeField").hidden = false;
       $("code").focus();
-      message(d.error === "code nodig" ? "Vul de code uit je app in." : "Die code klopt niet.");
+      message(d.error === "code required" ? "Enter the code from your app." : "That code is wrong.");
     } else if (r.status === 429){
-      message("Te veel pogingen. Probeer het over " + (d.wacht || 60) + " seconden opnieuw.");
+      message("Too many attempts. Try again in " + (d.wacht || 60) + " seconds.");
     } else {
-      message(d.error || "Er ging iets mis.");
+      message(d.error || "Something went wrong.");
     }
   }catch(err){
-    message("Geen verbinding met het boomhuis — staat Tailscale aan?");
+    message("No connection to the boomhuis — is Tailscale on?");
   }finally{
     $("submit").disabled = false;
   }

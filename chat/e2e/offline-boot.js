@@ -53,21 +53,21 @@ async function until(page, fn, ms = 15000) {
   t('zegt dat er geen verbinding is',
     await until(p, () => {
       const s = document.querySelector('#msgs')?.textContent || '';
-      return /verbinding/i.test(s);
+      return /no connection/i.test(s);
     }, 12000),
     await p.evaluate(msgsText));
-  t('blijft niet stil op "laden…" staan',
-    !/^laden…$/.test(await p.evaluate(msgsText)),
+  t('blijft niet stil op "loading…" staan',
+    !/^loading…$/.test(await p.evaluate(msgsText)),
     await p.evaluate(msgsText));
   // The message has to be usable: which address, which error, and a way out.
   t('melding noemt het adres', (await p.evaluate(msgsText)).includes(await p.evaluate(() => location.origin)),
     await p.evaluate(msgsText));
-  t('knop "opnieuw proberen" staat er',
+  t('knop "try again" staat er',
     await p.evaluate(() => [...document.querySelectorAll('#msgs button')]
-      .some(b => /opnieuw proberen/i.test(b.textContent))));
-  t('knop "app verversen" staat er',
+      .some(b => /try again/i.test(b.textContent))));
+  t('knop "refresh app" staat er',
     await p.evaluate(() => [...document.querySelectorAll('#msgs button')]
-      .some(b => /app verversen/i.test(b.textContent))));
+      .some(b => /refresh app/i.test(b.textContent))));
 
   console.log('— netwerk komt op');
   apiDown = false;
@@ -78,7 +78,7 @@ async function until(page, fn, ms = 15000) {
     await until(p, () => document.querySelectorAll('#msgs .row').length > 0, 20000),
     await p.evaluate(msgsText));
   t('geen verbindingsmelding meer',
-    !/verbinding/i.test(await p.evaluate(msgsText)),
+    !/no connection/i.test(await p.evaluate(msgsText)),
     await p.evaluate(msgsText));
 
   console.log('— laatst bekende berichten');
@@ -91,17 +91,17 @@ async function until(page, fn, ms = 15000) {
     (await p.evaluate(() => document.querySelectorAll('#msgs .row').length)) > 0,
     await p.evaluate(msgsText));
   t('en ze zijn zichtbaar gedateerd',
-    /laatst bijgewerkt/i.test(await p.evaluate(msgsText)),
+    /last updated/i.test(await p.evaluate(msgsText)),
     await p.evaluate(msgsText));
   t('met de knoppen er nog onder',
     await p.evaluate(() => [...document.querySelectorAll('#msgs button')]
-      .some(b => /app verversen/i.test(b.textContent))));
+      .some(b => /refresh app/i.test(b.textContent))));
 
   apiDown = false;
   t('verse berichten verdringen de datering',
     await until(p, () => {
       const s = document.querySelector('#msgs')?.textContent || '';
-      return document.querySelectorAll('#msgs .row').length > 0 && !/laatst bijgewerkt/i.test(s);
+      return document.querySelectorAll('#msgs .row').length > 0 && !/last updated/i.test(s);
     }, 20000),
     await p.evaluate(msgsText));
 

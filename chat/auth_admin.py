@@ -16,7 +16,7 @@ def _person(session):
 def invite(h, session):
     """Create a single-use, expiring invitation. Owner only."""
     if not _person(session)["eigenaar"]:
-        return _json(h, 403, {"error": "alleen de eigenaar kan uitnodigen"})
+        return _json(h, 403, {"error": "only the owner can invite"})
     token = auth.new_invite("uitnodiging")
     return _json(h, 201, {
         "pad": "/login?uitnodiging=" + token,
@@ -26,9 +26,9 @@ def invite(h, session):
 
 def revoke_invites(h, session):
     if not _person(session)["eigenaar"]:
-        return _json(h, 403, {"error": "alleen de eigenaar kan uitnodigingen intrekken"})
+        return _json(h, 403, {"error": "only the owner can revoke invitations"})
     store.revoke_invites("uitnodiging")
-    return _json(h, 200, {"status": "ingetrokken"})
+    return _json(h, 200, {"status": "revoked"})
 
 
 def change_password(h, session, body):
@@ -42,13 +42,13 @@ def change_password(h, session, body):
     current = body.get("huidig") or ""
     new = body.get("nieuw") or ""
     if not auth.password_matches(current, p["hash"]):
-        return _json(h, 403, {"error": "het huidige wachtwoord klopt niet"})
+        return _json(h, 403, {"error": "the current password is wrong"})
     if len(new) < 12:
-        return _json(h, 400, {"error": "nieuw wachtwoord minstens 12 tekens"})
+        return _json(h, 400, {"error": "new password at least 12 characters"})
     store.set_hash(p["id"], auth.hash_password(new))
     store.revoke_all_sessions(p["id"])
     token, csrf = auth.start_session(p["id"])
-    return _json(h, 200, {"status": "gewijzigd", "csrf": csrf},
+    return _json(h, 200, {"status": "changed", "csrf": csrf},
                  [("Set-Cookie", auth.cookie_header(token, h.headers.get("Host", "")))])
 
 
@@ -68,7 +68,7 @@ def totp_confirm(h, session, body):
     secret = (body.get("geheim") or "").strip()
     ok, counter = auth.totp_matches(secret, body.get("code") or "") if secret else (False, None)
     if not ok:
-        return _json(h, 400, {"error": "code klopt niet"})
+        return _json(h, 400, {"error": "the code is wrong"})
     store.set_totp(session["persoon"], secret)
     store.set_totp_counter(session["persoon"], counter)
     return _json(h, 200, {"totp": True})

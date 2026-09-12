@@ -112,7 +112,7 @@ class H(BaseHTTPRequestHandler):
         if u.path == "/api/prs":
             repo = (parse_qs(u.query).get("repo") or [""])[0]
             if not github.valid_repo(repo):
-                return self._send(400, json.dumps({"error": "repo: verwacht owner/naam"}))
+                return self._send(400, json.dumps({"error": "repo: expected owner/name"}))
             try:
                 return self._send(200, json.dumps({"prs": github.list_prs(repo)}))
             except Exception as e:
@@ -122,7 +122,7 @@ class H(BaseHTTPRequestHandler):
             repo = (q.get("repo") or [""])[0]
             num = (q.get("num") or [""])[0]
             if not github.valid_repo(repo) or not num.isdigit():
-                return self._send(400, json.dumps({"error": "repo: owner/naam, num: getal"}))
+                return self._send(400, json.dumps({"error": "repo: owner/name, num: a number"}))
             try:
                 return self._send(200, json.dumps(github.get_pr(repo, int(num))))
             except Exception as e:
@@ -141,7 +141,7 @@ class H(BaseHTTPRequestHandler):
         if u.path == "/api/messages":
             cid = (parse_qs(u.query).get("channel") or [""])[0]
             if not valid_cid(cid):
-                return self._send(400, json.dumps({"error": "onbekend kanaal"}))
+                return self._send(400, json.dumps({"error": "unknown channel"}))
             rc, out, err = buzz(["messages", "get", "--channel", cid])
             if rc != 0:
                 return self._send(502, json.dumps({"error": err.strip()[:200]}))
@@ -170,7 +170,7 @@ class H(BaseHTTPRequestHandler):
         # Hard ceiling: no POST body (send, subscribe) is large; this stops a
         # tailnet node from making the backend read without limit.
         if n < 0 or n > 16384:
-            return self._send(413, json.dumps({"error": "body te groot"}))
+            return self._send(413, json.dumps({"error": "body too large"}))
         try:
             body = json.loads(self.rfile.read(n) or b"{}")
         except Exception:
@@ -194,7 +194,7 @@ class H(BaseHTTPRequestHandler):
         if u.path == "/api/push/subscribe":
             if push.add_subscription(body):
                 return self._send(200, json.dumps({"ok": True}))
-            return self._send(400, json.dumps({"error": "ongeldige subscription"}))
+            return self._send(400, json.dumps({"error": "invalid subscription"}))
 
         if u.path == "/api/channels/create":
             code, payload = actions.create_channel(body.get("name"))
@@ -203,7 +203,7 @@ class H(BaseHTTPRequestHandler):
         if u.path == "/api/channels/delete":
             cid = body.get("channel")
             if not valid_cid(cid):
-                return self._send(400, json.dumps({"error": "onbekend kanaal"}))
+                return self._send(400, json.dumps({"error": "unknown channel"}))
             # Deleting is channel management: signs as orchestrator, not as mark.
             rc, out, err = buzz_admin(["channels", "delete", "--channel", cid])
             if rc is None:
@@ -230,5 +230,5 @@ if __name__ == "__main__":
     # listen on the LAN interface — then only a tailnet node can post.
     host = os.environ.get("BIND_HOST", "0.0.0.0")
     auth_routes.print_setup_link_at_start()
-    print(f"[chat] luistert op {host}:{port}", flush=True)
+    print(f"[chat] listening on {host}:{port}", flush=True)
     ThreadingHTTPServer((host, port), H).serve_forever()

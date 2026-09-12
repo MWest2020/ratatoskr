@@ -25,7 +25,7 @@ function sameServerKey(buf, wanted){
 // again instead of failing quietly.
 async function ensurePushSubscription(){
   const {key}=await (await fetch("/api/push/vapid")).json();
-  if(!key) throw new Error("geen VAPID-key");
+  if(!key) throw new Error("no VAPID key");
   const wanted=urlB64ToUint8Array(key);
   const reg=await navigator.serviceWorker.ready;
   let sub=await reg.pushManager.getSubscription();
@@ -36,17 +36,17 @@ async function ensurePushSubscription(){
     sub=await reg.pushManager.subscribe({userVisibleOnly:true, applicationServerKey:wanted});
   }
   const r=await postJSON("/api/push/subscribe", sub);
-  if(!r.ok) throw new Error("subscribe-POST faalde");
+  if(!r.ok) throw new Error("the subscribe POST failed");
   return sub;
 }
 async function enablePush(btn){
-  if(!("serviceWorker" in navigator) || !("PushManager" in window)){ toast("push niet ondersteund"); return; }
+  if(!("serviceWorker" in navigator) || !("PushManager" in window)){ toast("push not supported"); return; }
   try{
     const perm=await Notification.requestPermission();
-    if(perm!=="granted"){ toast("meldingen niet toegestaan"); return; }
+    if(perm!=="granted"){ toast("notifications not allowed"); return; }
     await ensurePushSubscription();
-    toast("meldingen aan ✓"); if(btn) btn.remove();
-  }catch(e){ toast("aanmelden mislukt"); }
+    toast("notifications on ✓"); if(btn) btn.remove();
+  }catch(e){ toast("subscribing failed"); }
 }
 if("serviceWorker" in navigator && "PushManager" in window && "Notification" in window){
   if(Notification.permission==="granted"){
@@ -55,7 +55,7 @@ if("serviceWorker" in navigator && "PushManager" in window && "Notification" in 
   }else if(Notification.permission!=="denied"){
     // Not decided yet: show a 🔔 button.
     const pb=document.createElement("button");
-    pb.id="pushBtn"; pb.textContent="🔔"; pb.title="meldingen aanzetten";
+    pb.id="pushBtn"; pb.textContent="🔔"; pb.title="turn notifications on";
     pb.onclick=()=>enablePush(pb);
     document.querySelector("header").appendChild(pb);
   }

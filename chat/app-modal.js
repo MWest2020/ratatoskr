@@ -33,7 +33,7 @@ function modalConfirm(title, sub, okLabel){
     const s=document.createElement("div"); s.className="modal-sub"; s.textContent=sub;
     const row=document.createElement("div"); row.className="modal-row";
     const ok=document.createElement("button"); ok.className="modal-add"; ok.textContent=okLabel;
-    const cancel=document.createElement("button"); cancel.className="modal-cancel"; cancel.textContent="Annuleren";
+    const cancel=document.createElement("button"); cancel.className="modal-cancel"; cancel.textContent="Cancel";
     const done=v=>{ ov.remove(); resolve(v); };
     cancel.onclick=()=>done(false);
     ov.onclick=e=>{ if(e.target===ov) done(false); };
@@ -45,6 +45,6 @@ function modalConfirm(title, sub, okLabel){
 // Add an agent to a channel → true on success (shows the server error itself).
 async function addAgent(name, cid){
   const rr=await postJSON("/api/channel/add-member",{channel:cid, name:name}).catch(()=>null);
-  if(rr && rr.ok){ toast("@"+name+" toegevoegd ✓"); return true; }
-  const jj=rr?await rr.json().catch(()=>({})):{}; toast(jj.error||"toevoegen mislukt"); return false;
+  if(rr && rr.ok){ toast("@"+name+" added ✓"); return true; }
+  const jj=rr?await rr.json().catch(()=>({})):{}; toast(jj.error||"adding failed"); return false;
 }

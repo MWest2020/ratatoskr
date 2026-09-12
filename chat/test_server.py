@@ -135,7 +135,7 @@ class ServerTest(unittest.TestCase):
         code, body = self.call("/ratatoskr.apk")
         self.assertIn(code, (200, 404))
         if code == 404:
-            self.assertIn("geen app", body)
+            self.assertIn("no app", body)
 
     # --- reading sits behind the session ---
     READ_ROUTES = ("/api/channels", "/api/agents", "/api/channel-members",
@@ -198,7 +198,7 @@ class ServerTest(unittest.TestCase):
         for path in self.WRITE_ROUTES:
             code, body = self.call(path, data={}, session=False)
             self.assertEqual(code, 401, path)
-            self.assertIn("inloggen", body, path)
+            self.assertIn("sign-in required", body, path)
 
     def test_every_post_without_a_session_token_is_403(self):
         for path in self.WRITE_ROUTES:
@@ -216,7 +216,7 @@ class ServerTest(unittest.TestCase):
         code, body = self.call("/api/login", data={"naam": "tester",
                                                    "wachtwoord": "fout"}, session=False)
         self.assertEqual(code, 401)
-        self.assertIn("mislukt", body)
+        self.assertIn("sign-in failed", body)
 
     def test_an_oversized_body_is_refused(self):
         self.assertEqual(self.call("/api/send", raw=b"x" * 20000)[0], 413)

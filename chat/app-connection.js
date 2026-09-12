@@ -35,8 +35,8 @@ function showNoConnection(){
   // connection" is Tailscale being off on the device — so that is in the message
   // itself, not in someone's head.
   head.textContent = withSnapshot
-    ? "geen verbinding — staat Tailscale aan?"
-    : "geen verbinding met het boomhuis — staat Tailscale aan?";
+    ? "no connection — is Tailscale on?"
+    : "no connection to the boomhuis — is Tailscale on?";
   wrap.appendChild(head);
 
   const where = document.createElement("div");
@@ -48,14 +48,14 @@ function showNoConnection(){
   buttons.className = "connbtns";
 
   const again = document.createElement("button");
-  again.type = "button"; again.textContent = "opnieuw proberen";
+  again.type = "button"; again.textContent = "try again";
   again.onclick = () => { if(typeof loadWhatThereIs === "function") loadWhatThereIs(); };
   buttons.appendChild(again);
 
   const refresh = document.createElement("button");
-  refresh.type = "button"; refresh.textContent = "app verversen";
-  refresh.title = "meldt de service worker af, wist de cache en herlaadt";
-  refresh.onclick = () => { refresh.disabled = true; refresh.textContent = "verversen…"; refreshApp(); };
+  refresh.type = "button"; refresh.textContent = "refresh app";
+  refresh.title = "unregisters the service worker, clears the cache and reloads";
+  refresh.onclick = () => { refresh.disabled = true; refresh.textContent = "refreshing…"; refreshApp(); };
   buttons.appendChild(refresh);
 
   wrap.appendChild(buttons);

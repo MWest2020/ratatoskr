@@ -63,8 +63,8 @@ const t = (naam, cond, extra = '') => {
   }));
   t('geen JS-fouten', errors.length === 0, errors.slice(0, 3).join(' | '));
   t('kanaallijst gevuld', st.channels > 0, `${st.channels} kanalen`);
-  // "laden…" is exactly the picture of the outage: shell up, JS dead.
-  t('berichten geladen (niet op "laden…")', !/^laden/.test(st.msgs), JSON.stringify(st.msgs));
+  // "loading…" is exactly the picture of the outage: shell up, JS dead.
+  t('berichten geladen (niet op "loading…")', !/^loading/.test(st.msgs), JSON.stringify(st.msgs));
   t('service worker actief', st.sw);
 
   console.log('— het bord');

@@ -82,7 +82,7 @@ ME = "a05339f005904935da71e0498f3d542ac223e8cdfac920c6152a743f91640769"
 # management off: fail-closed with a clear message, NEVER a silent fallback on
 # mark's key. See change reown-channels-to-orchestrator.
 ORCH_KEY = os.environ.get("BUZZ_ORCHESTRATOR_KEY", "").strip()
-ADMIN_OFF = "kanaalbeheer staat uit: BUZZ_ORCHESTRATOR_KEY ontbreekt op de server"
+ADMIN_OFF = "channel management is off: BUZZ_ORCHESTRATOR_KEY is missing on the server"
 
 
 def buzz(args, stdin=None, timeout=25, key=None):
@@ -142,7 +142,7 @@ def channel_overview():
             # Empty is indistinguishable from a buzz failure → do NOT cache, and
             # signal it (the route gives 502). Otherwise the client prune would
             # wipe the read state on a momentary hiccup.
-            raise RuntimeError("kanaallijst leeg of onbereikbaar")
+            raise RuntimeError("channel list empty or unreachable")
         out = []
         for name, cid in chans:
             try:
@@ -190,7 +190,7 @@ def channel_roster():
         if not chans:
             # Empty is indistinguishable from a buzz failure → do NOT cache and
             # let the route 502 (like channel_overview), not a silent "no channels".
-            raise RuntimeError("kanaallijst leeg of onbereikbaar")
+            raise RuntimeError("channel list empty or unreachable")
         idmap = roster.identity_map()
         out = []
         for name, cid in chans:

@@ -57,7 +57,7 @@ def serve_apk(h):
         with open(path, "rb") as f:
             content = f.read()
     except OSError:
-        return h._send(404, json.dumps({"error": "geen app geïnstalleerd op deze server"})) or True
+        return h._send(404, json.dumps({"error": "no app installed on this server"})) or True
     h._send(200, content, "application/vnd.android.package-archive")
     return True
 
@@ -71,4 +71,4 @@ def serve(h, path):
         with open(os.path.join(HERE, name), "rb") as f:
             return h._send(200, f.read(), ctype) or True
     except OSError:
-        return h._send(404, json.dumps({"error": "asset weg"})) or True
+        return h._send(404, json.dumps({"error": "asset missing"})) or True
