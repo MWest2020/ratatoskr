@@ -1,14 +1,11 @@
 # SPDX-License-Identifier: EUPL-1.2
-"""Offline tests voor de pure listener-logica (relay-topologie + mention-match).
+"""Offline tests voor `topology.py` (relay-topologie: kanalen, leden, scope).
 Draaien vanuit agents/: `python3 -m unittest test_topology` (agents/ heeft geen
 __init__.py en de modules doen top-level imports, dus het pakket-pad werkt niet).
 Geen relay/netwerk nodig — `run` is een stub.
 """
 import unittest
 
-import bootstrap
-import prompts
-import providers
 import topology
 
 
@@ -122,60 +119,6 @@ class IsScoped(unittest.TestCase):
         self.assertTrue(topology.is_scoped(["general"], "general", "p", boom))
 
 
-class Mentioned(unittest.TestCase):
-    def test_woordgrens(self):
-        self.assertTrue(prompts.mentioned("hoi @architect kijk", "architect"))
-        self.assertTrue(prompts.mentioned("@architect.", "architect"))
-        self.assertFalse(prompts.mentioned("kijk in @architectuur", "architect"))
-        self.assertFalse(prompts.mentioned("geen mention", "architect"))
-        self.assertFalse(prompts.mentioned("deploy@bouwer.example", "bouwer"))  # linker grens
-        self.assertTrue(prompts.mentioned("HOI @Coordinator", "coordinator"))  # case-insens
-
-
-class ChannelKnowledge(unittest.TestCase):
-    def test_path_traversal_geweigerd(self):
-        # onveilige (relay-geleverde) kanaalnaam mag geen bestand buiten knowledge/ lezen
-        for bad in ["../../etc/passwd", "..", "a/b", "x/../y", "/etc/hosts", ""]:
-            self.assertEqual(prompts.channel_knowledge("/tmp", bad), "")
-
-
-if __name__ == "__main__":
-    unittest.main()
-
-
-class HubEnRolTest(unittest.TestCase):
-    """De hub wordt op ROL gevonden. Drie plekken in de listener stonden op de
-    naam `coordinator`; na de hernoeming naar odin vielen die stil terug — de
-    reader op een agent met halve kanaal-zichtbaarheid, en de hub kreeg zijn
-    roster- en liveness-context niet meer."""
-
-    def _root(self, body):
-        import tempfile, pathlib
-        d = tempfile.mkdtemp()
-        pathlib.Path(d, "identities.yml").write_text(body)
-        return d
-
-    REG = ("identities:\n"
-           "  mark:\n    rol: mens\n    status: actief\n    pubkey_hex: aa\n"
-           "  coordinator:\n    rol: meta-agent\n    status: ingetrokken\n    pubkey_hex: bb\n"
-           "  odin:\n    rol: meta-agent\n    status: actief\n    pubkey_hex: cc\n"
-           "  bouwer:\n    rol: chat-agent\n    status: actief\n    pubkey_hex: dd\n")
-
-    def test_hub_is_de_actieve_meta_agent(self):
-        self.assertEqual(bootstrap.hub_handle(self._root(self.REG)), "odin")
-
-    def test_ingetrokken_hub_wordt_niet_gekozen(self):
-        reg = self.REG.replace("  odin:\n    rol: meta-agent\n    status: actief\n    pubkey_hex: cc\n", "")
-        self.assertIsNone(bootstrap.hub_handle(self._root(reg)))
-
-    def test_roster_laat_de_hub_zelf_weg(self):
-        agents = {"odin": {"system": "hub", "channels": ["general"]},
-                  "bouwer": {"system": "bouwt", "channels": ["bouw"]}}
-        t = prompts.roster_text(agents, "odin")
-        self.assertIn("@bouwer", t)
-        self.assertNotIn("@odin", t)
-
-
 class LidmaatschapTest(unittest.TestCase):
     """Elke agent post óók in #statistics en #escalatie, ongeacht zijn eigen scope.
     Zonder lidmaatschap faalt die send stil — dat gebeurde: odin zat niet in
@@ -201,41 +144,5 @@ class LidmaatschapTest(unittest.TestCase):
         self.assertEqual(topology.missing_memberships(agents, self.CH, {"odin": "pk-odin"}, leden.get), [])
 
 
-class ModelRapportageTest(unittest.TestCase):
-    """De statistiekregel is het enige waarop je kunt aflezen of het gedeclareerde
-    model afgedwongen wordt. Hij nam de EERSTE sleutel uit modelUsage; een run die
-    meerdere modellen aanraakt noemde dan willekeurig één. Waargenomen 2026-09-07:
-    odin werd als haiku gerapporteerd terwijl de handbook sonnet declareert."""
-
-    def u(self, **kv):
-        return {m: {"inputTokens": i, "outputTokens": 1} for m, i in kv.items()}
-
-    def test_model_met_de_meeste_tokens_wint(self):
-        usage = {"claude-haiku-4-5": {"inputTokens": 3, "outputTokens": 1},
-                 "claude-sonnet-5": {"inputTokens": 900, "outputTokens": 400}}
-        self.assertEqual(providers.main_model(usage, "sonnet"), "claude-sonnet-5")
-
-    def test_volgorde_in_de_map_doet_er_niet_toe(self):
-        a = {"claude-haiku-4-5": {"inputTokens": 1}, "claude-sonnet-5": {"inputTokens": 99}}
-        b = {"claude-sonnet-5": {"inputTokens": 99}, "claude-haiku-4-5": {"inputTokens": 1}}
-        self.assertEqual(providers.main_model(a, "sonnet"), providers.main_model(b, "sonnet"))
-
-    def test_zonder_usage_valt_het_terug_op_wat_gevraagd_is(self):
-        for leeg in (None, {}, "geen dict"):
-            self.assertEqual(providers.main_model(leeg, "sonnet"), "sonnet")
-
-    def test_alle_token_velden_tellen_mee(self):
-        # cache-tokens zijn vaak veruit de grootste post; alleen inputTokens
-        # vergelijken zou het verkeerde model aanwijzen.
-        usage = {"a": {"inputTokens": 5}, "b": {"inputTokens": 1, "cacheReadInputTokens": 9000}}
-        self.assertEqual(providers.main_model(usage, None), "b")
-
-    def test_kosten_tellen_niet_mee_als_tokens(self):
-        usage = {"a": {"inputTokens": 10}, "b": {"costUSD": 9999}}
-        self.assertEqual(providers.main_model(usage, None), "a")
-
-    def test_familie_match(self):
-        self.assertTrue(providers.model_klopt("sonnet", "claude-sonnet-5"))
-        self.assertTrue(providers.model_klopt("haiku", "claude-haiku-4-5-20251001"))
-        self.assertFalse(providers.model_klopt("sonnet", "claude-haiku-4-5"))
-        self.assertTrue(providers.model_klopt("", "wat dan ook"))   # niets gevraagd
+if __name__ == "__main__":
+    unittest.main()

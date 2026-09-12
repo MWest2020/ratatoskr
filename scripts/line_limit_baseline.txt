@@ -1,6 +1,5 @@
 # Bestanden die bij invoering van de regelgrens al te lang waren.
 # Deze lijst mag alleen KORTER worden; groeien = alsnog rood.
-241 agents/test_topology.py
 230 chat/app.css
 204 chat/auth.py
 210 chat/buzzcli.py
