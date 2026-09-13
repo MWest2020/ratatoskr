@@ -32,6 +32,7 @@ FILES = {
     "/app-repos.js": ("app-repos.js", "text/javascript"),
     "/app-board.js": ("app-board.js", "text/javascript"),
     "/app-push.js": ("app-push.js", "text/javascript"),
+    "/app-update.js": ("app-update.js", "text/javascript"),
     "/manifest.webmanifest": ("manifest.webmanifest", "application/manifest+json"),
     "/sw.js": ("sw.js", "text/javascript"),
     "/icon.svg": ("icon.svg", "image/svg+xml"),
