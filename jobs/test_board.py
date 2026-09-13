@@ -110,7 +110,18 @@ class Links(unittest.TestCase):
 
 
 
+ROW_MERGED = {"repository": {"name": "repo"}, "number": 125, "title": "iets",
+              "updatedAt": "2026-09-13T16:00:05Z", "url": "", "isDraft": False,
+              "author": {"login": "a"}, "merged": True}
+
+
 class Snapshot(unittest.TestCase):
+    def cfg(self, cache, seconds):
+        return {"columns": COLUMNS,
+                "sources": {"openspec_glob": "/bestaat/niet/*", "github_owner": "x",
+                            "session_runs": "/bestaat/niet", "merged_days": 3,
+                            "pr_cache": cache, "pr_cache_seconds": seconds}}
+
     def test_failing_source_becomes_an_error_not_silence(self):
         """Silently showing nothing is indistinguishable from 'nothing to do'."""
         empty = os.path.join(tempfile.mkdtemp(), "geen-cache.json")
@@ -124,39 +135,54 @@ class Snapshot(unittest.TestCase):
         self.assertIn("gh weg", snap["errors"][0])
         self.assertEqual(snap["cards"], [])
 
-    def test_stale_cache_is_used_but_announced(self):
-        """An old cache is better than an empty board — as long as the board says
-        it is old. Silently showing old PRs is the false clear in disguise."""
+    def test_a_stale_merged_cache_is_used_but_announced(self):
+        """Een oude cache is beter dan een leeg bord — zolang het bord zegt dat
+        hij oud is. Stilletjes oude PR's tonen is de valse groenmelding in
+        vermomming."""
         cache = os.path.join(tempfile.mkdtemp(), "prs.json")
         with open(cache, "w") as f:
-            json.dump({"at": 0, "cards": [{"column": "review", "age_days": 1}]}, f)
-        cfg = {"columns": COLUMNS,
-               "sources": {"openspec_glob": "/bestaat/niet/*", "github_owner": "x",
-                           "session_runs": "/bestaat/niet", "merged_days": 3,
-                           "pr_cache": cache, "pr_cache_seconds": 1}}
+            json.dump({"at": 0, "rows": [ROW_MERGED]}, f)
+        cfg = self.cfg(cache, 1)
         board_sources.gh_json = lambda args: (_ for _ in ()).throw(RuntimeError("gh weg"))
         snap = board.build(cfg, now=1000.0)
         self.assertEqual(len(snap["cards"]), 1)
-        self.assertIn("not refreshed", snap["errors"][0])
+        self.assertTrue(any("not refreshed" in e for e in snap["errors"]), snap["errors"])
 
-    def test_fresh_cache_skips_github(self):
-        """This is what makes a running session visible: the PR side need not be
-        fetched again every two minutes."""
+    def test_a_fresh_cache_skips_the_merged_query_but_not_the_open_one(self):
+        """Het cachen bestaat om het bord elke twee minuten te kunnen draaien.
+        Maar de OPEN kant hoort daar niet bij: dat is de kolom waar iemand iets
+        mee moet, en die mag niet tien minuten achterlopen."""
         cache = os.path.join(tempfile.mkdtemp(), "prs.json")
         with open(cache, "w") as f:
-            json.dump({"at": 999.0, "cards": []}, f)
-        cfg = {"columns": COLUMNS,
-               "sources": {"openspec_glob": "/bestaat/niet/*", "github_owner": "x",
-                           "session_runs": "/bestaat/niet", "merged_days": 3,
-                           "pr_cache": cache, "pr_cache_seconds": 600}}
-        def boom(args):
-            raise AssertionError("gh should not have been called")
-        board_sources.gh_json = boom
-        self.assertEqual(board.build(cfg, now=1000.0)["errors"], [])
+            json.dump({"at": 999.0, "rows": []}, f)
+        gevraagd = []
 
+        def gh(args):
+            gevraagd.append(" ".join(args))
+            if "--state=open" in args:
+                return []
+            raise AssertionError("de gemergede kant had uit de cache moeten komen")
 
-if __name__ == "__main__":
-    unittest.main()
+        board_sources.gh_json = gh
+        snap = board.build(self.cfg(cache, 600), now=1000.0)
+        self.assertEqual(snap["errors"], [])
+        self.assertEqual(len(gevraagd), 1, gevraagd)
+        self.assertIn("--state=open", gevraagd[0])
+
+    def test_a_just_merged_pr_does_not_linger_in_review(self):
+        """De regressie die dit veroorzaakte, 2026-09-13: #125 stond acht
+        minuten na zijn merge nog in review, omdat de open kant uit dezelfde
+        cache kwam als de gemergede kant. Een kaart in 'review' die om niets
+        vraagt, leert je de kolom te negeren."""
+        cache = os.path.join(tempfile.mkdtemp(), "prs.json")
+        # De cache is VERS en bevat de PR nog als open — precies de situatie.
+        with open(cache, "w") as f:
+            json.dump({"at": 999.0, "rows": [ROW_MERGED]}, f)
+        board_sources.gh_json = lambda args: [] if "--state=open" in args else []
+        snap = board.build(self.cfg(cache, 600), now=1000.0)
+        kolommen = [c["column"] for c in snap["cards"]]
+        self.assertNotIn("review", kolommen, snap["cards"])
+        self.assertEqual(kolommen, ["merged"])
 
 
 if __name__ == "__main__":

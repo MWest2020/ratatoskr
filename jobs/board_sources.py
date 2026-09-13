@@ -80,23 +80,35 @@ def openspec_cards(pattern, now):
 
 
 def gh_json(args):
-    """Call `gh`. An error is a READ ERROR, not an empty list: silently showing
-    nothing is indistinguishable from 'there is nothing', and that is exactly the
-    difference you want to see."""
+    """Call `gh`. An error is a READ ERROR, not an empty list: showing nothing
+    silently is indistinguishable from 'there is nothing'."""
     p = subprocess.run(["gh", *args], capture_output=True, text=True, timeout=60)
     if p.returncode != 0:
         raise RuntimeError((p.stderr or p.stdout).strip()[:160])
     return json.loads(p.stdout or "[]")
 
 
-def pr_cards(owner, merged_days, now, ignore=()):
-    fields = "repository,number,title,url,isDraft,updatedAt,author"
-    rows = gh_json(["search", "prs", f"--owner={owner}", "--state=open",
-                    "--limit", "40", "--json", fields])
+FIELDS = "repository,number,title,url,isDraft,updatedAt,author"
+
+
+def open_prs(owner):
+    """Wat nog aandacht vraagt — apart van `merged_prs`, want deze kant moet VERS
+    zijn. Een gemergede PR die nog in 'review' staat vraagt om niets, en een
+    kolom met zulke kaarten lees je niet meer. Gemeten 2026-09-13: #125 stond
+    acht minuten na zijn merge nog in review, uit een cache van vlak ervóór."""
+    return gh_json(["search", "prs", f"--owner={owner}", "--state=open",
+                    "--limit", "40", "--json", FIELDS])
+
+
+def merged_prs(owner, merged_days, now):
+    """Geschiedenis: verandert alleen naar achteren, mag dus uit een cache."""
     cutoff = time.strftime("%Y-%m-%d", time.gmtime(now - merged_days * DAY))
-    rows += [dict(r, merged=True) for r in gh_json(
+    return [dict(r, merged=True) for r in gh_json(
         ["search", "prs", f"--owner={owner}", f"merged:>={cutoff}",
-         "--limit", "40", "--json", fields])]
+         "--limit", "40", "--json", FIELDS])]
+
+
+def rows_to_cards(rows, now, ignore=()):
     cards = []
     for r in rows:
         if r["repository"]["name"] in ignore:
@@ -111,6 +123,12 @@ def pr_cards(owner, merged_days, now, ignore=()):
                       "who": (r.get("author") or {}).get("login", ""),
                       "url": r.get("url", ""), "source": ""})
     return cards
+
+
+def pr_cards(owner, merged_days, now, ignore=()):
+    """Beide kanten in één keer; het bord haalt ze apart op."""
+    return rows_to_cards(open_prs(owner) + merged_prs(owner, merged_days, now),
+                         now, ignore)
 
 
 def last_activity(content):
