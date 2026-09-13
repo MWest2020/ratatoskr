@@ -46,6 +46,32 @@ class OpenspecCards(unittest.TestCase):
                                    time.time())
         self.assertEqual([c["title"] for c in got], ["nieuw"])
 
+    def test_a_worktree_is_not_a_second_repo(self):
+        """Sessions work in their own worktree of the same repo. Counting those
+        made one change appear three times, and kept it on the board after it
+        was archived on main — the worktree still holds the old branch."""
+        d = tempfile.mkdtemp()
+        for naam, git in [("repo", "dir"), ("repo-worktree", "file")]:
+            change = os.path.join(d, "home", "agent", naam, "openspec", "changes", "iets")
+            os.makedirs(change)
+            open(os.path.join(change, "proposal.md"), "w").write("x")
+            g = os.path.join(d, "home", "agent", naam, ".git")
+            os.makedirs(g) if git == "dir" else open(g, "w").write("gitdir: /elders\n")
+        got = board_sources.openspec_cards(os.path.join(d, "home/agent/*/openspec/changes/*/proposal.md"),
+                                   time.time())
+        self.assertEqual([c["repo"] for c in got], ["repo"])
+
+    def test_a_directory_without_git_still_counts(self):
+        """The test is 'is this a worktree', not 'is this a clone'. A checkout
+        without a .git at all (a tarball, a copy) is not a reason to hide work."""
+        d = tempfile.mkdtemp()
+        change = os.path.join(d, "home", "agent", "repo", "openspec", "changes", "iets")
+        os.makedirs(change)
+        open(os.path.join(change, "proposal.md"), "w").write("x")
+        got = board_sources.openspec_cards(os.path.join(d, "home/agent/*/openspec/changes/*/proposal.md"),
+                                   time.time())
+        self.assertEqual(len(got), 1)
+
 class Links(unittest.TestCase):
     """A card without a link is a dead end; a card to a 404 is worse. That is why
     the URL comes from the clone's remote, not from the directory name."""
