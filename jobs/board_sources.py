@@ -33,6 +33,22 @@ def repo_url(clone_dir):
     return "https://github.com/" + path
 
 
+def is_worktree(directory):
+    """Is this a linked git worktree rather than the clone itself?
+
+    A clone keeps `.git` as a directory; a worktree keeps it as a file pointing
+    at the clone. That one-line difference is the whole test.
+
+    Why the board cares: sessions get their own worktree of the same repo, so a
+    single change appeared once per worktree — and worse, it kept appearing after
+    it had been archived on main, because that worktree still holds the old
+    branch. Measured 2026-09-13: five of the seven proposals on the board were
+    the same two archived changes, seen from three abandoned worktrees. A board
+    that shows work nobody has teaches you to stop reading the board.
+    """
+    return os.path.isfile(os.path.join(directory, ".git"))
+
+
 def openspec_cards(pattern, now):
     """Every non-archived change is a proposal. The age comes from the mtime of
     proposal.md — that is when it was last worked on."""
@@ -40,6 +56,8 @@ def openspec_cards(pattern, now):
     urls = {}
     for path in glob.glob(pattern):
         if "/archive/" in path:
+            continue
+        if is_worktree(path.split("/openspec/", 1)[0]):
             continue
         change = os.path.basename(os.path.dirname(path))
         repo = path.split("/home/agent/", 1)[-1].split("/openspec/", 1)[0]
