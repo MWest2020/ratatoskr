@@ -57,6 +57,18 @@ async function inState(b, permission) {
     const bell = p.locator('#pushBtn');
     t(`er staat een 🔔 bij permission=${perm}`, await bell.count() === 1);
     if (await bell.count() === 1) {
+      // Aanwezig is niet hetzelfde als bereikbaar. Gemeten 2026-09-13: de
+      // kopbalk was 580px breed op elk telefoonscherm, dus de 🔔 — die er als
+      // LAATSTE bij komt — stond 169px buiten beeld op een 360px-toestel.
+      // elementFromPoint zegt dan nog steeds "pushBtn", want dat werkt in de
+      // layout-viewport; alleen de breedte van de kopbalk verraadt het.
+      const pas = await p.evaluate(() => {
+        const h = document.querySelector('header');
+        const r = document.querySelector('#pushBtn').getBoundingClientRect();
+        return { overflow: h.scrollWidth > h.clientWidth, rechts: r.right, breedte: innerWidth };
+      });
+      t('de kopbalk loopt niet buiten beeld', !pas.overflow, JSON.stringify(pas));
+      t('de 🔔 staat volledig binnen het scherm', pas.rechts <= pas.breedte, JSON.stringify(pas));
       // A title is what a long-press shows; it must not be the empty string.
       t('de 🔔 legt uit waar hij voor is', ((await bell.getAttribute('title')) || '').length > 10);
       await bell.click();
