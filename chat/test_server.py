@@ -20,32 +20,18 @@ from live_server import CID, LiveServerCase, auth
 
 
 class ServerTest(LiveServerCase):
-    # --- Android app ---
-    def test_assetlinks_is_open(self):
-        """Chrome fetches this before there is a user; behind the session the app
-        would always start with an address bar."""
-        code, body = self.call("/.well-known/assetlinks.json", session=False)
-        self.assertEqual(code, 200)
-        d = json.loads(body)
-        self.assertEqual(d[0]["target"]["namespace"], "android_app")
-        self.assertTrue(d[0]["target"]["sha256_cert_fingerprints"][0].count(":") == 31,
-                        "a fingerprint should be 32 hex pairs")
+    # The Android app is gone (change `pwa-terug`): a TWA verifies its origin at
+    # every start, and on a tunnel-only origin that fails whenever the tunnel is
+    # not up yet — then it starts as a browser window with an address bar. The
+    # installed PWA has neither problem. `/ratatoskr.apk` must simply be gone.
+    def test_the_apk_route_is_gone(self):
+        code, _ = self.call("/ratatoskr.apk")
+        self.assertEqual(code, 404)
 
-    def test_apk_is_open(self):
-        """An APK download often starts outside the session (download manager, a
-        forwarded link in another app) and then does not carry the cookie. Behind
-        the gate the link is useless exactly when you need it; the file holds
-        nothing secret."""
-        code, _ = self.call("/ratatoskr.apk", session=False)
-        self.assertIn(code, (200, 404))
-        self.assertNotEqual(code, 401)
-
-    def test_apk_without_a_file_is_404_not_500(self):
-        """An installation without an app should say cleanly that it is not there."""
-        code, body = self.call("/ratatoskr.apk")
-        self.assertIn(code, (200, 404))
-        if code == 404:
-            self.assertIn("no app", body)
+    def test_assetlinks_is_gone_too(self):
+        """Dead weight without an app, and it invited the question every time."""
+        code, _ = self.call("/.well-known/assetlinks.json", session=False)
+        self.assertEqual(code, 404)
 
     # --- reading sits behind the session ---
     READ_ROUTES = ("/api/channels", "/api/agents", "/api/channel-members",

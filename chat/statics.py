@@ -15,11 +15,6 @@ import os
 import settings
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-# Where the Android app lives. NOT in the image: an APK is per installation (it
-# is signed for one origin), so it belongs with the state, not with the code. An
-# empty or missing directory = the route simply does not exist.
-APK_DIR = settings.read("APK_DIR", "/var/lib/ratatoskr/apk")
-APK_NAME = "ratatoskr.apk"
 
 FILES = {
     "/app.css": ("app.css", "text/css"),
@@ -42,26 +37,7 @@ FILES = {
     "/icon-192.png": ("icon-192.png", "image/png"),
     "/icon-512.png": ("icon-512.png", "image/png"),
     "/apple-touch-icon.png": ("apple-touch-icon.png", "image/png"),
-    # Android app: Chrome fetches this BEFORE there is a user. Statics sit in
-    # server.py before the session gate and this path does not start with /api/,
-    # so it is open — and it has to be. If the fingerprint does not match the key
-    # the APK was signed with, the app starts WITH an address bar: visibly wrong,
-    # not silently.
-    "/.well-known/assetlinks.json": ("well-known/assetlinks.json", "application/json"),
 }
-
-
-def serve_apk(h):
-    """Serve the Android app — without a session, see server.py for why. Returns
-    True when something was sent."""
-    path = os.path.join(APK_DIR, APK_NAME)
-    try:
-        with open(path, "rb") as f:
-            content = f.read()
-    except OSError:
-        return h._send(404, json.dumps({"error": "no app installed on this server"})) or True
-    h._send(200, content, "application/vnd.android.package-archive")
-    return True
 
 
 def serve(h, path):

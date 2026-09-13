@@ -1,92 +1,53 @@
 ---
-status: current
-last_reviewed: 2026-09-11
+status: verslag
+last_reviewed: 2026-09-13
 ---
 
-# De Android-app
+# De Android-app (verslag, niet meer in gebruik)
 
-Ratatoskr draait als echte Android-app: een **Trusted Web Activity**. Dat is geen
-tweede codebase — het is dezelfde PWA, fullscreen, zonder browserbalk, met
-dezelfde service worker, opslag, sessie en pushmeldingen. Een nieuwe versie van
-de chat zit er meteen in; de app verander je alleen als de naam, het icoon of de
-host verandert.
+Van 2026-09-12 tot 2026-09-13 heeft Ratatoskr een echte Android-app gehad: een
+**Trusted Web Activity**, gebouwd met Bubblewrap. Die is weer weg. De PWA is de
+weg. Dit bestand blijft staan zodat we het niet nog een keer proberen zonder de
+uitkomst te kennen.
 
-## Installeren op een toestel
+## Wat een TWA is
 
-1. Open de chat in de browser en log in.
-2. Ga naar `<jouw-url>/ratatoskr.apk`. Die link werkt zónder in te loggen — een
-   APK-download start vaak buiten de sessie (de downloadmanager of een
-   doorgestuurde link draagt het cookie niet mee), en het bestand bevat niets
-   geheims: het is een browser-schil met de hostnaam erin. De netwerklaag
-   (tailnet of je proxy) is hier de deur.
-3. Android vraagt om installatie uit een onbekende bron toe te staan. Dat hoort:
-   deze app komt niet uit de Play Store en dat is de bedoeling.
-4. Had je de PWA als snelkoppeling staan? Haal die weg. Android hernoemt een
-   bestaande snelkoppeling nooit, dus die blijft "boomhuis" heten.
+Geen tweede codebase: een Android-schil die Chrome fullscreen op één origin
+opent. Dezelfde service worker, opslag, sessie en pushmeldingen. Aantrekkelijk,
+want een nieuwe versie van de chat zit er meteen in.
 
-**Start de app met een adresbalk?** Dan is de verificatie mislukt. Het toestel
-moet `<jouw-url>/.well-known/assetlinks.json` kunnen ophalen (dus: op het tailnet
-zitten), en de vingerafdruk daarin moet horen bij de sleutel waarmee deze APK
-ondertekend is.
+## Waarom hij weg is
 
-## Bouwen
+Chrome controleert bij **elke start** of `<origin>/.well-known/assetlinks.json`
+bereikbaar is en of de vingerafdruk daarin bij de ondertekensleutel van de
+geïnstalleerde APK hoort. Lukt dat niet, dan valt hij terug op een Custom Tab —
+mét adresbalk. Dat is precies wat een app *geen* app maakt.
 
-Eenmalig op de bouwmachine: JDK 17, de Android-SDK (build-tools 36.1.0 +
-platform 36) en `npm i -g @bubblewrap/cli`. Bubblewrap wil de SDK in de oude
-indeling zien, dus:
+Onze origin zit op het tailnet. Bij een koude start is de Tailscale-verbinding
+er vaak nét niet, en dan mislukt die controle. De serverkant was aantoonbaar in
+orde (de route gaf 200, de vingerafdruk klopte); het probleem is structureel, en
+niet op te lossen aan de kant die van ons is. Marks oordeel, 2026-09-12: *"als
+ik app open echt even lelijk een google bar. dit is tacky."*
 
-    ln -s $ANDROID_HOME/cmdline-tools/latest/bin $ANDROID_HOME/bin
-    ln -s $ANDROID_HOME/cmdline-tools/latest/lib $ANDROID_HOME/lib
+De geïnstalleerde PWA heeft dit probleem niet: Android controleert daar niets bij
+het starten, want er is geen tweede partij die iets moet bewijzen.
 
-Daarna:
+## Wat er is weggehaald
 
-    bash android/build.sh      # -> android/ratatoskr-<versie>.apk
+- de route `/ratatoskr.apk` en de static `/.well-known/assetlinks.json`
+- het bouwspul onder `android/` (`build.sh`, `extract-key.py`,
+  `twa-manifest.json`)
+- de APK in het datavolume van de draaiende installatie
 
-Het script haalt de ondertekensleutel uit SOPS in een tijdelijke map, gooit het
-gegenereerde Android-project weg (zodat de build volledig uit
-`twa-manifest.json` volgt), bouwt, en tekent met `apksigner`.
+`secrets/android-signing.yaml` is blijven staan. Android ontleent de identiteit
+van een app aan zijn ondertekensleutel: wie 'm weggooit en later toch een APK
+uitbrengt, brengt voor Android een *andere* app uit. Het bestand is klein en
+versleuteld; weggooien levert niets op en is onomkeerbaar.
 
-## Een nieuwe versie uitbrengen
+## Als het ooit tóch weer moet
 
-1. In `android/twa-manifest.json`: `appVersion` **en** `appVersionName` naar de
-   nieuwe versie, `appVersionCode` één omhoog. Die twee versievelden moeten
-   gelijk zijn — lopen ze uiteen, dan zegt de APK iets anders dan het bestand,
-   en het bouwscript weigert.
-2. `bash android/build.sh`
-3. De APK naar de installatie kopiëren (zie hieronder).
-
-De **vingerafdruk verandert niet** zolang je dezelfde sleutel gebruikt, dus
-`assetlinks.json` blijft kloppen.
-
-## De APK op een installatie zetten
-
-De APK zit niet in het image: hij is ondertekend voor één origin, dus hij hoort
-bij de installatie, niet bij de code. Hij komt in het datavolume:
-
-    vol=$(docker volume inspect -f '{{.Mountpoint}}' <project>_ratatoskr-chat-data)
-    sudo mkdir -p "$vol/apk"
-    sudo cp android/ratatoskr-<versie>.apk "$vol/apk/ratatoskr.apk"
-    sudo chown -R 10001:10001 "$vol/apk"
-
-Daarna is hij te downloaden op `/ratatoskr.apk`, zonder sessie. Staat er niets,
-dan geeft die route een nette 404 — geen app geïnstalleerd op deze server.
-
-## Wat je nooit weggooit
-
-`secrets/android-signing.yaml`. Android ontleent de **identiteit** van een app
-aan de ondertekensleutel: raak je die kwijt, dan is een volgende build voor
-Android een andere app. Iedereen moet de oude verwijderen en de nieuwe
-installeren, en `assetlinks.json` krijgt een nieuwe vingerafdruk. Het is het
-enige onvervangbare bestand in deze hele keten — de rest is opnieuw te maken.
-
-Uitpakken wanneer je 'm nodig hebt:
-
-    python3 android/extract-key.py /tmp/ks    # en ruim die map daarna op
-
-## Voor een andere installatie
-
-Een APK is gebonden aan één host: die staat in `twa-manifest.json` en in de
-asset-links van die origin. Een derde die Ratatoskr zelf draait, bouwt dus een
-eigen APK met zijn eigen host, zijn eigen sleutel en zijn eigen
-`assetlinks.json`. Het bouwscript is hetzelfde; alleen `host`, `startUrl`,
-`webManifestUrl` en `fullScopeUrl` verschillen.
+Dan eerst dit oplossen, niet opnieuw ontdekken: de app moet starten zonder dat
+er op dat moment een verbinding met de origin nodig is. Dat betekent een origin
+die altijd bereikbaar is (dus een publieke voordeur, en die is er bewust niet),
+of geen TWA maar een schil die zijn eigen UI meebrengt. Zie
+[pwa-installeren.md](pwa-installeren.md) voor wat er nu geldt.
