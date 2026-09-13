@@ -1,5 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Ratatoskr">
   <rect width="512" height="512" rx="112" fill="#15130f"/>
+  <!-- Everything is drawn inside the maskable safe zone. Android crops a
+       maskable icon to a circle of ~80% of the canvas; artwork that touches the
+       edge loses its ears and its branch. The background stays full-bleed. -->
+  <g transform="translate(256 256) scale(0.76) translate(-256 -256)">
   <!-- the tail: one thick curled stroke, drawn first so the body sits in front -->
   <path d="M296 402 C398 396 448 306 414 232 C388 174 322 146 282 186"
         fill="none" stroke="#d8a657" stroke-width="76" stroke-linecap="round"/>
@@ -13,4 +17,5 @@
   </g>
   <circle cx="158" cy="188" r="13" fill="#15130f"/>
   <path d="M92 404 h328 a20 20 0 0 1 0 40 H92 a20 20 0 0 1 0-40 Z" fill="#3a3324"/>
+  </g>
 </svg>

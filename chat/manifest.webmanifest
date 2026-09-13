@@ -1,7 +1,7 @@
 {
   "name": "Ratatoskr",
   "short_name": "Ratatoskr",
-  "description": "Praat met en stuur je agent-vloot aan.",
+  "description": "Talk to your agent fleet and steer it.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
