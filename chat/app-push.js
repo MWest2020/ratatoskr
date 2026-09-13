@@ -76,9 +76,22 @@ function bell(title, onclick){
 // Once a site is blocked, `requestPermission()` resolves to "denied" WITHOUT
 // showing a prompt, so a button that calls it again is a button that does
 // nothing. The only way back is the browser's own site settings, so say that.
+//
+// And say it for where the reader ACTUALLY is. The first version of this text
+// pointed at "the ⓘ next to the address bar" — advice that is useless in an
+// installed app, because an installed app has no address bar. Measured
+// 2026-09-13: Mark read that message inside the PWA I had just told him to
+// install. An instruction you cannot follow is worse than none; it makes the
+// reader doubt themselves instead of the text.
 function explainBlocked(){
-  toast("notifications are blocked for this site. Chrome: ⋮ → ⓘ next to the "
-      + "address → notifications → allow. Then reopen the app.", 9000);
+  const host = location.host;
+  const inApp = !(window.matchMedia("(display-mode: browser)").matches);
+  toast(inApp
+    ? "notifications are blocked for " + host + ". Open Chrome itself → ⋮ → "
+      + "Settings → Site settings → Notifications → " + host + " → Allow, "
+      + "then reopen this app."
+    : "notifications are blocked for " + host + ". Tap the ⓘ or lock next to "
+      + "the address → Notifications → Allow, then reload.", 12000);
 }
 // Three permission states, three behaviours, and none of them silent. Measured
 // 2026-09-13: Mark turned notifications on and nothing happened — the access log

@@ -81,7 +81,12 @@ async function inState(b, permission) {
         // requestPermission() resolves to "denied" without prompting once a site
         // is blocked, so the only useful answer is where to unblock it.
         t('geblokkeerd => het scherm zegt hoe je het aanzet', toast.zichtbaar
-          && /site settings|instellingen|allow|blocked/i.test(toast.tekst), JSON.stringify(toast));
+          && /site settings|allow/i.test(toast.tekst), JSON.stringify(toast));
+        // Playwright draait in een gewoon venster, dus de tekst hoort de
+        // adresbalk-route te noemen. Wie in de geïnstalleerde app zit heeft
+        // geen adresbalk en krijgt de Chrome-instellingen-route — dat verschil
+        // is de hele reden dat deze tekst twee varianten heeft.
+        t('de uitleg noemt de host', /tail|localhost|\./i.test(toast.tekst), toast.tekst);
       } else {
         t('onbeslist => tikken levert een zichtbare reactie', toast.zichtbaar, JSON.stringify(toast));
       }
