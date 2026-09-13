@@ -9,7 +9,9 @@ tekende. Deze capability legt vast dat een identiteit exact één sleutelpaar
 heeft, dat de publieke helft in git staat als enige bron, en dat de privéhelft
 daar nooit leesbaar komt. Daar hangt de toerekenbaarheid van elke sessie aan:
 zonder dit weet je dat er iets gezegd is, maar niet door wie.
+
 ## Requirements
+
 ### Requirement: Eén keypair per identiteit
 
 Elke deelnemer — mens of agent — SHALL een eigen Nostr-keypair hebben dat nooit
@@ -25,8 +27,27 @@ identiteit.
 ### Requirement: Publieke registry in git als enige bron
 
 `identities.yml` SHALL alle toegelaten publieke sleutels bevatten met rol en
-status (`actief`/`ingetrokken`), en toelating tot de relay SHALL herleidbaar
-zijn tot een registry-entry; er bestaat geen tweede lijst.
+handle, en SHALL de enige bron zijn waartegen een afzender gecontroleerd wordt.
+
+Het bestand hoort bij de **installatie**, niet bij de repo: een verse installatie
+SHALL zijn eigen `identities.yml` schrijven met de publieke helft van de
+sleutels die daar gegenereerd zijn. Wat in git staat is de registry van Marks
+installatie en SHALL geen sleutels bevatten die een andere installatie overneemt
+— twee installaties met dezelfde npub zijn voor de relay één identiteit.
+
+#### Scenario: Verse installatie krijgt eigen identiteiten
+
+- **WHEN** `scripts/init_identities.py` draait op een installatie zonder sleutels
+- **THEN** ontstaat per identiteit een nieuw sleutelpaar, staat de publieke helft
+  in de lokale `identities.yml`, en staat de privéhelft alleen in de
+  sleutelopslag
+
+#### Scenario: Nog een keer draaien verandert niets
+
+- **GIVEN** een installatie waar de sleutels al bestaan
+- **WHEN** het script opnieuw draait
+- **THEN** worden bestaande sleutelparen niet vervangen en verandert
+  `identities.yml` niet
 
 #### Scenario: Nieuwe agent-identiteit
 
@@ -36,9 +57,27 @@ zijn tot een registry-entry; er bestaat geen tweede lijst.
 
 ### Requirement: Privésleutels nooit leesbaar in git
 
-Privésleutels SHALL uitsluitend SOPS+age-versleuteld in `secrets/` staan;
-intrekking betekent status `ingetrokken` in de registry én blokkade aan de
-relay-kant.
+Privésleutels SHALL nooit leesbaar in git staan. Waar ze wél staan SHALL een
+keuze van de installatie zijn, niet van de repo: een sleutelopslag met minstens
+twee backends, `sops` (SOPS+age-versleuteld in `secrets/`) en `bestand` (een map
+op de installatie).
+
+Een bestand-backend SHALL een sleutel weigeren die ruimer dan 0600 leesbaar is,
+en SHALL die weigering benoemen in plaats van de sleutel over te slaan. Ontbreekt
+een privésleutel, dan SHALL de bijbehorende agent niet starten en SHALL de reden
+op stdout staan.
+
+#### Scenario: Marks installatie blijft draaien
+
+- **GIVEN** een installatie met `secrets/identities.yaml` en een age-sleutel
+- **WHEN** de listener start met de `sops`-backend
+- **THEN** laadt hij dezelfde sleutels als voorheen
+
+#### Scenario: Een sleutel die iedereen kan lezen telt niet
+
+- **GIVEN** de `bestand`-backend en een sleutelbestand met mode 0644
+- **WHEN** de listener die sleutel opvraagt
+- **THEN** start de agent niet en zegt de melding dat de rechten te ruim zijn
 
 #### Scenario: Intrekking
 
@@ -98,4 +137,3 @@ blijven staan in plaats van verwijderd te worden.
 - **WHEN** een sleutel is ingetrokken
 - **THEN** weigert het post-pad die identiteit, terwijl haar eerdere berichten
   nog steeds onder haar naam leesbaar zijn
-

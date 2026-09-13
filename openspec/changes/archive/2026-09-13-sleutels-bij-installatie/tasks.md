@@ -14,6 +14,10 @@
 - [x] 1.6 Spec `identity-registry` bijgewerkt
 - [x] 1.7 Nagemeten op een verse map: twee identiteiten gegenereerd, rechten
       0700/0600, tweede run raakt niets aan, keystore leest ze terug
-- [ ] 1.8 Nameten op Marks eigen installatie: listener herstarten op de
-      `sops`-backend en zien dat alle acht agents nog starten
-- [ ] 1.9 Change archiveren
+- [x] 1.8 Nagemeten op Marks eigen installatie. **Ging de eerste keer mis**: de
+      parser zocht `  <handle>:` met twee spaties, het echte bestand heeft er
+      vier, en de listener viel om met acht keer "geen NSEC_ in env".
+      Teruggedraaid naar fd1f11f, gerepareerd met een YAML-parse (#133), en nu
+      start hij met alle acht agents. Les die in de code staat: een fixture die
+      niet op het echte bestand lijkt, test niets.
+- [x] 1.9 Change archiveren
