@@ -32,7 +32,13 @@ class H(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(data)))
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
-        self.wfile.write(data)
+        # HEAD krijgt dezelfde headers en geen body. Dat is niet alleen de HTTP-
+        # regel: zonder dit gaf elke HEAD een 501 met een HTML-foutpagina, en die
+        # `content-type: text/html` liet mij op 2026-09-13 bijna concluderen dat
+        # het manifest verkeerd geserveerd werd. Een diagnosemiddel dat over zijn
+        # eigen voeten struikelt is erger dan geen diagnosemiddel.
+        if self.command != "HEAD":
+            self.wfile.write(data)
         self._log_access(code)
 
     def log_message(self, *a):  # quiet: our own line below is enough
@@ -77,6 +83,10 @@ class H(BaseHTTPRequestHandler):
         if read_routes.route(self, u):
             return None
         return self._send(404, json.dumps({"error": "not found"}))
+
+    def do_HEAD(self):
+        # Dezelfde route als GET; _send laat de body weg.
+        return self.do_GET()
 
     def do_POST(self):
         u = urlparse(self.path)
