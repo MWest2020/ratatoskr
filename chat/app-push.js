@@ -50,7 +50,21 @@ async function enablePush(btn){
     if(perm!=="granted"){ toast("notifications not allowed — tap 🔔 to try again"); return; }
     await ensurePushSubscription();
     toast("notifications on ✓"); if(btn) btn.remove();
-  }catch(e){ toast("subscribing failed"); }
+  }catch(e){
+    // De fout ZEGGEN, niet inslikken. Op 2026-09-13 kostte dit een dag: de
+    // server zag /api/push/vapid binnenkomen en daarna niets meer, en dit
+    // catch-blok gooide precies de zin weg die verteld zou hebben waaróm.
+    // De naam is het bruikbare deel — NotAllowedError (permissie),
+    // AbortError (de pushdienst is onbereikbaar) en InvalidAccessError (de
+    // sleutel deugt niet) vragen elk iets anders van je.
+    toast("aanmelden mislukt: " + foutTekst(e), 9000);
+  }
+}
+function foutTekst(e){
+  if(!e) return "onbekende fout";
+  const naam = e.name || "";
+  const bericht = e.message || String(e);
+  return naam && naam !== "Error" ? naam + " — " + bericht : bericht;
 }
 function bell(title, onclick){
   const pb=document.createElement("button");
@@ -77,9 +91,15 @@ if("serviceWorker" in navigator && "PushManager" in window && "Notification" in 
     // Already granted: quietly ensure the server knows our (correct) subscription.
     // NOT silently on failure: a subscription can expire (reinstall, new browser
     // context, FCM prunes it) and then you get no notifications and no hint why.
-    ensurePushSubscription().catch(() =>
-      bell("notifications are on, but this device is not registered — tap to fix",
-           (b)=>enablePush(b)));
+    ensurePushSubscription().catch((e) => {
+      // Stil falen is hier het duurst: meldingen staan "aan", er komt niets
+      // binnen, en niets op het scherm zegt waarom. De bel komt terug MET de
+      // reden erin, zodat een volgende keer een diagnose is en geen zoektocht.
+      const b = bell("meldingen staan aan, maar dit toestel is niet aangemeld — tik om te herstellen",
+                     (btn)=>enablePush(btn));
+      b.dataset.reden = foutTekst(e);
+      if(typeof toast === "function") toast("aanmelden mislukt: " + foutTekst(e), 9000);
+    });
   }else if(Notification.permission==="denied"){
     bell("notifications are blocked for this site — tap to see how to allow them",
          explainBlocked);
