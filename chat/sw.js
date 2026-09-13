@@ -5,7 +5,7 @@
 //   keeps running after a timeout and refreshes the cache anyway (waitUntil).
 // - Statics (icons, manifest): cache first with a background update.
 // - /api/*: NEVER cached (chat is realtime, git is the truth).
-const CACHE = "boomhuis-shell-v27";  // v27: the app now notices its own updates
+const CACHE = "boomhuis-shell-v28";  // v28: says so when you are in a tab, not the app
 // A version bump wipes every older cache on `activate`. That is the only thing
 // that reliably unsticks an installed PWA stuck on the old JS: network first only
 // helps once the app runs, and that was exactly the bug where it did not.

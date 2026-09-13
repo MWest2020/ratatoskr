@@ -89,6 +89,23 @@ async function inState(b, permission) {
     await ctx.close();
   }
 
+  // De app draait in Playwright altijd in een gewoon venster, dus display-mode
+  // is nooit standalone. Op telefoonformaat hoort hij dat te zeggen: dat is
+  // precies het geval dat een halve middag kostte (TWA die terugviel op een
+  // Custom Tab, en van buiten niet te onderscheiden van de echte app).
+  console.log('— draait-in-een-tab');
+  {
+    const { ctx, p } = await inState(b, 'granted');
+    await p.waitForTimeout(4000);
+    const toast = await p.evaluate(() => {
+      const e = document.querySelector('#toast');
+      return { zichtbaar: e && getComputedStyle(e).display !== 'none', tekst: (e || {}).textContent || '' };
+    });
+    t('zegt dat je niet in de geïnstalleerde app zit', toast.zichtbaar
+      && /browservenster|App installeren/i.test(toast.tekst), JSON.stringify(toast));
+    await ctx.close();
+  }
+
   console.log(`\n${ok} ok, ${fail} fail`);
   await b.close();
   process.exit(fail === 0 ? 0 : 1);
