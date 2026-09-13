@@ -13,8 +13,12 @@ Reading was once open because the tailnet shielded it. Since
 agent traffic.
 """
 import json
+import os
+import re
 import unittest
 import urllib.request
+
+import statics
 
 from live_server import CID, LiveServerCase, auth
 
@@ -111,3 +115,45 @@ class ServerTest(LiveServerCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class WhatIndexLoadsIsAlsoServedAndCached(unittest.TestCase):
+    """Elk bestand dat index.html binnenhaalt moet in DRIE lijsten staan.
+
+    Aanleiding, 2026-09-13: bij het toevoegen van `app-update.js` zette ik eerst
+    alleen het `<script>`-tag erin. Lokaal werkte dat (de bestanden staan naast
+    elkaar op schijf), in productie zou het een 404 zijn geweest — en een
+    ontbrekend script faalt stil: de app laadt, doet alleen dat ene ding niet
+    meer. Dezelfde fout met de SHELL-lijst levert een app op die offline half
+    kapot is.
+    """
+
+    def _index(self):
+        here = os.path.dirname(os.path.abspath(__file__))
+        with open(os.path.join(here, "index.html")) as f:
+            return f.read()
+
+    def _sw(self):
+        here = os.path.dirname(os.path.abspath(__file__))
+        with open(os.path.join(here, "sw.js")) as f:
+            return f.read()
+
+    def _refs(self):
+        """Alle eigen /-paden die index.html binnenhaalt (scripts + stylesheets)."""
+        html = self._index()
+        return sorted(set(re.findall(r'(?:src|href)="(/[^"]+\.(?:js|css))"', html)))
+
+    def test_every_reference_is_on_the_statics_allowlist(self):
+        ontbreekt = [p for p in self._refs() if p not in statics.FILES]
+        self.assertEqual(ontbreekt, [], f"index.html laadt dit, statics.py serveert het niet: {ontbreekt}")
+
+    def test_every_reference_is_in_the_service_worker_shell(self):
+        sw = self._sw()
+        ontbreekt = [p for p in self._refs() if f'"{p}"' not in sw]
+        self.assertEqual(ontbreekt, [], f"index.html laadt dit, de sw cachet het niet: {ontbreekt}")
+
+    def test_the_reference_list_is_not_accidentally_empty(self):
+        # Zonder dit zou een kapotte regex bovenstaande twee tests groen maken
+        # zonder iets te controleren — precies het soort stille pass dat we hier
+        # al twee keer hebben gehad.
+        self.assertGreater(len(self._refs()), 8, self._refs())
