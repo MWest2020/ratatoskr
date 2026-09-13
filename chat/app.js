@@ -2,8 +2,9 @@
 const $ = s => document.querySelector(s);
 let channels = [], current = null, lastCount = 0, pollTimer = null;
 
-function toast(t){ const e=$("#toast"); e.textContent=t; e.style.display="block";
-  setTimeout(()=>e.style.display="none", 2600); }
+// `ms`: a blocked-notification message must outlast a confirmation on screen.
+function toast(t, ms){ const e=$("#toast"); e.textContent=t; e.style.display="block";
+  clearTimeout(toast._t); toast._t=setTimeout(()=>e.style.display="none", ms||2600); }
 
 // --- unread counter per channel (per device, through localStorage) ---
 let overview = {}; // id -> {count}
