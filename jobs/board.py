@@ -34,30 +34,48 @@ def load_config(path=None):
     return yaml.safe_load(open(path or os.path.join(HERE, "board.yml")))
 
 
-def _pr_cards_cached(src, now, cache_path, max_age):
-    """PRs come from GitHub and change slowly; sessions change every minute.
-    Caching the PR side lets the snapshot run often without querying GitHub every
-    time — and that is what makes a RUNNING session visible."""
+def _merged_cached(src, now, cache_path, max_age):
+    """Alleen de GEMERGEDE kant uit een cache.
+
+    Die verandert alleen naar achteren, dus tien minuten oud is daar prima. De
+    OPEN kant niet: die staat in de kolom waar iemand iets mee moet, en een
+    gemergede PR die daar nog in staat vraagt om niets. Gemeten 2026-09-13: #125
+    stond acht minuten na zijn merge nog in review, omdat beide kanten uit
+    dezelfde cache van vlak vóór die merge kwamen.
+    """
     try:
         cached = json.load(open(cache_path))
         if now - cached.get("at", 0) < max_age:
-            return cached["cards"], []
+            return cached["rows"], []
     except (OSError, ValueError, KeyError):
         pass
     try:
-        cards = board_sources.pr_cards(src["github_owner"], src.get("merged_days", 3),
-                                       now, set(src.get("ignore_repos") or ()))
+        rows = board_sources.merged_prs(src["github_owner"], src.get("merged_days", 3), now)
     except Exception as e:
-        # No fresh PRs? Fall back on the cache, however old — but say so.
         try:
-            return json.load(open(cache_path))["cards"], [f"PRs not refreshed: {e}"]
+            return json.load(open(cache_path))["rows"], [f"merged PRs not refreshed: {e}"]
         except (OSError, ValueError, KeyError):
-            return [], [f"PRs not fetched: {e}"]
+            return [], [f"merged PRs not fetched: {e}"]
     tmp = cache_path + ".tmp"
     with open(tmp, "w") as f:
-        json.dump({"at": now, "cards": cards}, f)
+        json.dump({"at": now, "rows": rows}, f)
     os.replace(tmp, cache_path)
-    return cards, []
+    return rows, []
+
+
+def _pr_cards_cached(src, now, cache_path, max_age):
+    """Open PR's vers, gemergede uit de cache."""
+    errors = []
+    try:
+        open_rows = board_sources.open_prs(src["github_owner"])
+    except Exception as e:
+        # Geen verse open PR's? Dan liever niets tonen dan een oude lijst als
+        # actueel presenteren — maar wel zeggen dat we het niet weten.
+        open_rows, errors = [], [f"open PRs not fetched: {e}"]
+    merged_rows, merged_errors = _merged_cached(src, now, cache_path, max_age)
+    rows = open_rows + merged_rows
+    return (board_sources.rows_to_cards(rows, now, set(src.get("ignore_repos") or ())),
+            errors + merged_errors)
 
 
 def build(cfg, now=None):
