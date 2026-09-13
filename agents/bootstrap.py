@@ -58,7 +58,13 @@ def hub_handle(root):
 
 def fetch_def(base, handle):
     """Fetch the canonical definition from the handbook. Returns {npub, channels,
-    system, provider} or None on failure (fail-closed)."""
+    system, provider} or None on failure (fail-closed).
+
+    LET OP bij een verse handbook-merge: `raw.githubusercontent.com` cachet zo'n
+    vijf minuten. Herstart je de listener meteen na een merge, dan haalt hij de
+    OUDE definitie op en lijkt de wijziging niet te werken. Gemeten 2026-09-13:
+    `gh api` gaf al `routes: [bouw]` terwijl deze functie nog `[]` teruggaf.
+    Wachten tot deze functie het nieuwe veld ziet en dán pas herstarten."""
     url = f"{base}/{handle}.md"
     try:
         with urllib.request.urlopen(url, timeout=15) as r:
