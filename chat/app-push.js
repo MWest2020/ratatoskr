@@ -43,29 +43,47 @@ async function enablePush(btn){
   if(!("serviceWorker" in navigator) || !("PushManager" in window)){ toast("push not supported"); return; }
   try{
     const perm=await Notification.requestPermission();
-    if(perm!=="granted"){ toast("notifications not allowed"); return; }
+    // "denied" here means the browser did not even ask — it remembers a previous
+    // refusal for this origin. "default" means the prompt was dismissed. They
+    // need different advice, and neither is a reason to fall silent.
+    if(perm==="denied"){ explainBlocked(); return; }
+    if(perm!=="granted"){ toast("notifications not allowed — tap 🔔 to try again"); return; }
     await ensurePushSubscription();
     toast("notifications on ✓"); if(btn) btn.remove();
   }catch(e){ toast("subscribing failed"); }
 }
+function bell(title, onclick){
+  const pb=document.createElement("button");
+  pb.id="pushBtn"; pb.textContent="🔔"; pb.title=title;
+  pb.onclick=()=>onclick(pb);
+  document.querySelector("header").appendChild(pb);
+  return pb;
+}
+// Once a site is blocked, `requestPermission()` resolves to "denied" WITHOUT
+// showing a prompt, so a button that calls it again is a button that does
+// nothing. The only way back is the browser's own site settings, so say that.
+function explainBlocked(){
+  toast("notifications are blocked for this site. Chrome: ⋮ → ⓘ next to the "
+      + "address → notifications → allow. Then reopen the app.", 9000);
+}
+// Three permission states, three behaviours, and none of them silent. Measured
+// 2026-09-13: Mark turned notifications on and nothing happened — the access log
+// showed the phone polling normally while it never once asked for the VAPID key.
+// That is what "denied" used to look like from here: no button, no message, no
+// request. A phone that cannot notify has to SAY it cannot notify, because the
+// alternative is indistinguishable from a phone that simply has no news.
 if("serviceWorker" in navigator && "PushManager" in window && "Notification" in window){
   if(Notification.permission==="granted"){
     // Already granted: quietly ensure the server knows our (correct) subscription.
     // NOT silently on failure: a subscription can expire (reinstall, new browser
     // context, FCM prunes it) and then you get no notifications and no hint why.
-    // Measured 2026-09-12 — Mark: "ook geen meldingen". So on failure the bell
-    // comes back: something to press instead of silence.
-    ensurePushSubscription().catch(()=>{
-      const pb=document.createElement("button");
-      pb.id="pushBtn"; pb.textContent="🔔"; pb.title="notifications are off — tap to fix";
-      pb.onclick=()=>enablePush(pb);
-      document.querySelector("header").appendChild(pb);
-    });
-  }else if(Notification.permission!=="denied"){
-    // Not decided yet: show a 🔔 button.
-    const pb=document.createElement("button");
-    pb.id="pushBtn"; pb.textContent="🔔"; pb.title="turn notifications on";
-    pb.onclick=()=>enablePush(pb);
-    document.querySelector("header").appendChild(pb);
+    ensurePushSubscription().catch(() =>
+      bell("notifications are on, but this device is not registered — tap to fix",
+           (b)=>enablePush(b)));
+  }else if(Notification.permission==="denied"){
+    bell("notifications are blocked for this site — tap to see how to allow them",
+         explainBlocked);
+  }else{
+    bell("turn notifications on", (b)=>enablePush(b));
   }
 }
