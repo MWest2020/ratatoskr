@@ -18,6 +18,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 
 FILES = {
     "/app.css": ("app.css", "text/css"),
+    "/header.css": ("header.css", "text/css"),
     "/repos.css": ("repos.css", "text/css"),
     "/board.css": ("board.css", "text/css"),
     "/login.css": ("login.css", "text/css"),
