@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: EUPL-1.2
-"""VM-zijdige helper voor push_subs.json — draait als root via één vastgepinde
-sudoers-regel, zodat de sender op agent-lxc NIET `sudo sh`/`sudo python3 -c`
-(feitelijk een root-shell) nodig heeft. Least privilege: sudoers pint precies dit
-pad, dit script accepteert alleen `read` en `prune`.
+"""VM-side helper for push_subs.json — runs as root through one pinned sudoers
+rule, so the sender on agent-lxc does NOT need `sudo sh`/`sudo python3 -c` (a
+root shell in all but name). Least privilege: sudoers pins exactly this path and
+this script accepts only `read` and `prune`.
 
-  sudo -n /usr/local/bin/boomhuis-push-subs read           # print de subs (of [])
-  echo '["<endpoint>", ...]' | sudo -n .../boomhuis-push-subs prune   # verwijder
+  sudo -n /usr/local/bin/boomhuis-push-subs read           # print the subs (or [])
+  echo '["<endpoint>", ...]' | sudo -n .../boomhuis-push-subs prune   # remove
 
-Deploy: uit deze repo `orchestrator/vm/boomhuis-push-subs` →
-`/usr/local/bin/boomhuis-push-subs` (root:root 0755). Zie chat/README.md → Web Push.
+Deploy: from this repo `orchestrator/vm/boomhuis-push-subs` →
+`/usr/local/bin/boomhuis-push-subs` (root:root 0755). See chat/README.md → Web Push.
 """
 import json
 import os
@@ -44,9 +44,9 @@ def _path():
 
 
 def _read():
-    # Ontbrekend bestand = nog geen abonnees (legitiem 0 subs). Elke ANDERE fout
-    # (rechten, I/O) propageert als exception → rc!=0, zodat de sender geen vals
-    # "0 subs" meldt.
+    # A missing file means nobody has subscribed yet (a legitimate 0 subs). Every
+    # OTHER error (permissions, I/O) propagates as an exception → rc != 0, so the
+    # sender never reports a false "0 subs".
     if not os.path.exists(_path()):
         return []
     with open(_path()) as f:
@@ -54,14 +54,39 @@ def _read():
     return d if isinstance(d, list) else []
 
 
+def _owner(target):
+    """Who must own the file after we replace it, and with which mode.
+
+    This script runs as root, but the file belongs to the chat — which runs as
+    an unprivileged user in a container. Writing a fresh root:root 0600 file
+    therefore does not merely change the owner: it takes the file away from its
+    only writer. Measured on 2026-09-13, and it is exactly how push died
+    silently: a prune left `[]` as root:root 0600, after which the chat could
+    not read it, could not store a new subscription, and reported nothing.
+
+    So: keep what the file already had, and if it is gone, follow the directory
+    it lives in — that directory is the volume, and the volume belongs to the
+    chat.
+    """
+    try:
+        st = os.stat(target)
+    except OSError:
+        st = os.stat(os.path.dirname(target))
+        return st.st_uid, st.st_gid, 0o600
+    return st.st_uid, st.st_gid, st.st_mode & 0o777
+
+
 def _write(subs):
-    doel = _path()
-    os.makedirs(os.path.dirname(doel), exist_ok=True)
-    tmp = doel + ".tmp"
+    target = _path()
+    os.makedirs(os.path.dirname(target), exist_ok=True)
+    uid, gid, mode = _owner(target)
+    tmp = target + ".tmp"
     fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     with os.fdopen(fd, "w") as f:
         json.dump(subs, f)
-    os.replace(tmp, doel)
+    os.chown(tmp, uid, gid)
+    os.chmod(tmp, mode)
+    os.replace(tmp, target)
 
 
 def main():
@@ -74,7 +99,7 @@ def main():
         _write(keep)
         print(f"pruned {len(dead)}", file=sys.stderr)
     else:
-        sys.exit("gebruik: boomhuis-push-subs read|prune")
+        sys.exit("usage: boomhuis-push-subs read|prune")
 
 
 if __name__ == "__main__":
