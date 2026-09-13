@@ -1,0 +1,42 @@
+/* SPDX-License-Identifier: EUPL-1.2 */
+/* De kopbalk. Eigen bestand sinds 2026-09-13: deze rij bleek meer regels nodig
+   te hebben dan hij leek, en app.css raakte zijn grens van 200. De aanleiding
+   staat hieronder — de 🔔 die app-push.js als laatste toevoegt, stond 169px
+   buiten beeld omdat de rij niet kon krimpen. */
+  header{
+    display:flex; align-items:center; gap:.6rem; padding:.7rem .9rem;
+    padding-top:calc(.7rem + env(safe-area-inset-top));
+    background:var(--panel); border-bottom:1px solid var(--line); flex:0 0 auto;
+  }
+  header .bee{font-size:1.2rem; flex:0 0 auto}
+  /* The channel name is the elastic part of this row: it may be cut short, the
+     buttons may not. Without min-width:0 a flex item refuses to shrink below its
+     content and pushes the rest out of the header instead. */
+  header h1{
+    font-size:1.02rem; margin:0; font-weight:700; letter-spacing:.01em;
+    /* flex:1 neemt de vrije ruimte; min-width:0 laat de naam krimpen in plaats
+       van de knoppen de balk uit te duwen (een flex-item weigert anders te
+       krimpen onder zijn inhoud). */
+    flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  header h1 .hash{color:var(--accent)}
+  /* De kanaalnaam duwt de knoppen naar rechts, niet elke knop apart. Stond er
+     `margin-left:auto` op ÉLKE knop, dan verdeelt flexbox de vrije ruimte over
+     al die marges en staan de knoppen uit elkaar gewaaierd over de balk — wat
+     niet opviel zolang de rij overliep en er dus geen vrije ruimte was. */
+  header button{
+    flex:0 0 auto; background:var(--panel2); color:var(--ink);
+    border:1px solid var(--line); border-radius:10px; padding:.4rem .7rem;
+    font-size:.85rem; font-weight:600; white-space:nowrap;
+  }
+  /* On a phone the labels do not fit. Measured 2026-09-13 on a 360px-wide
+     viewport: bee + four buttons + the 🔔 that app-push.js appends came to about
+     463px of fixed width, so the LAST element fell off the right edge — and the
+     last element is exactly the bell you need when notifications are off. The
+     header clips instead of scrolling, so it was not merely hard to reach but
+     invisible. Emoji stay, words go. */
+  @media (max-width:560px){
+    header{gap:.35rem; padding-left:.6rem; padding-right:.6rem}
+    header .lbl{display:none}
+    header button{padding:.35rem .5rem; font-size:.95rem; border-radius:9px}
+  }
