@@ -157,3 +157,32 @@ class WhatIndexLoadsIsAlsoServedAndCached(unittest.TestCase):
         # zonder iets te controleren — precies het soort stille pass dat we hier
         # al twee keer hebben gehad.
         self.assertGreater(len(self._refs()), 8, self._refs())
+
+
+class HeadAnswersLikeGetWithoutABody(LiveServerCase):
+    """HEAD gaf een 501 met een HTML-foutpagina.
+
+    Dat is niet alleen tegen de HTTP-regel; het maakt elke controle met
+    `curl -I` misleidend. Op 2026-09-13 liet die `content-type: text/html` mij
+    bijna concluderen dat het manifest verkeerd geserveerd werd, terwijl dat
+    antwoord van de 501-pagina zelf kwam.
+    """
+    PERSON = "head-tester"
+
+    def head(self, path):
+        req = urllib.request.Request(self.base + path, method="HEAD")
+        req.add_header("Cookie", "{}={}".format(auth.COOKIE, self.session))
+        with urllib.request.urlopen(req, timeout=10) as r:
+            return r.status, r.headers.get("Content-Type"), r.read()
+
+    def test_head_on_the_manifest_says_manifest(self):
+        code, ctype, body = self.head("/manifest.webmanifest")
+        self.assertEqual(code, 200)
+        self.assertEqual(ctype, "application/manifest+json")
+        self.assertEqual(body, b"")
+
+    def test_head_on_the_page_says_html(self):
+        code, ctype, body = self.head("/")
+        self.assertEqual(code, 200)
+        self.assertTrue(ctype.startswith("text/html"), ctype)
+        self.assertEqual(body, b"")
