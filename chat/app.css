@@ -20,13 +20,30 @@
     padding-top:calc(.7rem + env(safe-area-inset-top));
     background:var(--panel); border-bottom:1px solid var(--line); flex:0 0 auto;
   }
-  header .bee{font-size:1.2rem}
-  header h1{font-size:1.02rem; margin:0; font-weight:700; letter-spacing:.01em}
+  header .bee{font-size:1.2rem; flex:0 0 auto}
+  /* The channel name is the elastic part of this row: it may be cut short, the
+     buttons may not. Without min-width:0 a flex item refuses to shrink below its
+     content and pushes the rest out of the header instead. */
+  header h1{
+    font-size:1.02rem; margin:0; font-weight:700; letter-spacing:.01em;
+    min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
   header h1 .hash{color:var(--accent)}
   header button{
-    margin-left:auto; background:var(--panel2); color:var(--ink);
+    margin-left:auto; flex:0 0 auto; background:var(--panel2); color:var(--ink);
     border:1px solid var(--line); border-radius:10px; padding:.4rem .7rem;
-    font-size:.85rem; font-weight:600;
+    font-size:.85rem; font-weight:600; white-space:nowrap;
+  }
+  /* On a phone the labels do not fit. Measured 2026-09-13 on a 360px-wide
+     viewport: bee + four buttons + the 🔔 that app-push.js appends came to about
+     463px of fixed width, so the LAST element fell off the right edge — and the
+     last element is exactly the bell you need when notifications are off. The
+     header clips instead of scrolling, so it was not merely hard to reach but
+     invisible. Emoji stay, words go. */
+  @media (max-width:560px){
+    header{gap:.4rem; padding-left:.6rem; padding-right:.6rem}
+    header .lbl{display:none}
+    header button{padding:.4rem .55rem; font-size:1rem}
   }
   /* channel drawer */
   #drawer{
