@@ -1,7 +1,14 @@
 # identity-registry Specification
 
 ## Purpose
-TBD - created by archiving change add-relay. Update Purpose after archive.
+
+Wie er namens wie tekent op de relay, en hoe dat controleerbaar blijft.
+
+Een bericht op een Nostr-relay is precies zo veel waard als de sleutel die het
+tekende. Deze capability legt vast dat een identiteit exact één sleutelpaar
+heeft, dat de publieke helft in git staat als enige bron, en dat de privéhelft
+daar nooit leesbaar komt. Daar hangt de toerekenbaarheid van elke sessie aan:
+zonder dit weet je dat er iets gezegd is, maar niet door wie.
 ## Requirements
 ### Requirement: Eén keypair per identiteit
 

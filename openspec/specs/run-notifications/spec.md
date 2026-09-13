@@ -1,7 +1,15 @@
 # run-notifications Specification
 
 ## Purpose
-TBD - created by archiving change add-notifications. Update Purpose after archive.
+
+Hoe een run zich laat zien in de chat, zonder dat de chat ooit een run kan
+tegenhouden.
+
+De relay is een spiegel, geen schakel: posten gebeurt buiten de kooi, het is
+best-effort, en een onbereikbare relay laat een run gewoon doorlopen. De rest
+volgt daaruit — welke levensloopberichten waar landen, dat een bericht nooit een
+geheim draagt, en wanneer er een push naar de telefoon gaat in plaats van alleen
+een regel in een kanaal.
 ## Requirements
 ### Requirement: Posten gebeurt uitsluitend buiten de kooi
 

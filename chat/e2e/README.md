@@ -20,6 +20,17 @@ wijst naar de browser.
 
     NODE_PATH=~/ergens/node_modules node chat/e2e/ui.js
 
+Op agent-lxc staat die buiten de repo, met de browsers uit de cache ernaast:
+
+    NODE_PATH=/home/agent/e2e-tools/node_modules \
+    PW_CHROME=/home/agent/.cache/ms-playwright/chromium-1234/chrome-linux64/chrome \
+    RATATOSKR_URL=https://… NAAM=… WW=… bash chat/e2e/after-deploy.sh
+
+Opnieuw opzetten als die map weg is (de browsers staan er al, dus geen download):
+
+    mkdir -p ~/e2e-tools && cd ~/e2e-tools && npm init -y
+    PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm i playwright
+
 Alle drie geven exitcode 0 bij succes, dus ze zijn te ketenen.
 
 `BOOMHUIS_URL` mag mét of zonder slash aan het eind — de scripts strippen 'm.

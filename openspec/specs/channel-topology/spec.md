@@ -1,7 +1,16 @@
 # channel-topology Specification
 
 ## Purpose
-TBD - created by archiving change add-notifications. Update Purpose after archive.
+
+Hoe de kanalen op de relay zijn ingedeeld, en waarom die indeling per *functie*
+gaat en niet per agent.
+
+Een kanaal per agent lijkt logisch tot je vijf agenten hebt: dan staat één
+gesprek over één onderwerp verspreid over vijf plekken en is er nergens een
+draad. Een kanaal per functie houdt het omgekeerde waar — je leest één ding op
+één plek, ongeacht wie het deed. Daar hangt de rest aan vast: wie een kanaal mag
+aanmaken, waarom een kanaalbeschrijving reproduceerbaar moet zijn, en waarom
+besluiten maar op één plek vallen.
 ## Requirements
 ### Requirement: Kanalen per functie, niet per agent
 

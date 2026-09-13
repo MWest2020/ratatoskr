@@ -1,7 +1,15 @@
 # habitat-bridge Specification
 
 ## Purpose
-TBD - created by archiving change add-habitat-bridge. Update Purpose after archive.
+
+De brug tussen de chat en habitat: wat er nodig is voordat een bericht een
+habitat-Job kan worden.
+
+Dit is bewust een korte capability met een hoge drempel. Een chatbericht dat
+rechtstreeks werk kan starten is een uitvoerpad dat om de kooi heen loopt, en de
+kooi is de enige harde grens die het ecosysteem heeft. Daarom staat hier wie de
+poortwachter is en dat er niet gebouwd wordt vóór het amendement op habitats
+eigen spec er ligt.
 ## Requirements
 ### Requirement: Mark is de poortwachter van de brug
 

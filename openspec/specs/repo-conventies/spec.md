@@ -1,7 +1,14 @@
 # repo-conventies Specification
 
 ## Purpose
-TBD - created by archiving change technical-debt-11-09. Update Purpose after archive.
+
+De regels over hoe deze repo eruitziet, en het bewijs dat ze ook echt gelden.
+
+Eén regel met tanden is meer waard dan tien in een CONTRIBUTING.md, dus staat
+hier alleen wat een script kan controleren: bestanden blijven binnen 200 regels,
+en een baseline voor wat al te lang was mag alleen korter worden. Dat tweede is
+de belangrijkste helft — een baseline zonder vervaldatum is een uitzondering die
+zichzelf vermenigvuldigt.
 
 ## Requirements
 

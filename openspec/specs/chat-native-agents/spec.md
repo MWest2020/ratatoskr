@@ -1,7 +1,15 @@
 # chat-native-agents Specification
 
 ## Purpose
-TBD - created by archiving change add-chat-native-agents. Update Purpose after archive.
+
+De tweede agentklasse: agenten die in de chat leven in plaats van in een
+habitat-kooi, en de grenzen die dat verschil nodig heeft.
+
+Een habitat-worker is een Job met een begin en een eind; een chat-native agent
+luistert en antwoordt. Dat verschil verplaatst het risico maar haalt het niet
+weg, dus gelden hier eigen varianten van dezelfde regels: het mandaat ligt buiten
+het bereik van de agent, het bestaan is begrensd, model en gereedschap komen uit
+de registry in plaats van uit een prompt, en de audit-lat is dezelfde.
 ## Requirements
 ### Requirement: Tweede agentklasse met eigen kooi-principes
 

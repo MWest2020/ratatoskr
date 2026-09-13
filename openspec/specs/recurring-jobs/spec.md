@@ -1,7 +1,14 @@
 # recurring-jobs Specification
 
 ## Purpose
-TBD - created by archiving change add-standup-jobs. Update Purpose after archive.
+
+Het werk dat vanzelf gebeurt: de dagelijkse digests die de chat vullen zonder
+dat iemand erom vraagt.
+
+Terugkerend werk is de reden dat de chat ook iets zegt op een dag dat niemand
+iets vraagt — een standup van wat er loopt, en de terugkoppeling uit de
+zettelkast. Wat hier staat is wanneer ze draaien en wat ze moeten opleveren; de
+uitvoering zit in `jobs/` en in systemd-timers.
 
 ## Requirements
 
