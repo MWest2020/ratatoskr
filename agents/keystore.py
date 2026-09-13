@@ -39,25 +39,32 @@ class SleutelFout(Exception):
 
 
 def _lees_sops(pad, handle):
+    """De nsec van `handle` uit het SOPS-bestand — met een YAML-parse.
+
+    De eerste versie hiervan las regels en zocht naar `  <handle>:`. Dat leek
+    zuinig en het was fout: het echte bestand heeft VIER spaties inspringing,
+    dus die match sloeg nooit aan en elke agent viel om. Gemeten 2026-09-13 op
+    Marks installatie — acht agents "geen NSEC_ in env", listener uit.
+
+    De redenering in het commentaar eronder was net zo fout: "geen tweede parser
+    over hetzelfde bestand". Er is er nu maar één, want de awk in run.sh is juist
+    vervangen. Een tekstvorm uit het hoofd nabouwen is geen parser besparen, het
+    is een parser schrijven die minder kan.
+    """
     if not os.path.exists(pad):
         raise SleutelFout(f"{pad} bestaat niet")
     p = subprocess.run(["sops", "-d", pad], capture_output=True, text=True)
     if p.returncode != 0:
         raise SleutelFout(f"sops-decrypt faalde: {(p.stderr or p.stdout).strip()[:120]}")
-    # Bewust geen yaml-parse: de structuur is `  <handle>:\n    nsec: ...` en de
-    # bestaande run.sh leest hem met awk op precies die vorm. Eén parser erbij
-    # zou een tweede waarheid over hetzelfde bestand zijn.
-    zoek, gevonden = f"  {handle}:", False
-    for regel in p.stdout.splitlines():
-        if regel.rstrip() == zoek:
-            gevonden = True
-            continue
-        if gevonden:
-            if regel.strip().startswith("nsec:"):
-                return regel.split(":", 1)[1].strip()
-            if regel and not regel.startswith("    "):
-                break
-    raise SleutelFout(f"geen nsec voor '{handle}' in {pad}")
+    try:
+        import yaml
+        d = yaml.safe_load(p.stdout) or {}
+    except Exception as e:
+        raise SleutelFout(f"{pad} is geen leesbare YAML: {str(e)[:100]}")
+    ident = (d.get("identities") or {}).get(handle)
+    if not isinstance(ident, dict) or not ident.get("nsec"):
+        raise SleutelFout(f"geen nsec voor '{handle}' in {pad}")
+    return str(ident["nsec"]).strip()
 
 
 def _lees_bestand(map_, handle):

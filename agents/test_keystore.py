@@ -81,7 +81,11 @@ class SopsBackend(unittest.TestCase):
             returncode=rc, stdout=stdout, stderr="")
 
     def test_de_nsec_van_de_juiste_handle(self):
-        self._sops(f"identities:\n  odin:\n    nsec: {NSEC}\n  bouwer:\n    nsec: {ANDERE}\n")
+        # VIER spaties, zoals het echte bestand. De eerste versie van de parser
+        # zocht op twee en sloeg daardoor nooit aan — dat kostte Marks listener
+        # een herstart. Een fixture die niet op het echte bestand lijkt, test niets.
+        self._sops(f"identities:\n    odin:\n        privkey_hex: aa\n"
+                   f"        nsec: {NSEC}\n    bouwer:\n        nsec: {ANDERE}\n")
         pad = os.path.join(tempfile.mkdtemp(), "identities.yaml")
         open(pad, "w").write("x")
         self.assertEqual(keystore.lees("odin", backend="sops", sops_pad=pad), NSEC)
@@ -94,6 +98,21 @@ class SopsBackend(unittest.TestCase):
         with self.assertRaises(keystore.SleutelFout) as e:
             keystore.lees("odin", backend="sops", sops_pad=pad)
         self.assertIn("sops-decrypt faalde", str(e.exception))
+
+    def test_twee_spaties_werkt_ook(self):
+        # Een YAML-parse geeft dit gratis; de regel-voor-regel-versie moest kiezen.
+        self._sops(f"identities:\n  odin:\n    nsec: {NSEC}\n")
+        pad = os.path.join(tempfile.mkdtemp(), "identities.yaml")
+        open(pad, "w").write("x")
+        self.assertEqual(keystore.lees("odin", backend="sops", sops_pad=pad), NSEC)
+
+    def test_een_handle_zonder_nsec_is_een_fout(self):
+        self._sops("identities:\n    odin:\n        privkey_hex: aa\n")
+        pad = os.path.join(tempfile.mkdtemp(), "identities.yaml")
+        open(pad, "w").write("x")
+        with self.assertRaises(keystore.SleutelFout) as e:
+            keystore.lees("odin", backend="sops", sops_pad=pad)
+        self.assertIn("geen nsec", str(e.exception))
 
     def test_een_ontbrekend_bestand_zegt_dat(self):
         with self.assertRaises(keystore.SleutelFout) as e:
