@@ -87,9 +87,13 @@ def fetch_def(base, handle):
     # it silently falls back on the environment default and nobody knows what it
     # ran on.
     tools = chat.get("tools") or {}
+    # `routes` = de kanalen waar deze agent de woorden van de mens naartoe mag
+    # doorsturen (routing.py). Uit de handbook, net als de rest van het mandaat:
+    # zo staat het recht op één plek en niet in een prompt of een lokale yaml.
     return {"npub": fm.get("npub"), "channels": channels, "system": system,
             "provider": provider, "model": chat.get("model") or "",
             "allow": tools.get("allow") or [], "deny": tools.get("deny") or [],
+            "routes": chat.get("routes") or [],
             "skills": chat.get("skills") or []}
 
 

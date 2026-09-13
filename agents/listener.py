@@ -10,15 +10,18 @@ Guardrail: an agent is only run when (a) its definition can be loaded from the
 handbook and (b) the npub in it matches the identity in identities.yml. No source
 → no spawn (fail-closed). The closed relay is the backstop at identity level.
 
-Invariant: no shell, no repo write access, no dispatch from here. A `!sessie`
-marker does start a READ-ONLY work session (see sessions.py) — that changes
-nothing and delivers text in the channel.
+Invariant: no shell, no repo write, no dispatch from here. Two markers do act:
+`!sessie` starts a READ-ONLY work session (sessions.py) and `!route` forwards a
+human's OWN words to another channel (routing.py) — neither hands an agent a
+right it lacked; the listener acts, under conditions you can read.
 """
 import os
 import time
 
 import bootstrap
 import relay
+import routing
+import session_wiring
 import sessions
 import prompts
 import notify
@@ -31,7 +34,6 @@ ROOT = os.path.dirname(HERE)
 RELAY = os.environ["BUZZ_RELAY_URL"]
 POLL = int(os.environ.get("POLL_SECONDS", "5"))
 MAX_CTX = 8
-
 
 CHANNELS = bootstrap.load_channels(ROOT)
 NPUBS, PUB2NAME = bootstrap.load_identity_npubs(ROOT)
@@ -59,8 +61,8 @@ def main():
         return
     if not AGENTS:
         raise SystemExit("geen agents gespawnd (geen bron/nsec/npub-match)")
-    # Reader = the ORCHESTRATOR: it owns every channel and so sees them all
-    # (measured 2026-09-07: orchestrator 15/15, assistent 8/15, the hub 4/15).
+    # Reader = the ORCHESTRATOR: owns every channel, so sees them all (measured
+    # 2026-09-07: orchestrator 15/15, assistent 8/15, hub 4/15).
     read_nsec = os.environ.get("NSEC_ORCHESTRATOR", "").strip()
     if not read_nsec:
         raise SystemExit("[listener] NSEC_ORCHESTRATOR ontbreekt (zie agents/run.sh)")
@@ -69,33 +71,7 @@ def main():
     run = relay.runner(read_nsec, RELAY)  # relay I/O for topology
     reg = sessions.Register(sessions.load(HERE))
 
-    def session_post(s, text):
-        """Progress/result under the identity the TYPE declares."""
-        c = AGENTS.get(s["identity"])
-        if c:
-            send(s["cid"], text, c["nsec"], c["npub"])
-
-    def try_session(text, starter, requester, cname, cid, message_id=""):
-        """Act on a `!sessie` marker. `starter` wrote the marker, `requester` is
-        the person it is done for. Refusals are reported, not swallowed — a silent
-        refusal looks like a session that found nothing."""
-        mk = sessions.read_marker(text)
-        if not mk:
-            return
-        type_name, task = mk
-        s, reason = reg.start(type_name, task, starter, requester, cname, cid, message_id)
-        if not s:
-            print(f"[listener] sessie geweigerd ({starter}→{requester}/{type_name}): {reason}",
-                  flush=True)
-            c = AGENTS.get(HUB) or next(iter(AGENTS.values()))
-            send(cid, f"⛔ no session: {reason}", c["nsec"], c["npub"])
-            return
-        on_behalf = "" if starter == requester else f" on behalf of @{requester}"
-        print(f"[listener] sessie {type_name} gestart door {starter}{on_behalf} in #{cname}",
-              flush=True)
-        session_post(s, f"▶️ session `{type_name}` started by @{starter}{on_behalf} "
-                        f"(max {s['max_s'] // 60} min) — "
-                        f"task: {task[:120] or '(none)'}")
+    session_post, try_session = session_wiring.build(reg, AGENTS, send, HUB)
 
     reporting.report_missing_memberships(run, AGENTS, CHANNELS, PUB2NAME)
     name2pub = {h: p for p, h in PUB2NAME.items()}   # so we do not answer agents
@@ -183,6 +159,8 @@ def main():
                     except Exception as e:  # incl. timeout: the turn must never crash
                         r = {"answer": f"(fout: {e})", "error": str(e)[:120]}
                     ans = r.get("answer", "(geen antwoord)")
+                    ans = routing.handle(ans, handle, cfg, cname, writer, content,
+                                         mid, CHANNELS, send, cid)
                     mk = sessions.read_marker(ans)
                     text = sessions.strip_marker(ans) if mk else ans
                     if text and send(cid, text, cfg["nsec"], cfg["npub"]):
