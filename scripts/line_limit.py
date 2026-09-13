@@ -34,7 +34,17 @@ EXEMPT = {
 
 
 def tracked_files():
-    out = subprocess.run(["git", "-C", ROOT, "ls-files"], capture_output=True,
+    """Alles wat git zou meenemen: gevolgd ÉN nieuw-maar-niet-genegeerd.
+
+    Alleen `ls-files` kijkt naar wat al gevolgd wordt, en dus precies niet naar
+    een nieuw bestand — het moment waarop de kans op een overtreding het grootst
+    is. Gemeten 2026-09-13: `orchestrator/test_push_chain.py` was 231 regels,
+    lokaal groen omdat hij nog untracked was, en rood in CI zodra hij gecommit
+    was. Een poort die pas dichtgaat nadat je gepusht hebt is een poort die je
+    leert om CI te gebruiken als linter.
+    """
+    out = subprocess.run(["git", "-C", ROOT, "ls-files", "--cached", "--others",
+                          "--exclude-standard"], capture_output=True,
                          text=True, check=True).stdout.split()
     return [f for f in out
             if (f.endswith(EXTENSIONS) or os.path.basename(f) in NAMES)
