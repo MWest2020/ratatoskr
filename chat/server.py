@@ -63,15 +63,6 @@ class H(BaseHTTPRequestHandler):
                 return self._send(200, f.read(), "text/html; charset=utf-8")
         if statics.serve(self, u.path):
             return None
-        if u.path == "/ratatoskr.apk":
-            # Open, like /login and the asset links. Two reasons, both practical:
-            # (a) an APK download often starts outside the session — a link you
-            # forward opens in another app or in the download manager, and that
-            # does not carry the cookie, so behind the gate the link is useless
-            # exactly when you need it; (b) the file holds nothing secret: it is a
-            # browser shell with the host name in it, and that is already in every
-            # URL. The network layer (tailnet or proxy) is the door here.
-            return statics.serve_apk(self) and None
         if u.path.startswith("/api/"):
             # Reading sits behind the session too: these routes carry channel
             # names, messages and agent traffic. Without a tailnet in front,

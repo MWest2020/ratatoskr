@@ -1,11 +1,7 @@
 ---
 status: actief
-last_reviewed: 2026-09-04
+last_reviewed: 2026-09-13
 ---
-
-> **Er is ook een echte Android-app.** Zie
-> [android-app.md](android-app.md) — dezelfde PWA, maar fullscreen, met een
-> eigen naam en icoon in je app-lade. Dat is de aanbevolen weg op Android.
 
 # De Boomhuis-app op je telefoon zetten (PWA)
 

@@ -1,6 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-<rect width="512" height="512" rx="112" fill="rgb(23, 107, 69)"/>
-<polygon points="256,84 380,214 132,214" fill="rgb(14, 74, 47)"/>
-<rect x="146" y="214" width="220" height="184" fill="rgb(244, 236, 216)"/>
-<rect x="226" y="312" width="60" height="86" fill="rgb(14, 74, 47)"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Ratatoskr">
+  <rect width="512" height="512" rx="112" fill="#15130f"/>
+  <!-- the tail: one thick curled stroke, drawn first so the body sits in front -->
+  <path d="M296 402 C398 396 448 306 414 232 C388 174 322 146 282 186"
+        fill="none" stroke="#d8a657" stroke-width="76" stroke-linecap="round"/>
+  <g fill="#d8a657">
+    <ellipse cx="212" cy="322" rx="86" ry="82"/>
+    <circle cx="176" cy="198" r="62"/>
+    <path d="M134 176 L136 112 L188 146 Z"/>
+    <path d="M202 146 L238 100 L246 156 Z"/>
+    <path d="M124 214 q-38 4 -38 22 q22 12 40 -2 Z"/>
+    <ellipse cx="236" cy="382" rx="34" ry="26"/>
+  </g>
+  <circle cx="158" cy="188" r="13" fill="#15130f"/>
+  <path d="M92 404 h328 a20 20 0 0 1 0 40 H92 a20 20 0 0 1 0-40 Z" fill="#3a3324"/>
 </svg>
