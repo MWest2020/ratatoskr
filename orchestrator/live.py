@@ -31,9 +31,29 @@ def open_batons():
     for p in sorted(glob.glob(os.path.join(ROOT, "handover", "*.md"))):
         s = open(p).read()
         m = re.match(r"^---\n(.*?)\n---", s, re.S)
-        fm = yaml.safe_load(m.group(1)) if m else {}
+        try:
+            fm = yaml.safe_load(m.group(1)) if m else {}
+        except yaml.YAMLError as exc:
+            # Eén kapotte baton mocht tot 2026-09-14 de hele _live.md-generatie
+            # opblazen: de traceback liep door tot in de timer, en de
+            # coordinator kreeg helemaal geen overzicht meer. Een onleesbaar
+            # bestand is een melding, geen storing.
+            out.append((os.path.basename(p),
+                        f"FRONTMATTER ONLEESBAAR — {str(exc).splitlines()[0]}",
+                        "repareer de YAML-frontmatter"))
+            continue
         status = str(fm.get("status", ""))
         if "afgehandeld" in status or "gearchiveerd" in status:
+            continue
+        # Geen frontmatter = niet te beoordelen, en dat moet je zien. Op
+        # 2026-09-12 stond hier een baton zonder frontmatter: status leeg, dus
+        # nooit "afgehandeld", dus drie dagen lang "— . Volgende:" met twee
+        # lege velden in _live.md. Het werk was al af. Een lege regel leest als
+        # ruis en wordt overgeslagen; deze regel vraagt om een handeling.
+        if not fm:
+            out.append((os.path.basename(p),
+                        "GEEN FRONTMATTER — status onbekend",
+                        "voeg frontmatter toe (type/status/onderwerp/next_step)"))
             continue
         out.append((os.path.basename(p),
                     fm.get("onderwerp") or status or "",

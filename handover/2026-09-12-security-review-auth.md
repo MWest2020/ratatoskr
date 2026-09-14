@@ -1,3 +1,13 @@
+---
+type: handover-baton
+van: security-review-sessie (lezend, `!sessie ratatoskr`)
+naar: "@bouwer"
+status: volledig afgehandeld (2026-09-14)
+onderwerp: security-review auth-laag — F1 t/m F4
+datum: 2026-09-12
+next_step: geen — alle vier gerepareerd en getest, zie "Afhandeling" onderaan
+---
+
 # Baton — security-review van de auth-laag (2026-09-12)
 
 Uitgevoerd als lezende werksessie (`!sessie ratatoskr`) op verzoek van
@@ -64,3 +74,36 @@ Security-review auth-stack (`technical-debt-11-09` §4.1), gelezen tegen de code
 Voorstel: F1 en F2 als blokkerend voor 5.1 (poort naar een derde), F3/F4 kunnen mee in dezelfde PR. Verdict past in `handover/` in de vorm van 2026-08-30; dat schrijven is aan de mens/@bouwer die dit oppakt.
 
 — session `ratatoskr` · 6m17s · $0.76 · 31 turns
+
+---
+
+## Afhandeling (2026-09-14)
+
+Alle vier de bevindingen zitten in de code op `main`, elk met een test die
+faalt als de reparatie teruggedraaid wordt. Nagemeten door de betreffende
+tests te draaien: 21 groen (`test_auth_hardening`, `test_auth_hashguard`,
+`test_auth_routes`).
+
+- **F1** — `setup()` markeert de invite nu vóór `_create_account()`, zoals
+  `use_invite()` dat al deed. De legacy-tak heeft geen invite-rij om te
+  markeren en wordt gedekt door `idx_personen_een_eigenaar`, een partial
+  unique index op `personen(eigenaar) WHERE eigenaar = 1` in `auth_store.py`.
+  Test: `test_two_concurrent_setups_yield_a_single_owner`.
+- **F2** — `_DUMMY_HASH` wordt één keer bij import berekend, niet per
+  request. Beide paden kosten nu precies één scrypt-hash.
+  Test: `test_an_unknown_name_does_not_hash_a_fresh_dummy`.
+- **F3** — `_source()` vertrouwt `X-Forwarded-For` alleen van een
+  loopback-peer en leest dan het laatste element.
+  Tests: `test_a_non_loopback_peer_is_not_overridden_by_the_header`,
+  `test_a_loopback_peer_trusts_the_last_hop`.
+- **F4** — `auth_hashguard.guarded()` met een `BoundedSemaphore(6)` rond de
+  scrypt-aanroepen op de open routes; verzadiging geeft 429 in plaats van een
+  wachtrij. Test: `test_auth_hashguard`.
+
+**Waarom deze baton bleef staan.** Het werk was gedaan, de baton niet
+gesloten — en dat viel niemand op omdat dit bestand geen frontmatter had.
+`open_batons()` in `orchestrator/live.py` leest `status` uit de frontmatter;
+zonder frontmatter is `status` leeg, dus nooit "afgehandeld", dus eeuwig
+open. `_live.md` toonde `— . Volgende:` met twee lege velden, drie dagen
+lang. De parser is in dezelfde wijziging aangepast zodat een baton zonder
+frontmatter dat zégt in plaats van een lege regel te printen.
