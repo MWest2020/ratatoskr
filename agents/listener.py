@@ -138,7 +138,9 @@ def main():
                     cfg = AGENTS[handle]
                     print(f"[listener] {reason} @{handle} in #{cname}: {content[:50]}", flush=True)
                     recent = msgs[max(0, i - MAX_CTX):i + 1]
-                    p = prompts.build_prompt(handle, cname, recent, content, PUB2NAME)
+                    kan_routeren = bool(routing.allowed_channels(cfg))
+                    p = prompts.build_prompt(handle, cname, recent, content, PUB2NAME,
+                                             met_ids=kan_routeren)
                     know = prompts.channel_knowledge(ROOT, cname)
                     if know:
                         p = f"Kanaal-kennis (#{cname}):\n{know}\n\n" + p
@@ -151,7 +153,8 @@ def main():
                         r = providers.run(cfg.get("provider"),
                                           cfg["system"] + prompts.LIMIT_CLAUSE
                                           + prompts.session_clause(reg.cfg, handle,
-                                                                   writer), p,
+                                                                   writer)
+                                          + prompts.route_clause(cfg), p,
                                           model=cfg.get("model"), allow=cfg.get("allow"),
                                           deny=cfg.get("deny"),
                                           progress=reporting.progress_poster(
@@ -159,8 +162,8 @@ def main():
                     except Exception as e:  # incl. timeout: the turn must never crash
                         r = {"answer": f"(fout: {e})", "error": str(e)[:120]}
                     ans = r.get("answer", "(geen antwoord)")
-                    ans = routing.handle(ans, handle, cfg, cname, writer, content,
-                                         mid, CHANNELS, send, cid)
+                    ans = routing.handle(ans, handle, cfg, cname, msgs, PUB2NAME,
+                                         CHANNELS, send, cid)
                     mk = sessions.read_marker(ans)
                     text = sessions.strip_marker(ans) if mk else ans
                     if text and send(cid, text, cfg["nsec"], cfg["npub"]):
