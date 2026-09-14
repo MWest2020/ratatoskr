@@ -27,3 +27,27 @@ class ChannelKnowledge(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_route_clause_zwijgt_zonder_routes():
+    # Geen rechten, geen zin. Anders leert een agent over een knop die hij niet
+    # heeft en verspilt hij er beurten aan.
+    assert prompts.route_clause({}) == ""
+    assert prompts.route_clause({"routes": []}) == ""
+
+
+def test_route_clause_noemt_alleen_de_toegestane_kanalen():
+    t = prompts.route_clause({"routes": ["bouw", "review"]})
+    assert "#bouw" in t and "#review" in t
+    assert "!forward" in t and "message-id" in t
+
+
+def test_ids_staan_alleen_in_de_prompt_als_er_doorgestuurd_mag_worden():
+    # Zonder zichtbaar id kan een agent niets aanwijzen en is !forward
+    # onbruikbaar; mét ids voor een agent die niets mag doorsturen is het ruis.
+    recent = [{"id": "abcd1234efgh", "pubkey": "pk", "content": "hallo"}]
+    namen = {"pk": "mark"}
+    zonder = prompts.build_prompt("odin", "general", recent, "hallo", namen)
+    met = prompts.build_prompt("odin", "general", recent, "hallo", namen, met_ids=True)
+    assert "[abcd1234]" not in zonder
+    assert "[abcd1234] mark: hallo" in met

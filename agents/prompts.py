@@ -87,11 +87,79 @@ def session_clause(cfg, handle, requester=None):
             "proposes; it changes nothing.")
 
 
-def build_prompt(handle, chan, recent, trigger, pub2name):
+def route_clause(cfg, human):
+    """What this agent may forward, told in its system prompt.
+
+    Same reason as `session_clause`, and the same mistake made twice. On
+    2026-09-13 `route_message` was built, the handbook definition got a
+    `## Capabilities` section, and odin kept reporting in #architectuur and
+    #technical_debt: "ik heb geen tool om zelf in #bouw te posten". It was right.
+    `bootstrap.fetch_def` takes the system prompt from the blockquote under
+    `## Chat-facet` and nothing else, so a capability written anywhere else in
+    that document reaches humans and never reaches the model.
+
+    Generated from the ACTUAL `routes` of this agent, so the announcement cannot
+    drift from the mandate: no routes, no sentence. The rules below are stated
+    because the listener enforces them anyway — an agent that learns them only by
+    being refused wastes a turn on every attempt.
+    """
+    kanalen = [c for c in (cfg or {}).get("routes") or [] if isinstance(c, str)]
+    if not kanalen:
+        return ""
+    lijst = ", ".join(f"#{c}" for c in sorted(kanalen))
+    return ("\n\nYou can FORWARD this person's own words to another channel. To do "
+            "that, end your answer with:\n"
+            "!route #<channel>\n<the text, copied literally>\n"
+            f"Allowed channels: {lijst}.\n"
+            f"The text MUST appear word for word in {human}'s message — the listener "
+            "checks this and refuses anything else, so do not summarise, rephrase or "
+            "add a request of your own. It is posted with a provenance line the "
+            "listener writes; you do not write that yourself. Use it when you are "
+            "asked to pass something on, not to start a conversation elsewhere.")
+
+
+def route_clause(cfg):
+    """What this agent may forward, told in its system prompt.
+
+    Same reason as `session_clause`, and the same mistake made twice. On
+    2026-09-13 forwarding was built, the handbook definition got a
+    `## Capabilities` section, and odin kept reporting — in #architectuur and in
+    #technical_debt — "ik heb geen tool om zelf in #bouw te posten". It was
+    right: `bootstrap.fetch_def` takes the system prompt from the blockquote
+    under `## Chat-facet` and NOTHING else, so a capability written anywhere else
+    in that document reaches humans and never reaches the model.
+
+    Generated from this agent's actual `routes`, so the announcement cannot drift
+    from the mandate: no routes, no sentence.
+    """
+    kanalen = [c for c in (cfg or {}).get("routes") or [] if isinstance(c, str)]
+    if not kanalen:
+        return ""
+    lijst = ", ".join(f"#{c}" for c in sorted(kanalen))
+    return ("\n\nYou can FORWARD a message from this channel to another one, the way "
+            "Slack does. End your answer with:\n"
+            "!forward #<channel> <message-id>\n<your own note, optional>\n"
+            f"Allowed channels: {lijst}. The message id is the one shown with each "
+            "message; the first 8 characters are enough. The listener looks the "
+            "message up and copies it itself, so you never retype the content — "
+            "point at it. Your note is posted underneath, under your own name, so "
+            "nobody mistakes it for the original. Use this to pass something on; "
+            "for an answer of your own, just answer here.")
+
+
+def build_prompt(handle, chan, recent, trigger, pub2name, met_ids=False):
+    """De recente berichten plus de opdracht.
+
+    `met_ids` zet het korte bericht-id voor elke regel. Alleen aan voor een agent
+    die mag doorsturen: zonder zichtbaar id kan hij niets aanwijzen en is
+    `!forward` onbruikbaar — dezelfde fout als de capability die nooit in de
+    systeemprompt kwam, één laag verderop. Voor de rest is het ruis in elke
+    beurt, dus standaard uit."""
     lines = [f"Kanaal #{chan}. Recente berichten:"]
     for m in recent:
         who = pub2name.get(m.get("pubkey", ""), "iemand")
-        lines.append(f"{who}: {m.get('content','')}")
+        mid = f"[{str(m.get('id',''))[:8]}] " if met_ids and m.get("id") else ""
+        lines.append(f"{mid}{who}: {m.get('content','')}")
     lines.append("")
     lines.append(f"Je bent '{handle}'. Reageer als vervolg op het gesprek "
                  f"hierboven, op dit laatste bericht: {trigger!r}")
