@@ -41,6 +41,9 @@ channels:
   wordsworth:
     id: e70a10d9-c453-4408-8090-88ba6a71d152
     doel: projectkanaal wordsworth — overdracht + context; actuele context als pinned in knowledge/wordsworth.md
+  draupnir:
+    id: 0bfe28f5-4107-4376-9a17-e67e5e978f51
+    doel: "projectkanaal draupnir — metingen en overdracht; git blijft de waarheid, dit kanaal is de melding"
   netnl:
     id: 649bf5ef-087e-4e3d-bb00-d65bff987eb7
     doel: projectkanaal netnl — overdracht + context; actuele context als pinned in knowledge/netnl.md
