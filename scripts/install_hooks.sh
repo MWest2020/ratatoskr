@@ -30,6 +30,20 @@ while read -r _local _lsha remote _rsha; do
                 echo "          de reden, of push met --no-verify als je weet waarom." >&2
                 exit 1
             fi
+            # Bewegen de docs mee? De workflow docs-gates doet dit op elke PR,
+            # maar een push rechtstreeks naar main komt daar nooit langs — en
+            # dat is precies hoe de README van deze repo maanden achterliep.
+            case "$_rsha" in
+                *[!0]*) van="$_rsha" ;;          # bestaande tak: sinds de remote
+                *)      van=$(git merge-base "$_lsha" origin/main 2>/dev/null) ;;
+            esac
+            if [ -n "$van" ]; then
+                if ! git diff --name-only "$van" "$_lsha" \
+                        | (cd "$root" && python3 scripts/docs_drift.py) >&2; then
+                    echo "pre-push: GEWEIGERD — zie hierboven." >&2
+                    exit 1
+                fi
+            fi
             ;;
     esac
 done

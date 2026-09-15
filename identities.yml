@@ -91,3 +91,9 @@ identities:
     pubkey_hex: b0e20b3080ca3a7d922800deb43c90b48ee0bd1f16cd546b87ccea7473b93ece
     npub: npub1kr3qkvyqega8my3gqr0tg0yskj8wp0glzmx4g6u8en48guae8m8q3mt0ak
     aangemaakt: '2026-09-07'
+  draupnir:
+    rol: sessie
+    status: actief
+    pubkey_hex: 50fafd69e6d2076e79f0cb488f428ab2fc76decabf2b63e4d9500f656e7b1790
+    npub: npub12ra0660x6grku70sedyg7s52kt78dhk2hu4k8exe2q8k2mnmz7gqjduvnt
+    aangemaakt: '2026-09-15'

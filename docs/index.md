@@ -26,4 +26,4 @@ tailnet.
 
 ## Besluiten (ADR)
 
-- [ADR-0001 — Code in het Engels, proza in het Nederlands](adr/0001-code-in-het-engels.md)
+- [ADR-0001 — Code in het Engels, proza in het Nederlands](explanation/adr/0001-code-in-het-engels.md)

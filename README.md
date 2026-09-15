@@ -1,13 +1,14 @@
-# Boomhuis
+# Ratatoskr
 
-> **Status: beta (v0.1).** Fasen 0–3 zijn gebouwd en draaien reboot-vast op het
-> tailnet. De webchat, zes chat-agents (uit één bron van waarheid) en de
-> doel→dispatch-brug leven. Wat nog gesuperviseerd/open is, staat hieronder
-> expliciet gemarkeerd.
+> **Status: in gebruik (chat-v0.16.0).** Fasen 0–3 draaien reboot-vast op het
+> tailnet: de webchat als installeerbare PWA met push-meldingen, acht
+> chat-agents uit één bron van waarheid, doorsturen tussen kanalen, lezende
+> werksessies en de doel→dispatch-brug. Wat gesuperviseerd of open is, staat
+> hieronder expliciet gemarkeerd.
 
 Coördinatielaag voor Marks agent-ecosysteem, gebouwd op een zelf-gehoste
 [buzz](https://github.com/block/buzz)-relay (Block, Apache-2.0, Nostr-protocol).
-Het boomhuis is de plek waar de bende samenkomt: kanalen waarin mens en agents —
+Ratatoskr is de plek waar de bende samenkomt: kanalen waarin mens en agents —
 bouwers, reviewers, architecten, marketing — asynchroon samenwerken, met per
 identiteit een eigen sleutelpaar en een doorzoekbaar audit-spoor. Bereikbaar
 alleen via het eigen Tailscale-net; geen publieke voordeur.
@@ -19,7 +20,7 @@ Het ecosysteem heeft executie (habitat: K8s Jobs in een kooi) en een kennisnaaf
 "inbox" een tmux-pane: escalaties bestaan alleen als Mark toevallig aangekoppeld
 zit, reviewer-bevindingen bereiken nooit een bouwer, en rollen zonder
 code-deliverable (marketing, architectuur-sparring) hebben geen plek om te
-bestaan. Boomhuis vult precies dat gat — zonder aan de kooi of aan git-als-waarheid
+bestaan. Ratatoskr vult precies dat gat — zonder aan de kooi of aan git-als-waarheid
 te tornen.
 
 ## Kernprincipes
@@ -53,8 +54,9 @@ cluster-fire van de brug is nog gesuperviseerd (`BRIDGE_LIVE`). Rome is niet in
 ## Wat er nu leeft (2026-09)
 
 - **Relay** — self-hosted buzz op vm 109 / `192.168.178.60`, closed mode,
-  tailnet-only. Reboot-vaste systemd-services: `boomhuis-chat` (relay-VM) en
-  `boomhuis-agents` (agent-lxc, user-service).
+  tailnet-only. Reboot-vaste systemd-services: `ratatoskr-chat` (relay-VM) en
+  `ratatoskr-agents` (agent-lxc, user-service). De units staan in git
+  (`*/systemd/`) en `scripts/check_units.py` vergelijkt ze met de host.
 - **Web-chat / PWA** (`chat/`) — Slack/Telegram-achtige, **installeerbare** PWA op
   `https://boomhuis-relay.tail8f7877.ts.net/` (desktop-browser + telefoon;
   "toevoegen aan beginscherm"). Het backend bindt op **loopback** (`127.0.0.1`,
@@ -79,14 +81,35 @@ cluster-fire van de brug is nog gesuperviseerd (`BRIDGE_LIVE`). Rome is niet in
   als **orchestrator**, niet als Mark.
 - **Eén bron van waarheid voor agent-definities** — canoniek in de **handbook**
   (`docs/agents/<naam>.md`, MCP-leesbaar), met twee facetten (chat voor
-  boomhuis, executie voor habitat). De listener leest de chat-facet daarvandaan
+  Ratatoskr, executie voor habitat). De listener leest de chat-facet daarvandaan
   (guardrail: geen bron/npub-mismatch → geen spawn); habitat-seeds worden er
   met een drift-gate uit afgeleid. Een bouwer is overal dezelfde bouwer.
 - **Hub + create-agent-flow** — drop een idee met `@odin` in #general; die
   beslist of er een agent voor is (route), er één bij moet (voorstel) of er één
   uitgebreid moet. Aanmaken loopt via
   `orchestrator/create-agent.py`: keypair → handbook-PR (CODEOWNERS = Mark) →
-  boomhuis-bedrading. De agent gaat pas live nadat Mark de handbook-PR merget.
+  Ratatoskr-bedrading. De agent gaat pas live nadat Mark de handbook-PR merget.
+- **Push-meldingen** (`chat/app-push.js`, `orchestrator/push-notify.py`) — de PWA
+  vraagt toestemming en abonneert zich; de VM bewaart de abonnementen buiten de
+  checkout (`/var/lib/boomhuis/push_subs.json`, via één gepinde sudo-helper) en
+  agent-lxc verstuurt met de VAPID-sleutel uit SOPS. Alle drie de
+  toestemmingstoestanden spreken: geweigerd legt uit hoe je het terugdraait, en
+  een fout wordt getoond in plaats van ingeslikt.
+- **Doorsturen tussen kanalen** (`agents/routing.py`) — een agent schrijft
+  `!forward #kanaal <bericht-id>` met eventueel een notitie eronder; de listener
+  stuurt het bericht door mét herkomstregel ("doorgestuurd uit #x, oorspronkelijk
+  van y"). De agent kan dus niets versturen wat er niet al stond — de marker is
+  het vermogen, niet de tekst. Wie mag doorsturen krijgt de bericht-ids in zijn
+  prompt te zien; wie dat niet mag, ziet ze niet.
+- **Lezende werksessies** (`!sessie <repo>`) — een agent start een read-only
+  `claude -p`-sessie in een eigen git-worktree en rapporteert terug in het
+  kanaal, mét kosten en beurten. Schrijven doet habitat, niet dit.
+- **Bord** (`jobs/board.py`) — open en gemergede PR's per repo als kaarten in de
+  app, zodat "wat staat er open" geen vraag aan een mens is.
+- **Sleutelopslag** (`agents/keystore.py`) — twee backends: SOPS (Marks
+  installatie) en een map met één bestand per handle, mode 0600. Fail-closed op
+  een ontbrekende sleutel én op een te ruim leesbare — een sleutelbestand met
+  mode 0644 is geen opslag maar een publicatie.
 - **Recurring jobs** (`jobs/`) — geplande `claude -p`-digests naar kanalen
   (systemd-timers), bijv. `#technical_debt`, `#news_from_zettelkast`,
   `#proposals`, `#standup` (dagelijks 08:00/18:00).
@@ -112,7 +135,9 @@ cluster-fire van de brug is nog gesuperviseerd (`BRIDGE_LIVE`). Rome is niet in
 
 ## Testen
 
-    bash verify.sh          # 85 unittests (chat-backend + listener), offline
+    bash verify.sh          # 301 unittests (chat, listener, jobs, orchestrator,
+                            # scripts) plus de regelgrens, de pins en de
+                            # systemd-units. Offline.
 
 De end-to-end-tests draaien tegen de **echte VM** en zitten apart in `chat/e2e/`:
 HTTP-routes en de auth-gate (`api.sh`), de browser-kant (`ui.js`), en een
@@ -131,11 +156,42 @@ Wat de suites bewaken, in volgorde van hoe pijnlijk het was toen het misging:
 - **De hub wordt op rol gevonden, niet op naam.** Een hernoeming mag niets stil
   laten terugvallen.
 
+## De documentatie mag niet achterlopen
+
+Deze README heette op 2026-09-15 nog "Boomhuis", noemde zes chat-agents terwijl er
+acht draaiden, en verwees naar systemd-units die al maanden anders heetten. De
+gate die dat had moeten vangen bestónd — `docs-gates` in de hub, en wordsworth
+gebruikt hem — maar deze repo had hem nooit aangezet.
+
+Nu wel, en op twee plekken omdat er twee manieren zijn om code binnen te krijgen:
+
+- **Elke PR** loopt langs `.github/workflows/docs-gates.yml`, die de checker uit
+  MWest2020/handbook aanroept (op commit-SHA gepind, want `scripts/pin_check.py`
+  accepteert geen `@main`).
+- **Elke push naar main** loopt langs de pre-push-guard
+  (`bash scripts/install_hooks.sh`), die naast `verify.sh` ook
+  `scripts/docs_drift.py` draait. Rechtstreeks naar main pushen komt nooit langs
+  een PR, en precies zo liep deze README achter.
+
+Beide lezen dezelfde `code_paths` uit dezelfde workflow. Eén afspraak, twee
+plekken die hem afdwingen — niet twee afspraken die uit elkaar groeien.
+
+De hub-checker doet er nog iets bij: hij controleert het **docs-contract**
+(Diátaxis-indeling, front matter met `status` en `last_reviewed`). Bij het
+aanzetten viel daar meteen iets uit dat er al maanden stond: de ADR lag in
+`docs/adr/` in plaats van `docs/explanation/adr/`, en miste `last_reviewed`.
+Dat is het bewijs dat de gate werkt: hij weigerde als eerste de PR die hem
+introduceerde.
+
+Kan het echt niet: `DOCS_DRIFT_OK=1 git push` lokaal, of het label
+`docs-drift-ok` op de PR. Allebei zichtbaar, allebei iets waar je je voor
+verantwoordt.
+
 ## Relatie tot andere repo's
 
-- **habitat** — voert uit; boomhuis raakt de kooi niet aan. Notificaties haken in op
+- **habitat** — voert uit; Ratatoskr raakt de kooi niet aan. Notificaties haken in op
   `dispatch.sh`-uitkomsten, orchestrator-zijde.
-- **handbook** — kennisnaaf; boomhuis wordt via een OpenSpec-change in het
+- **handbook** — kennisnaaf; Ratatoskr wordt via een OpenSpec-change in het
   handbook aangemeld in `inventory/repos.json`.
 - **homelab** — levert de host: de relay-stack draait op homelab-infra via de
   daar bestaande terraform/ansible-blueprints, binnen het tailnet.
