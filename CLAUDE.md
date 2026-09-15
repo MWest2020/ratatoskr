@@ -67,7 +67,7 @@ overslaan telt niet als slagen.
 - **Engels in de repo, Nederlands in het gesprek.** Alles wat blijft staan —
   code, commentaar, docs, commit-teksten, interfaceteksten — is Engels; wat we
   tegen elkaar zeggen is Nederlands. Zie
-  [ADR-0001](docs/adr/0001-code-in-het-engels.md). Nieuw werk meteen Engels; het
+  [ADR-0001](docs/explanation/adr/0001-code-in-het-engels.md). Nieuw werk meteen Engels; het
   bestaande Nederlands gaat in één aparte change om, niet gaandeweg.
 - Python via `uv`, nooit `pip`. Bare scripts, geen ceremonie.
 - **Bestanden ≤ 200 regels**, gehandhaafd door `scripts/line_limit.py` (in

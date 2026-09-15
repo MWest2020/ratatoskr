@@ -176,6 +176,13 @@ Nu wel, en op twee plekken omdat er twee manieren zijn om code binnen te krijgen
 Beide lezen dezelfde `code_paths` uit dezelfde workflow. Eén afspraak, twee
 plekken die hem afdwingen — niet twee afspraken die uit elkaar groeien.
 
+De hub-checker doet er nog iets bij: hij controleert het **docs-contract**
+(Diátaxis-indeling, front matter met `status` en `last_reviewed`). Bij het
+aanzetten viel daar meteen iets uit dat er al maanden stond: de ADR lag in
+`docs/adr/` in plaats van `docs/explanation/adr/`, en miste `last_reviewed`.
+Dat is het bewijs dat de gate werkt: hij weigerde als eerste de PR die hem
+introduceerde.
+
 Kan het echt niet: `DOCS_DRIFT_OK=1 git push` lokaal, of het label
 `docs-drift-ok` op de PR. Allebei zichtbaar, allebei iets waar je je voor
 verantwoordt.
