@@ -1,0 +1,18 @@
+# Docs-gates: raakt een PR de code, dan moet er iets onder docs/ meebewegen.
+# De checker leeft in de hub (MWest2020/handbook) zodat er geen kopie per repo
+# veroudert; zie handbook docs/reference/docs-gates.md.
+#
+# `code_paths` is hier de ENIGE plek waar staat wat "code" is. De lokale
+# pre-push-guard leest dezelfde regel uit dit bestand (scripts/docs_drift.py),
+# want Mark pusht ook rechtstreeks naar main en dan komt deze workflow niet
+# langs. Eén afspraak, twee plekken die hem afdwingen — niet twee afspraken.
+name: docs-gates
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+jobs:
+  gates:
+    uses: MWest2020/handbook/.github/workflows/docs-gates.yml@0566ba773bdcc242b2d37f17b4bde95f8615acd6  # main
+    with:
+      code_paths: "agents/,chat/,jobs/,orchestrator/,scripts/,deploy/"
+      drift_mode: "fail"

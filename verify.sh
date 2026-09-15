@@ -7,7 +7,7 @@
 set -uo pipefail
 cd "$(dirname "$0")"
 fout=0
-for map in chat agents jobs orchestrator; do
+for map in chat agents jobs orchestrator scripts; do
   echo "— $map"
   (cd "$map" && python3 -m unittest discover -p "test_*.py" 2>&1 | tail -3) || fout=1
 done
