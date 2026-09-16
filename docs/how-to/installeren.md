@@ -114,6 +114,30 @@ zet de oude tag terug: de vorige image bestaat nog steeds, want hij was gepind.
 - De app laadt maar toont geen kanalen: de chat praat met de relay over het
   interne netwerk. `docker compose logs relay` — staat die `healthy`?
 
+## Staat er iets op de host dat nergens in git staat?
+
+`scripts/check_units.py` kijkt sinds 2026-09-16 beide kanten op:
+
+- **repo → host** — voor elke unit in `*/systemd/`: staat hij geïnstalleerd, en
+  is hij niet afgedreven? Repareren met `--install`.
+- **host → repo** — draait hier een `ratatoskr-*`, `claude-*`, `boomhuis-*` of
+  `zettelkast-*`-unit die nergens in git staat?
+
+Die tweede richting ontbrak, en dat was geen detail. `check_units` mat precies de
+verzameling waar het gat niet in zat: een unit die *alleen* op de host bestaat
+was per constructie onzichtbaar. Zo draaide `claude-secret-refresh` hier
+maandenlang, buiten git, 82 keer op rij falend, zonder dat enige gate iets zei.
+
+Units die hier horen te draaien maar bij een andere repo horen, staan in
+`ELDERS` in dat script — **met de reden en de repo erbij**, niet als kale lijst
+namen. Over een half jaar weet niemand meer of een naam er nog hoort te staan; een
+uitzondering die zegt waaróm kun je nog beoordelen.
+
+Een melding ziet er zo uit:
+
+    NIET IN GIT         ratatoskr-nep.service  (draait hier, staat nergens)
+    ELDERS              zettelkast-daily.timer  (hoort bij MWest2020/zettelkast)
+
 ## Draaien de timers ook echt?
 
 `bash verify.sh` vergelijkt de geïnstalleerde systemd-units met git
