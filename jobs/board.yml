@@ -28,6 +28,9 @@ sources:
   github_owner: MWest2020
   # Run files of work sessions (see agents/sessions.py).
   session_runs: /tmp/boomhuis-sessies
+  # De tmux-sessies van deze host tonen. Aan op agent-lxc, waar het werk draait;
+  # uit op een host waar het bord alleen een lezer is.
+  tmux: true
   # PRs come from GitHub and change slowly; sessions change every minute. Caching
   # the PR side lets the snapshot run every two minutes — and that is what makes a
   # running session visible while it builds.

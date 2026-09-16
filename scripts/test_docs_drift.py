@@ -71,8 +71,13 @@ class TestMain(unittest.TestCase):
     def test_code_met_docs_mag_door(self):
         self.assertEqual(self._draai(["chat/app.js", "docs/how-to/x.md"]), 0)
 
-    def test_readme_telt_als_docs(self):
-        self.assertEqual(self._draai(["chat/app.js", "README.md"]), 0)
+    def test_readme_telt_NIET_als_docs(self):
+        """De hub telt alleen docs/. Deze spiegel telde README.md er eerst ook
+        bij — lokaal groen, in CI rood, op 2026-09-16 op PR #139. Eén afspraak
+        met twee handhavers werd zo twee afspraken, precies de fout waar deze
+        gate voor bestaat. Wil je README.md laten meetellen, dan verander je dat
+        in de hub."""
+        self.assertEqual(self._draai(["chat/app.js", "README.md"]), 1)
 
     def test_alleen_docs_mag_door(self):
         self.assertEqual(self._draai(["docs/index.md"]), 0)
