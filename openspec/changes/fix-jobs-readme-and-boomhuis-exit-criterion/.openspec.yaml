@@ -1,0 +1,2 @@
+# Documentatie en een commentaar; geen gedrag, dus geen spec-delta.
+skip_specs: true
