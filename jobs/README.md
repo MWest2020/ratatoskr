@@ -9,8 +9,8 @@ systemd user-timers (linger).
   `context_cmd` (shell op de host; stdout = context voor claude -p).
 - `run-job.py <naam>` — draait één job (context → claude -p → post).
 - `run-jobs.sh <naam>` — SOPS-wrapper: exporteert NSEC_<HANDLE> en draait de job.
-- systemd (agent-lxc, user): `boomhuis-job@<naam>.service` (template) +
-  per-job timer `boomhuis-<kort>.timer`.
+- systemd (agent-lxc, user): `ratatoskr-job@<naam>.service` (template) +
+  per-job timer `ratatoskr-<kort>.timer`.
 
 ## Live jobs
 - **news_from_zettelkast** (ma 09:00) — digest uit de zettelkast (journal +
@@ -29,10 +29,10 @@ systemd user-timers (linger).
 1. Kanaal aanmaken (web-app of `buzz channels create`), post-identiteit als lid.
 2. Entry in `jobs.yml` (channel/identity/prompt/context_cmd).
 3. Timer + template: `jobs/systemd/` bevat de gecommitte timers + het
-   `boomhuis-job@.service`-template; kopieer die naar `~/.config/systemd/user/`. Het template hoort gelijk te blijven
+   `ratatoskr-job@.service`-template; kopieer die naar `~/.config/systemd/user/`. Het template hoort gelijk te blijven
    aan de live host-unit (waar news/proposals/technical_debt op draaien); wijk je
    ervan af, werk beide bij.
-4. `systemctl --user daemon-reload && systemctl --user enable --now boomhuis-<x>.timer`.
+4. `systemctl --user daemon-reload && systemctl --user enable --now ratatoskr-<x>.timer`.
 
 Handmatig draaien/testen: `bash jobs/run-jobs.sh <naam>`.
 

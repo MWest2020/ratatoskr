@@ -1,0 +1,4 @@
+schema: spec-driven
+created: 2026-09-16
+# Documentatie en een commentaar; geen gedragsverandering, dus geen spec-delta.
+skip_specs: true

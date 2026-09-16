@@ -9,6 +9,16 @@ nowhere — exactly at the moment you want to be able to go back.
 
 Everything reads through this function, so a next rename cannot leave a read site
 behind.
+
+**When this fallback may go.** As soon as no live `.env` uses the `BOOMHUIS_`
+prefix any more — check with `grep -l BOOMHUIS_` over the `.env` on the relay VM
+and on agent-lxc. Removing it is then a change of its own, not something to
+smuggle in here.
+
+That criterion exists because a fallback without an end is not a transition but a
+second permanent name. A year from now nobody dares remove it, because nobody
+knows whether anything still leans on it — and then the rename was never
+finished, it was only postponed.
 """
 import os
 

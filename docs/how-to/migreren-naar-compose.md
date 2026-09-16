@@ -124,3 +124,20 @@ Dan heet het volume nog `…_boomhuis-chat-data` en het pad in de container nog
 
 Je `.env` mag de oude `BOOMHUIS_*`-namen houden: de app leest eerst
 `RATATOSKR_*` en valt daarop terug. Hernoemen mag, hoeft niet, en kan later.
+
+### Wanneer die terugval weggaat
+
+Zodra geen enkele live `.env` de prefix nog gebruikt. Vaststellen doe je zo, op
+de relay-VM én op agent-lxc:
+
+    grep -l BOOMHUIS_ .env
+
+Levert dat nergens meer iets op, dan schrapt een **eigen change** de terugval in
+`chat/settings.py`. Niet meesmokkelen met ander werk: wie de terugval weghaalt
+terwijl er nog een installatie op leunt, breekt die installatie op het moment dat
+ze juist terug wil kunnen.
+
+Dit criterium staat hier omdat een terugval zonder einde geen overgang is maar
+een tweede permanente naam. Over een jaar durft niemand hem weg te halen, omdat
+niemand meer weet of er nog iets op leunt — dan was de hernoeming niet af, alleen
+uitgesteld.
