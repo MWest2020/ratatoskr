@@ -23,27 +23,45 @@ met `systemctl cat` in de **system**-scope terwijl het **user**-units zijn. De
 verkeerde verzameling meten en dan "staat er niet" concluderen is letterlijk de
 fout die deze change moet afsluiten.
 
+## Wat het onderzoek opleverde, en waarom de change omdraait
+
+Bij het uitvoeren is eerst gemeten of die timer zijn werk doet. Dat deed hij
+niet: **82 mislukkingen in veertien dagen, nul keer geslaagd.** Eerst host key
+verification tegen cp-01, daarna `Permission denied (publickey)`. De timer stond
+al die tijd op `active (waiting)`.
+
+Daarna is nagekeken wat habitat werkelijk doet. `dispatch/dispatch.sh` schrijft
+`claude-credentials` al bij **elke dispatch** vanaf de credentials van de
+orchestrator-host — dát is het mechanisme uit taak 4.2. De Job-template heeft
+bovendien zowel `claude-credentials` als `claude-oauth-token` op `optional:
+true`. En in namespace `agents` bestond `claude-credentials` helemaal niet meer;
+wel `claude-oauth-token`.
+
+Dus: de workaround was kapot, overbodig, én in strijd met het besluit dat hij
+moest ondersteunen — taak 4.2 zegt "één schrijver, workers verversen nooit zelf,
+vanwege een rotatie-race", en een vier-uurlijkse timer op deze host ís die
+tweede schrijver.
+
+**Een kapotte, overbodige, verboden workaround hoort niet in git.** Hij hoort
+weg. Dat is op 2026-09-16 gedaan, met kopie en terugzet-instructie in
+`~/archief/claude-secret-refresh-2026-09-16/`.
+
 ## What Changes
 
-- `claude-secret-refresh.{service,timer}` in git, plus
-  **`refresh-claude-secret.sh`**. Een unit zonder dat script is decoratie: het
-  script is waar het gedrag zit — het leest `~/.claude/.credentials.json`, ssh't
-  naar `cp-01` en herschrijft daar het secret in namespace `agents`.
-- `scripts/check_units.py` krijgt de omgekeerde richting: elke unit in
-  `~/.config/systemd/user` die op `ratatoskr-*` of `claude-*` lijkt en geen
-  tegenhanger in de repo heeft, is een melding.
-- Een **uitzonderingslijst met reden en herkomst-repo**, niet een kale
-  allowlist. `zettelkast-daily.{service,timer}` staat hier geïnstalleerd en hoort
-  bij MWest2020/zettelkast. Een uitzondering die zegt waaróm is toezicht; een
-  uitzondering zonder reden is een blinde vlek met een net pak aan.
-- Sluitvoorwaarde en toetsdatum voor de workaround in `tasks.md`.
+- **`scripts/check_timers.py`** — welke van onze timers faalde bij zijn laatste
+  run. Dit is de gate die ontbrak: `check_units.py` vergelijkt geïnstalleerd met
+  git en zegt niets over slagen. Aangesloten op `verify.sh`.
+- **`scripts/check_units.py`** krijgt alsnog de omgekeerde richting: een unit die
+  alleen op de host staat is per constructie onzichtbaar voor de huidige gate.
+  Dat blijft waar, ook nu de aanleiding is opgeruimd.
+- Een **uitzonderingslijst met reden en herkomst-repo**, niet een kale allowlist.
+  `zettelkast-daily.{service,timer}` hoort bij MWest2020/zettelkast.
 
-## Wat hier NIET in zit
+## Wat hier NIET meer in zit
 
-- `/usr/bin/python3` en `ssh jumpy kubectl` in `ratatoskr-live`. Die staan al zo
-  in de git-versie, dus het zijn ontwerpvragen, geen drift.
-- Het herontwerp van de credential-rotatie zelf (habitat `add-dispatch` 4.2).
-  Alleen de sluitvoorwaarde wordt hier vastgelegd.
+- De units en het script in git zetten. Dat was het oorspronkelijke voorstel en
+  het is achterhaald: je zet geen dode code in de waarheid.
+- Het herontwerp van de credential-rotatie. Sync-at-dispatch doet het al.
 
 ## Impact
 
