@@ -23,6 +23,7 @@ import os
 import time
 
 import board_sources
+import board_tmux
 import yaml
 from board_model import is_stale, summarise
 
@@ -94,6 +95,19 @@ def build(cfg, now=None):
             src["session_runs"], now, src.get("session_stale_seconds", 300))
     except Exception as e:
         errors.append(f"work sessions not read: {e}")
+    # De tmux-sessies op deze host: waar het meeste werk feitelijk gebeurt en
+    # wat tot 2026-09-16 alleen zichtbaar was voor wie aangekoppeld zat.
+    #
+    # Standaard UIT, anders niet: dit is de enige bron die de machine zelf
+    # ondervraagt in plaats van een pad uit de config te lezen. Een producer die
+    # ongevraagd `tmux` aanroept is niet te testen zonder tmux, en een bord dat
+    # op de ene host andere kaarten toont dan op de andere hoort een keuze te
+    # zijn die in de config staat.
+    if src.get("tmux"):
+        try:
+            cards += board_tmux.tmux_cards(now, src.get("tmux_stale_seconds"))
+        except Exception as e:
+            errors.append(f"tmux sessions not read: {e}")
     for c in cards:
         c["stale"] = is_stale(c, cols)
     cards.sort(key=lambda c: (-c["stale"], -c["age_days"]))

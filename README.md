@@ -104,8 +104,14 @@ cluster-fire van de brug is nog gesuperviseerd (`BRIDGE_LIVE`). Rome is niet in
 - **Lezende werksessies** (`!sessie <repo>`) — een agent start een read-only
   `claude -p`-sessie in een eigen git-worktree en rapporteert terug in het
   kanaal, mét kosten en beurten. Schrijven doet habitat, niet dit.
-- **Bord** (`jobs/board.py`) — open en gemergede PR's per repo als kaarten in de
-  app, zodat "wat staat er open" geen vraag aan een mens is.
+- **Bord** (`jobs/board.py`) — open en gemergede PR's, OpenSpec-changes,
+  werksessies én de **tmux-sessies op deze host** (`jobs/board_tmux.py`) als
+  kaarten in de app, zodat "wat staat er open" en "wie werkt waaraan" geen vraag
+  aan een mens zijn. Per tmux-sessie: naam, project (de werkmap van de actieve
+  pane) en laatste activiteit. Bewust géén issue-nummer — dat valt niet
+  betrouwbaar uit een pane af te leiden, en verzinnen is erger dan weglaten.
+  Staat een sessie in de home-map, dan is er geen project; is de werkmap
+  opgeruimd, dan zegt de kaart dat in plaats van het te verbergen.
 - **Sleutelopslag** (`agents/keystore.py`) — twee backends: SOPS (Marks
   installatie) en een map met één bestand per handle, mode 0600. Fail-closed op
   een ontbrekende sleutel én op een te ruim leesbare — een sleutelbestand met
