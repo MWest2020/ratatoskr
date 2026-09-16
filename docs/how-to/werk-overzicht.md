@@ -31,12 +31,35 @@ verplaatst doordat je een PR merget of een change archiveert.
 | kolom | bron |
 |---|---|
 | proposal | niet-gearchiveerde OpenSpec-changes in de clones op de host |
-| building | draft-PR's + lopende werksessies |
+| building | draft-PR's, lopende werksessies én de tmux-sessies van deze host |
 | review | open PR's die niet in draft staan |
 | merged | PR's van de laatste paar dagen |
 
 Drempels en bronnen staan in [`jobs/board.yml`](../../jobs/board.yml). Hoe lang
 "te lang" is, is een oordeel dat verandert — dat hoort niet in code.
+
+### De tmux-sessies van deze host
+
+Sinds 2026-09-16 staan ook de tmux-sessies op het bord. Daarvoor was het werk
+waar de meeste uren in gaan alleen zichtbaar voor wie toevallig aangekoppeld
+zat, en moest je vragen wat er liep.
+
+Per sessie zie je drie dingen:
+
+- **naam** — de tmux-sessienaam;
+- **project** — de werkmap van de actieve pane. Staat de sessie in de home-map,
+  dan is er geen project en staat er `—`; dat is eerlijker dan de mapnaam tonen,
+  want die suggereert iets.
+- **laatste activiteit** — welk commando er draait en hoe lang geleden die sessie
+  iets deed. Is de werkmap opgeruimd, dan zegt de kaart dat erbij: een sessie in
+  een verdwenen worktree is meestal een sessie die je kunt sluiten.
+
+Er staat **geen issue-nummer** bij. Dat valt niet betrouwbaar uit een pane af te
+leiden, en een verzonnen nummer is erger dan geen nummer.
+
+Zet de bron aan met `tmux: true` onder `sources` in `jobs/board.yml`. Hij staat
+standaard uit: dit is de enige bron die de machine zelf ondervraagt in plaats van
+een pad uit de config te lezen, en dat hoort een zichtbare keuze te zijn.
 
 ## Hoe het gemaakt wordt
 

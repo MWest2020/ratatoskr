@@ -179,8 +179,14 @@ Nu wel, en op twee plekken omdat er twee manieren zijn om code binnen te krijgen
   `scripts/docs_drift.py` draait. Rechtstreeks naar main pushen komt nooit langs
   een PR, en precies zo liep deze README achter.
 
-Beide lezen dezelfde `code_paths` uit dezelfde workflow. Eén afspraak, twee
-plekken die hem afdwingen — niet twee afspraken die uit elkaar groeien.
+Beide lezen dezelfde `code_paths` uit dezelfde workflow, en tellen allebei
+**alleen `docs/`** als documentatie. Eén afspraak, twee plekken die hem
+afdwingen — niet twee afspraken die uit elkaar groeien.
+
+Dat ging meteen mis: de lokale spiegel telde aanvankelijk ook `README.md` mee, de
+hub-checker niet. Lokaal groen, in CI rood (PR #139, 2026-09-16). Precies de
+fout waar deze gate voor bestaat, en gemaakt door degene die hem bouwde. De hub
+is gezaghebbend; wil je dat `README.md` meetelt, dan verander je dat dáár.
 
 De hub-checker doet er nog iets bij: hij controleert het **docs-contract**
 (Diátaxis-indeling, front matter met `status` en `last_reviewed`). Bij het
