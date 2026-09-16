@@ -28,10 +28,10 @@
 - [x] 3.2 Tests, waaronder: een systemd-eigen timer telt niet mee (anders is de
       gate ruis), en `?` telt als fout — niet kunnen vaststellen is geen bewijs
       dat het goed ging.
-- [ ] 3.3 `scripts/check_units.py`: de omgekeerde richting (host-unit zonder
+- [x] 3.3 `scripts/check_units.py`: de omgekeerde richting (host-unit zonder
       repo-tegenhanger).
-- [ ] 3.4 Uitzonderingslijst met reden en herkomst-repo.
-- [ ] 3.5 Nameten dat 3.3 faalt zonder de wijziging.
+- [x] 3.4 Uitzonderingslijst met reden en herkomst-repo.
+- [x] 3.5 Nameten dat 3.3 faalt zonder de wijziging.
 
 ## 4. De sluitvoorwaarde is al gehaald
 
@@ -42,5 +42,5 @@
 
 ## 5. Groen
 
-- [ ] 5.1 `bash verify.sh` groen, inclusief de nieuwe tests.
-- [ ] 5.2 Docs-gate groen (deze change raakt `scripts/`, dus `docs/` beweegt mee).
+- [x] 5.1 `bash verify.sh` groen, inclusief de nieuwe tests.
+- [x] 5.2 Docs-gate groen (deze change raakt `scripts/`, dus `docs/` beweegt mee).
