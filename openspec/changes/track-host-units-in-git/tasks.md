@@ -8,37 +8,37 @@
 - [x] 1.2 Unit-files nagekeken: `claude-secret-refresh.service` bevat alleen een
       omschrijving en `ExecStart`, de timer alleen een schema. Geen geheim.
 
-## 2. In git
+## 2. Meten voordat je iets in git zet
 
-- [ ] 2.1 `orchestrator/systemd/claude-secret-refresh.{service,timer}`,
-      letterlijk overgenomen van de host.
-- [ ] 2.2 `orchestrator/systemd/refresh-claude-secret.sh`, letterlijk, met de
-      uitleg waarom hij hier staat en niet in `scripts/` (hij hoort bij de unit
-      en wordt door `%h` aangeroepen, niet door een mens).
-- [ ] 2.3 De host laat verwijzen naar de git-versie in plaats van een losse
-      kopie in de home-map, zodat `check_units.py` er iets over kan zeggen.
+- [x] 2.1 Doet de timer zijn werk? Nee: 82 mislukkingen in veertien dagen, nul
+      keer geslaagd. Eerst host key verification tegen cp-01, daarna
+      `Permission denied (publickey)` voor `ubuntu@192.168.178.201`.
+- [x] 2.2 Wat doet habitat werkelijk? `dispatch/dispatch.sh` schrijft
+      `claude-credentials` bij elke dispatch; de Job-template heeft beide
+      secrets op `optional: true`; in namespace `agents` bestond
+      `claude-credentials` niet, wel `claude-oauth-token`.
+- [x] 2.3 Conclusie: kapot, overbodig én een tweede schrijver op een secret waar
+      taak 4.2 er één voorschrijft. Opgeruimd op 2026-09-16, met kopie en
+      terugzet-instructie in `~/archief/claude-secret-refresh-2026-09-16/`.
 
-## 3. De gate beide kanten op
+## 3. De gate die ontbrak
 
-- [ ] 3.1 `scripts/check_units.py`: elke unit in `~/.config/systemd/user` die op
-      `ratatoskr-*` of `claude-*` lijkt en geen tegenhanger in de repo heeft →
-      melding.
-- [ ] 3.2 Uitzonderingslijst met reden en herkomst-repo; `zettelkast-daily` als
-      eerste en voorlopig enige.
-- [ ] 3.3 Tests: een host-unit zonder repo-tegenhanger wordt gemeld; een unit op
-      de uitzonderingslijst niet; een uitzondering zónder reden is een fout in
-      de lijst zelf.
-- [ ] 3.4 Nameten dat de test faalt zonder de wijziging.
+- [x] 3.1 `scripts/check_timers.py`: welke van onze timers faalde bij zijn
+      laatste run. Aangesloten op `verify.sh`.
+- [x] 3.2 Tests, waaronder: een systemd-eigen timer telt niet mee (anders is de
+      gate ruis), en `?` telt als fout — niet kunnen vaststellen is geen bewijs
+      dat het goed ging.
+- [ ] 3.3 `scripts/check_units.py`: de omgekeerde richting (host-unit zonder
+      repo-tegenhanger).
+- [ ] 3.4 Uitzonderingslijst met reden en herkomst-repo.
+- [ ] 3.5 Nameten dat 3.3 faalt zonder de wijziging.
 
-## 4. De workaround een einde geven
+## 4. De sluitvoorwaarde is al gehaald
 
-- [ ] 4.1 In `tasks.md` vastleggen — **sluitvoorwaarde**: een dispatch waarvan
-      het token midden in de Job verloopt, krijgt verse credentials terwijl
-      `claude-secret-refresh.timer` gestopt is. Gemeten, niet beredeneerd.
-- [ ] 4.2 **Toetsdatum 2026-12-14.** Haalt de meting het niet, dan is de uitkomst
-      geen verlenging maar een expliciet besluit dat de timer blijft — mét wie de
-      tweede-schrijver-race dan bewaakt. Een workaround mag permanent worden; hij
-      mag alleen niet permanent worden zonder dat iemand dat koos.
+- [x] 4.1 De toetsdatum van 2026-12-14 is niet meer nodig. De sluitvoorwaarde
+      luidde: sync-at-dispatch levert verse credentials terwijl de timer
+      gestopt is. Die timer stond veertien dagen effectief stil en er viel niets
+      om — en `dispatch.sh` doet de sync aantoonbaar zelf.
 
 ## 5. Groen
 

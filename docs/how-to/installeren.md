@@ -113,3 +113,24 @@ zet de oude tag terug: de vorige image bestaat nog steeds, want hij was gepind.
   via `https` binnenkomt (zie de cookie-opmerking hierboven).
 - De app laadt maar toont geen kanalen: de chat praat met de relay over het
   interne netwerk. `docker compose logs relay` — staat die `healthy`?
+
+## Draaien de timers ook echt?
+
+`bash verify.sh` vergelijkt de geïnstalleerde systemd-units met git
+(`scripts/check_units.py`) én kijkt of ze bij hun laatste run geslaagd zijn
+(`scripts/check_timers.py`).
+
+Dat tweede is geen luxe. Een systemd-timer blijft `active (waiting)` en plant
+netjes de volgende run, ongeacht hoe de vorige afliep — een dode taak ziet er van
+buiten gezond uit. Op 2026-09-16 bleek `claude-secret-refresh.service` 82 keer
+op rij te zijn omgevallen in veertien dagen, terwijl de timer al die tijd groen
+oogde.
+
+Een melding ziet er zo uit:
+
+    — timers
+      GEFAALD  claude-secret-refresh.service  (Result=exit-code, exit=255)
+
+De reden staat altijd in het journaal, niet in de timer:
+
+    journalctl --user -u <service> -n 30

@@ -20,6 +20,12 @@ python3 scripts/pin_check.py || fout=1
 if [ -d "$HOME/.config/systemd/user" ]; then
   echo "— units"
   python3 scripts/check_units.py || fout=1
+  # Of ze ook wérken. check_units vergelijkt geïnstalleerd met git; een timer die
+  # elke run omvalt blijft daar groen, want hij is keurig geïnstalleerd. Op
+  # 2026-09-16 bleek er een 82 keer op rij gefaald te hebben zonder dat iets het
+  # zei.
+  echo "— timers"
+  python3 scripts/check_timers.py || fout=1
 fi
 echo
 if [ $fout -eq 0 ]; then
