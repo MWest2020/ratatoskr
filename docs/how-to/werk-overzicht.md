@@ -1,12 +1,12 @@
 ---
 status: current
-last_reviewed: 2026-09-12
+last_reviewed: 2026-09-17
 ---
 
 # Het werk-overzicht
 
-Een bord in de app met vier kolommen — *proposal · building · review · merged* —
-dat één vraag beantwoordt: **wat beweegt er, en wat zit vast?**
+Een bord in de app met vijf kolommen — *backlog · proposal · building · review ·
+merged* — dat één vraag beantwoordt: **wat beweegt er, en wat zit vast?**
 
 Open het met de knop **📋 Board** in de kop.
 
@@ -30,6 +30,7 @@ verplaatst doordat je een PR merget of een change archiveert.
 
 | kolom | bron |
 |---|---|
+| backlog | open GitHub-issues |
 | proposal | niet-gearchiveerde OpenSpec-changes in de clones op de host |
 | building | draft-PR's, lopende werksessies én de tmux-sessies van deze host |
 | review | open PR's die niet in draft staan |
@@ -37,6 +38,22 @@ verplaatst doordat je een PR merget of een change archiveert.
 
 Drempels en bronnen staan in [`jobs/board.yml`](../../jobs/board.yml). Hoe lang
 "te lang" is, is een oordeel dat verandert — dat hoort niet in code.
+
+## Backlog: werk dat nog niet begonnen is
+
+Een open issue is een kaart in *backlog*. Draagt het issue het label
+`spec-nodig` of `direct`, dan staat dat merk in de titel — dat verschil bepaalt
+wat je ermee moet en dat wil je zien zonder door te klikken. Een issue zonder
+zo'n label houdt zijn kale titel; een verzonnen indeling is erger dan geen.
+
+Zonder deze kolom toonde het bord alleen wat al liep, en zei het dus niets op
+het moment dat je wilt weten wat er nog moet.
+
+Issues en gemergede PR's worden gecacht (standaard tien minuten). Het bord draait
+elke twee minuten en mag daar geen GitHub-aanroep per keer aan kwijt zijn. Een
+mislukte verversing toont de oude lijst **met** de mededeling dat hij oud is:
+stilletjes iets verouderds als actueel presenteren is het enige antwoord dat hier
+echt fout is.
 
 ### De tmux-sessies van deze host
 
