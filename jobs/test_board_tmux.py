@@ -7,7 +7,8 @@ tmux-sessies waarin het meeste werk feitelijk gebeurt. Wie niet aangekoppeld zat
 zag niets, en dan moet Mark vragen wat er loopt — wat hij op 2026-09-14 deed.
 
 Alles wat de kaart zégt is hier te testen zonder tmux te draaien; dat is dezelfde
-scheiding als bij de andere bronnen (board_model puur, board_sources haalt op).
+scheiding als bij de andere bronnen (board_model puur, board_sources en
+board_github halen op).
 """
 import os
 import sys
@@ -117,10 +118,10 @@ class TestBordKoppeling(unittest.TestCase):
                                 "pr_cache": os.path.join(tempfile.mkdtemp(),
                                                          "prs.json"),
                                 "pr_cache_seconds": 600}}
-        import board_sources
-        self.oud = board_sources.gh_json
-        board_sources.gh_json = lambda args: []
-        self.addCleanup(lambda: setattr(board_sources, "gh_json", self.oud))
+        import board_github
+        self.oud = board_github.gh_json
+        board_github.gh_json = lambda args: []
+        self.addCleanup(lambda: setattr(board_github, "gh_json", self.oud))
 
     def test_zonder_config_geen_tmux_kaarten(self):
         snap = self.board.build(dict(self.cfg), now=NU)

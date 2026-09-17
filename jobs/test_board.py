@@ -15,6 +15,7 @@ import unittest
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import board  # noqa: E402
 import board_model  # noqa: E402
+import board_github  # noqa: E402
 import board_sources  # noqa: E402
 
 COLUMNS = [{"key": "proposal", "title": "voorstel", "stale_days": 14},
@@ -22,17 +23,6 @@ COLUMNS = [{"key": "proposal", "title": "voorstel", "stale_days": 14},
            {"key": "review", "title": "review", "stale_days": 2},
            {"key": "merged", "title": "gemerged", "stale_days": 0}]
 
-
-class Ignore(unittest.TestCase):
-    def test_ignored_repo_is_dropped(self):
-        """A PR on a repo you no longer work on is the oldest card, and therefore
-        shouts loudest every day. Not every open thing is work."""
-        rows = [{"repository": {"name": "oud-project"}, "number": 1, "title": "x",
-                 "updatedAt": "2026-01-01T00:00:00Z", "url": "", "isDraft": False,
-                 "author": {"login": "a"}}]
-        board_sources.gh_json = lambda args: rows if "--state=open" in args else []
-        self.assertEqual(board_sources.pr_cards("owner", 3, time.time(), {"oud-project"}), [])
-        self.assertEqual(len(board_sources.pr_cards("owner", 3, time.time(), set())), 1)
 
 class OpenspecCards(unittest.TestCase):
     def test_archive_is_skipped(self):
@@ -116,11 +106,24 @@ ROW_MERGED = {"repository": {"name": "repo"}, "number": 125, "title": "iets",
 
 
 class Snapshot(unittest.TestCase):
+    """De PR-kant. De issue-bron heeft een eigen cache in dezelfde tempmap, zodat
+    geen enkele test het gedeelde /tmp-pad raakt of de andere beinvloedt."""
+
+    def setUp(self):
+        # Elke test hier gaat over PR's; de issue-bron doet hier niet mee en
+        # moet dus ook geen kaarten of fouten bijdragen.
+        self._echt = board_github.issue_rows
+        board_github.issue_rows = lambda owner: []
+
+    def tearDown(self):
+        board_github.issue_rows = self._echt
+
     def cfg(self, cache, seconds):
         return {"columns": COLUMNS,
                 "sources": {"openspec_glob": "/bestaat/niet/*", "github_owner": "x",
                             "session_runs": "/bestaat/niet", "merged_days": 3,
-                            "pr_cache": cache, "pr_cache_seconds": seconds}}
+                            "pr_cache": cache, "pr_cache_seconds": seconds,
+                            "issue_cache": cache + ".issues"}}
 
     def test_failing_source_becomes_an_error_not_silence(self):
         """Silently showing nothing is indistinguishable from 'nothing to do'."""
@@ -128,8 +131,9 @@ class Snapshot(unittest.TestCase):
         cfg = {"columns": COLUMNS,
                "sources": {"openspec_glob": "/bestaat/niet/*", "github_owner": "x",
                            "session_runs": "/bestaat/niet", "merged_days": 3,
-                           "pr_cache": empty, "pr_cache_seconds": 600}}
-        board_sources.gh_json = lambda args: (_ for _ in ()).throw(RuntimeError("gh weg"))
+                           "pr_cache": empty, "pr_cache_seconds": 600,
+                           "issue_cache": empty + ".issues"}}
+        board_github.gh_json = lambda args: (_ for _ in ()).throw(RuntimeError("gh weg"))
         snap = board.build(cfg, now=1000.0)
         self.assertTrue(snap["errors"])
         self.assertIn("gh weg", snap["errors"][0])
@@ -143,7 +147,7 @@ class Snapshot(unittest.TestCase):
         with open(cache, "w") as f:
             json.dump({"at": 0, "rows": [ROW_MERGED]}, f)
         cfg = self.cfg(cache, 1)
-        board_sources.gh_json = lambda args: (_ for _ in ()).throw(RuntimeError("gh weg"))
+        board_github.gh_json = lambda args: (_ for _ in ()).throw(RuntimeError("gh weg"))
         snap = board.build(cfg, now=1000.0)
         self.assertEqual(len(snap["cards"]), 1)
         self.assertTrue(any("not refreshed" in e for e in snap["errors"]), snap["errors"])
@@ -163,7 +167,7 @@ class Snapshot(unittest.TestCase):
                 return []
             raise AssertionError("de gemergede kant had uit de cache moeten komen")
 
-        board_sources.gh_json = gh
+        board_github.gh_json = gh
         snap = board.build(self.cfg(cache, 600), now=1000.0)
         self.assertEqual(snap["errors"], [])
         self.assertEqual(len(gevraagd), 1, gevraagd)
@@ -178,7 +182,7 @@ class Snapshot(unittest.TestCase):
         # De cache is VERS en bevat de PR nog als open — precies de situatie.
         with open(cache, "w") as f:
             json.dump({"at": 999.0, "rows": [ROW_MERGED]}, f)
-        board_sources.gh_json = lambda args: [] if "--state=open" in args else []
+        board_github.gh_json = lambda args: [] if "--state=open" in args else []
         snap = board.build(self.cfg(cache, 600), now=1000.0)
         kolommen = [c["column"] for c in snap["cards"]]
         self.assertNotIn("review", kolommen, snap["cards"])

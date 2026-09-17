@@ -15,7 +15,7 @@ import os
 import subprocess
 import time
 
-from board_model import DAY, age_days, pr_column
+from board_model import DAY, age_days
 
 
 def repo_url(clone_dir):
@@ -77,58 +77,6 @@ def openspec_cards(pattern, now):
                       "age_days": age_days(ts, now), "who": "", "url": url,
                       "source": path.replace("/home/agent/", "~/")})
     return cards
-
-
-def gh_json(args):
-    """Call `gh`. An error is a READ ERROR, not an empty list: showing nothing
-    silently is indistinguishable from 'there is nothing'."""
-    p = subprocess.run(["gh", *args], capture_output=True, text=True, timeout=60)
-    if p.returncode != 0:
-        raise RuntimeError((p.stderr or p.stdout).strip()[:160])
-    return json.loads(p.stdout or "[]")
-
-
-FIELDS = "repository,number,title,url,isDraft,updatedAt,author"
-
-
-def open_prs(owner):
-    """Wat nog aandacht vraagt — apart van `merged_prs`, want deze kant moet VERS
-    zijn. Een gemergede PR die nog in 'review' staat vraagt om niets, en een
-    kolom met zulke kaarten lees je niet meer. Gemeten 2026-09-13: #125 stond
-    acht minuten na zijn merge nog in review, uit een cache van vlak ervóór."""
-    return gh_json(["search", "prs", f"--owner={owner}", "--state=open",
-                    "--limit", "40", "--json", FIELDS])
-
-
-def merged_prs(owner, merged_days, now):
-    """Geschiedenis: verandert alleen naar achteren, mag dus uit een cache."""
-    cutoff = time.strftime("%Y-%m-%d", time.gmtime(now - merged_days * DAY))
-    return [dict(r, merged=True) for r in gh_json(
-        ["search", "prs", f"--owner={owner}", f"merged:>={cutoff}",
-         "--limit", "40", "--json", FIELDS])]
-
-
-def rows_to_cards(rows, now, ignore=()):
-    cards = []
-    for r in rows:
-        if r["repository"]["name"] in ignore:
-            continue
-        pr = {"merged": r.get("merged", False), "draft": r.get("isDraft")}
-        ts = time.mktime(time.strptime(r["updatedAt"][:19], "%Y-%m-%dT%H:%M:%S"))
-        cards.append({"id": f"pr:{r['repository']['name']}:{r['number']}",
-                      "repo": r["repository"]["name"],
-                      "title": f"#{r['number']} {r['title']}",
-                      "column": pr_column(pr), "via": "pull request",
-                      "age_days": age_days(ts, now),
-                      "who": (r.get("author") or {}).get("login", ""),
-                      "url": r.get("url", ""), "source": ""})
-    return cards
-
-
-def pr_cards(owner, merged_days, now, ignore=()):
-    """Beide kanten in één keer; het bord haalt ze apart op."""
-    return rows_to_cards(open_prs(owner) + merged_prs(owner, merged_days, now),
-                         now, ignore)
 
 
 def last_activity(content):
