@@ -22,6 +22,7 @@ import json
 import os
 import time
 
+import board_github
 import board_sources
 import board_tmux
 import yaml
@@ -44,7 +45,7 @@ def _merged_cached(src, now, cache_path, max_age):
     stond acht minuten na zijn merge nog in review, omdat beide kanten uit
     dezelfde cache van vlak vóór die merge kwamen.
     """
-    return _cached(cache_path, now, max_age, "merged PRs", lambda: board_sources.merged_prs(
+    return _cached(cache_path, now, max_age, "merged PRs", lambda: board_github.merged_prs(
         src["github_owner"], src.get("merged_days", 3), now))
 
 
@@ -81,14 +82,14 @@ def _pr_cards_cached(src, now, cache_path, max_age):
     """Open PR's vers, gemergede uit de cache."""
     errors = []
     try:
-        open_rows = board_sources.open_prs(src["github_owner"])
+        open_rows = board_github.open_prs(src["github_owner"])
     except Exception as e:
         # Geen verse open PR's? Dan liever niets tonen dan een oude lijst als
         # actueel presenteren — maar wel zeggen dat we het niet weten.
         open_rows, errors = [], [f"open PRs not fetched: {e}"]
     merged_rows, merged_errors = _merged_cached(src, now, cache_path, max_age)
     rows = open_rows + merged_rows
-    return (board_sources.rows_to_cards(rows, now, set(src.get("ignore_repos") or ())),
+    return (board_github.rows_to_cards(rows, now, set(src.get("ignore_repos") or ())),
             errors + merged_errors)
 
 
@@ -107,8 +108,8 @@ def build(cfg, now=None):
         rows, issue_errors = _cached(
             src.get("issue_cache", "/tmp/board-issues.json"), now,
             src.get("issue_cache_seconds", 600), "issues",
-            lambda: board_sources.issue_rows(src["github_owner"]))
-        cards += board_sources.issues_to_cards(
+            lambda: board_github.issue_rows(src["github_owner"]))
+        cards += board_github.issues_to_cards(
             rows, now, set(src.get("ignore_repos") or ()))
         errors += issue_errors
     pr, pr_errors = _pr_cards_cached(src, now, src.get("pr_cache", "/tmp/board-prs.json"),

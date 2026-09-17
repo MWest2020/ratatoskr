@@ -19,7 +19,18 @@
 ## 3. De kolom
 - [x] `backlog` vóór `voorstel`, drempel 30 dagen in `board.yml`.
 
-## 4. Nagemeten
+## 4. De regelgrens dwong een splitsing af, en een goede
+- [x] `verify.sh` viel over 200 regels in `board_sources.py` en `test_board.py`.
+      Dat bestand bevatte drie werelden: de schijf (OpenSpec-changes), GitHub, en
+      de runbestanden van sessies. De GitHub-kant is de enige die een
+      netwerkaanroep doet en dus een leesfout kent — dat is waar de grens al om
+      vroeg. Nu `board_github.py` ernaast.
+- [x] Tests mee: `test_board_github.py` voor de GitHub-kant (PR-filtering én
+      issues), `test_board.py` voor de rest.
+- [x] Niet opgelost door uitleg weg te knippen om vier regels te winnen. De
+      grens wees een verkeerde indeling aan, niet een te lang bestand.
+
+## 5. Nagemeten
 - [x] 42 tests groen (`test_board`, `test_board_model`, `test_board_tmux`).
 - [x] Het bord echt gedraaid: 54 kaarten, nul fouten, backlog 8 — waaronder twee
       issues in andere repo's die ik niet kende (Billbird #17,
