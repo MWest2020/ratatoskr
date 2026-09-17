@@ -44,6 +44,19 @@ def _merged_cached(src, now, cache_path, max_age):
     stond acht minuten na zijn merge nog in review, omdat beide kanten uit
     dezelfde cache van vlak vóór die merge kwamen.
     """
+    return _cached(cache_path, now, max_age, "merged PRs", lambda: board_sources.merged_prs(
+        src["github_owner"], src.get("merged_days", 3), now))
+
+
+def _cached(cache_path, now, max_age, what, fetch):
+    """Een trage bron uit een bestand, met de leesfout als leesfout.
+
+    Twee gebruikers, en pas daarom een eigen functie: gemergede PR's en open
+    issues. Beide veranderen langzaam, beide mogen het bord niet elke twee
+    minuten een GitHub-aanroep kosten, en beide moeten bij een storing de oude
+    lijst tonen MET de mededeling dat hij oud is -- stil een verouderde lijst
+    als actueel presenteren is het enige antwoord dat hier echt fout is.
+    """
     try:
         cached = json.load(open(cache_path))
         if now - cached.get("at", 0) < max_age:
@@ -51,12 +64,12 @@ def _merged_cached(src, now, cache_path, max_age):
     except (OSError, ValueError, KeyError):
         pass
     try:
-        rows = board_sources.merged_prs(src["github_owner"], src.get("merged_days", 3), now)
+        rows = fetch()
     except Exception as e:
         try:
-            return json.load(open(cache_path))["rows"], [f"merged PRs not refreshed: {e}"]
+            return json.load(open(cache_path))["rows"], [f"{what} not refreshed: {e}"]
         except (OSError, ValueError, KeyError):
-            return [], [f"merged PRs not fetched: {e}"]
+            return [], [f"{what} not fetched: {e}"]
     tmp = cache_path + ".tmp"
     with open(tmp, "w") as f:
         json.dump({"at": now, "rows": rows}, f)
@@ -86,6 +99,18 @@ def build(cfg, now=None):
     src, cols = cfg["sources"], cfg["columns"]
     cards, errors = [], []
     cards += board_sources.openspec_cards(src["openspec_glob"], now)
+    # Open issues staan vóór het voorstel: het werk dat nog niet begonnen is.
+    # Zelfde behandeling als de PR-kant -- een leesfout is een leesfout en geen
+    # lege lijst, want "ik weet het niet" en "er is niets" zijn verschillende
+    # antwoorden en een bord hoort het eerste te kunnen zeggen.
+    if src.get("github_owner"):
+        rows, issue_errors = _cached(
+            src.get("issue_cache", "/tmp/board-issues.json"), now,
+            src.get("issue_cache_seconds", 600), "issues",
+            lambda: board_sources.issue_rows(src["github_owner"]))
+        cards += board_sources.issues_to_cards(
+            rows, now, set(src.get("ignore_repos") or ()))
+        errors += issue_errors
     pr, pr_errors = _pr_cards_cached(src, now, src.get("pr_cache", "/tmp/board-prs.json"),
                                      src.get("pr_cache_seconds", 600))
     cards += pr

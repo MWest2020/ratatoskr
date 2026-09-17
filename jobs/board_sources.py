@@ -108,6 +108,45 @@ def merged_prs(owner, merged_days, now):
          "--limit", "40", "--json", FIELDS])]
 
 
+ISSUE_FIELDS = "repository,number,title,url,updatedAt,labels"
+
+
+def issue_rows(owner):
+    """De ruwe rijen; apart van het kaartjes maken zodat ze gecacht kunnen
+    worden zoals de gemergede PR's. Issues veranderen langzaam en mogen het bord
+    niet elke twee minuten een GitHub-aanroep kosten."""
+    return gh_json(["search", "issues", f"--owner={owner}", "--state=open",
+                    "--limit", "40", "--json", ISSUE_FIELDS])
+
+
+def issues_to_cards(rows, now, ignore=()):
+    """Open issues: het werk dat nog geen voorstel is.
+
+    Het bord kende tot nu toe alleen dingen die al in beweging waren — een
+    voorstel, een PR, een sessie. Wat nog niet begonnen is stond nergens, en dus
+    stond de helft van de afspraak ("klein = issue, epic = spec") buiten beeld.
+
+    Het label reist mee in de titel, want het verschil tussen `spec-nodig` en
+    `direct` bepaalt wat je met de kaart moet doen en dat wil je zien zonder
+    hem open te klikken.
+    """
+    cards = []
+    for r in rows:
+        if r["repository"]["name"] in ignore:
+            continue
+        labels = [l["name"] for l in (r.get("labels") or [])]
+        merk = next((l for l in ("spec-nodig", "direct") if l in labels), "")
+        ts = time.mktime(time.strptime(r["updatedAt"][:19], "%Y-%m-%dT%H:%M:%S"))
+        cards.append({"id": f"issue:{r['repository']['name']}:{r['number']}",
+                      "repo": r["repository"]["name"],
+                      "title": f"#{r['number']} {r['title']}"
+                               + (f"  [{merk}]" if merk else ""),
+                      "column": "backlog", "via": "issue",
+                      "age_days": age_days(ts, now), "who": "",
+                      "url": r.get("url", ""), "source": ""})
+    return cards
+
+
 def rows_to_cards(rows, now, ignore=()):
     cards = []
     for r in rows:

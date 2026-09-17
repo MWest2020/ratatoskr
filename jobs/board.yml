@@ -7,6 +7,12 @@
 # Columns, in order. `stale_days` = above this it has been sitting too long.
 # The titles are what the USER sees and are therefore English (ADR-0001).
 columns:
+  # Werk dat nog niet begonnen is. Een issue dat hier een maand staat is geen
+  # storing -- maar wel iets dat je een keer moet bekijken in plaats van
+  # eindeloos voorbij te scrollen.
+  - key: backlog
+    title: backlog
+    stale_days: 30
   - key: proposal
     title: proposal
     stale_days: 14
