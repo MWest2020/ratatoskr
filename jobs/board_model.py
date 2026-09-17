@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """The pure core of the work overview: column, age, staleness, summary.
 
 Separate from board.py and board_sources.py so this is testable without GitHub,

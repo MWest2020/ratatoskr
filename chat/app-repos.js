@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: EUPL-1.2
+// SPDX-License-Identifier: MIT
 // The Repos drawer: repo list, PR list, PR detail, and "let @reviewer look".
 // Separate from app-ui.js so both stay under the 200-line convention.
 //

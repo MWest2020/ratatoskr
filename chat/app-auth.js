@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: EUPL-1.2
+// SPDX-License-Identifier: MIT
 // A session instead of a device token. The server sets an HttpOnly cookie, so
 // JavaScript never sees it and cannot leak it; what the app does need is the
 // session-bound token that has to accompany every state-changing request.

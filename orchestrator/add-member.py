@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """Add a pubkey as a member of a channel — through the channel owner nsec in SOPS.
 
 A small, auditable counterpart to the add-member step in

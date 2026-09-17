@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """A REAL chat server on localhost for the HTTP tests, with the relay and GitHub
 layers stubbed. Not a test module itself: test_server.py (the gate) and
 test_read_routes.py (what the read routes answer) both build on it.

@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """Web Push — storage of push subscriptions (stdlib only).
 
 The VM backend keeps the subscriptions here and serves the VAPID public key; the

@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """Push notification on a new message.
 
 The existing push chain (orchestrator/push-notify.py → VAPID → phone) only fired

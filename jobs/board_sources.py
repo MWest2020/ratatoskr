@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """The sources of the work overview: clones, GitHub and running work sessions.
 
 Separate from board.py because this is the impure side — glob, subprocess,

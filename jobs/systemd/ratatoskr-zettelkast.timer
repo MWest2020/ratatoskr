@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 [Unit]
 Description=Dagelijkse zettelkast-terugkoppeling (wat is verwerkt, wat blijft liggen)
 

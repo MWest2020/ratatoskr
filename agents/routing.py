@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """Een bericht doorsturen naar een ander kanaal, zoals Slack dat doet.
 
 Aanleiding: Mark in #architectuur, 2026-09-13 — *"@odin zeg het tegen bouwer.

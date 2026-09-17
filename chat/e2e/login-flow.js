@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: EUPL-1.2
+// SPDX-License-Identifier: MIT
 //
 // Logging in in a real browser, against the real VM. api.sh proves what a
 // stranger may NOT do; this proves the other side: that a human gets in, stays

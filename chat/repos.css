@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: EUPL-1.2 */
+/* SPDX-License-Identifier: MIT */
 /* Repos drawer (app-repos.js) — a full-screen modal with a close button and a
    level-back, then the repo, PR list and PR detail views inside it. */
 #reposDrawer{position:absolute; inset:0; background:rgba(0,0,0,.55); z-index:20;

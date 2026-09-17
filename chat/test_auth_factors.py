@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """Offline tests for the two login factors (chat/auth_factors.py): passwords and
 TOTP codes. Pure functions, so no database and no network.
 

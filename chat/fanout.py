@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """The views that fan out over every channel: message counts per channel and
 who is in which channel.
 

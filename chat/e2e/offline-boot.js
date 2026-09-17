@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: EUPL-1.2
+// SPDX-License-Identifier: MIT
 //
 // Cold start without a tunnel: the service worker serves the cached shell, but
 // the API is unreachable. Before `herstel-na-koude-start` init() died on the

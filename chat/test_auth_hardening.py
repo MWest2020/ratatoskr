@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """Tests for the 2026-09-12 security-review fixes on chat/auth_routes.py:
 setup()'s race, the timing leak in log_in(), and X-Forwarded-For. Each test
 here fails against the pre-fix code — see

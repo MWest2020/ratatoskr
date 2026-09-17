@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """Offline tests for work sessions: register, limits, harvest, report.
 
 Run with: cd agents && python3 -m unittest test_sessions

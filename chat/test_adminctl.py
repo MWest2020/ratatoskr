@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """Tests for host-side administration (chat/adminctl.py).
 
 Runs the script as a subprocess, with its own database and the password on

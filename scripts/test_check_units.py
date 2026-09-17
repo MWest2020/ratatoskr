@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """De gate moet beide kanten op kijken.
 
 `check_units.py` vergeleek alleen repo → host: voor elke unit in de repo, staat

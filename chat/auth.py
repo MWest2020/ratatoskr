@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """Who is this, and may they be here: sessions, cookies, CSRF and invitations.
 
 Sessions and invitations are random tokens of which only the hash is stored.

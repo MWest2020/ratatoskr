@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """The identity registry as the chat backend reads it.
 
 `identities.yml` is read here with regexes (stdlib, no yaml dependency on the

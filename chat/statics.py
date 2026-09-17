@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """The files we serve — an allowlist, not a directory.
 
 An allowlist because serving a directory means every file that ever lands in it

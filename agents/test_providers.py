@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """Offline tests for `providers.py` (which model did the work).
 Run from agents/: `python3 -m unittest test_providers` (agents/ has no
 __init__.py and the modules use top-level imports, so the package path does not

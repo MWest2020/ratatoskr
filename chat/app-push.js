@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: EUPL-1.2
+// SPDX-License-Identifier: MIT
 // Web Push: subscribing to phone notifications. A separate file (app-ui.js sat
 // at the 200-line limit). Loads after app.js/app-ui.js, so `toast` is available.
 function urlB64ToUint8Array(b64){

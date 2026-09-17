@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """De docs-drift-gate, lokaal.
 
 Waarom dit bestaat: de README van deze repo heette op 2026-09-15 nog "Boomhuis",

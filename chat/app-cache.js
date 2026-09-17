@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: EUPL-1.2
+// SPDX-License-Identifier: MIT
 //
 // A snapshot per channel, so there is something sensible on screen without a
 // connection. Notifications arrive over the public internet (Web Push through

@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 # /// script
 # dependencies = ["coincurve>=20", "bech32>=1.2", "pyyaml>=6"]
 # ///

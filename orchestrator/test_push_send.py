@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """Does a push actually LEAVE here, correctly encrypted and signed?
 
 Everything about Web Push that can be wrong on our side happens before the

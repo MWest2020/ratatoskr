@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """Een timer die faalt, faalt stil.
 
 `check_units.py` vergelijkt geïnstalleerd met git. Dat zegt niets over of het

@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """Storage for people, sessions and invitations — SQLite from the stdlib.
 
 Why SQLite and not JSON like the push registrations: this file is written by

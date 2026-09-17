@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """A fresh git worktree for a writing work session, with a fence in it.
 
 Why a worktree of its own: `~/ratatoskr-listener` runs the listener and the chat

@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """The action layer: who signs what, and what happens when the relay says no.
 
 Two things that really went wrong here and that these tests pin down: channel

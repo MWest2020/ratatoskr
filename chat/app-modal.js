@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: EUPL-1.2
+// SPDX-License-Identifier: MIT
 // UI helpers for the mention pop-up, separate from app.js so that stays ≤200
 // lines. Also: the DOM builders the rest of the app uses. Loaded before app.js and
 // app-ui.js, so `el` and `add` are available there.

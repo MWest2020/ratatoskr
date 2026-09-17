@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """HTTP routing: a REAL server on localhost, with the relay and GitHub layers
 stubbed. No mock of the handler itself, because the routing and the order of the
 checks are exactly what went wrong here.

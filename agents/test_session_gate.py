@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """Offline tests for the GATE of a work session: marker, authorisation, clause.
 
 The runner (register, harvest, limits, report) lives in test_sessions.py. That

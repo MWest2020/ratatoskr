@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """The HTTP side of logging in: routes that need no session, plus the gate.
 
 `server.py` stays thin: it calls `open_route()` for the paths allowed without a

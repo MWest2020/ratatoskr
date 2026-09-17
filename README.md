@@ -212,7 +212,7 @@ verantwoordt.
   upstream nog in aanbouw en dragen hier geen verantwoordelijkheid.
 
 Deze repo is privé (bevat indirect homelab-context; fail-closed). Licentie:
-EUPL-1.2.
+MIT.
 
 ## Namen
 

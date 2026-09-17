@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """Settings from the environment, read under one name.
 
 The app is called Ratatoskr, so the settings are called `RATATOSKR_*`. The old

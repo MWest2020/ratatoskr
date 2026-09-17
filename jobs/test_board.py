@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """Tests for the work overview. Only the PURE side: column choice, age and
 staleness. Those decide what the board says, and you want to test them without
 GitHub and without a clock.

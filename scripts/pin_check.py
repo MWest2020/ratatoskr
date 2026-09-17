@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """Controleer dat alles wat we uitrollen gepind is.
 
 "Immutable images" stond in CLAUDE.md en werd niet gehandhaafd: het

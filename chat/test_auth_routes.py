@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """Tests for the HTTP side of logging in (chat/auth_routes.py).
 
 Without a server: the routes get a stand-in handler that records what would have

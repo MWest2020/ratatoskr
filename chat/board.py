@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """Serve the work overview. That is all the chat does here.
 
 The snapshot is produced by `jobs/board.py` on the host that has the clones and

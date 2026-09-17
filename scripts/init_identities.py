@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 # /// script
 # dependencies = ["coincurve", "bech32", "pyyaml"]
 # ///
