@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """The two login factors: a password (scrypt) and a TOTP code (RFC 6238).
 
 All standard library: `hashlib.scrypt` for passwords, `hmac` for TOTP, `secrets`

@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """Agent/channel actions for the chat backend, separate from server.py (routing)
 so both stay under the ≤200-line convention. Every function returns (status,
 payload).

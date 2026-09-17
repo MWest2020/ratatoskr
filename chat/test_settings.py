@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """The fallback from RATATOSKR_ to BOOMHUIS_ is the only way back after a failed
 rollout, so it is tested and not assumed."""
 import os

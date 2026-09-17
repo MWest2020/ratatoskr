@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """Sleutelopslag: waar een sleutel vandaan komt, en wanneer hij niet telt.
 
 De twee tests die ertoe doen zijn de weigeringen. Een ontbrekende sleutel en een

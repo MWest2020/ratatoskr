@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """A ceiling on concurrent scrypt calls on the open routes (auth_routes.py).
 
 `ThreadingHTTPServer` (server.py) spawns a thread per connection, unbounded.

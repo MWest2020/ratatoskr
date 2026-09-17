@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """Web Push storage: the gate and the bound.
 
 The subscribe route is unprotected behind the device token: any tailnet device

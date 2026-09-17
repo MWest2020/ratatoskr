@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 # De chat-agent-listener als service. Stond tot 2026-09-11 alleen op de host; nu
 # in git, want een unit die nergens staat is een unit die niemand kan herstellen.
 #

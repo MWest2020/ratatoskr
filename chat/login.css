@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: EUPL-1.2 */
+/* SPDX-License-Identifier: MIT */
 /* The login page (login.html). Builds on app.css for the palette and the
    app-wide [hidden] rule, which is why it is loaded after it. */
 .loginpage{display:flex; align-items:center; justify-content:center;

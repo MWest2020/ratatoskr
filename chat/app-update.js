@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: EUPL-1.2
+// SPDX-License-Identifier: MIT
 //
 // Een app die nooit herlaadt, krijgt nooit een fix.
 //

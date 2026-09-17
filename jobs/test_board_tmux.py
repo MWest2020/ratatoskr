@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """De tmux-kaarten: puur, zonder tmux en zonder klok.
 
 Waarom deze bron bestaat: het bord toonde werksessies en PR's, maar niet de

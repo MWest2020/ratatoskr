@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """open_batons(): welke handover-batons nog op iemand wachten.
 
 Waarom dit een test heeft. Op 2026-09-12 werd een baton neergelegd zonder

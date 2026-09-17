@@ -84,4 +84,4 @@ overslaan telt niet als slagen.
   `verify.sh` vóór een push naar `main`. **Dat is de poort, en dat blijft het.**
   Niet voorstellen om dit bij GitHub af te dwingen — Mark wil dat niet, en dat is
   vier keer gezegd.
-- Licentie: EUPL-1.2. Nieuwe bronbestanden krijgen een SPDX-header.
+- Licentie: MIT. Nieuwe bronbestanden krijgen een SPDX-header.

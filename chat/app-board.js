@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: EUPL-1.2
+// SPDX-License-Identifier: MIT
 // The work overview: four columns of cards, and whatever stands still too long.
 //
 // All text here is ENGLISH (ADR-0001: the interface is English by default).

@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """What a session puts in the channel at the end.
 
 Separate from sessions.py because that file is about processes and files and this

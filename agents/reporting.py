@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """Reports per turn: statistics to #statistics, limitations to #escalatie.
 
 Separate from listener.py so that file stays under the ≤200-line convention.

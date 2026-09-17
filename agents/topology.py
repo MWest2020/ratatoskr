@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """Relay topology for the listener: which channels exist and who is a member.
 Separate from listener.py so that file stays under the ≤200-line convention. All
 relay I/O goes through a supplied `run(args) -> stdout|""` callable — the

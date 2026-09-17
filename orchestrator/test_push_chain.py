@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """De naad tussen de drie stukken van de push-keten.
 
 Elk stuk had zijn eigen tests en elk stuk was groen. De keten was het niet, en

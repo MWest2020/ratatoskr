@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """De tmux-sessies op deze host als kaarten.
 
 Waarom dit bestaat. Het bord toonde `!sessie`-werksessies (uit run-bestanden) en

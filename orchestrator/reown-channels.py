@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """Give the orchestrator co-ownership of human-owned channels.
 
 Why: the web chat signed channel creation as `mark` (the human), so those

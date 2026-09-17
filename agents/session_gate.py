@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """The gate of a work session: who asks, on whose behalf, and is that allowed.
 
 Separate from sessions.py because this is pure — no processes, no files — and

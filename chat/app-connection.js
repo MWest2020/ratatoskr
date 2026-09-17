@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: EUPL-1.2
+// SPDX-License-Identifier: MIT
 //
 // Everything around "we cannot reach the boomhuis": what went wrong, and the two
 // things the user can do about it. A separate file because app.js and app-ui.js

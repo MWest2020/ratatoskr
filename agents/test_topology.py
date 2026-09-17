@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """Offline tests for `topology.py` (relay topology: channels, members, scope).
 Run from agents/: `python3 -m unittest test_topology` (agents/ has no __init__.py
 and the modules use top-level imports, so the package path does not work).

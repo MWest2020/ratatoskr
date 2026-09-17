@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """Start-up helpers for the listener: YAML readers and the handbook def parser.
 Separate so listener.py stays under the ≤200-line convention. Pure: paths and
 urls come in as parameters, no module globals from the listener.

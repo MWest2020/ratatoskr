@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """Work sessions: a longer claude run started from a channel.
 
 A chat turn is one `claude -p` of 150s with Read/Grep/Glob. That is too small

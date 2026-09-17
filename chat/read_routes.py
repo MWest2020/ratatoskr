@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """The GET routes under /api/ that read data: channels, agents, the work
 overview, repos and PRs, pinned context and messages.
 

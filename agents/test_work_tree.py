@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """Tests for a writing session's worktree — above all for the fence.
 
 The fence is the whole point: a writing session gets `Bash`, and then "do not

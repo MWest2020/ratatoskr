@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """Tests for the VM-side push_subs helper (`orchestrator/vm/boomhuis-push-subs`).
 
 The one thing worth a test here is ownership. The helper runs as root and the

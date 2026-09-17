@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """Offline tests for `bootstrap.py` (hub resolution by ROLE, not by name).
 Run from agents/: `python3 -m unittest test_bootstrap` (agents/ has no
 __init__.py and the modules use top-level imports, so the package path does not

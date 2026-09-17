@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """Tests voor de PURE kern van het werk-overzicht: kolom, ouderdom, muf,
 samenvatting. Die bepalen wat het bord zegt, en die wil je kunnen testen zonder
 GitHub en zonder klok.

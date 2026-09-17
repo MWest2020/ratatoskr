@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: EUPL-1.2
+// SPDX-License-Identifier: MIT
 // Logging in for the e2e suites that need the app itself. Since
 // `inloggen-per-persoon` no app appears without a session, and filling in the
 // same form in three scripts is three times the maintenance.

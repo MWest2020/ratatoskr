@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """Offline tests for sessions, cookies and invitations (chat/auth.py). Passwords
 and TOTP are in test_auth_factors.py.
 

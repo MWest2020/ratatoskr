@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """Provider seam: the agent backend sits behind one function. Separate from
 listener.py so that file stays under the ≤200-line convention. Today 'claude-p'
 (subscription first); a new backend = one extra branch. The handbook def

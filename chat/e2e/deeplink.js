@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: EUPL-1.2
+// SPDX-License-Identifier: MIT
 // Notifications link to their channel: /#bouw opens #bouw. Without this every
 // notification landed on the app root, and so on the first channel.
 // NODE_PATH=<path>/node_modules node chat/e2e/deeplink.js

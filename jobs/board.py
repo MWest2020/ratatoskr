@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """Work overview: collect what is running into one snapshot (board.json).
 
 Three files: board_model.py is the pure core (column, age, staleness),

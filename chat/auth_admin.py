@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """Routes behind the session: inviting, and your own second factor.
 
 Only the owner may invite. Self-registration does not exist: one installation is

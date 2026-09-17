@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """Input validation of the GitHub read layer.
 
 Why this exists: `/api/prs?repo=boomhuis` (without an owner) went unchecked

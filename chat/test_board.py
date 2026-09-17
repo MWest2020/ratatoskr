@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """The serving side of the work overview: reading, age, and the three ways it can
 go wrong. An empty board must be distinguishable from a broken producer — that
 distinction is the whole point."""

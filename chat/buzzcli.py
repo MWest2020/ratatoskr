@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """buzzcli — the buzz/relay data layer for the chat backend.
 
 Talks to the relay through the buzz CLI: channels, members, signing keys, display

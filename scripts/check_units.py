@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """Do the systemd units installed on this host match the ones in the repository?
 
 Why this exists: on 2026-09-12 the board timer in git said two minutes while the

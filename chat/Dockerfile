@@ -27,7 +27,7 @@ RUN cargo build --release -p buzz-cli && strip target/release/buzz
 FROM python:3.12-slim-bookworm
 LABEL org.opencontainers.image.source="https://github.com/MWest2020/boomhuis"
 LABEL org.opencontainers.image.description="Ratatoskr — chat (PWA + API) voor een zelf-gehoste buzz-relay"
-LABEL org.opencontainers.image.licenses="EUPL-1.2"
+LABEL org.opencontainers.image.licenses="MIT"
 
 COPY --from=buzz-cli /src/target/release/buzz /usr/local/bin/buzz
 

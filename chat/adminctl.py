@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """Manage accounts from the host, without a browser.
 
 Exists because the web route has a chicken-and-egg problem: you can only log in

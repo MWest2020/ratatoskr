@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """F4 (2026-09-12 security review): the ceiling on concurrent scrypt calls
 (chat/auth_hashguard.py). Tests the boundary directly, not a live DoS."""
 import unittest

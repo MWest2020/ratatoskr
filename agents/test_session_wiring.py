@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """De koppeling marker → sessie, zonder relay en zonder agents.
 
 Deze code zat in listener.py en werd alleen indirect geraakt. Bij het uithalen

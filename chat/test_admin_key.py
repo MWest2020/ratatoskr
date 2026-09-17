@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """Channel management signs as the orchestrator, or it does not happen.
 
 The rule these tests guard: there is no path along which creating or deleting a

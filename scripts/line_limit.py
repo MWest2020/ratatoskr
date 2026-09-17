@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """Handhaaf de regelgrens van 200. Zonder handhaving is een conventie een wens.
 
 De grens staat al maanden in CLAUDE.md en werd al maanden overschreden — dat is

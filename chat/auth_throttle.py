@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """The brake on login attempts.
 
 A self-hosted installation has no WAF in front of it, so the brake belongs in the

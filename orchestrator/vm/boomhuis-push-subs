@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """VM-side helper for push_subs.json — runs as root through one pinned sudoers
 rule, so the sender on agent-lxc does NOT need `sudo sh`/`sudo python3 -c` (a
 root shell in all but name). Least privilege: sudoers pins exactly this path and

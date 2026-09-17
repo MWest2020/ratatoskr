@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: EUPL-1.2
+// SPDX-License-Identifier: MIT
 // One page, three situations: logging in, creating the first person (setup), and
 // using an invitation. They differ only in which endpoint is called and which
 // fields you see — a separate page per case gives you the same form three times.

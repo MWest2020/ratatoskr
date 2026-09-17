@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """Context and prompt builders for the listener, kept separate so listener.py
 stays under the ≤200-line convention. Pure: every dependency (root path, fleet,
 name map) comes in as a parameter, no module globals from the listener.

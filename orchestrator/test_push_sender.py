@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """De verzender: een leesfout mag nooit als "0 abonnees" doorgaan.
 
 Apart bestand van `test_push_chain.py` omdat het over de andere kant van de naad

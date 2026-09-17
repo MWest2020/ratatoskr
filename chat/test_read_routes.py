@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """What the read routes answer once a request is past the gate (read_routes.py).
 
 The invariant these tests guard: a raw upstream error never comes back on a user

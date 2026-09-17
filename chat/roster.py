@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: EUPL-1.2
+# SPDX-License-Identifier: MIT
 """Identity and membership logic, separate from buzzcli (the relay data layer) so
 both stay under the ≤200-line convention. Names come from the registry
 (`identities.yml`) through the existing git read layer instead of being
