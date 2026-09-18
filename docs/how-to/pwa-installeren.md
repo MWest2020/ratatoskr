@@ -53,8 +53,22 @@ Op iOS kan dit **alleen in Safari** — Chrome of Firefox hebben de optie niet.
 Wil je verdicts en escalaties als melding op je telefoon (ook met de app dicht)?
 
 1. Open de geïnstalleerde app en tik rechtsboven op de **🔔**-knop.
-2. Sta meldingen toe. Klaar — je krijgt voortaan een push bij een run-verdict of
-   escalatie.
+2. Sta meldingen toe. Klaar.
+
+### Waar je wél en niet een melding van krijgt
+
+| wel | niet |
+| --- | --- |
+| een antwoord van een agent | je eigen berichten |
+| een bericht van iemand anders | de `⋯`-voortgangsregels |
+| een run-verdict en een escalatie | alles in `#statistics` |
+
+Per kanaal gaat er hooguit één melding per 45 seconden uit. Komt er binnen dat
+venster nog iets, dan wordt dat **uitgesteld, niet overgeslagen**: zodra de 45
+seconden om zijn stuurt de listener het alsnog, met achter de tekst hoeveel
+berichten er nog meer waren (`(+2 eerder)`). Tot 18-09-2026 verdween zo'n bericht
+en dook de teller pas op achter het vólgende bericht in dat kanaal — in de meting
+vier dagen later.
 
 Zie je geen 🔔? Dan ondersteunt deze context geen Web Push. Belangrijk voor iOS:
 **push werkt daar alleen in de op-het-beginscherm geïnstalleerde app** (iOS 16.4+),

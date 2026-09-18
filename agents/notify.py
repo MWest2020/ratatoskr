@@ -23,7 +23,7 @@ COOLDOWN = int(os.environ.get("PUSH_COOLDOWN_SECONDS", "45"))
 SILENT = ("statistics",)          # channels that never push
 PROGRESS_PREFIX = "⋯"
 
-_last: dict = {}                # channel name -> (timestamp, suppressed count)
+_last: dict = {}   # channel -> (timestamp, suppressed count, held-back message)
 
 
 def should_notify(cname, author, content, me):
@@ -37,27 +37,66 @@ def should_notify(cname, author, content, me):
     return bool((content or "").strip())
 
 
-def push(cname, author, content):
-    """Send one notification; fails silently (it must never get in the way)."""
-    now = time.time()
-    t, missed = _last.get(cname, (0.0, 0))
-    if now - t < COOLDOWN:
-        _last[cname] = (t, missed + 1)     # inside the cooldown: only count
-        return False
+def _body(content, missed):
+    """One notification line: the message, shortened, plus what rode along."""
     body = (content or "").strip().replace("\n", " ")
     if len(body) > 140:
         body = body[:137] + "…"
     if missed:
         body += f"  (+{missed} eerder)"
-    _last[cname] = (now, 0)
+    return body
+
+
+def _send(cname, author, body):
+    """Hand one notification to the sender. Never gets in the way: an exception
+    is caught, and a sender that exits non-zero is NAMED — the three earlier
+    breaks in this chain were all silent, and that is what made them expensive."""
     try:
         # Channel in the URL: a notification about #bouw should land you in
         # #bouw, not on the app root (= the first channel). As a HASH, because
         # that never reaches the server and so adds no second cache entry in the sw.
-        subprocess.run(["uv", "run", SENDER, "--title", f"#{cname} · {author}",
-                        "--url", f"/#{cname}", "--body", body],
-                       cwd=ROOT, capture_output=True, text=True, timeout=30)
+        r = subprocess.run(["uv", "run", SENDER, "--title", f"#{cname} · {author}",
+                            "--url", f"/#{cname}", "--body", body],
+                           cwd=ROOT, capture_output=True, text=True, timeout=30)
+        if r.returncode != 0:
+            print(f"[listener] push-sender rc={r.returncode} (#{cname}): "
+                  f"{(r.stderr or r.stdout).strip()[:200]}", flush=True)
+            return False
         return True
     except Exception as e:                 # sender gone, network down, uv missing
         print(f"[listener] push mislukt (#{cname}): {e}", flush=True)
         return False
+
+
+def push(cname, author, content):
+    """Send one notification; fails silently (it must never get in the way)."""
+    now = time.time()
+    t, missed, _held = _last.get(cname, (0.0, 0, None))
+    if now - t < COOLDOWN:
+        # Inside the cooldown: hold on to THIS message (the newest) and count the
+        # rest. `flush` delivers it as soon as the cooldown expires. Before, the
+        # message evaporated and only a counter rode along on the NEXT push in
+        # that channel — measured 2026-09-18: a "(+1 eerder)" from four days
+        # earlier. A notification that late is the same as no notification.
+        _last[cname] = (t, missed + 1, (author, content))
+        return False
+    _last[cname] = (now, 0, None)
+    return _send(cname, author, _body(content, missed))
+
+
+def flush(now=None):
+    """Deliver per channel the message the cooldown held back, as soon as that
+    cooldown has expired. The listener calls this every poll tick. Returns the
+    channel names that were sent (for the tests)."""
+    now = time.time() if now is None else now
+    sent = []
+    for cname, (t, missed, held) in list(_last.items()):
+        if not held or now - t < COOLDOWN:
+            continue
+        author, content = held
+        _last[cname] = (now, 0, None)
+        # missed counts the held-back messages INCLUDING this one; the "+n"
+        # names only the ones that do not get their own line.
+        if _send(cname, author, _body(content, missed - 1)):
+            sent.append(cname)
+    return sent

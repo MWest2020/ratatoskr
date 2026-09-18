@@ -173,6 +173,7 @@ def main():
                         try_session(ans, handle, writer, cname, cid, mid)
                     reporting.report_run(send, CHANNELS, handle, cname, cfg, r)
         reg.tick(session_post)  # progress/completion of running work sessions
+        notify.flush()          # deliver what the push cooldown held back
         time.sleep(POLL)
 
 
