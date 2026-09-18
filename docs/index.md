@@ -23,6 +23,7 @@ tailnet.
   [relay-herstel](how-to/relay-herstel.md).
 
 - [Het werk-overzicht](how-to/werk-overzicht.md)
+- [Wat kost de vloot](explanation/wat-kost-de-vloot.md) — wat er in `#statistics` staat en wie er een regel post
 
 ## Besluiten (ADR)
 
