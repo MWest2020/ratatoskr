@@ -39,6 +39,39 @@ def load_channels(root):
     return {n: c["id"] for n, c in load_yaml(os.path.join(root, "channels.yml"))["channels"].items()}
 
 
+def load_channel_defaults(root):
+    """`{channel: handle}` for channels that name a default agent.
+
+    Separate from `load_channels` so the shape that everything else depends on
+    (`{name: id}`) stays what it is. A channel without the key is not in here,
+    which is the normal case: this is opt-in per channel, never a global
+    default. A feed like #statistics that answers every line would be noise
+    with a price tag.
+    """
+    d = load_yaml(os.path.join(root, "channels.yml"))["channels"]
+    return {n: c["default_agent"] for n, c in d.items() if c.get("default_agent")}
+
+
+def check_channel_defaults(defaults, agents):
+    """Raise when a default agent cannot actually speak in its channel.
+
+    Fail loudly at startup, not silently at the first message. A default that
+    is skipped because the agent is not scoped there looks exactly like a
+    listener that is not running -- and this repo already pays for that class
+    of failure elsewhere.
+    """
+    for cname, handle in sorted(defaults.items()):
+        cfg = agents.get(handle)
+        if cfg is None:
+            raise ValueError(
+                f"channels.yml: #{cname} names default_agent '{handle}', "
+                f"which is not an agent in the handbook")
+        if cname not in (cfg.get("channels") or []):
+            raise ValueError(
+                f"channels.yml: #{cname} names default_agent '{handle}', but "
+                f"that agent's definition does not list #{cname} in chat.channels")
+
+
 def load_identity_npubs(root):
     d = load_yaml(os.path.join(root, "identities.yml"))["identities"]
     return {h: v.get("npub") for h, v in d.items()}, {v["pubkey_hex"]: h for h, v in d.items()}

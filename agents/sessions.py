@@ -27,7 +27,9 @@ RUNS = os.environ.get("SESSIE_RUNS", "/tmp/boomhuis-sessies")
 # Reading/stripping the marker and the authorisation live in session_gate.py
 # (pure); what stays here is only what touches processes and files.
 read_marker = session_gate.read_marker
+read_own_marker = session_gate.read_own_marker
 strip_marker = session_gate.strip_marker
+strip_own_marker = session_gate.strip_own_marker
 
 # Never given to a READING session, not even when a type puts them in `tools` by
 # mistake. A writing session (`writes: true`) does need them — it works in a
