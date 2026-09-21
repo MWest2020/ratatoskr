@@ -1,6 +1,6 @@
 ---
 status: current
-last_reviewed: 2026-09-18
+last_reviewed: 2026-09-21
 ---
 
 # Wat kost de vloot — en waar je dat leest
@@ -43,3 +43,26 @@ digest zelf geplaatst is, en een mislukking wordt gelogd maar laat de job staan.
 Een job is er voor de digest. Levert de CLI onverwacht geen JSON meer, dan
 verdwijnt de statistiekregel en blijft de digest gewoon komen — die volgorde is
 een keuze, geen toeval.
+
+## Als de hele digest ontbreekt
+
+Dat is iets anders dan een ontbrekende statistiekregel, en het is ernstiger.
+Sinds 2026-09-21 post een job die niets kan opleveren een regel in **zijn eigen
+kanaal**:
+
+    ⚠️ job standup kon niet draaien: claude niet te starten (PermissionError: …)
+
+Gedekt: `claude` niet te starten, een time-out, een niet-nul returncode, een
+leeg antwoord. Het posten zelf kan die weg niet gebruiken — mislukt dát, dan
+staat het alleen in het journaal.
+
+Aanleiding: op 2026-09-21 om 08:00 sneuvelden alle vier de terugkerende jobs
+tegelijk op een `claude` die er wél stond maar niet uitvoerbaar was. In de
+kanalen stond niets, en de storing kwam pas om 15:30 aan het licht doordat Mark
+vroeg "no standup this morning?".
+
+Zonder zo'n regel valt een dode job niet te onderscheiden van een rustige dag:
+een lege #escalatie kan "geen blokkades" betekenen of "de job draait al zeven
+uur niet meer". Dezelfde regel als bij [werksessies](../how-to/werksessies.md):
+afwezigheid is geen bericht. Het herstelrecept voor dit specifieke geval staat
+in `jobs/README.md`.
