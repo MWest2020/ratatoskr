@@ -52,7 +52,7 @@ Rule: **a marker counts only on the first line of an agent's own answer.** Quote
 material further down is inert. This needs a test that posts an answer quoting a
 marker and asserts that nothing started — a seam between two parts that each
 have their own green tests is exactly where the failures of 11-13 September
-lived (`CLAUDE.md`).
+lived (`AGENTS.md`).
 
 Second rem, already present: `starters` per type. An injected marker can only
 start what that identity is allowed to start.

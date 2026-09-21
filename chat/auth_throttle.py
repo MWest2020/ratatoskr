@@ -8,7 +8,7 @@ block one address by guessing names.
 
 Shares the table `pogingen` with auth_store; a separate file because it is a
 concern of its own (and because auth_store would otherwise go over the 200 lines
-from CLAUDE.md).
+from AGENTS.md).
 """
 from auth_store import _connect, now
 

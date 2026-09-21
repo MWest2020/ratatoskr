@@ -2,7 +2,7 @@
 //
 // Everything around "we cannot reach the boomhuis": what went wrong, and the two
 // things the user can do about it. A separate file because app.js and app-ui.js
-// both sit against the 200-line limit from CLAUDE.md.
+// both sit against the 200-line limit from AGENTS.md.
 //
 // Why a button and not an automatism: an app that wipes itself on every outage
 // also wipes your unread state when the tunnel hiccups for two seconds.

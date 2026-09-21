@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Handhaaf de regelgrens van 200. Zonder handhaving is een conventie een wens.
 
-De grens staat al maanden in CLAUDE.md en werd al maanden overschreden — dat is
+De grens staat al maanden in AGENTS.md en werd al maanden overschreden — dat is
 precies wat er gebeurt met een regel die niemand controleert.
 
     python3 scripts/line_limit.py            # rapporteer + faal bij overtreding

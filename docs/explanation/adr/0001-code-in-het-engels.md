@@ -9,7 +9,7 @@ beslisser: Mark
 
 ## Context
 
-`CLAUDE.md` zei tot vandaag alleen: *"Nederlands in proza; technisch jargon en
+`AGENTS.md` zei tot vandaag alleen: *"Nederlands in proza; technisch jargon en
 citaten blijven Engels."* Dat is over code nooit een uitspraak geweest, en in de
 praktijk is het die kant op gegroeid: `instellingen.lees()`, `sessiepoort.py`,
 `mag_starten()`, `knip_marker()`, `bouwen.sh`, `na-uitrol.sh`. Consequent
@@ -76,7 +76,7 @@ slechter dan niet omgezet.
   instellingnamen `RATATOSKR_*`, de route `/ratatoskr.apk` en de
   kanaalnamen zijn afspraken met mensen en met draaiende installaties. Die
   hernoemen is een aparte afweging per geval, geen bijwerking van deze ADR.
-- `CLAUDE.md` verwijst naar deze ADR in plaats van het in één regel af te doen.
+- `AGENTS.md` verwijst naar deze ADR in plaats van het in één regel af te doen.
 
 ## Verworpen alternatieven
 

@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Controleer dat alles wat we uitrollen gepind is.
 
-"Immutable images" stond in CLAUDE.md en werd niet gehandhaafd: het
+"Immutable images" stond in AGENTS.md en werd niet gehandhaafd: het
 compose-bestand viel terug op `:main`, en de workflow gebruikte `@v4`. Een pin
 die niemand controleert is een voornemen.
 
