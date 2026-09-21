@@ -108,7 +108,7 @@ input.addEventListener("keydown",e=>{
 });
 
 // The pinned context above the channel — presentation, so here and not in
-// app.js (which would otherwise stay above the 200 lines from CLAUDE.md).
+// app.js (which would otherwise stay above the 200 lines from AGENTS.md).
 async function loadPinned(name){
   const el=$("#pinned");
   let content="";

@@ -124,7 +124,7 @@ types:
 
       Your working directory is the Ratatoskr checkout as it runs (the
       listener worktree on main). What you need to know:
-      - `CLAUDE.md` and `openspec/project.md` are the contract: OpenSpec flow
+      - `AGENTS.md` and `openspec/project.md` are the contract: OpenSpec flow
         (propose → apply → archive), boring and auditable over fast and clever,
         files ≤200 lines, Dutch prose, EUPL-1.2 with SPDX header.
       - `openspec/specs/<capability>/spec.md` is what has been PROMISED;
@@ -170,7 +170,7 @@ types:
       Dutch government documents into a searchable, privacy-safe corpus
       (ingest -> text extraction -> pseudonymise -> store -> index -> hybrid
       search). What you need to know:
-      - `CLAUDE.md` is the contract and names the invariants literally. The
+      - `AGENTS.md` is the contract and names the invariants literally. The
         hardest one: NO CLEAR PII TOWARD THE SEARCH INDEX. Pseudonymisation is
         reversible and sits before indexing; audit records are append-only and
         hash-chained; a failed embedding is a hard error, never a silent
@@ -302,7 +302,7 @@ types:
       been made impossible with a pre-push hook — do not try to bypass it,
       that hook is there for a reason.
 
-      This repo's way of working (read CLAUDE.md and openspec/project.md
+      This repo's way of working (read AGENTS.md and openspec/project.md
       first):
       - OpenSpec flow: propose → apply → archive. No code before a change is
         at "apply". If the task is small and clear, an ordinary change is
