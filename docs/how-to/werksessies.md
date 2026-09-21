@@ -1,6 +1,6 @@
 ---
 status: current
-last_reviewed: 2026-09-10
+last_reviewed: 2026-09-21
 ---
 
 # Een werksessie starten vanuit de chat
@@ -50,8 +50,8 @@ De chat blijft gewoon werken terwijl een sessie loopt — hij draait losgekoppel
 
 Er zijn twee soorten, en dat staat per type in `sessions.yml`.
 
-**Lezende sessies** (`zettelkast`, `skill-forge`, `ratatoskr`) lezen en verder
-niets. Geen `Write`, geen `Edit`, geen `Bash`, geen push; de lees-tools zijn
+**Lezende sessies** (`zettelkast`, `skill-forge`, `ratatoskr`, `wordsworth`,
+`wanderer`) lezen en verder niets. Geen `Write`, geen `Edit`, geen `Bash`, geen push; de lees-tools zijn
 pad-begrensd tot de werkmap van het type. Concluderen ze dat er iets moet
 veranderen, dan **stellen ze dat voor**.
 
@@ -86,7 +86,25 @@ prompt-truc.
 | `zettelkast` | `~/zettelkast` | leest de vault en beoordeelt wat er met gedeelde clips moet gebeuren |
 | `skill-forge` | `~/skill-forge` | legt materiaal naast de eigen skill-bibliotheek |
 | `ratatoskr` | de listener-checkout | leest deze repo en levert een onderbouwd voorstel |
+| `wordsworth` | `~/wordsworth` | leest de PII-pijplijn en toetst een vraag aan code én metingen |
+| `wanderer` | `~/Wanderer` | leest de scanner en het regelpack, inclusief de afgewezen ADR's |
 | `build` | een verse worktree | **schrijft**, draait tests, opent een pull request |
+
+De laatste twee zijn er sinds 2026-09-21 en hebben geen schrijvende tegenhanger:
+`build` bestaat alleen voor ratatoskr. Een chatbericht dat pull requests opent in
+twee andere repo's is een groter recht dan wat hier gevraagd werd; dat is een
+regel extra in `sessions.yml` zodra iemand het wil.
+
+Hun tijdbudget is 30 minuten in plaats van 15. Een repo-brede leessessie is
+trager dan een vault-scan, en een half rapport is geen rapport.
+
+Het systeembericht verschilt per type, want de contracten verschillen: bij
+wordsworth de harde invariant (geen klare PII richting de index) en de vraag
+"verandert dit een belofte?", met de instructie een bewering aan de **code** te
+toetsen en niet aan de spec alleen — dat is daar in beide richtingen misgegaan.
+Bij Wanderer dat de moat het regelpack is en niet de scanners, en dat de
+**afgewezen** ADR's er ook bij horen: een voorstel dat een gesloten besluit
+heropent, hoort te zeggen waarom dat besluit niet meer geldt.
 
 ## Grenzen
 
