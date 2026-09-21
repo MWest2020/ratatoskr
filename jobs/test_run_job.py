@@ -10,7 +10,10 @@ format of the CLI may cost the stats line, never the digest itself.
 import importlib.util
 import json
 import os
+import sys
 import unittest
+
+import yaml
 
 os.environ.setdefault("BUZZ_RELAY_URL", "ws://test")
 _spec = importlib.util.spec_from_file_location(
@@ -59,3 +62,72 @@ class TestPostStatistieken(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestStilleStoring(unittest.TestCase):
+    """Op 2026-09-21 sneuvelden alle vier de terugkerende jobs om 08:00 op een
+    claude-installatie die niet uitvoerbaar was. In de kanalen stond niets; de
+    storing kwam aan het licht doordat Mark om 15:30 vroeg "no standup this
+    morning?". Afwezigheid leest als "niets te melden"."""
+
+    def _job(self):
+        return {"channel": "kanaal-1", "identity": "odin", "prompt": "x"}
+
+    def test_de_melding_gaat_naar_het_kanaal_van_de_job(self):
+        gezien = {}
+
+        def nep(args, env, tekst, npub, wat, name):
+            gezien.update(args=args, tekst=tekst, wat=wat)
+            return True
+
+        oud, run_job.stuur = run_job.stuur, nep
+        try:
+            ok = run_job.meld_storing("standup", self._job(),
+                                      "claude niet te starten", {}, "npub1")
+        finally:
+            run_job.stuur = oud
+        self.assertTrue(ok)
+        self.assertIn("kanaal-1", gezien["args"])
+        self.assertIn("standup", gezien["tekst"])
+        self.assertIn("claude niet te starten", gezien["tekst"])
+
+    def test_een_weigerende_relay_maakt_er_geen_succes_van(self):
+        """Anders meldt het journaal "storing gemeld" terwijl er niets staat."""
+        class Nep:
+            returncode = 1
+            stderr = "relay weigert"
+
+        oud, run_job.subprocess.run = run_job.subprocess.run, lambda *a, **k: Nep()
+        try:
+            ok = run_job.stuur(["buzz"], {}, "tekst", "", "posten", "standup")
+        finally:
+            run_job.subprocess.run = oud
+        self.assertFalse(ok)
+
+    def test_main_meldt_een_claude_die_niet_te_starten_is(self):
+        """Het echte geval van 2026-09-21, van buitenaf: een CLAUDE_BIN die
+        bestaat maar niet uitvoerbaar is. Vóór deze wijziging viel de job om met
+        een PermissionError en bleef het kanaal leeg."""
+        import tempfile
+        # Expliciet deze job: zijn context_cmd is een lokale `git log`. De
+        # andere jobs lezen de relay of alle clones, en een toets hoort niet aan
+        # het netwerk te hangen om een PermissionError te bewijzen.
+        naam = "news_from_zettelkast"
+        with tempfile.NamedTemporaryFile(suffix=".sh", delete=False) as f:
+            f.write(b"#!/bin/sh\necho x\n")       # bestaat wel, uitvoerbaar niet
+        os.chmod(f.name, 0o644)
+
+        gemeld = {}
+        oud_bin, run_job.CLAUDE = run_job.CLAUDE, f.name
+        oud_meld, run_job.meld_storing = run_job.meld_storing, \
+            lambda name, job, reden, env, npub: gemeld.update(reden=reden) or True
+        oud_argv, sys.argv = sys.argv, ["run-job.py", naam]
+        os.environ["NSEC_ORCHESTRATOR"] = "nsec-test"
+        os.environ["NSEC_ODIN"] = "nsec-test"
+        try:
+            run_job.main()
+        finally:
+            run_job.CLAUDE, run_job.meld_storing = oud_bin, oud_meld
+            sys.argv = oud_argv
+            os.unlink(f.name)
+        self.assertIn("niet te starten", gemeld.get("reden", ""))

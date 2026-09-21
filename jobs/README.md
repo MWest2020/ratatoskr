@@ -56,3 +56,33 @@ goed gaat. Installeren:
 | news | maandag 09:00 | news_from_zettelkast |
 | proposals | maandag 09:15 | proposals |
 | techdepth | vrijdag 16:00 | technical_debt |
+
+## Een stille job bestaat niet
+
+Levert een job geen digest op, dan post hij **in zijn eigen kanaal** waaróm
+niet:
+
+    ⚠️ job standup kon niet draaien: claude niet te starten (PermissionError: …)
+
+Gedekt: `claude` niet te starten (`OSError`), een time-out, een niet-nul
+returncode en een leeg antwoord. Het posten zelf kan die weg natuurlijk niet
+gebruiken; dat blijft in het journaal staan.
+
+Waarom dit er is: op 2026-09-21 sneuvelden om 08:00 alle vier de terugkerende
+jobs tegelijk op een `claude`-installatie die er wél stond maar niet uitvoerbaar
+was (de npm-postinstall had het platform-binary niet opgehaald). In de kanalen
+stond niets. De storing kwam pas om 15:30 aan het licht doordat Mark vroeg "no
+standup this morning?" — zeven uur later, en alleen omdat híj de afwezigheid
+opmerkte.
+
+Afwezigheid leest als "niets te melden", en dat is het gevaarlijke antwoord: een
+lege #escalatie kan "geen blokkades" betekenen of "de job is dood", en van
+buiten zien die er hetzelfde uit. Dezelfde regel als bij
+[werksessies](../docs/how-to/werksessies.md).
+
+Herstel van díe storing, voor als het terugkomt:
+
+    node ~/.npm-global/lib/node_modules/@anthropic-ai/claude-code/install.cjs
+    # geeft dat de native package ontbreekt? dan de hele map opnieuw installeren:
+    mv ~/.npm-global/lib/node_modules/@anthropic-ai/claude-code{,.kapot}
+    npm install -g @anthropic-ai/claude-code && claude --version
