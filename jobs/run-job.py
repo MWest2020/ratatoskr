@@ -56,17 +56,41 @@ def post_statistieken(name, job, stats, env, npub):
         return
     line = (f"{job['identity']} · job {name} · {stats['model']} · "
             f"{stats['turns']} turns · ${stats['cost']:.2f}")
-    args = [BUZZ, "messages", "send", "--channel", cid, "--content", "-"]
-    if npub:
-        args += ["--mention", npub]
+    stuur([BUZZ, "messages", "send", "--channel", cid, "--content", "-"],
+          env, line, npub, "statistiekregel", name)
+
+
+def stuur(args, env, tekst, npub, wat, name):
+    """Post `tekst`; True als het gelukt is. Een relay die traag is of weigert
+    mag niet crashen en mag ook niet als "geplaatst" doorgaan."""
+    args = list(args) + (["--mention", npub] if npub else [])
     try:
-        r = subprocess.run(args, env=env, input=line, capture_output=True,
+        r = subprocess.run(args, env=env, input=tekst, capture_output=True,
                            text=True, timeout=25)
-        if r.returncode != 0:
-            print(f"[job {name}] statistiekregel mislukt (rc={r.returncode}): "
-                  f"{r.stderr.strip()[:120]}", flush=True)
     except subprocess.TimeoutExpired:
-        print(f"[job {name}] statistiekregel: relay-time-out", flush=True)
+        print(f"[job {name}] {wat}: relay-time-out", flush=True)
+        return False
+    if r.returncode != 0:
+        print(f"[job {name}] {wat} mislukt (rc={r.returncode}): "
+              f"{r.stderr.strip()[:160]}", flush=True)
+        return False
+    return True
+
+
+def meld_storing(name, job, reden, env, npub):
+    """Een job die niets oplevert, zegt dát in zijn eigen kanaal.
+
+    Op 2026-09-21 sneuvelden alle vier de terugkerende jobs om 08:00 op een
+    kapotte claude-installatie. In het kanaal stond niets, en de storing kwam
+    aan het licht doordat Mark om 15:30 vroeg "no standup this morning?".
+    Afwezigheid leest als "niets te melden", en dat is precies het verkeerde
+    antwoord op een kapotte pijplijn. Dezelfde regel als voor werksessies:
+    een stille job bestaat niet.
+    """
+    tekst = f"⚠️ job {name} kon niet draaien: {reden}"
+    print(f"[job {name}] storing gemeld: {reden}", flush=True)
+    return stuur([BUZZ, "messages", "send", "--channel", job["channel"],
+                  "--content", "-"], env, tekst, npub, "storingsmelding", name)
 
 
 def main():
@@ -95,6 +119,17 @@ def main():
                        "lees dit NIET als 'geen blokkades' of 'niks gebeurd')")
             print(f"[job {name}] context_cmd time-out — LEESFOUT-context", flush=True)
 
+    # Eerst de verzendweg, dan pas het werk: zonder dit kon een storing in de
+    # claude-aanroep niet gemeld worden, want de sleutel werd er pas ná
+    # opgehaald.
+    env = dict(os.environ)
+    env["BUZZ_PRIVATE_KEY"] = nsec
+    env["BUZZ_RELAY_URL"] = RELAY
+    # own npub as --mention so arbitrary @words do not cause a post error
+    ids = yaml.safe_load(open(os.path.join(os.path.dirname(HERE),
+                                           "identities.yml")))["identities"]
+    npub = ids.get(job["identity"], {}).get("npub", "")
+
     prompt = job["prompt"]
     if context:
         prompt += f"\n\nContext:\n{context}"
@@ -103,33 +138,23 @@ def main():
                             "--append-system-prompt", SYSTEM, prompt],
                            capture_output=True, text=True, timeout=MAX_S)
     except subprocess.TimeoutExpired:
-        print(f"[job {name}] claude -p time-out — niets gepost", flush=True)
-        return
+        return meld_storing(name, job, f"claude -p gaf na {MAX_S}s geen antwoord",
+                            env, npub)
+    except OSError as exc:
+        # Precies het geval van 2026-09-21: het binaire bestand stond er wel,
+        # maar was niet uitvoerbaar. Een OSError hier sloopte de hele job.
+        return meld_storing(name, job, f"claude niet te starten ({exc.__class__.__name__}: "
+                            f"{str(exc)[:120]})", env, npub)
     answer, stats = antwoord_en_kosten(r.stdout)
     if not answer:
-        print(f"[job {name}] leeg antwoord — niets gepost", flush=True)
-        return
+        reden = (f"claude -p eindigde met rc={r.returncode}" if r.returncode
+                 else "claude -p gaf een leeg antwoord")
+        fout = (r.stderr or "").strip()[:160]
+        return meld_storing(name, job, f"{reden}{': ' + fout if fout else ''}",
+                            env, npub)
 
-    env = dict(os.environ)
-    env["BUZZ_PRIVATE_KEY"] = nsec
-    env["BUZZ_RELAY_URL"] = RELAY
-    # own npub as --mention so arbitrary @words do not cause a post error
-    ids = yaml.safe_load(open(os.path.join(os.path.dirname(HERE),
-                                           "identities.yml")))["identities"]
-    npub = ids.get(job["identity"], {}).get("npub", "")
-    args = [BUZZ, "messages", "send", "--channel", job["channel"], "--content", "-"]
-    if npub:
-        args += ["--mention", npub]
-    # Do check the send result: a slow or refusing relay must neither crash nor
-    # falsely report "posted".
-    try:
-        sr = subprocess.run(args, env=env, input=answer, capture_output=True,
-                            text=True, timeout=25)
-    except subprocess.TimeoutExpired:
-        print(f"[job {name}] relay-time-out bij posten — mogelijk niet gepost", flush=True)
-        return
-    if sr.returncode != 0:
-        print(f"[job {name}] posten mislukt (rc={sr.returncode}): {sr.stderr.strip()[:160]}", flush=True)
+    if not stuur([BUZZ, "messages", "send", "--channel", job["channel"],
+                  "--content", "-"], env, answer, npub, "posten", name):
         return
     print(f"[job {name}] gepost in kanaal {job['channel']}", flush=True)
     post_statistieken(name, job, stats, env, npub)
