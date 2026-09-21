@@ -61,6 +61,11 @@ tegelijk op een `claude` die er wél stond maar niet uitvoerbaar was. In de
 kanalen stond niets, en de storing kwam pas om 15:30 aan het licht doordat Mark
 vroeg "no standup this morning?".
 
+De oorzaak van díe storing was de auto-updater van Claude Code, die zichzelf elke
+kwartier bijwerkte en een keer een installatie zonder werkende binary achterliet.
+Hij staat nu uit; bijwerken is een bewuste handeling geworden. Het hele verhaal
+en het herstelrecept staan in `jobs/README.md`.
+
 Zonder zo'n regel valt een dode job niet te onderscheiden van een rustige dag:
 een lege #escalatie kan "geen blokkades" betekenen of "de job draait al zeven
 uur niet meer". Dezelfde regel als bij [werksessies](../how-to/werksessies.md):
