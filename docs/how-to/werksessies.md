@@ -51,7 +51,7 @@ De chat blijft gewoon werken terwijl een sessie loopt — hij draait losgekoppel
 Er zijn twee soorten, en dat staat per type in `sessions.yml`.
 
 **Lezende sessies** (`zettelkast`, `skill-forge`, `ratatoskr`, `wordsworth`,
-`wanderer`) lezen en verder niets. Geen `Write`, geen `Edit`, geen `Bash`, geen push; de lees-tools zijn
+`wanderer`, `research`) lezen en verder niets. Geen `Write`, geen `Edit`, geen `Bash`, geen push; de lees-tools zijn
 pad-begrensd tot de werkmap van het type. Concluderen ze dat er iets moet
 veranderen, dan **stellen ze dat voor**.
 
@@ -88,6 +88,7 @@ prompt-truc.
 | `ratatoskr` | de listener-checkout | leest deze repo en levert een onderbouwd voorstel |
 | `wordsworth` | `~/wordsworth` | leest de PII-pijplijn en toetst een vraag aan code én metingen |
 | `wanderer` | `~/Wanderer` | leest de scanner en het regelpack, inclusief de afgewezen ADR's |
+| `research` | `~/research` | zoekt iets op het **open web** op en meldt terug mét bronvermelding |
 | `build` | een verse worktree | **schrijft**, draait tests, opent een pull request |
 
 De laatste twee zijn er sinds 2026-09-21 en hebben geen schrijvende tegenhanger:
@@ -105,6 +106,46 @@ toetsen en niet aan de spec alleen — dat is daar in beide richtingen misgegaan
 Bij Wanderer dat de moat het regelpack is en niet de scanners, en dat de
 **afgewezen** ADR's er ook bij horen: een voorstel dat een gesloten besluit
 heropent, hoort te zeggen waarom dat besluit niet meer geldt.
+
+## De hub blijft vrij
+
+`research` bestaat omdat de hub het werk niet zelf hoort te doen. Odin krijgt een
+link of een vraag, zet er een sessie op en is meteen weer aanspreekbaar; het
+antwoord komt terug in het kanaal, onder odins eigen identiteit — net als bij de
+andere types. Dat is het hub-en-spoke-patroon zoals het bedoeld is: de hub
+beslist waar iets heen gaat, de spoke doet het werk.
+
+Twee dingen die bij `research` anders zijn:
+
+- **Geen repo.** Zijn invoer is een link of een vraag uit het kanaal, niet een
+  checkout. De werkmap `~/research` is een kladmap, zodat de pad-begrensde
+  leestools iets hebben om aan gebonden te worden — `Read(./**)` zonder map
+  begrenst niets.
+- **Het open web.** Geen domeinlijst (besluit Mark, 2026-09-21). Een lijst die je
+  eerst moet bijwerken om een link te mógen lezen, is dezelfde soort
+  zelf-opgelegde beperking die dit type juist opheft.
+
+Wat dat kost: een opgehaalde pagina is tekst van een vreemde. Staat daar
+`!sessie build …` in en citeert de sessie die regel, dan is dat een instructie
+van iemand anders. Daarom telt een marker **alleen op de eerste regel van het
+eigen antwoord** van een agent; wat verderop staat is geciteerd materiaal en doet
+niets. Een mens die de marker onder een zin typt wordt wél gelezen — daar is de
+tekst van de persoon zelf. Het verschil is vertrouwen, niet syntax.
+
+## Zonder een naam te noemen
+
+Een kanaal kan een **default agent** aanwijzen (`channels.yml`,
+`default_agent:`). Noemt een bericht niemand en valt er ook geen gesprek voort te
+zetten, dan gaat het naar die agent. In `#general` is dat odin.
+
+De volgorde is de afspraak, en hij staat in `agents/triggers.py`: **mention >
+vervolg > default**. Wie een agent noemt krijgt die agent, ook als een andere net
+sprak; pas als er niemand genoemd is en er niets loopt, gaat het naar de default.
+
+Opt-in per kanaal, met opzet. In een feed als `#statistics` zou een agent die op
+elke regel antwoordt ruis zijn met een prijskaartje. Een `default_agent` die niet
+in dat kanaal mag spreken **laat de listener niet starten** — stil overslaan ziet
+er van buiten uit als een listener die niet draait.
 
 ## Grenzen
 

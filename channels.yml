@@ -5,6 +5,9 @@ channels:
   general:
     id: 32ef5cd2-70d8-4b7e-9235-9692b8ab2a1c
     doel: hub — roep hier elke agent aan (@naam), verhuis naar een specifiek kanaal indien nodig
+    # Who answers when nobody is named. Only here: in a feed like #statistics an
+    # agent that answers every line is noise with a price tag.
+    default_agent: odin
   runs:
     id: 74504227-8f82-42d5-b943-e0bc059778bc
     doel: machinale feed — run-start en verdict per habitat-run, thread per run

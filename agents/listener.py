@@ -28,6 +28,7 @@ import notify
 import providers
 import reporting
 import topology
+import triggers
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
@@ -45,6 +46,10 @@ BASE = CFG["registry_base"]
 
 # Active agent set: def from the handbook + nsec from env + npub match + model.
 AGENTS = bootstrap.build_agents(CFG, BASE, NPUBS)
+# Who answers in a channel when nobody is named. Checked here so a default that
+# cannot speak fails at startup instead of silently at the first message.
+DEFAULTS = bootstrap.load_channel_defaults(ROOT)
+bootstrap.check_channel_defaults(DEFAULTS, AGENTS)
 
 AGENT_PUBS = set()  # filled with agent pubkeys (from identities, by name)
 
@@ -121,19 +126,11 @@ def main():
                 # A human typing the marker: starter and requester are the same.
                 try_session(content, writer, writer, cname, cid, mid)
                 # (a) @mentions of agents scoped here or relay members; (b) else: follow-up.
-                targets = [h for h in AGENTS
-                           if prompts.mentioned(content, h) and scoped(h, cname, cid)]
-                reason = "mention"
-                if not targets:
-                    for prev in reversed(msgs[max(0, i - 10):i]):
-                        if prev.get("pubkey") in AGENT_PUBS:
-                            h = PUB2NAME.get(prev.get("pubkey"))
-                            # a follow-up (without mention) stays def-channel-only
-                            # (spec); membership only widens the mention branch above.
-                            if h in AGENTS and cname in AGENTS[h]["channels"]:
-                                targets = [h]
-                                reason = "vervolg"
-                            break  # only the most recent agent counts
+                targets, reason = triggers.pick(
+                    content, msgs[:i], cname, AGENTS, PUB2NAME,
+                    lambda h: scoped(h, cname, cid),
+                    lambda h: prompts.mentioned(content, h),
+                    DEFAULTS.get(cname))
                 for handle in targets:
                     cfg = AGENTS[handle]
                     print(f"[listener] {reason} @{handle} in #{cname}: {content[:50]}", flush=True)
@@ -164,13 +161,13 @@ def main():
                     ans = r.get("answer", "(geen antwoord)")
                     ans = routing.handle(ans, handle, cfg, cname, msgs, PUB2NAME,
                                          CHANNELS, send, cid)
-                    mk = sessions.read_marker(ans)
-                    text = sessions.strip_marker(ans) if mk else ans
+                    mk = sessions.read_own_marker(ans)
+                    text = sessions.strip_own_marker(ans) if mk else ans
                     if text and send(cid, text, cfg["nsec"], cfg["npub"]):
                         print(f"[listener] {handle} antwoordde in #{cname} ({reason})", flush=True)
                     if mk:
                         # Odin wrote the marker, but the question came from `writer`.
-                        try_session(ans, handle, writer, cname, cid, mid)
+                        try_session(ans, handle, writer, cname, cid, mid, own=True)
                     reporting.report_run(send, CHANNELS, handle, cname, cfg, r)
         reg.tick(session_post)  # progress/completion of running work sessions
         notify.flush()          # deliver what the push cooldown held back

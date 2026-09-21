@@ -13,6 +13,8 @@ every session odin starts is called odin — while the question came from a huma
 import re
 
 MARKER = re.compile(r"^[ \t]*!sessie[ \t]+([a-z0-9_-]+)[ \t]*(.*)$", re.M | re.I)
+#: The same marker, but anchored: only the very first line of a text.
+FIRST_LINE = re.compile(r"^[ \t]*!sessie[ \t]+([a-z0-9_-]+)[ \t]*(.*)$", re.I)
 
 
 def read_marker(text):
@@ -20,6 +22,35 @@ def read_marker(text):
     message sets at most one session in motion."""
     m = MARKER.search(text or "")
     return (m.group(1).lower(), m.group(2).strip()) if m else None
+
+
+def read_own_marker(text):
+    """The marker an agent COMPOSED ITSELF: first line only, or None.
+
+    An agent that can read the web can read a page containing `!sessie build …`.
+    That line is written by a stranger, and searching the whole answer would let
+    that stranger start a session by being quoted. Anchoring on the first line
+    makes quoted material inert without having to guess what is a quote.
+
+    Deliberately not the same function as `read_marker`: a HUMAN typing in a
+    channel is trusted and may write the marker under a sentence. The
+    distinction is the trust, not the syntax.
+    """
+    first = (text or "").lstrip().split("\n", 1)[0]
+    m = FIRST_LINE.match(first)
+    return (m.group(1).lower(), m.group(2).strip()) if m else None
+
+
+def strip_own_marker(text):
+    """Strip an agent's own marker line (the first one) before posting.
+
+    Only that line. A marker deeper in the answer is quoted material, it is
+    already inert (`read_own_marker`), and rewriting a quote would silently
+    change what the agent reports.
+    """
+    body = (text or "").lstrip()
+    first, _, rest = body.partition("\n")
+    return rest.strip() if FIRST_LINE.match(first) else body.strip()
 
 
 def strip_marker(text):

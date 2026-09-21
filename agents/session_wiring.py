@@ -23,11 +23,17 @@ def build(reg, agents, send, hub, log=print):
         if c:
             send(s["cid"], text, c["nsec"], c["npub"])
 
-    def try_session(text, starter, requester, cname, cid, message_id=""):
+    def try_session(text, starter, requester, cname, cid, message_id="", own=False):
         """Voer een `!sessie`-marker uit. `starter` schreef de marker,
         `requester` is degene voor wie het gebeurt. Een weigering wordt gemeld en
-        niet ingeslikt — stil weigeren ziet eruit als een sessie die niets vond."""
-        mk = sessions.read_marker(text)
+        niet ingeslikt — stil weigeren ziet eruit als een sessie die niets vond.
+
+        `own=True`: the text is an agent's ANSWER, and then only the first line
+        counts. An agent that can read the web can quote a page containing
+        `!sessie …`, and that line was written by a stranger. For a human
+        (`own=False`) the marker may sit anywhere — there the text IS the
+        person's own."""
+        mk = (sessions.read_own_marker(text) if own else sessions.read_marker(text))
         if not mk:
             return
         type_name, task = mk
