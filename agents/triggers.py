@@ -11,8 +11,9 @@ The order is the contract:
 1. **mention** — an @handle of an agent that may speak here;
 2. **follow-up** — no mention, but an agent spoke recently and this channel is
    in its own definition;
-3. **default** — nobody named and nothing to continue: the cold start of a
-   channel that names a default agent.
+3. **default** — nobody named and nothing this channel may continue: the cold
+   start of a channel that names a default agent. That includes the case where
+   the most recent agent spoke here but may not follow up here.
 
 Nothing answers an agent. That is checked by the caller (it skips agent
 messages), and asserted here too, because "an agent answered an agent" is a
@@ -43,7 +44,11 @@ def pick(content, earlier, cname, agents, pub2name, may_speak, mentions,
         # only widens the mention branch above.
         if handle in agents and cname in (agents[handle].get("channels") or []):
             return [handle], "vervolg"
-        return [], ""         # the most recent agent may not speak here
+        # The most recent agent may not continue here (it answered a mention via
+        # relay membership). Only it counts, so there is nothing to follow up:
+        # treat it as a cold start. Stopping here meant nobody answered, which
+        # looks exactly like a listener that is not running. Mark, 2026-09-23.
+        break
     if default_agent:
         return [default_agent], "default"
     return [], ""

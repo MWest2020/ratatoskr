@@ -245,7 +245,11 @@ kanaal zich gedragen zoals voorheen.
 De volgorde van de drie triggers is het contract en SHALL vastliggen:
 een **vermelding** gaat vóór een **vervolg**, en een vervolg gaat vóór de
 **standaard-agent**. Voor het vervolg SHALL alleen de meest recente agent in
-de laatste tien berichten tellen; mensen daartussen breken het niet. Bij elke beurt SHALL de reden noemen welke regel
+de laatste tien berichten tellen; mensen daartussen breken het niet. Mag
+die agent hier niet vervolgen — hij antwoordde op een vermelding via
+relay-lidmaatschap — dan is er niets te vervolgen en SHALL het bericht
+als koude start gelden: de standaard-agent antwoordt. Stilte zou er
+precies uitzien als een listener die niet draait. Bij elke beurt SHALL de reden noemen welke regel
 afging, zodat een log een lopend gesprek kan onderscheiden van een koude
 start.
 
@@ -278,6 +282,13 @@ stilzwijgend nooit antwoorden.
 - **WHEN** een mens zonder vermelding reageert, ook als er intussen een
   ander mens iets zei
 - **THEN** architect antwoordt als vervolg, niet odin
+
+#### Scenario: Een recente agent die hier niet mag vervolgen, geeft de beurt aan de standaard
+
+- **GIVEN** `#general` met `default_agent: odin`, en architect — wiens
+  definitie `#general` niet noemt — antwoordde net op een vermelding
+- **WHEN** een mens zonder vermelding reageert
+- **THEN** antwoordt odin, met reden `default`
 
 #### Scenario: Buiten het venster valt het vervolg weg
 

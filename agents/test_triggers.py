@@ -90,6 +90,16 @@ class WindowAndHumans(unittest.TestCase):
                                earlier=[msg("pub-odin"), msg("pub-architect")])
         self.assertEqual((targets, reason), ([], ""))
 
+    def test_a_recent_agent_that_may_not_speak_here_falls_through_to_the_default(self):
+        """The architect answered in #general because it was @mentioned (relay
+        membership widens mentions). A human then says something without a
+        handle. The architect may not continue here, so this is a cold start
+        for #general: the default answers. Silence would look exactly like a
+        listener that is not running (design.md). Mark, 2026-09-23."""
+        targets, reason = pick("en verder?", earlier=[msg("pub-architect")],
+                               default="odin")
+        self.assertEqual((targets, reason), (["odin"], "default"))
+
     def test_humans_in_between_do_not_break_a_follow_up(self):
         targets, reason = pick("en verder?",
                                earlier=[msg("pub-odin"), msg("pub-mark")])
