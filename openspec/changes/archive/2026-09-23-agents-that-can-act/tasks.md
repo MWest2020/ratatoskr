@@ -3,17 +3,23 @@
 ## 1. Decide
 - [x] **For Mark.** Research spoke on the open web, or a domain allow-list?
       **Open web** — Mark, 2026-09-21: *"open web, en bouw het maar"*.
-- [ ] **For Mark.** The handbook change to odin's mandate is his gate
+- [x] **For Mark.** The handbook change to odin's mandate is his gate
       (CODEOWNERS). Nothing else in this change touches an agent definition.
-      Prepared as a pull request on MWest2020/handbook.
+      Done: MWest2020/handbook#21, merged by Mark 2026-09-21.
 
 ## 2. The hub learns it has spokes
-- [ ] `docs/agents/odin.md`: delegation as a named capability, next to
+- [x] `docs/agents/odin.md`: delegation as a named capability, next to
       `route_message`. Which types it may start, and that the answer comes back
       in its own voice. **Handbook PR, Mark merges.**
-- [ ] Chat facet: the three sentences from `design.md`. **Same PR.**
-- [ ] Remove the line that is now false: *"conversatie-only, geen shell/repo"*
+- [x] Chat facet: the three sentences from `design.md`. **Same PR.**
+- [x] Remove the line that is now false: *"conversatie-only, geen shell/repo"*
       describes odin's own hands, not what it may ask for. **Same PR.**
+      Rewritten rather than deleted: "Odin creates and changes nothing with
+      its own hands [...] That is a different thing from being unable to get
+      anything done: odin is the hub, and a hub delegates." Checked in the
+      handbook on 2026-09-23, after its translation to English (#24, #25):
+      `delegate_session` sits next to `route_message`, the allowed types are
+      named, and the hub sentences are in the chat facet.
 
 ## 3. The research spoke
 - [x] A session type `research` in `sessions.yml` (English name, per ADR-0001):
