@@ -1,3 +1,13 @@
+---
+type: handover-baton
+van: sessie die de push-meldingen repareerde (2026-09-18)
+naar: Mark
+status: deels afgehandeld (nagemeten 2026-09-23)
+onderwerp: vijf antwoorden van Mark (3-7) waarvan de vragen zoek zijn
+datum: 2026-09-18
+next_step: "4 en 7 zijn gewoon te bouwen; 5 vraagt een handbook-PR (Marks gate). Per punt hieronder, onder 'Stand 2026-09-23'."
+---
+
 # Zeven antwoorden van Mark waarvan de vragen zoek zijn
 
 *18-09-2026. Vastgelegd door de sessie die de meldingen repareerde, omdat dit
@@ -76,3 +86,21 @@ Punt 3 en 4 zijn gewoon werk zodra de vragen boven water zijn.
    en de sessie-time-out is langer.
 
 Antwoorden zonder de vraag is raden. Daarom is hier niets van gebouwd.
+
+
+## Stand 2026-09-23
+
+Nagemeten tegen de code en het handbook zoals ze nu zijn, niet tegen dit
+document:
+
+| punt | stand | bewijs |
+| --- | --- | --- |
+| 3 — overdracht van/naar odin | **half**: odin draagt over | `delegate_session` en `route_message` in handbook `odin.md` (#21); werksessies rapporteren in het kanaal onder odins naam (#152, #153). Of odin met zo'n uitkomst verder kan, is niet gebouwd. |
+| 4 — review opknippen of time-out omhoog | **open** | `agents/providers.py`: `MAX_TURN_S = 150`, ongewijzigd |
+| 5 — architect vraagt websearch via odin | **half**: het mechanisme bestaat | het `research`-type bestaat (`agents/sessions.yml`), maar `starters` is `[mark, orchestrator, odin]` en handbook `architect.md` zegt nergens dat de architect odin vraagt. Dat laatste is een handbook-PR: Marks gate. |
+| 6 — "Odin moet kunnen wat ik kan" | **deels** | via delegatie; odin zelf heeft nog steeds geen shell of schrijfrecht, en dat is zo bedoeld (`odin.md`) |
+| 7 — PASS/FAIL/PENDING/TRANSFER/TIMEOUT | **open** | `notify/buzz-notify.sh`: `icon="✅"; [ "$verdict" != "PASS" ] && icon="❌"`, nog tweewaardig. Een OpenSpec-change vóór de code, zoals hierboven staat. |
+
+De oorspronkelijke vragen zijn nog steeds niet gevonden. Punt 4 en 7 zijn uit
+Marks antwoord zelf te bouwen zonder die vragen; bij 3 en 6 is "af" zonder de
+vraag niet vast te stellen.
