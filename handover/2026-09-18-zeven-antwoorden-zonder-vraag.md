@@ -96,7 +96,7 @@ document:
 | punt | stand | bewijs |
 | --- | --- | --- |
 | 3 — overdracht van/naar odin | **half**: odin draagt over | `delegate_session` en `route_message` in handbook `odin.md` (#21); werksessies rapporteren in het kanaal onder odins naam (#152, #153). Of odin met zo'n uitkomst verder kan, is niet gebouwd. |
-| 4 — review opknippen of time-out omhoog | **open** | `agents/providers.py`: `MAX_TURN_S = 150`, ongewijzigd |
+| 4 — review opknippen of time-out omhoog | **af** (2026-09-23) | `MAX_TURN_S` 150 → 180 s ("in 3 minuten"); opknippen blijft het eerste advies bij een time-out (`agents/reporting.py`) |
 | 5 — architect vraagt websearch via odin | **half**: het mechanisme bestaat | het `research`-type bestaat (`agents/sessions.yml`), maar `starters` is `[mark, orchestrator, odin]` en handbook `architect.md` zegt nergens dat de architect odin vraagt. Dat laatste is een handbook-PR: Marks gate. |
 | 6 — "Odin moet kunnen wat ik kan" | **deels** | via delegatie; odin zelf heeft nog steeds geen shell of schrijfrecht, en dat is zo bedoeld (`odin.md`) |
 | 7 — PASS/FAIL/PENDING/TRANSFER/TIMEOUT | **open** | `notify/buzz-notify.sh`: `icon="✅"; [ "$verdict" != "PASS" ] && icon="❌"`, nog tweewaardig. Een OpenSpec-change vóór de code, zoals hierboven staat. |

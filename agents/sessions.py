@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MIT
 """Work sessions: a longer claude run started from a channel.
 
-A chat turn is one `claude -p` of 150s with Read/Grep/Glob. That is too small
+A chat turn is one `claude -p` of 180s with Read/Grep/Glob. That is too small
 for work ("read these twelve clips and say what has to go"). A work session is
 the same subprocess, but with minutes, its own working directory and its own
 toolset — and all of that lives in `sessions.yml`, not in the prompt.

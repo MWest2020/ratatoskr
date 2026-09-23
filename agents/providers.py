@@ -12,7 +12,11 @@ import subprocess
 import time
 
 CLAUDE = os.environ.get("CLAUDE_BIN", "claude")
-MAX_TURN_S = 150
+# Three minutes. Mark, 2026-09-18: "in 3 minuten moet er gereviewed kunnen
+# worden [...] als dat niet werkt, de timeout limits ophogen (of beide,
+# helemaal goed)". It was 150 s. Splitting stays the first advice when a turn
+# runs out (reporting.py); this is the "both".
+MAX_TURN_S = 180
 
 # What the agent subprocess is allowed to see of the environment. The listener
 # carries the nsec of EVERY agent in its own environment; without this filter

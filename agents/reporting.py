@@ -23,7 +23,7 @@ PROGRESS_GAP = 20
 def progress_poster(send, cid, cfg, handle):
     """Returns a callback that shows WHAT the agent is doing along the way.
 
-    Why: a turn takes up to 150s and until now that was pure silence — Mark saw
+    Why: a turn takes up to 180s and until now that was pure silence — Mark saw
     nothing until the answer arrived. The first step goes out immediately, then at
     most one line every PROGRESS_GAP seconds, with a hard ceiling. Reporting must
     never slow the turn down or make it fail, so everything sits in a try.

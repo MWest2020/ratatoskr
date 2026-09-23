@@ -3,7 +3,7 @@
 ## Purpose
 
 Een werksessie is een langere, LEZENDE claude-run die vanuit een kanaal start en
-daar terugrapporteert. Hij vult het gat tussen een chat-beurt (150s, Read/Grep/
+daar terugrapporteert. Hij vult het gat tussen een chat-beurt (180s, Read/Grep/
 Glob, te klein voor werk) en een habitat-run (de kooi, een branch, een mens-gate
 per dispatch, bedoeld voor code). Wat een sessie kán doen staat in git, per type;
 wat hij oplevert is tekst en een voorstel — nooit een wijziging.

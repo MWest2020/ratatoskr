@@ -5,7 +5,7 @@ last_reviewed: 2026-09-21
 
 # Een werksessie starten vanuit de chat
 
-Een chat-beurt is één `claude -p` van hoogstens 150 seconden met `Read/Grep/Glob`.
+Een chat-beurt is één `claude -p` van hoogstens 180 seconden met `Read/Grep/Glob`.
 Genoeg voor een gesprek, te klein voor werk. Een **werksessie** is dezelfde
 machinerie met minuten in plaats van seconden, een eigen werkmap en een eigen
 toolset — en hij post zijn resultaat in het kanaal waar hij gestart is.
