@@ -13,6 +13,12 @@ import unittest
 
 import work_tree
 
+# Git exports GIT_DIR (and friends) to hooks, so under the pre-push guard every
+# git call below would target the outer repo instead of the temporary clone.
+for _var in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_COMMON_DIR",
+             "GIT_OBJECT_DIRECTORY", "GIT_PREFIX"):
+    os.environ.pop(_var, None)
+
 
 def _git(args, cwd):
     return subprocess.run(["git", *args], cwd=cwd, capture_output=True, text=True)
