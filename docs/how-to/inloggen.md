@@ -18,10 +18,6 @@ Een compose-installatie (zie [installeren.md](installeren.md)):
     cd /opt/ratatoskr
     docker compose exec chat python3 adminctl.py owner <jouw-naam>
 
-Marks eigen installatie draait (nog) als systemd-unit uit een checkout:
-
-    cd /opt/buzz-build/chat
-    sudo python3 adminctl.py owner <jouw-naam>
 
 Hij vraagt je wachtwoord twee keer, zichtbaar noch in je shell-geschiedenis.
 Daarna log je in op `/login`.
@@ -35,7 +31,7 @@ persoon in), `delete <naam>`.
 Bij een installatie zonder accounts drukt de server bij het starten een
 eenmalige link af:
 
-    journalctl -u boomhuis-chat | grep setup=
+    docker compose logs chat | grep setup=
 
 Open die link, kies een naam en een wachtwoord van minstens twaalf tekens. Je
 bent dan de eigenaar. De link werkt daarna niet meer.
@@ -43,7 +39,7 @@ bent dan de eigenaar. De link werkt daarna niet meer.
 Draaide er al een boomhuis met `BOOMHUIS_APP_TOKEN`? Dan werkt dat oude token
 eenmalig ook: open `/login`, de pagina ziet dat er nog niemand is en vraagt om
 het token. Zodra er één account bestaat vervalt die weg — daarna is het token
-nergens meer goed voor en kan het uit `chat.env`.
+nergens meer goed voor en kan het uit de `.env`.
 
 ## Iemand erbij
 
@@ -76,8 +72,7 @@ hoeft niet opnieuw in te loggen.
 Wachtwoord-vergeten zit niet in de app (daar heb je per definitie geen sessie
 voor); vanaf de host wel:
 
-    docker compose exec chat python3 adminctl.py password <naam>   # compose
-    cd /opt/buzz-build/chat && sudo python3 adminctl.py password <naam>
+    docker compose exec chat python3 adminctl.py password <naam>
 
 Dat zet een nieuw wachtwoord en trekt alle sessies van die persoon in — wie het
 oude had, is eruit.

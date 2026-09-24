@@ -32,20 +32,21 @@ staat in `e2e/xss.js`.
 
 ## Draaien (op de relay-VM)
 
-Draait als systemd-unit `boomhuis-chat.service` (unit-file: homelab-repo
-`ansible/files/boomhuis-chat.service`). De nsec komt uit
-`/opt/buzz-build/chat/chat.env` (root:600) via `EnvironmentFile` — nooit op de
+Draait als dienst `chat` in de compose-stack uit `deploy/` (zie
+`docs/how-to/installeren.md`); op Marks relay-VM staat die in `/opt/buzz-relay`.
+De geheimen staan in de `.env` naast de compose (0600) — nooit op de
 commandline (ps-zichtbaar) en nooit in git; de SOPS-bron is
 `secrets/identities.yaml` in deze repo. Beheer:
 
-    sudo systemctl status|restart boomhuis-chat
+    docker compose ps chat
+    docker compose restart chat
 
 Open op de telefoon (Tailscale aan): https://boomhuis-relay.tail8f7877.ts.net/
 (HTTPS via tailscale serve — een secure context, nodig voor de service worker).
 
 ## Schrijf-token (BOOMHUIS_APP_TOKEN)
 
-Tweede laag onder de netwerklaag: staat `BOOMHUIS_APP_TOKEN` in `chat.env`, dan
+Tweede laag onder de netwerklaag: staat `BOOMHUIS_APP_TOKEN` in de `.env`, dan
 eist elke POST (send, kanaal maken/verwijderen, agent toevoegen,
 push-registratie) een gelijke `X-App-Token`; anders 401, vóór er ook maar iets
 richting de relay gaat. Leeg of afwezig = uit, gedrag ongewijzigd. Lezen blijft
@@ -58,13 +59,14 @@ zou het anders kunnen lezen). Vergelijking is constant-time; het token staat in
 geen enkel log of antwoord. Agents raakt dit niet: `ping.sh` en de chat-native
 agents tekenen zelf tegen de relay en gebruiken deze HTTP-API niet.
 
-Token wijzigen: waarde in `chat.env` aanpassen, `sudo systemctl restart
-boomhuis-chat`, en op elk apparaat één keer opnieuw invoeren.
+Token wijzigen: waarde in de `.env` aanpassen, `docker compose up -d chat` (niet
+`restart`: dat leest de `.env` niet opnieuw), en op elk apparaat één keer opnieuw
+invoeren.
 
 ## Kanaalbeheer (BUZZ_ORCHESTRATOR_KEY)
 
 Kanalen maken, verwijderen en leden toevoegen tekent met de **orchestrator**-nsec
-uit `BUZZ_ORCHESTRATOR_KEY` in `chat.env`, niet met de `mark`-nsec waarmee de
+uit `BUZZ_ORCHESTRATOR_KEY` in de `.env`, niet met de `mark`-nsec waarmee de
 backend berichten stuurt. Zo zijn nieuwe kanalen agent-owned en kan
 `orchestrator/set-channel-descriptions.py` ze bijwerken zonder mens-sleutel.
 
@@ -83,12 +85,11 @@ De crypto (VAPID-signing) zit bewust NIET op deze backend maar op agent-lxc
 
 Wat waar staat en terug moet na een redeploy of host-herstel:
 
-- **`VAPID_PUBLIC`** — in `chat.env` (publiek; de frontend haalt 'm via
+- **`VAPID_PUBLIC`** — in `.env` (publiek; de frontend haalt 'm via
   `/api/push/vapid`). Zonder deze waarde blijft push stil uit.
-- **`PUSH_SUBS_PATH=/var/lib/boomhuis/push_subs.json`** — in `chat.env`. State
-  BUITEN de checkout (`/opt/buzz-build`), anders wist een redeploy de abonnees.
-  De backend (root) schrijft 'm 0600; maak de dir eenmalig: `sudo mkdir -p
-  /var/lib/boomhuis`.
+- **`PUSH_SUBS_PATH=/var/lib/ratatoskr/push_subs.json`** — gezet in de compose.
+  Die map is het volume `ratatoskr-chat-data`, zodat een nieuw image de
+  abonnees niet wist.
 - **`secrets/vapid.yaml`** (deze repo, SOPS+age) — VAPID-private + subject. Alleen
   de sender op agent-lxc decrypt 'm; de VM heeft de private nooit nodig.
 
