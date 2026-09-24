@@ -76,9 +76,16 @@ const t = (naam, cond, extra = '') => {
     text: (document.querySelector('#boardView') || {}).textContent.slice(0, 80),
   }));
   t('bord opent', board.open);
-  // Four columns, even when they are empty: an empty column should be visibly
+  // What the app was given, so the checks below compare against the data and not
+  // against a number that was true when the test was written. "Vier kolommen"
+  // went stale when the backlog column arrived (#145), and "elke kaart is
+  // klikbaar" when the tmux sessions did: both failed on 2026-09-24 while the
+  // app did exactly what it was built to do.
+  const data = await p.evaluate(async () => (await fetch('/api/board')).json());
+  // Every column, even when it is empty: an empty column should be visibly
   // empty, not absent.
-  t('vier kolommen', board.columns === 4, `${board.columns} kolommen: ${board.text}`);
+  t('elke kolom uit de data staat er', board.columns === data.columns.length,
+    `${board.columns} getoond, ${data.columns.length} in de data`);
   // A board full of cards you cannot click is a picture. The previous version of
   // this check passed on ZERO cards, so an empty board counted as green — which
   // is exactly the failure Mark found while this suite reported 9/9.
@@ -97,8 +104,13 @@ const t = (naam, cond, extra = '') => {
     };
   });
   t('bord is niet leeg', brd.cards.length > 0, `${brd.cards.length} kaarten`);
-  t('elke kaart is klikbaar', brd.cards.every((c) => c.clickable),
-    `${brd.cards.filter((c) => !c.clickable).length} zonder doel`);
+  // A card with a target (a URL, or a channel to jump to) must be clickable; one
+  // without — a tmux session on some host — must NOT look clickable (app-board.js:
+  // a card that looks clickable and does nothing is worse than no link at all).
+  const metDoel = data.cards.filter((c) => c.url || c.channel).length;
+  const klikbaar = brd.cards.filter((c) => c.clickable).length;
+  t('elke kaart met een doel is klikbaar, de rest niet', klikbaar === metDoel,
+    `${klikbaar} klikbaar, ${metDoel} met een doel, ${brd.cards.length} kaarten`);
   t('elke kaart zegt hoe hij gebouwd wordt', brd.cards.every((c) => c.via));
   // A header that says 3 while showing 1 card is worse than no header.
   const off = brd.heads.filter((h) => h.says !== h.shows);

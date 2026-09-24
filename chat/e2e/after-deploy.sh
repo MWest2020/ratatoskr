@@ -15,6 +15,11 @@
 # NODE_PATH and PW_CHROME (see chat/e2e/README.md). Without Playwright this script
 # says so out loud and fails — a skipped layer is not a green rollout.
 set -u
+# pipefail: every layer below is piped into `tail`, and without this the exit
+# status of the pipe is tail's -- always 0. On 2026-09-24 smoke.js reported
+# "10 ok, 2 fail" and this script still printed "uitrol groen op alle drie de
+# lagen". A gate that cannot fail is not a gate.
+set -o pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 fout=0
 
