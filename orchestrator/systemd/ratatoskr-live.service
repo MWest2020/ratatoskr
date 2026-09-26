@@ -2,8 +2,12 @@
 Description=Ratatoskr liveness — genereert knowledge/_live.md voor de coordinator
 
 [Service]
+# Dezelfde boom als de listener: die leest knowledge/_live.md uit zijn EIGEN
+# boom. Tot 2026-09-26 schreef deze dienst naar ~/ratatoskr (een kale repo
+# waarvan de bestanden 16 commits achterliepen) en vond de hub het bestand
+# nooit. Eén uitgerolde boom voor listener, jobs, bord en deze dienst.
 Type=oneshot
-WorkingDirectory=/home/agent/ratatoskr
-Environment=KUBECTL=ssh jumpy kubectl
+WorkingDirectory=/home/agent/ratatoskr-listener
+Environment="KUBECTL=ssh jumpy kubectl"
 Environment=HABITAT_NS=agents
 ExecStart=/usr/bin/python3 orchestrator/live.py

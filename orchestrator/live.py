@@ -113,21 +113,35 @@ def checkout_state():
     branch = git("rev-parse", "--abbrev-ref", "HEAD") or "?"
     sha = git("rev-parse", "--short", "HEAD") or "?"
     behind = git("rev-list", "--count", "HEAD..origin/main") or "?"
+    ahead = git("rev-list", "--count", "origin/main..HEAD") or "?"
     dirty = len([r for r in git("status", "--porcelain").splitlines() if r.strip()])
     line = f"_bron: {branch}@{sha}"
-    warnings = []
-    if branch != "main":
-        warnings.append(f"niet op main ({branch})")
-    if behind not in ("0", "?"):
-        warnings.append(f"{behind} commits achter origin/main")
-    if dirty:
-        warnings.append(f"{dirty} ongecommitte wijziging(en)")
+    warnings = tree_warnings(ahead, behind, dirty)
     if warnings:
         return ("> ⚠ **Dit overzicht komt uit een afwijkende werkkopie**: "
                 + ", ".join(warnings)
                 + ". Wat hier staat kan werk melden dat niet bestaat, of agents "
                   "die niet draaien.\n", line + " — AFWIJKEND_")
     return ("", line + "_")
+
+
+def tree_warnings(ahead, behind, dirty):
+    """What makes this checkout a poor source for _live.md.
+
+    Not the branch NAME: the deployed tree (the one the listener, the jobs and
+    this service run from) sits detached on a commit, and until 2026-09-26 that
+    alone read as "niet op main (HEAD)" even when the commit was exactly
+    origin/main. What matters is whether the tree has something main does not
+    (`ahead`), lacks something main has (`behind`), or has local edits.
+    Counts arrive as git prints them; "?" means git could not say."""
+    w = []
+    if ahead not in ("0", "?"):
+        w.append(f"{ahead} commits die niet op origin/main staan")
+    if behind not in ("0", "?"):
+        w.append(f"{behind} commits achter origin/main")
+    if dirty:
+        w.append(f"{dirty} ongecommitte wijziging(en)")
+    return w
 
 
 def main():
