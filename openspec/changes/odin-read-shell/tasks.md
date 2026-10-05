@@ -25,6 +25,7 @@
 - [ ] Handbook PR for `docs/agents/odin.md`: add the rule to `allow`, take
       `Bash` out of `deny`, name `read_state` as a capability, and rewrite
       "no shell" as "no shell beyond the read shell". **Mark merges.**
+      Open: MWest2020/handbook#26 (2026-10-05), handbook gates green locally.
 
 ## 5. Proven live (after the handbook merge and a listener restart)
 - [ ] In #general: "@odin which PRs are open on wordsworth?" gets an answer
