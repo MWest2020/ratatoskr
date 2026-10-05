@@ -26,6 +26,7 @@ import sessions
 import prompts
 import notify
 import providers
+import readshell
 import reporting
 import topology
 import triggers
@@ -151,7 +152,8 @@ def main():
                                           cfg["system"] + prompts.LIMIT_CLAUSE
                                           + prompts.session_clause(reg.cfg, handle,
                                                                    writer)
-                                          + prompts.route_clause(cfg), p,
+                                          + prompts.route_clause(cfg)
+                                          + readshell.clause(cfg), p,
                                           model=cfg.get("model"), allow=cfg.get("allow"),
                                           deny=cfg.get("deny"),
                                           progress=reporting.progress_poster(

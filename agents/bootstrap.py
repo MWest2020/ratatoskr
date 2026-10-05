@@ -10,6 +10,8 @@ import urllib.request
 
 import yaml
 
+import readshell
+
 
 def only_me(path="/tmp/boomhuis-listener.lock"):
     """One listener per host, or nothing. Returns the open lock file (which you
@@ -158,5 +160,15 @@ def build_agents(cfg, base, npubs):
         if not d.get("model"):
             print(f"[listener] {handle}: geen `model` in de definitie — NIET gespawnd", flush=True)
             continue
+        stray = readshell.stray_bash(d.get("allow"))
+        if stray:
+            # A chat turn gets no free shell (change odin-read-shell): only the
+            # read shell, and a one-word edit to a definition must not change that.
+            print(f"[listener] {handle}: Bash other than the read shell ({stray}) — NOT spawned",
+                  flush=True)
+            continue
+        if readshell.RULE in d.get("allow", []) and "Bash" in d.get("deny", []):
+            print(f"[listener] {handle}: read shell allowed but Bash denied — deny wins, "
+                  "the shell will not work", flush=True)
         agents[handle] = {**d, "nsec": nsec}
     return agents
