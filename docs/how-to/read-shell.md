@@ -45,9 +45,17 @@ Two things to check:
   the owner's full-scope token. See the `odin-read-shell` change for the
   reasoning.
 
-After a handbook merge, wait until `raw.githubusercontent.com` serves the new
-definition (about five minutes) before restarting the listener. Otherwise the
-listener reads the old one.
+After a handbook merge, wait until the listener's own fetch serves the new
+definition before restarting. Checking with `curl` is not enough. On
+2026-10-07, curl got the new `odin.md` while `bootstrap.fetch_def` (urllib)
+still got the old one from another cache node, and the first restart loaded
+the old definition. Check with the listener's code, several times in a row:
+
+    python3 -c 'import sys; sys.path.insert(0, "agents"); import bootstrap, readshell
+    d = bootstrap.fetch_def("https://raw.githubusercontent.com/MWest2020/handbook/main/docs/agents", "odin")
+    print(readshell.RULE in d["allow"], "Bash" in d["deny"])'
+
+Expect `True False`, then restart.
 
 ## What the agent is told
 

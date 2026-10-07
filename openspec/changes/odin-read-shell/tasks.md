@@ -22,10 +22,11 @@
 - [x] `verify.sh` is green (391 tests); deploy the listener tree.
 
 ## 4. The mandate (Mark's gate)
-- [ ] Handbook PR for `docs/agents/odin.md`: add the rule to `allow`, take
+- [x] Handbook PR for `docs/agents/odin.md`: add the rule to `allow`, take
       `Bash` out of `deny`, name `read_state` as a capability, and rewrite
       "no shell" as "no shell beyond the read shell". **Mark merges.**
-      Open: MWest2020/handbook#26 (2026-10-05), handbook gates green locally.
+      MWest2020/handbook#26, merged by Mark 2026-10-07 (041017c); listener
+      restarted 12:32 with the new definition (checked via `fetch_def`).
 
 ## 5. Proven live (after the handbook merge and a listener restart)
 - [ ] In #general: "@odin which PRs are open on wordsworth?" gets an answer
