@@ -59,7 +59,10 @@ def comment(kind, role, detail):
     if kind == "done":
         return f"**Chain passed.** Builder branch: `{detail['branch']}`."
     r = report(detail.get("store"))
-    facts = ", ".join(f"{k} {r[k]}" for k in ("verdict", "num_turns", "total_cost_usd") if k in r)
+    shown = {"verdict": r.get("verdict"), "turns": r.get("num_turns"),
+             "cost": f"${r['total_cost_usd']:.2f}" if isinstance(r.get("total_cost_usd"),
+                                                                (int, float)) else None}
+    facts = ", ".join(f"{k} {v}" for k, v in shown.items() if v is not None)
     if kind == "passed":
         return f"**{role}: PASS** ({facts or 'no run report'}). Branch `{detail['branch']}`."
     return f"**{role}: FAIL** ({facts or 'no run report'}). {detail.get('why') or ''}".strip()
