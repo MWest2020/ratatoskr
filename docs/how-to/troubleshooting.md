@@ -1,6 +1,6 @@
 ---
 status: actief
-last_reviewed: 2026-09-23
+last_reviewed: 2026-10-22
 ---
 
 # Troubleshooting
@@ -57,6 +57,22 @@ Three silent breaks, all found the hard way:
 Every layer failed silently, which is what made this expensive. Every
 permission state now shows something (`push-states.js` tests it), and a failed
 subscription names its error.
+
+## An agent answers as if it does not know its role
+
+Check what the listener actually reads, for every agent:
+
+    python3 -c 'import sys; sys.path.insert(0, "agents"); import bootstrap
+    for h in ["odin", "architect", "bouwer", "reviewer"]:
+        d = bootstrap.fetch_def("https://raw.githubusercontent.com/MWest2020/handbook/main/docs/agents", h)
+        print(h, len(d["system"]))'
+
+`0` means the system prompt was not found. The prompt is the blockquote under
+the `## Chat facet` heading of the handbook definition. From 2026-09-22 to
+2026-10-22 all eight agents ran at 0, because the handbook's translation
+changed the heading from `Chat-facet` to `Chat facet`. The parser now accepts
+both, and the listener refuses to start an agent with an empty prompt; the
+log says `no system prompt … NOT spawned`.
 
 ## Development gotchas
 
