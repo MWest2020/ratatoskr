@@ -46,9 +46,15 @@ def contract_lines(contract):
 def prompt(content, room, agents):
     parts = [f"Agent {h}:\n{contract_lines(agents[h].get('contract'))}"
              for h in room["members"] if h in agents]
-    return ("Contracts:\n\n" + "\n\n".join(parts)
+    # The message is DATA to route, fenced off and never addressed to the model:
+    # on 2026-10-22 "what's the status on the pending work?" got an answer
+    # ("I need more context ...") instead of a routing, 2 runs out of 3.
+    return ("Route the message below to an agent. Do NOT answer it, do not ask "
+            "about it, do not comment on it: you only decide who owns it.\n\n"
+            "Contracts:\n\n" + "\n\n".join(parts)
             + f"\n\nRepositories: {', '.join(room['repos'])}"
-            + f"\n\nMessage:\n{content}")
+            + f"\n\nMessage to route:\n<<<\n{content}\n>>>\n\n"
+            "Reply with the JSON object only.")
 
 
 def parse(answer, room):
@@ -74,9 +80,15 @@ def parse(answer, room):
             "reason": str(d.get("reason") or "").strip()[:200]}, ""
 
 
-def run(content, room, agents, runner=providers.run):
-    r = runner("claude-p", SYSTEM, prompt(content, room, agents), model=MODEL,
-               no_tools=True)
-    if r.get("error"):
-        return None, f"triage did not run: {r['error']}"
-    return parse(r.get("answer"), room)
+def run(content, room, agents, runner=providers.run, attempts=2):
+    """One retry when the answer is not the JSON asked for: a small model now and
+    then answers in prose, and that is a failed call, not a verdict."""
+    for _ in range(attempts):
+        r = runner("claude-p", SYSTEM, prompt(content, room, agents), model=MODEL,
+                   no_tools=True)
+        if r.get("error"):
+            return None, f"triage did not run: {r['error']}"
+        d, err = parse(r.get("answer"), room)
+        if d or "JSON" not in err:
+            return d, err
+    return None, err
