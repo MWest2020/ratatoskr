@@ -28,6 +28,12 @@ confirmation.
 - **THEN** the chain runs without a confirmation from Mark, and its first trace
   is an issue
 
+#### Scenario: Verzoek in #bouw
+
+- **WHEN** a message in `#bouw` or `#general` asks for a build run
+- **THEN** odin starts it with `!build` when it falls inside the limits, or says
+  why not; the dispatch proposal no longer waits for Mark's confirmation
+
 #### Scenario: Outside the limits
 
 - **WHEN** odin asks for a build on a repository that is not on the list
@@ -41,6 +47,12 @@ that spec required is in place: `HABITAT_TASK_REF` reads a file from the
 cloned repository, and that is git. `!build` passes only the repository and
 the change name; the task itself is the OpenSpec change on main, in git. A
 task text from the chat SHALL NOT reach the cage.
+
+#### Scenario: Verleiding tot een sluiproute
+
+- **WHEN** someone wants a task text from the chat to reach the cage directly
+- **THEN** that is refused; the task goes into an OpenSpec change in git first,
+  and the build reads it from there
 
 #### Scenario: A build carries no chat text into the cage
 
