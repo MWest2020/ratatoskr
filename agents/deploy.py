@@ -102,6 +102,10 @@ class Deployer:
         for m, text in bumped.items():
             with open(os.path.join(wt, m), "w") as fh:
                 fh.write(text)
+        status, _ = _run(git + ["status", "--porcelain", "--", *r["manifests"]], self.run)
+        if not status.strip():   # already on this digest: nothing to commit or push
+            d["phase"] = "sync"
+            return "next", "homelab already carries this digest"
         msg = (f"{d['repo']}: deploy {d['sha'][:7]} ({d['digest'][:19]}…) — by the factory, "
                f"{d['repo']}#{d['issue']}")
         for argv in (git + ["add", *r["manifests"]],
@@ -109,7 +113,7 @@ class Deployer:
                             "commit", "-q", "-m", msg],
                      git + ["push", "-q", "origin", "HEAD:main"]):
             _, err = _run(argv, self.run, timeout=120)
-            if err and "nothing to commit" not in err:
+            if err:
                 return "wait", f"homelab: {err}"
         d["phase"] = "sync"
         return "next", f"homelab bumped: {', '.join(r['manifests'])}"

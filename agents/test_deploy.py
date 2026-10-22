@@ -133,6 +133,16 @@ class Steps(unittest.TestCase):
                                text=True, env=CLEAN).stdout
         self.assertEqual(dirty, "", "a failed bump must leave the worktree clean")
 
+    def test_a_digest_already_deployed_pushes_nothing(self):
+        self.job["phase"], self.job["digest"] = "push", OLD
+        before = subprocess.run(["git", "--git-dir", self.remote, "rev-parse", "main"],
+                                capture_output=True, text=True, env=CLEAN).stdout
+        state, msg = self.d.step(self.job)
+        after = subprocess.run(["git", "--git-dir", self.remote, "rev-parse", "main"],
+                               capture_output=True, text=True, env=CLEAN).stdout
+        self.assertEqual((state, self.job["phase"]), ("next", "sync"), msg)
+        self.assertEqual(before, after)
+
 
 if __name__ == "__main__":
     unittest.main()
