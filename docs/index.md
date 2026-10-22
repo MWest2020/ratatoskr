@@ -26,6 +26,23 @@ tailnet.
 - [Give a chat agent the read shell](how-to/read-shell.md) — six read-only GitHub lookups, the only Bash a chat agent may have
 - [Wat kost de vloot](explanation/wat-kost-de-vloot.md) — wat er in `#statistics` staat en wie er een regel post
 
+## Channels (2026-10-22)
+
+Active:
+
+- **#general**: odin, the front door.
+- **#werkplaats**: the shared room; every piece of work is an issue.
+- **#bouw**, **#architectuur**, **#review**: the agents' own channels.
+- **#escalatie**: limitations and decisions.
+- **#standup**: daily overview, plus the weekly proposals and technical-depth
+  checks.
+- **#statistics**, **#runs** and **#news_from_zettelkast**: logs and digests.
+
+Archived on 2026-10-22: marketing, red-team, proposals, technical_debt,
+wordsworth, draupnir and netnl. They are marked `archived:` in `channels.yml`.
+Undo it with `buzz channels unarchive --channel <id>`, signed as the
+orchestrator.
+
 ## Besluiten (ADR)
 
 - [ADR-0001 — Code in het Engels, proza in het Nederlands](explanation/adr/0001-code-in-het-engels.md)
