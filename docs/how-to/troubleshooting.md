@@ -74,6 +74,13 @@ changed the heading from `Chat-facet` to `Chat facet`. The parser now accepts
 both, and the listener refuses to start an agent with an empty prompt; the
 log says `no system prompt … NOT spawned`.
 
+When the definition has a `## Contract` section, the prompt continues after
+the blockquote with `YOUR CONTRACT` and that section (change `role-contracts`).
+An agent that answers outside its role while its contract says "Not mine"
+should therefore show the contract in that check. If it does not, the
+listener has not yet seen the handbook merge: wait and check again before
+restarting.
+
 ## Development gotchas
 
 - **Cold start.** The service worker serves the cached shell while the tailnet
