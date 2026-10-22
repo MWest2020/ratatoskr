@@ -30,6 +30,9 @@
 - [x] **Mark** runs `create-room.py` (the classifier refuses adding members
       to agents). Done 2026-10-22: f7324a19, mark + 3 agents.
 - [x] The id and `room:` block go in channels.yml; deploy and restart.
-- [ ] Smoke test in #werkplaats: one design question goes through triage and
-      gets an issue, an answer and a hand-off, all visible on the issue.
+- [x] Smoke test in #werkplaats (2026-10-22 12:00): Mark's design question went
+      through triage to architect, got ratatoskr#156, a claim line, the answer in
+      the room and on the issue. No hand-off: architect waits on Mark's yes, as
+      its contract says. Found and fixed: `!done` closed the issue while waiting
+      on Mark (951effd), and triage answered instead of routing (ddac0c6).
 - [ ] Archive this change.
