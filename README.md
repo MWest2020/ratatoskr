@@ -85,11 +85,13 @@ elke fase is los waardevol en draait nu.
   Ratatoskr, executie voor habitat). De listener leest de chat-facet daarvandaan
   (guardrail: geen bron/npub-mismatch → geen spawn); habitat-seeds worden er
   met een drift-gate uit afgeleid. Een bouwer is overal dezelfde bouwer.
-- **Hub + create-agent-flow** — drop een idee met `@odin` in #general; die
-  beslist of er een agent voor is (route), er één bij moet (voorstel) of er één
-  uitgebreid moet. Aanmaken loopt via
-  `orchestrator/create-agent.py`: keypair → handbook-PR (CODEOWNERS = Mark) →
-  Ratatoskr-bedrading. De agent gaat pas live nadat Mark de handbook-PR merget.
+- **Hub + factory**: drop an idea with `@odin` in #general. Odin decides
+  whether an agent already covers it (route), whether a new one is needed, or
+  whether one should be extended. A new role is made by
+  `orchestrator/factory.py`: a validated spec, a definition whose tools follow
+  from its skills, then the handbook PR (gate first), the identity and the
+  relay. See [docs/how-to/factory.md](docs/how-to/factory.md). Closing a role,
+  or changing an existing one, stays Mark's.
 - **Push-meldingen** (`chat/app-push.js`, `orchestrator/push-notify.py`) — de PWA
   vraagt toestemming en abonneert zich; de VM bewaart de abonnementen buiten de
   checkout (`/var/lib/boomhuis/push_subs.json`, via één gepinde sudo-helper) en
