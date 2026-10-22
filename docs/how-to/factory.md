@@ -61,3 +61,19 @@ exists and says which.
 
 It replaces `create-agent.py`, which pointed at `~/boomhuis`, wrote no model,
 tools or skills, and signed channel changes as Mark.
+
+## From the chat: odin's markers, Mark's `!yes`
+
+Odin drives the factory with markers on the **first line** of its answer.
+`agents/factory_wiring.py` acts on them.
+
+| marker | what happens |
+|---|---|
+| `!role` + a ```` ```yaml ```` block with the spec | the factory runs in the background; on success the listener waits until the handbook serves the new definition three times in a row, then moves to main and restarts, so the agent starts |
+| `!channel <name> <agent,agent> <purpose>` | the channel is created with Mark and those agents, recorded in `channels.yml`, and the listener restarts to listen there |
+| `!close role <name>` / `!close channel <name>` | **only a proposal**: nothing is closed until Mark answers `!yes` in that channel within 24 hours. The `!yes` must be his own message, checked by pubkey |
+
+On `!yes` a channel is archived on the relay and marked `archived:` in
+`channels.yml`. A role leaves the run list and its identity becomes
+`inactief`, while its handbook definition stays as history. Odin cannot
+propose closing itself.

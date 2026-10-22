@@ -53,13 +53,13 @@
 - [ ] Live: one wordsworth change ends on the cluster without Mark.
 
 ## 4. Factory
-- [ ] Skill-forge: each SKILL.md declares the tools it needs; the register
+- [x] Skill-forge: each SKILL.md declares the tools it needs; the register
       carries them.
-- [ ] Handbook gate: a role's `tools.allow` equals base ∪ its skills' tools.
-- [ ] `orchestrator/factory.py` replaces `create-agent.py`: a template, the
+- [x] Handbook gate: a role's `tools.allow` equals base ∪ its skills' tools.
+- [x] `orchestrator/factory.py` replaces `create-agent.py`: a template, the
       derived tools, the local gate run, identity, keys, channel and
       membership.
-- [ ] `!role` and `!channel` for odin; `!yes` from Mark's current pubkey for
+- [x] `!role` and `!channel` for odin; `!yes` from Mark's current pubkey for
       closing and for changes to an existing role.
 - [ ] The handbook operating agreements: new roles by odin, closing by Mark.
 

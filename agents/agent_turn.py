@@ -7,6 +7,7 @@ without a new human message. The loop body was the only place this existed,
 and a hand-off cannot be written as "another iteration of the loop".
 """
 import build
+import factory_wiring
 import prompts
 import providers
 import readshell
@@ -19,7 +20,7 @@ MAX_CTX = 8
 
 
 def build_turn(agents, hub, reg, send, channels, pub2name, root, try_session, log=print,
-               human="mark", try_build=None, factory=None):
+               human="mark", try_build=None, factory=None, try_factory=None):
     """`run_turn(...) -> (answer, posted)`, closed over the listener's state."""
 
     def run_turn(handle, cname, cid, msgs, i, content, writer, mid, reason,
@@ -52,7 +53,8 @@ def build_turn(agents, hub, reg, send, channels, pub2name, root, try_session, lo
                               + prompts.route_clause(cfg)
                               + readshell.clause(cfg)
                               + session_inbox.clause(handle, hub)
-                              + build.clause(handle, hub, factory or {}), p,
+                              + build.clause(handle, hub, factory or {})
+                              + factory_wiring.clause(handle, hub), p,
                               model=cfg.get("model"), allow=cfg.get("allow"),
                               deny=cfg.get("deny"),
                               progress=reporting.progress_poster(send, cid, cfg, handle))
@@ -63,6 +65,8 @@ def build_turn(agents, hub, reg, send, channels, pub2name, root, try_session, lo
         ans = session_inbox.handle(ans, handle, hub, cname, msgs, pub2name, human)
         mk = sessions.read_own_marker(ans)
         text = sessions.strip_own_marker(ans) if mk else ans
+        if try_factory and handle == hub:
+            try_factory(ans, handle, cname, cid)
         if try_build and build.read_marker(ans):
             try_build(ans, handle, cname, cid, own=True)
             text = build.strip_marker(text)

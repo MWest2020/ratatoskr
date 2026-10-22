@@ -123,3 +123,4 @@ def relay_membership(name, pub, nsec, channels, orchestrator_nsec, about):
             env=env, ok=(0, 1))
     run([BUZZ, "users", "set-profile", "--name", name, "--about", about[:120]],
         env=dict(os.environ, BUZZ_PRIVATE_KEY=nsec, BUZZ_RELAY_URL=RELAY))
+

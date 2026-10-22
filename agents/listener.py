@@ -22,6 +22,7 @@ import agent_turn
 import bootstrap
 import build
 import build_wiring
+import factory_wiring
 import relay
 import room_flow
 import rooms
@@ -86,9 +87,11 @@ def main():
     session_post, try_session = session_wiring.build(reg, AGENTS, send, HUB)
     factory = build.load()
     try_build, build_tick = build_wiring.setup(factory, AGENTS, HUB, ME_NAME, send)
+    try_factory, try_yes, factory_tick = factory_wiring.setup(
+        AGENTS, HUB, ME_NAME, send, CHANNELS, factory["runs"], BASE)
     run_turn = agent_turn.build_turn(AGENTS, HUB, reg, send, CHANNELS, PUB2NAME, ROOT,
                                      try_session, human=ME_NAME, try_build=try_build,
-                                     factory=factory)
+                                     factory=factory, try_factory=try_factory)
     # In a room the listener speaks as the orchestrator (the channel owner), and
     # those lines are never input: otherwise a claim line would trigger a turn.
     orch_pub = name2pub_of(PUB2NAME, "orchestrator")
@@ -146,6 +149,7 @@ def main():
                 try_session(content, writer, writer, cname, cid, mid)
                 if writer == ME_NAME:
                     try_build(content, writer, cname, cid, own=False)
+                    try_yes(content, writer, cid)
                 if cname in ROOMS:
                     room(cname, cid, msgs, i, content, writer, mid,
                          lambda h, c=content: prompts.mentioned(c, h))
@@ -160,6 +164,7 @@ def main():
                     run_turn(handle, cname, cid, msgs, i, content, writer, mid, reason)
         reg.tick(session_post)  # progress/completion of running work sessions
         build_tick()            # progress of running habitat chains
+        factory_tick()          # roles the factory is making
         notify.flush()          # deliver what the push cooldown held back
         time.sleep(POLL)
 
