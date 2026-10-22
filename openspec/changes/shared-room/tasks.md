@@ -27,9 +27,9 @@
 - [x] `orchestrator/create-room.py`, and `docs/how-to/werkplaats.md`.
 
 ## 3. Live
-- [ ] **Mark** runs `create-room.py` (the classifier refuses adding members
-      to agents).
-- [ ] The id and `room:` block go in channels.yml; deploy and restart.
+- [x] **Mark** runs `create-room.py` (the classifier refuses adding members
+      to agents). Done 2026-10-22: f7324a19, mark + 3 agents.
+- [x] The id and `room:` block go in channels.yml; deploy and restart.
 - [ ] Smoke test in #werkplaats: one design question goes through triage and
       gets an issue, an answer and a hand-off, all visible on the issue.
 - [ ] Archive this change.

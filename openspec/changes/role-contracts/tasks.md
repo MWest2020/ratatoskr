@@ -23,11 +23,13 @@
 - [x] `verify.sh` is green; deploy the listener tree.
 
 ## 4. The handbook (Mark's gate)
-- [ ] Handbook PR: a `## Contract` for architect, bouwer and reviewer, the
+- [x] Handbook PR: a `## Contract` for architect, bouwer and reviewer, the
       index section on role contracts, bouwer's chat facet saying "a DECIDED
       design", and roodteam's prompt as a blockquote. **Mark merges.**
-- [ ] After the merge: wait until `fetch_def` serves it, restart, and check
+- [x] After the merge: wait until `fetch_def` serves it, restart, and check
       that the three prompts contain `YOUR CONTRACT` and that roodteam starts.
+      handbook#27 (4d38b93); 10:09 restart: 8/8 agents, three with a contract,
+      roodteam at 1135 characters.
 
 ## 5. The pilot
 - [ ] One real change goes from architect (decision) to bouwer (change and
