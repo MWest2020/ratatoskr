@@ -3,8 +3,8 @@
 > **Status: in gebruik (chat-v0.16.0).** Fasen 0–3 draaien reboot-vast op het
 > tailnet: de webchat als installeerbare PWA met push-meldingen, acht
 > chat-agents uit één bron van waarheid, doorsturen tussen kanalen, lezende
-> werksessies en de doel→dispatch-brug. Wat gesuperviseerd of open is, staat
-> hieronder expliciet gemarkeerd.
+> werksessies en `!build`-habitat-runs vanuit de chat. Wat gesuperviseerd of
+> open is, staat hieronder expliciet gemarkeerd.
 
 Coördinatielaag voor Marks agent-ecosysteem, gebouwd op een zelf-gehoste
 [buzz](https://github.com/block/buzz)-relay (Block, Apache-2.0, Nostr-protocol).
@@ -47,9 +47,10 @@ te tornen.
 | 2 | `add-chat-native-agents` | Langlopende `claude -p`-agents (sub-first): marketing, architectuur-sparring, coördinatie |
 | 3 | `add-habitat-bridge` | Verzoek-in-kanaal → dispatch, bevindingen terug in de thread (vergt habitat-amendement) |
 
-Status: **beta**. Fasen 0–3 zijn gebouwd en live op het tailnet; de laatste
-cluster-fire van de brug is nog gesuperviseerd (`BRIDGE_LIVE`). Rome is niet in
-één dag gebouwd; elke fase is los waardevol en draait nu.
+Status: **beta**. Fasen 0–3 zijn gebouwd en live op het tailnet; de weg van
+chat naar habitat is sindsdien `!build` (`odin-runs-the-factory`), niet meer
+de nooit-uitgerolde dispatch-brug van fase 3. Rome is niet in één dag gebouwd;
+elke fase is los waardevol en draait nu.
 
 ## Wat er nu leeft (2026-09)
 
@@ -133,11 +134,14 @@ cluster-fire van de brug is nog gesuperviseerd (`BRIDGE_LIVE`). Rome is niet in
   achter één `run_provider(...)`-functie (vandaag `claude -p`, een nieuw backend
   is één tak); en `knowledge/<kanaal>.md` wordt als context aan elke agent-beurt
   in dat kanaal meegegeven.
-- **Doel→dispatch-brug** (`orchestrator/bridge.py`, spec `add-habitat-bridge`) —
-  gebouwd t/m de rand van de kooi: Marks `!dispatch <rol> <change> <repo>` in
-  #bouw passeert de poort, de brug bereidt een habitat-run voor met
-  `HABITAT_TASK_REF` (git-pad, habitat-amendement `amend-worker-task-ref`
-  applied). De echte cluster-fire is gated (`BRIDGE_LIVE`) — gesuperviseerd.
+- **Chat→habitat builds** (`!build <repo> <openspec-change>`, spec
+  `odin-runs-the-factory`) — de enige weg van een chatbericht naar een
+  habitat-run; gecheckt door de listener (`agents/build.py`), met Marks
+  limieten in `agents/factory.yml`. Zie
+  [`docs/how-to/build-from-chat.md`](docs/how-to/build-from-chat.md). De
+  eerdere poortwachter-brug (`orchestrator/bridge.py`, spec
+  `add-habitat-bridge`) is nooit uitgerold en is verwijderd (change
+  `retire-bridge`).
 
 ## Testen
 
