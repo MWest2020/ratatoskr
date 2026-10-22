@@ -79,6 +79,18 @@ jobs:
         r=$(echo "$p" | sed 's#/home/agent/##; s#/openspec/.*##')
         echo "[$r] $(basename "$(dirname "$p")")"
       done 2>/dev/null | head -30
+      # The one-year Claude token habitat's workers run on (secret
+      # claude-oauth-token, from `claude setup-token`). An expired token turns
+      # every build into a FAIL that looks like a code failure, so warn a month
+      # ahead. Expiry is creation + 365 days; the token itself is never read.
+      echo '== habitat-credentials =='
+      made=$(ssh -o BatchMode=yes -o ConnectTimeout=10 jumpy 'kubectl -n agents get secret claude-oauth-token -o jsonpath={.metadata.creationTimestamp}' 2>/dev/null)
+      if [ -n "$made" ]; then
+        left=$(( ( $(date -d "$made + 365 days" +%s) - $(date +%s) ) / 86400 ))
+        if [ "$left" -le 30 ]; then echo "LET OP: claude-oauth-token verloopt over $left dagen (aangemaakt $made) — Mark: claude setup-token, dan het secret vervangen"; else echo "claude-oauth-token geldig, nog $left dagen"; fi
+      else
+        echo "(LEESFOUT: secret claude-oauth-token niet te lezen via jumpy — habitat-builds falen zonder)"
+      fi
       echo '== open PRs — wachten op merge (MWest2020) =='
       # --json/--jq: an empty set gives [] + exit 0 (no output), only a real error
       # gives non-zero → READ ERROR. That way "no open PRs" is not a failure.

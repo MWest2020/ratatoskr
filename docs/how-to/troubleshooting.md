@@ -81,6 +81,22 @@ should therefore show the contract in that check. If it does not, the
 listener has not yet seen the handbook merge: wait and check again before
 restarting.
 
+## Every habitat build fails on authentication
+
+Habitat's workers run on one secret: `claude-oauth-token` in namespace
+`agents`. It is a one-year token from `claude setup-token`, created
+2026-09-05, so it expires around 2027-09-05. From 30 days before that, the
+morning standup carries a `LET OP` line.
+
+To renew it, the owner runs `claude setup-token` once (it needs a browser
+login), then replaces the secret:
+
+    ssh jumpy 'kubectl -n agents create secret generic claude-oauth-token \
+      --from-literal=token=<token> --dry-run=client -o yaml | kubectl apply -f -'
+
+The old ~8-hour session file (`claude-credentials`) is no longer pushed by
+`orchestrator/dispatch-watch.sh` (2026-10-22). Nothing needs it.
+
 ## Development gotchas
 
 - **Cold start.** The service worker serves the cached shell while the tailnet

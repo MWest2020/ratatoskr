@@ -7,8 +7,9 @@
       Mark, 2026-10-22.
 - [x] Credentials: `claude-oauth-token` in namespace `agents`, created
       2026-09-05, valid one year. The 8-hour file is not in use.
-- [ ] The standup warns 30 days before the token expires (around
-      2027-08-05).
+- [x] The standup warns 30 days before the token expires (around
+      2027-08-05); a read error is said as one. `dispatch-watch.sh` no longer
+      pushes the 8-hour file, and pins worker image 750346e.
 
 ## 1. Odin builds
 - [ ] `agents/factory.yml`: the repos odin may build on, the daily build
