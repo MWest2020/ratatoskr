@@ -11,12 +11,14 @@ import providers
 import readshell
 import reporting
 import routing
+import session_inbox
 import sessions
 
 MAX_CTX = 8
 
 
-def build(agents, hub, reg, send, channels, pub2name, root, try_session, log=print):
+def build(agents, hub, reg, send, channels, pub2name, root, try_session, log=print,
+          human="mark"):
     """`run_turn(...) -> (answer, posted)`, closed over the listener's state."""
 
     def run_turn(handle, cname, cid, msgs, i, content, writer, mid, reason,
@@ -47,7 +49,8 @@ def build(agents, hub, reg, send, channels, pub2name, root, try_session, log=pri
                               cfg["system"] + prompts.LIMIT_CLAUSE
                               + prompts.session_clause(reg.cfg, handle, writer)
                               + prompts.route_clause(cfg)
-                              + readshell.clause(cfg), p,
+                              + readshell.clause(cfg)
+                              + session_inbox.clause(handle, hub), p,
                               model=cfg.get("model"), allow=cfg.get("allow"),
                               deny=cfg.get("deny"),
                               progress=reporting.progress_poster(send, cid, cfg, handle))
@@ -55,6 +58,7 @@ def build(agents, hub, reg, send, channels, pub2name, root, try_session, log=pri
             r = {"answer": f"(fout: {e})", "error": str(e)[:120]}
         ans = r.get("answer", "(geen antwoord)")
         ans = routing.handle(ans, handle, cfg, cname, msgs, pub2name, channels, send, cid)
+        ans = session_inbox.handle(ans, handle, hub, cname, msgs, pub2name, human)
         mk = sessions.read_own_marker(ans)
         text = sessions.strip_own_marker(ans) if mk else ans
         posted = ""

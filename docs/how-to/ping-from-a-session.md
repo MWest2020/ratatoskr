@@ -30,3 +30,24 @@ its own worktree (see the handbook's operating agreements).
   app token). To post as yourself, use `ping.sh`, not the API.
 - Adding a member (`orchestrator/add-member.py`) is blocked for agents by the
   auto-mode classifier. Hand the owner the ready-to-run command.
+
+## The way back: Mark answers through odin
+
+A ping reaches Mark's phone. His answer goes to odin in #general, for example
+"tell the session: yes, add the rule". Odin then ends its answer with
+`!session <id of Mark's message>`. The listener (`agents/session_inbox.py`)
+checks two things:
+
+- the marker comes from the hub;
+- the message it points at is **Mark's own**, by pubkey, in that channel.
+
+Only then does it append his words, unchanged, as one JSON line to
+`~/.local/state/ratatoskr/session-inbox.jsonl` (mode 0600). Odin writes none of
+the text, and an agent's message is never passed on.
+
+The session watches that file with a background loop that ends when a line is
+added, so it is notified when Mark answers:
+
+    n=$(wc -l < ~/.local/state/ratatoskr/session-inbox.jsonl 2>/dev/null || echo 0)
+    until [ "$(wc -l < ~/.local/state/ratatoskr/session-inbox.jsonl 2>/dev/null || echo 0)" -gt "$n" ]; do sleep 15; done
+    tail -n 1 ~/.local/state/ratatoskr/session-inbox.jsonl
