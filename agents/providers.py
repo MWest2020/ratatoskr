@@ -93,7 +93,8 @@ def model_matches(requested, actual):
     return requested.lower() in (actual or "").lower()
 
 
-def run(provider, system, prompt, model=None, allow=None, deny=None, progress=None):
+def run(provider, system, prompt, model=None, allow=None, deny=None, progress=None,
+        no_tools=False):
     """Run one turn. Returns {answer, model, cost, turns, denials, error}.
 
     `denials` = the tool calls the permission layer refused; the listener reports
@@ -119,6 +120,8 @@ def run(provider, system, prompt, model=None, allow=None, deny=None, progress=No
         cmd += ["--allowedTools", ",".join(scoped(allow))]
     if deny:
         cmd += ["--disallowedTools", ",".join(deny)]
+    if no_tools:  # a classification, not an agent: no tool exists at all
+        cmd += ["--tools", ""]
     # Prompt over stdin, not as an argument: --allowedTools/--disallowedTools are
     # variadic (`<tools...>`) and swallow a following positional argument ("Input
     # must be provided either through stdin or as a prompt argument").

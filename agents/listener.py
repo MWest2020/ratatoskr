@@ -18,15 +18,15 @@ right it lacked; the listener acts, under conditions you can read.
 import os
 import time
 
+import agent_turn
 import bootstrap
 import relay
-import routing
+import room_flow
+import rooms
 import session_wiring
 import sessions
 import prompts
 import notify
-import providers
-import readshell
 import reporting
 import topology
 import triggers
@@ -35,7 +35,6 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 RELAY = os.environ["BUZZ_RELAY_URL"]
 POLL = int(os.environ.get("POLL_SECONDS", "5"))
-MAX_CTX = 8
 
 CHANNELS = bootstrap.load_channels(ROOT)
 NPUBS, PUB2NAME = bootstrap.load_identity_npubs(ROOT)
@@ -50,9 +49,14 @@ AGENTS = bootstrap.build_agents(CFG, BASE, NPUBS)
 # Who answers in a channel when nobody is named. Checked here so a default that
 # cannot speak fails at startup instead of silently at the first message.
 DEFAULTS = bootstrap.load_channel_defaults(ROOT)
+ROOMS = rooms.load(ROOT)   # shared rooms: channels with a `room:` block
 bootstrap.check_channel_defaults(DEFAULTS, AGENTS)
 
 AGENT_PUBS = set()  # filled with agent pubkeys (from identities, by name)
+
+
+def name2pub_of(pub2name, handle):
+    return next((p for p, h in pub2name.items() if h == handle), None)
 
 
 def main():
@@ -78,6 +82,13 @@ def main():
     reg = sessions.Register(sessions.load(HERE))
 
     session_post, try_session = session_wiring.build(reg, AGENTS, send, HUB)
+    run_turn = agent_turn.build(AGENTS, HUB, reg, send, CHANNELS, PUB2NAME, ROOT,
+                                try_session)
+    # In a room the listener speaks as the orchestrator (the channel owner), and
+    # those lines are never input: otherwise a claim line would trigger a turn.
+    orch_pub = name2pub_of(PUB2NAME, "orchestrator")
+    room = room_flow.build(ROOMS, AGENTS, send, run_turn,
+                           (read_nsec, NPUBS.get("orchestrator")), PUB2NAME)
 
     reporting.report_missing_memberships(run, AGENTS, CHANNELS, PUB2NAME)
     name2pub = {h: p for p, h in PUB2NAME.items()}   # so we do not answer agents
@@ -123,9 +134,15 @@ def main():
                     notify.push(cname, writer, m.get("content", ""))
                 if m.get("pubkey") in AGENT_PUBS:
                     continue
+                if cname in ROOMS and m.get("pubkey") == orch_pub:
+                    continue
                 content = m.get("content", "")
                 # A human typing the marker: starter and requester are the same.
                 try_session(content, writer, writer, cname, cid, mid)
+                if cname in ROOMS:
+                    room(cname, cid, msgs, i, content, writer, mid,
+                         lambda h, c=content: prompts.mentioned(c, h))
+                    continue
                 # (a) @mentions of agents scoped here or relay members; (b) else: follow-up.
                 targets, reason = triggers.pick(
                     content, msgs[:i], cname, AGENTS, PUB2NAME,
@@ -133,44 +150,7 @@ def main():
                     lambda h: prompts.mentioned(content, h),
                     DEFAULTS.get(cname))
                 for handle in targets:
-                    cfg = AGENTS[handle]
-                    print(f"[listener] {reason} @{handle} in #{cname}: {content[:50]}", flush=True)
-                    recent = msgs[max(0, i - MAX_CTX):i + 1]
-                    kan_routeren = bool(routing.allowed_channels(cfg))
-                    p = prompts.build_prompt(handle, cname, recent, content, PUB2NAME,
-                                             met_ids=kan_routeren)
-                    know = prompts.channel_knowledge(ROOT, cname)
-                    if know:
-                        p = f"Kanaal-kennis (#{cname}):\n{know}\n\n" + p
-                    if handle == HUB:
-                        p = prompts.roster_text(AGENTS, HUB) + "\n\n" + p
-                        lt = prompts.live_text(ROOT)
-                        if lt:
-                            p = lt + "\n\n" + p
-                    try:
-                        r = providers.run(cfg.get("provider"),
-                                          cfg["system"] + prompts.LIMIT_CLAUSE
-                                          + prompts.session_clause(reg.cfg, handle,
-                                                                   writer)
-                                          + prompts.route_clause(cfg)
-                                          + readshell.clause(cfg), p,
-                                          model=cfg.get("model"), allow=cfg.get("allow"),
-                                          deny=cfg.get("deny"),
-                                          progress=reporting.progress_poster(
-                                              send, cid, cfg, handle))
-                    except Exception as e:  # incl. timeout: the turn must never crash
-                        r = {"answer": f"(fout: {e})", "error": str(e)[:120]}
-                    ans = r.get("answer", "(geen antwoord)")
-                    ans = routing.handle(ans, handle, cfg, cname, msgs, PUB2NAME,
-                                         CHANNELS, send, cid)
-                    mk = sessions.read_own_marker(ans)
-                    text = sessions.strip_own_marker(ans) if mk else ans
-                    if text and send(cid, text, cfg["nsec"], cfg["npub"]):
-                        print(f"[listener] {handle} antwoordde in #{cname} ({reason})", flush=True)
-                    if mk:
-                        # Odin wrote the marker, but the question came from `writer`.
-                        try_session(ans, handle, writer, cname, cid, mid, own=True)
-                    reporting.report_run(send, CHANNELS, handle, cname, cfg, r)
+                    run_turn(handle, cname, cid, msgs, i, content, writer, mid, reason)
         reg.tick(session_post)  # progress/completion of running work sessions
         notify.flush()          # deliver what the push cooldown held back
         time.sleep(POLL)

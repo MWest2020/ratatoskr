@@ -51,12 +51,38 @@ The room gets three kinds of lines, all from the listener:
 The work-overview board can show "running in #werkplaats: architect, 40 s". No
 dashboard is needed beyond that.
 
-## Questions for Mark
+## Decided
 
-1. **The room.** A new `#werkplaats` with architect, bouwer and reviewer? Or
-   turn an existing channel into it?
-2. **Hand-off.** Should agents hand off to each other within the room (with
-   the hop limit), or does every hand-off stay with you?
-3. **Odin.** Is odin a member of the room, or does it stay only in #general?
-4. **Triage.** Is haiku fine as the triage model, or should it be the same
-   model as odin?
+Mark, 2026-10-22: *"merge everything I just want to know when it works. I
+want the agents to work via git issues, so ther'e a reliable backtrack of what
+is being done."* He answered none of the four questions himself, so the
+recommendations stand:
+
+1. **The room** is a new private `#werkplaats` with architect, bouwer and
+   reviewer, created by the owner with `orchestrator/create-room.py`.
+2. **Hand-offs** between agents are allowed, bounded by the contract and by
+   three hops.
+3. **Odin** stays in #general and is not a room member.
+4. **Triage** runs on haiku, without tools.
+
+## The trail: every piece of work is a GitHub issue
+
+This was added after the questions above. It is the reason the room exists,
+not an extra.
+
+- **New work opens an issue** in the repo triage picked, which must be one of
+  the room's `repos`. The issue holds the human's message and the triage
+  reason, with the labels `agent-work`, `room:<room>` and `agent:<owner>`.
+- **Everything is recorded:** every human message and every agent answer is
+  an issue comment. A hand-off is a comment plus a label move. `!done` closes
+  the issue with its line.
+- **The listener writes, never the model:** fixed `gh` argv lists, with
+  bodies on stdin (`agents/issues.py`), the same pattern as the read shell.
+- **Which issue a message belongs to is read from the room.** The listener
+  appends `· repo#N` to every room line, so a restart loses nothing and
+  nothing is kept in memory.
+- **Fail-closed on the trail.** Without an issue no turn starts. A later
+  comment that fails is said in the room.
+
+Rejected: keeping the mapping from message to issue in a local file. It is a
+second truth next to the room, and the room is already in order and readable.
