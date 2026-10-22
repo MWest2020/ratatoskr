@@ -91,5 +91,31 @@ class EmptyPromptDoesNotRun(unittest.TestCase):
         self.assertIn("bouwer", got)
 
 
+CONTRACT = """## Contract
+
+- **Takes:** a decided design.
+- **Not mine:** an open design question. That is architect's.
+
+"""
+
+
+class ContractReachesTheModel(unittest.TestCase):
+    """openspec change role-contracts: the contract is a boundary only if the
+    model is told, not only the reader of the handbook."""
+
+    def test_the_contract_follows_the_prompt(self):
+        d = bootstrap.parse_def(ENGLISH.replace("## Chat facet", CONTRACT + "## Chat facet"))
+        self.assertTrue(d["system"].startswith("You are 'bouwer'"))
+        self.assertIn("YOUR CONTRACT", d["system"])
+        self.assertIn("- **Not mine:** an open design question.", d["system"])
+
+    def test_no_contract_leaves_the_prompt_alone(self):
+        self.assertNotIn("YOUR CONTRACT", bootstrap.parse_def(ENGLISH)["system"])
+
+    def test_a_contract_does_not_stand_in_for_a_missing_prompt(self):
+        d = bootstrap.parse_def(FRONT + CONTRACT + "## Chat facet\n\nno quote\n")
+        self.assertEqual(d["system"], "")
+
+
 if __name__ == "__main__":
     unittest.main()

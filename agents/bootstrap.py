@@ -5,12 +5,12 @@ urls come in as parameters, no module globals from the listener.
 """
 import fcntl
 import os
-import re
 import urllib.request
 
 import yaml
 
 import readshell
+from defparse import parse_def  # re-exported: tests and callers use bootstrap.parse_def
 
 
 def only_me(path="/tmp/boomhuis-listener.lock"):
@@ -91,59 +91,11 @@ def hub_handle(root):
                  if v.get("rol") == "meta-agent" and v.get("status") == "actief"), None)
 
 
-def section(body, heading):
-    """The text under `## <heading>` up to the next `## `, or "".
-
-    Hyphen or space between the words, any case. The English translation of the
-    handbook (2026-09-22) turned `## Chat-facet` into `## Chat facet`, and the
-    regex here only knew the hyphen: every chat agent ran with an EMPTY system
-    prompt for a month. Measured 2026-10-22: 8 of 8 agents at 0 characters."""
-    words = r"[-\s]+".join(re.escape(w) for w in heading.split())
-    m = re.search(rf"^##\s*{words}\b[^\n]*\n(.*?)(?=^##\s|\Z)", body, re.S | re.M | re.I)
-    return m.group(1) if m else ""
-
-
-def blockquote(text):
-    """The lines of `text` that are a markdown blockquote, without the `>`."""
-    return "\n".join(ln[2:] if ln.startswith("> ") else ln[1:]
-                     for ln in text.splitlines() if ln.startswith(">")).strip()
-
-
-def parse_def(s):
-    """A handbook definition as text -> the dict the listener runs on, or None.
-    Pure, so the tests can feed it the real heading formats."""
-    m = re.match(r"^---\n(.*?)\n---", s, re.S)
-    if not m:
-        return None
-    fm = yaml.safe_load(m.group(1)).get("agent", {})
-    chat = fm.get("chat") or {}
-    channels = chat.get("channels") or []  # `or` also catches `channels:` = YAML null
-    # system prompt = the blockquote under '## Chat facet'
-    system = blockquote(section(s[m.end():], "Chat facet"))
-    provider = (fm.get("provider") or "claude-p")
-    # Model and tools come from the registry and are enforced (Mark's decision,
-    # 2026-09-06). Fail-closed: without a model the agent does not run — otherwise
-    # it silently falls back on the environment default and nobody knows what it
-    # ran on.
-    tools = chat.get("tools") or {}
-    # `routes` = de kanalen waar deze agent de woorden van de mens naartoe mag
-    # doorsturen (routing.py). Uit de handbook, net als de rest van het mandaat:
-    # zo staat het recht op één plek en niet in een prompt of een lokale yaml.
-    return {"npub": fm.get("npub"), "channels": channels, "system": system,
-            "provider": provider, "model": chat.get("model") or "",
-            "allow": tools.get("allow") or [], "deny": tools.get("deny") or [],
-            "routes": chat.get("routes") or [],
-            "skills": chat.get("skills") or []}
-
-
 def fetch_def(base, handle):
-    """Fetch the canonical definition from the handbook. Returns the parsed
-    definition or None on failure (fail-closed).
-
-    After a fresh handbook merge, `raw.githubusercontent.com` caches for about
-    five minutes, and different cache nodes disagree (2026-10-07: curl saw the
-    new file while this function still got the old one). Wait until THIS
-    function returns the new field, several times in a row, then restart."""
+    """The parsed handbook definition, or None (fail-closed). After a merge,
+    raw.githubusercontent.com caches ~5 minutes and its nodes disagree: wait
+    until THIS function sees the change, several times in a row, then restart
+    (docs/how-to/read-shell.md)."""
     url = f"{base}/{handle}.md"
     try:
         with urllib.request.urlopen(url, timeout=15) as r:
