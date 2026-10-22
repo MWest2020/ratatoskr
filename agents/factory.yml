@@ -8,7 +8,7 @@ repos: [ratatoskr, handbook, wordsworth, habitat, skill-forge, Wanderer, zettelk
 builds_per_day: 6
 max_concurrent: 1            # one chain at a time: four Jobs and Mark's quota
 habitat_dir: /home/agent/habitat
-worker_image: ghcr.io/mwest2020/habitat-worker:750346ea7abd285d4f41b12af0d121576812a225
+worker_image: ghcr.io/mwest2020/habitat-worker:e01d0692e7389ecd69b2ab90752bedb9bd4f1441
 kubectl: ssh -o BatchMode=yes jumpy kubectl
 logdir: ~/.local/state/habitat/run-logs
 runs: ~/.local/state/ratatoskr/builds
