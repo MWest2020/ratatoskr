@@ -89,7 +89,7 @@ class Seam(unittest.TestCase):
 
                 class Reg:
                     cfg = {"types": {}}
-                turn = agent_turn.build({"odin": cfg}, "odin", Reg(), lambda *a: sent.append(a) or True,
+                turn = agent_turn.build_turn({"odin": cfg}, "odin", Reg(), lambda *a: sent.append(a) or True,
                                         {}, PUB2NAME, d, lambda *a, **k: None,
                                         log=lambda *a, **k: None, human="mark")
                 turn("odin", "general", "cid", MSGS, 0, "tell the session yes", "mark", "m1", "mention")

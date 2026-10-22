@@ -36,7 +36,7 @@ class Turn(unittest.TestCase):
              mock.patch("reporting.report_run"), \
              mock.patch("reporting.progress_poster", return_value=None):
             os.makedirs(os.path.join(root, "knowledge"), exist_ok=True)
-            turn = agent_turn.build({"bouwer": CFG}, "odin", FakeReg(), send, {},
+            turn = agent_turn.build_turn({"bouwer": CFG}, "odin", FakeReg(), send, {},
                                     {}, root, lambda *a, **k: None, log=lambda *a, **k: None)
             msgs = [{"pubkey": "pm", "content": "hello", "id": "m1"}]
             out = turn("bouwer", "werkplaats", "cid", msgs, 0, "hello", "mark", "m1",

@@ -12,13 +12,16 @@
       pushes the 8-hour file, and pins worker image 750346e.
 
 ## 1. Odin builds
-- [ ] `agents/factory.yml`: the repos odin may build on, the daily build
+- [x] `agents/factory.yml`: the repos odin may build on, the daily build
       budget, the pinned worker image.
-- [ ] `agents/build.py`: parse `!build <repo> <change>`, check repo, change
+- [x] `agents/build.py`: parse `!build <repo> <change>`, check repo, change
       and issue, run `chain.sh` through `ssh jumpy` with fixed argv, and
       comment each role's verdict on the issue. Tests with fakes.
+      Done as build.py (checks), build_runner.py (detached chain, follows
+      its output), build_wiring.py (issue first, every event on the issue);
+      the guards are mutation-checked.
 - [ ] A `propose` run for work without a change.
-- [ ] Odin learns `!build` from a generated clause, and only when the
+- [x] Odin learns `!build` from a generated clause, and only when the
       factory config allows it.
 - [ ] Live: one small change on ratatoskr goes through the chain, with every
       verdict on its issue.
