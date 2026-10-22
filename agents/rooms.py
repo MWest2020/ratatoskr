@@ -108,5 +108,7 @@ def clause(room_name, room, handle, contract, repo, number, url):
     return (f"SHARED ROOM #{room_name}, with {', '.join(room['members'])} and Mark. "
             f"This work is tracked as {ref(repo, number)} ({url}); everything you "
             "write here is also recorded on that issue. Answer for your part only, "
-            f"as your contract says. {hand} When your part is finished and nothing "
-            "is handed on, end with ONE line: `!done <the outcome in one line>`.")
+            f"as your contract says. {hand} Only when your contract's 'Done when' is "
+            "met, end with ONE line: `!done <the outcome in one line>`; that closes "
+            "the issue. Waiting on Mark (a yes, a choice) is NOT done: then write no "
+            "marker, the issue stays open and his answer continues it.")

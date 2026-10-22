@@ -175,6 +175,14 @@ class Pure(unittest.TestCase):
     def test_clean_removes_both_markers(self):
         self.assertEqual(rooms.clean("text\n!handoff bouwer go\n!done x"), "text")
 
+    def test_the_clause_says_waiting_on_mark_is_not_done(self):
+        # 2026-10-22, ratatoskr#156: architect closed its issue with !done while
+        # its own contract says "done when Mark has accepted the choice".
+        c = rooms.clause("werkplaats", ROOM, "architect", CONTRACTS["architect"],
+                         "ratatoskr", 7, "u")
+        self.assertIn("'Done when'", c)
+        self.assertIn("Waiting on Mark", c)
+
 
 if __name__ == "__main__":
     unittest.main()
