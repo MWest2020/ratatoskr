@@ -65,13 +65,42 @@ def comment(kind, role, detail):
     return f"**{role}: FAIL** ({facts or 'no run report'}). {detail.get('why') or ''}".strip()
 
 
+class Pid:
+    """A chain started by an EARLIER listener: not our child, so poll by pid."""
+
+    def __init__(self, pid):
+        self.pid = pid
+
+    def poll(self):
+        try:
+            os.kill(self.pid, 0)
+        except (ProcessLookupError, PermissionError, TypeError):
+            return -1     # gone; its exit code went to the listener that started it
+        return None
+
+
 class Builds:
-    """The running chains. The run file is the status; there is no queue."""
+    """Running chains and PRs waiting for CI, kept in a state file so a listener
+    restart (every deploy) picks them up again instead of losing their trail."""
 
     def __init__(self, cfg, popen=subprocess.Popen, now=time.time):
         self.cfg, self.popen, self.now = cfg, popen, now
-        self.running = []
         os.makedirs(cfg["runs"], exist_ok=True)
+        self.state = os.path.join(cfg["runs"], "state.json")
+        try:
+            with open(self.state) as fh:
+                st = json.load(fh)
+        except (OSError, ValueError):
+            st = {}
+        self.running = [{**b, "proc": Pid(b.get("pid"))} for b in st.get("running", [])]
+        self.merging = st.get("merging", [])
+
+    def save(self):
+        keep = [{k: v for k, v in b.items() if k != "proc"} for b in self.running]
+        tmp = self.state + ".tmp"
+        with open(tmp, "w") as fh:
+            json.dump({"running": keep, "merging": self.merging}, fh)
+        os.replace(tmp, self.state)
 
     def start(self, repo, change, issue, cname, cid, starter):
         path = os.path.join(self.cfg["runs"], f"{repo}-{change}-{int(self.now())}.log")
@@ -88,18 +117,21 @@ class Builds:
                           env=env, cwd=self.cfg["habitat_dir"], start_new_session=True)
         out.close()  # the child holds its own descriptor
         b = {"repo": repo, "change": change, "issue": issue, "cid": cid, "path": path,
-             "proc": proc, "seen": 0}
+             "proc": proc, "pid": getattr(proc, "pid", None), "seen": 0}
         self.running.append(b)
+        self.save()
         return b
 
     def tick(self, on_event):
         """Report what is new; drop chains that have ended."""
+        changed = False
         for b in list(self.running):
             with open(b["path"]) as fh:
                 lines = fh.read().splitlines()[1:]
             evs = events(lines)
             for kind, role, detail in evs[b["seen"]:]:
                 on_event(b, kind, role, detail)
+                changed = True
             b["seen"] = len(evs)
             code = b["proc"].poll()
             if code is not None:
@@ -107,3 +139,6 @@ class Builds:
                     tail = " / ".join(lines[-3:])[-300:] or "no output"
                     on_event(b, "failed", "chain", {"why": f"exit {code}: {tail}"})
                 self.running.remove(b)
+                changed = True
+        if changed:
+            self.save()

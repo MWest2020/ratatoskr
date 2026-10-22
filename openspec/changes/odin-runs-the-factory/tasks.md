@@ -27,8 +27,14 @@
       verdict on its issue.
 
 ## 2. Merge
-- [ ] After four PASS verdicts: a PR from the builder branch; merge once every
-      check passes (awk guard); close the issue with the merge link.
+- [x] After four PASS verdicts: a PR from the builder branch; merge once every
+      check passes; close the issue with the merge link. (build_merge.py reads
+      GitHub's check buckets instead of a piped exit code; zero checks is no
+      merge.)
+- [x] Running chains and waiting PRs survive a listener restart (state.json:
+      pid, events seen, PR).
+- [ ] Live: the first chain that passes ends merged, with every step on its
+      issue.
 - [ ] Habitat docs: "Mark always merges" becomes the new rule, with the
       reason.
 

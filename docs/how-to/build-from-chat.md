@@ -46,4 +46,29 @@ The run file with the chain's whole output is in
 `~/.local/state/ratatoskr/builds/`. The roles' artifacts are in
 `~/.local/state/habitat/run-logs/artifacts/`.
 
-A build ends on a branch. Opening the PR and merging it is phase 2.
+## After the chain: PR and merge
+
+When all four roles pass:
+
+1. **The PR.** The listener opens a PR from the builder branch. Its body
+   carries `Closes #<issue>` and the four verdicts.
+2. **The checks.** About once a minute the listener reads the PR's checks
+   (`gh pr checks --json bucket`):
+   - **merge** when nothing is failing, cancelled or pending and at least one
+     check passed;
+   - **wait** while anything is pending. Zero checks also waits, because
+     nothing verified the branch;
+   - **stop** on a failing or cancelled check, naming it on the issue and in
+     the channel.
+3. **The merge closes the issue.**
+
+Mark decided this on 2026-10-22 ("absolutely"). alma is not a repository on
+the list, so it is never merged into.
+
+## A restart loses nothing
+
+Running chains and PRs waiting for CI are kept in
+`~/.local/state/ratatoskr/builds/state.json`. That covers the pid, how many
+events were already reported, and the PR number. After a listener restart
+(every deploy), it goes on from there without repeating a comment. A chain
+that ended while the listener was down is closed with what its run file says.
