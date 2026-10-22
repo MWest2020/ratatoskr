@@ -97,12 +97,14 @@ class Builds:
             st = {}
         self.running = [{**b, "proc": Pid(b.get("pid"))} for b in st.get("running", [])]
         self.merging = st.get("merging", [])
+        self.deploying = st.get("deploying", [])
 
     def save(self):
         keep = [{k: v for k, v in b.items() if k != "proc"} for b in self.running]
         tmp = self.state + ".tmp"
         with open(tmp, "w") as fh:
-            json.dump({"running": keep, "merging": self.merging}, fh)
+            json.dump({"running": keep, "merging": self.merging,
+                       "deploying": self.deploying}, fh)
         os.replace(tmp, self.state)
 
     def start(self, repo, change, issue, cname, cid, starter):

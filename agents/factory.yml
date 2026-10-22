@@ -12,3 +12,21 @@ worker_image: ghcr.io/mwest2020/habitat-worker:e01d0692e7389ecd69b2ab90752bedb9b
 kubectl: ssh -o BatchMode=yes jumpy kubectl
 logdir: ~/.local/state/habitat/run-logs
 runs: ~/.local/state/ratatoskr/builds
+
+# Phase 3: after a merge, deploy to the HOMELAB through GitOps (agents/deploy.py).
+# alma is production and is not in any recipe; deploy.safe_paths refuses a
+# manifest outside cluster-config/infra/ or one that names alma.
+homelab:
+  repo_dir: /home/agent/homelab
+  worktree: ~/.worktrees/homelab-deploy
+  kubectl: ssh -o BatchMode=yes jumpy kubectl
+deploy:
+  wordsworth:
+    package: wordsworth                       # ghcr container package
+    image: ghcr.io/mwest2020/wordsworth
+    manifests:                                # bumped TOGETHER, always
+      - cluster-config/infra/wordsworth/api.yaml
+      - cluster-config/infra/wordsworth/init-job.yaml
+    app: wordsworth                           # ArgoCD Application
+    namespace: wordsworth
+    deployment: wordsworth-api

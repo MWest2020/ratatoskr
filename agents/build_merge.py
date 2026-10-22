@@ -71,3 +71,11 @@ def checks(owner, repo, pr, runner=subprocess.run):
 def merge(owner, repo, pr, runner=subprocess.run):
     return _gh(["gh", "pr", "merge", str(int(pr)), f"--repo={owner}/{repo}", "--merge"],
                runner)[1]
+
+
+def merged_sha(owner, repo, pr, runner=subprocess.run):
+    """(merge commit sha, error)."""
+    out, err = _gh(["gh", "pr", "view", str(int(pr)), f"--repo={owner}/{repo}",
+                    "--json=mergeCommit", "--jq=.mergeCommit.oid"], runner)
+    sha = out.strip()
+    return (sha, "") if re.fullmatch(r"[0-9a-f]{40}", sha) else ("", err or "no merge commit")

@@ -11,13 +11,16 @@ import time
 import build
 import build_merge
 import build_runner
+import deploy
 import issues as gh_issues
 
 
 def setup(cfg, agents, hub, human, send, issues=gh_issues, log=print, builds=None,
-          merger=build_merge, now=time.time):
+          merger=build_merge, now=time.time, deployer=None):
     builds = builds or build_runner.Builds(cfg)
     merging = builds.merging   # PRs waiting for their checks (phase 2), persisted
+    deploying = builds.deploying   # merges on their way to the homelab (phase 3)
+    deployer = deployer or deploy.Deployer(cfg)
     voice = agents.get(hub) or {}
 
     def say(cid, text):
@@ -95,9 +98,33 @@ def setup(cfg, agents, hub, human, send, issues=gh_issues, log=print, builds=Non
                            if not err else f"Merge of PR #{m['pr']} failed: {err}")
             say(m["cid"], (f"✅ merged PR #{m['pr']} ({detail})" if not err
                            else f"⛔ merge of PR #{m['pr']} failed: {err}") + tail)
+            if not err and deployer.recipe(m["repo"]):
+                sha, why = merger.merged_sha(cfg["owner"], m["repo"], m["pr"])
+                if sha:
+                    deploying.append({k: m[k] for k in ("repo", "issue", "cid")}
+                                     | {"sha": sha, "phase": "image", "started": now()})
+                    builds.save()
+                else:
+                    issues.comment(m["repo"], m["issue"], f"Not deployed: {why}.")
+
+    def follow_deploys():
+        """One step per deploy per tick; every step on the issue and in the room."""
+        for d in list(deploying):
+            state, msg = deployer.step(d)
+            if state == "wait" and not msg:
+                continue
+            tail = f" · {d['repo']}#{d['issue']}"
+            if state in ("done", "fail"):
+                deploying.remove(d)
+            builds.save()
+            mark = {"next": "🚚", "done": "🚀", "fail": "⛔", "wait": "⏳"}[state]
+            text = {"done": f"Deployed to the homelab: {msg}.", "fail": f"Deploy stopped: {msg}."}
+            issues.comment(d["repo"], d["issue"], text.get(state, f"Deploy: {msg}."))
+            say(d["cid"], f"{mark} deploy {d['repo']}: {msg}{tail}")
 
     def tick():
         builds.tick(on_event)
         follow_merges()
+        follow_deploys()
 
     return try_build, tick

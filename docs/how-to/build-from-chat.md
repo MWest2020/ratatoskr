@@ -72,3 +72,24 @@ Running chains and PRs waiting for CI are kept in
 events were already reported, and the PR number. After a listener restart
 (every deploy), it goes on from there without repeating a comment. A chain
 that ended while the listener was down is closed with what its run file says.
+
+## After the merge: deploy to the homelab
+
+For a repository with a recipe under `deploy:` in `agents/factory.yml`
+(wordsworth so far), the merge does not end there. The listener takes one step
+per round, with each step on the issue and in the channel (`🚚`, then `🚀` or
+`⛔`):
+
+| step | what happens |
+|---|---|
+| image | wait for the image of the merge commit (`sha-<7>`, up to 45 min), read its digest from GitHub's package API |
+| push | bump that digest in **every** manifest of the recipe (wordsworth: api **and** init-job, otherwise the migrations do not run), commit to homelab main, push |
+| sync | `argocd.argoproj.io/refresh=hard` on the Application, over `ssh jumpy` |
+| verify | the deployment runs the new digest and its rollout is complete (up to 20 min) |
+
+The bump is all or nothing: if one manifest has no line to bump, nothing is
+written and the deploy stops. The deployer works in its own homelab worktree
+(`~/.worktrees/homelab-deploy`), never in a shared checkout.
+
+**alma is never a target.** It is in no recipe, and a manifest path outside
+`cluster-config/infra/`, or one that names alma, makes the recipe invalid.

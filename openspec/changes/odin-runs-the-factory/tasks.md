@@ -43,9 +43,13 @@
       reason.
 
 ## 3. Deploy
-- [ ] wordsworth: after the main image build, bump the api and init-job
+- [x] wordsworth: after the main image build, bump the api and init-job
       digests together in homelab and push; ArgoCD syncs. alma is not on the
-      path list.
+      path list. (agents/deploy.py: image, push, sync and verify, one step per
+      tick, persisted in state.json. The bump is all or nothing. Tests run
+      against a real git remote and are immune to the hook's GIT_DIR.)
+- [x] Gap from the first build: habitat builders may run `bash verify.sh` and
+      `python3 -m unittest` (habitat builder-runs-repo-gates, image e01d069).
 - [ ] Live: one wordsworth change ends on the cluster without Mark.
 
 ## 4. Factory
