@@ -52,7 +52,9 @@ def existing(name, env):
     except ValueError:
         return None
     rows = rows if isinstance(rows, list) else rows.get("channels", [])
-    return next((c.get("id") for c in rows if c.get("name") == name), None)
+    # The relay calls it `channel_id` in a listing (measured 2026-10-22).
+    return next((c.get("channel_id") or c.get("id") for c in rows
+                 if c.get("name") == name), None)
 
 
 def pubkey(name):
@@ -81,7 +83,8 @@ def main():
         if code != 0:
             sys.exit(f"[create-room] create failed: {(err or out)[:200]}")
         try:
-            cid = json.loads(out).get("id")
+            d = json.loads(out)
+            cid = d.get("channel_id") or d.get("id")
         except ValueError:
             cid = None
         cid = cid or existing(a.name, env)
