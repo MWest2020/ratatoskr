@@ -33,8 +33,12 @@
       merge.)
 - [x] Running chains and waiting PRs survive a listener restart (state.json:
       pid, events seen, PR).
-- [ ] Live: the first chain that passes ends merged, with every step on its
-      issue.
+- [x] Live: retire-bridge (ratatoskr#157). odin started it from #general,
+      all four roles passed in about 16 minutes, and each verdict is on the
+      issue. PR #158 was opened by hand with the listener's own phase-2 code,
+      because the chain ran under the phase-1 listener. After a restart the
+      listener took the PR over from state.json, waited for verify and
+      docs-gates, and merged it (c08a1d1, 2026-10-22 13:56); the issue closed.
 - [ ] Habitat docs: "Mark always merges" becomes the new rule, with the
       reason.
 
