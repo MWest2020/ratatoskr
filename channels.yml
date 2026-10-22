@@ -28,27 +28,34 @@ channels:
     doel: architectuur-sparring (chat-native agent, fase 2)
   marketing:
     id: b3b40816-ed50-4983-977b-44a3f8e9271f
+    archived: 2026-10-22   # Mark: "we can archive those indeed for now"
     doel: marketing-concepten (chat-native agent, fase 2)
   news_from_zettelkast:
     id: 1c0566f6-a6ae-485f-8920-81767f09b350
     doel: recurring — wekelijkse zettelkast-digest (job)
   proposals:
     id: e9150354-ee43-49d7-83a6-290602766a74
+    archived: 2026-10-22   # Mark: "we can archive those indeed for now"
     doel: recurring — open OpenSpec-proposals (job)
   technical_debt:
     id: 2dd07372-b77a-4090-a06b-840fffc15f4c
+    archived: 2026-10-22   # Mark: "we can archive those indeed for now"
     doel: recurring — technical-debt-reflectie door architect (job)
   red-team:
     id: 78b129fe-fc1a-476e-995b-0845ba25b4ff
+    archived: 2026-10-22   # Mark: "we can archive those indeed for now"
     doel: coördinatie van geautoriseerde pentests/security-reviews op Marks eigen infra/repo's; alleen findings mét reproduceerbaar exploit-pad + geverifieerde fix
   wordsworth:
     id: e70a10d9-c453-4408-8090-88ba6a71d152
+    archived: 2026-10-22   # Mark: "we can archive those indeed for now"
     doel: projectkanaal wordsworth — overdracht + context; actuele context als pinned in knowledge/wordsworth.md
   draupnir:
     id: 0bfe28f5-4107-4376-9a17-e67e5e978f51
+    archived: 2026-10-22   # Mark: "we can archive those indeed for now"
     doel: "projectkanaal draupnir — metingen en overdracht; git blijft de waarheid, dit kanaal is de melding"
   netnl:
     id: 649bf5ef-087e-4e3d-bb00-d65bff987eb7
+    archived: 2026-10-22   # Mark: "we can archive those indeed for now"
     doel: projectkanaal netnl — overdracht + context; actuele context als pinned in knowledge/netnl.md
   standup:
     id: bd75be15-28ad-4243-8d2a-a15ed50826e6

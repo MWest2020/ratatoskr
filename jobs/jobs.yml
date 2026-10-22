@@ -22,7 +22,7 @@ jobs:
       [ -n "$f" ] && sed -n '1,45p' "$f"
 
   proposals:
-    channel: e9150354-ee43-49d7-83a6-290602766a74
+    channel: bd75be15-28ad-4243-8d2a-a15ed50826e6
     identity: orchestrator
     prompt: |
       Vat de OPEN OpenSpec-proposals uit het ecosysteem samen (context = de
@@ -39,7 +39,7 @@ jobs:
       done 2>/dev/null | head -50
 
   technical_debt:
-    channel: 2dd07372-b77a-4090-a06b-840fffc15f4c
+    channel: bd75be15-28ad-4243-8d2a-a15ed50826e6
     identity: architect
     prompt: |
       Je bent de architect. Reflecteer kort op technische schuld in het
