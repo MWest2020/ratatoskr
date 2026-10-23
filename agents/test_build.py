@@ -69,6 +69,26 @@ class Check(unittest.TestCase):
             self.assertIn("budget", why)
 
 
+def gh_issue(out, code=0):
+    return lambda argv, **kw: subprocess.CompletedProcess(argv, code, out, "")
+
+
+class OpenIssue(unittest.TestCase):
+    def test_an_open_issue_passes(self):
+        self.assertTrue(build.open_issue("MWest2020", "ratatoskr", 12, gh_issue("open\n")))
+
+    def test_a_pull_request_fails(self):
+        self.assertFalse(build.open_issue("MWest2020", "ratatoskr", 207, gh_issue("pr\n")))
+
+    def test_a_closed_issue_fails(self):
+        self.assertFalse(build.open_issue("MWest2020", "ratatoskr", 12, gh_issue("closed\n")))
+
+    def test_gh_unreachable_fails(self):
+        def boom(argv, **kw):
+            raise subprocess.TimeoutExpired(argv, 30)
+        self.assertFalse(build.open_issue("MWest2020", "ratatoskr", 12, boom))
+
+
 class Chain(unittest.TestCase):
     def test_events_from_the_chain_output(self):
         with tempfile.TemporaryDirectory() as store:
@@ -119,6 +139,9 @@ class Wiring(unittest.TestCase):
         patcher = mock.patch.object(build, "change_exists", lambda *a, **k: ("", True))
         patcher.start()
         self.addCleanup(patcher.stop)
+        issue_patcher = mock.patch.object(build, "open_issue", lambda *a, **k: True)
+        issue_patcher.start()
+        self.addCleanup(issue_patcher.stop)
 
     def tearDown(self):
         self.tmp.cleanup()
@@ -149,6 +172,19 @@ class Wiring(unittest.TestCase):
         self.try_build("!build alma x", "odin", "general", "cid", own=True)
         self.assertEqual(self.argv, [])
         self.assertIn("not on the factory's list", self.said[-1])
+
+    def test_a_number_that_is_not_an_open_issue_gets_a_fresh_one(self):
+        with mock.patch.object(build, "open_issue", lambda *a, **k: False):
+            self.try_build("!build ratatoskr x 207", "odin", "general", "cid", own=True)
+        self.assertEqual(self.calls[0][:3], ("create", "ratatoskr", "build: x"))
+        self.assertIn("#207", self.said[-1])
+        self.assertIn("#7", self.said[-1])
+        self.assertIn("build started", self.said[-1])
+
+    def test_a_number_that_is_an_open_issue_is_used_as_before(self):
+        self.try_build("!build ratatoskr x 12", "odin", "general", "cid", own=True)
+        self.assertFalse(any(c[0] == "create" for c in self.calls))   # no fresh issue opened
+        self.assertIn("ratatoskr#12", self.said[-1])
 
 
 if __name__ == "__main__":

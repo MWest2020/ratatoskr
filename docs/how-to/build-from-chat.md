@@ -26,6 +26,9 @@ The listener checks these, not the model. Limits are in `agents/factory.yml`.
    not used up.
 4. **There is an issue.** Without a number, the listener opens one (`build:
    <change>`, labels `agent-work` and `build`) before anything runs.
+5. **A given number is an open issue.** The listener asks `gh`: not a pull
+   request, not closed. When it is not, a fresh build issue is opened as in
+   (4), and the channel names both the rejected number and the one in use.
 
 A refusal is said in the channel (`⛔ build not started: …`). It is never
 silent.

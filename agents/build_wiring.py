@@ -34,11 +34,15 @@ def setup(cfg, agents, hub, human, send, issues=gh_issues, log=print, builds=Non
             return
         if starter not in (hub, human):
             return say(cid, f"⛔ build not started: only {hub} or {human} start builds")
-        repo, change, number = mk
+        repo, change, given = mk
         name, why = build.check(cfg, repo, change, builds.running)
         if not name:
             log(f"[listener] build refused: {why}", flush=True)
             return say(cid, f"⛔ build not started: {why}")
+        number = given
+        if number and not build.open_issue(cfg["owner"], name, number):
+            log(f"[listener] #{number} is not an open issue; opening a fresh one", flush=True)
+            number = 0
         if not number:
             body = (f"Build of OpenSpec change `{change}`, started by **{starter}** from "
                     f"#{cname}. habitat chain: architect, builder, reviewer, security.")
@@ -51,7 +55,8 @@ def setup(cfg, agents, hub, human, send, issues=gh_issues, log=print, builds=Non
                        f"`{cfg['worker_image'].rsplit(':', 1)[-1][:12]}`). Run file: "
                        f"`{b['path']}`.")
         log(f"[listener] build started: {name} {change} #{number}", flush=True)
-        say(cid, f"🔨 build started: `{change}` on {name} · {name}#{number}")
+        tail = f" (#{given} was not an open issue)" if given and given != number else ""
+        say(cid, f"🔨 build started: `{change}` on {name} · {name}#{number}{tail}")
 
     def on_event(b, kind, role, detail):
         text = build_runner.comment(kind, role, detail)
