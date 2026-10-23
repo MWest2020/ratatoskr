@@ -22,7 +22,7 @@ def setup(cfg, agents, hub, send, pub2name, builds, fetch, run_turn, issues=gh_i
           now=time.time, log=print, start=propose.start, check=propose.check,
           publish=propose.publish, archive=propose.archive):
     voice = agents.get(hub) or {}
-    jobs = []
+    jobs = builds.proposing   # persisted in state.json, adopted after a restart
 
     def say(cid, text):
         if voice:
@@ -47,7 +47,8 @@ def setup(cfg, agents, hub, send, pub2name, builds, fetch, run_turn, issues=gh_i
             issues.comment(name, n, f"Not started: {why}.")
             return say(cid, f"⛔ no proposal for `{change}`: {why} · {name}#{n}")
         jobs.append({**job, "repo": name, "issue": n, "cid": cid, "cname": cname,
-                     "started": now()})
+                     "started": now(), "pid": getattr(job["proc"], "pid", None)})
+        builds.save()
         log(f"[listener] propose session {name} {change} #{n}", flush=True)
         say(cid, f"📝 writing the change `{change}` on {name} · {name}#{n}")
 
@@ -73,11 +74,14 @@ def setup(cfg, agents, hub, send, pub2name, builds, fetch, run_turn, issues=gh_i
         for j in list(jobs):
             if j["proc"].poll() is None:
                 if now() - j["started"] > propose.MAX_S:
-                    j["proc"].kill()
+                    if hasattr(j["proc"], "kill"):
+                        j["proc"].kill()
                     jobs.remove(j)
+                    builds.save()
                     say(j["cid"], f"⏹ the propose session for `{j['change']}` ran out of time")
                 continue
             jobs.remove(j)
+            builds.save()
             finish(j)
 
     def after_merge(m):

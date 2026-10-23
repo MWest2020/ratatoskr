@@ -28,3 +28,11 @@ Why this road: no agent may write to a repository from a chat turn, and
 habitat's cage takes no chat text. Chat text reaches a cage only through git,
 after review. On 2026-10-23 the decision for wordsworth `ingest-records-source`
 had nobody to write it; the coding session wrote it by hand (wordsworth #207).
+
+## A restart loses nothing
+
+A running propose session is kept in `~/.local/state/ratatoskr/builds/state.json`
+with its pid, worktree, branch and issue, like builds and merges. After a
+listener restart (every deploy) the listener adopts it and still publishes its
+PR when it finishes. On 2026-10-23 a factory test had to wait for exactly that
+reason.

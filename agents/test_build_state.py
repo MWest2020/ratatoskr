@@ -78,5 +78,18 @@ class FailureSaysWhyAndBudget(unittest.TestCase):
         self.assertEqual(seen["HABITAT_MAX_BUDGET_USD"], "15.00")
 
 
+class ProposeSurvivesRestart(unittest.TestCase):
+    def test_a_propose_session_is_adopted_after_a_restart(self):
+        with tempfile.TemporaryDirectory() as t:
+            first = build_runner.Builds(cfg(t))
+            first.proposing.append({"wt": "/wt", "branch": "b", "change": "x", "repo": "ratatoskr",
+                                    "issue": 159, "cid": "c", "cname": "general",
+                                    "started": 1.0, "pid": os.getpid(), "proc": object()})
+            first.save()
+            second = build_runner.Builds(cfg(t))
+            self.assertEqual(second.proposing[0]["change"], "x")
+            self.assertIsNone(second.proposing[0]["proc"].poll())   # still alive: followed
+
+
 if __name__ == "__main__":
     unittest.main()

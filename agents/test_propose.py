@@ -85,6 +85,7 @@ class Proc:
 class Builds:
     def __init__(self):
         self.merging = []
+        self.proposing = []
 
     def save(self):
         pass
