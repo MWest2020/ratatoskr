@@ -20,7 +20,7 @@ CLONES = os.path.expanduser("~")
 
 def setup(cfg, agents, hub, send, pub2name, builds, fetch, run_turn, issues=gh_issues,
           now=time.time, log=print, start=propose.start, check=propose.check,
-          publish=propose.publish):
+          publish=propose.publish, archive=propose.archive):
     voice = agents.get(hub) or {}
     jobs = []
 
@@ -101,4 +101,21 @@ def setup(cfg, agents, hub, send, pub2name, builds, fetch, run_turn, issues=gh_i
                  "if the cause is gone, or tell Mark what blocks it.",
                  "", "", "build-failed", followup=True)
 
-    return try_propose, tick, after_merge, after_fail
+    def after_done(entry):
+        """A change that is merged (and deployed where a recipe says so) gets
+        archived by the same road: PR, CI, merge; no deploy, no wake."""
+        if entry.get("kind") in ("propose", "archive") or not entry.get("change"):
+            return
+        pr, err = archive(os.path.join(CLONES, entry["repo"]), entry["repo"], cfg["owner"],
+                          entry["change"])
+        tail = f" · {entry['repo']}#{entry['issue']}"
+        if err:
+            issues.comment(entry["repo"], entry["issue"], f"Not archived: {err}.")
+            return say(entry["cid"], f"⚠ `{entry['change']}` not archived: {err}{tail}")
+        builds.merging.append({"repo": entry["repo"], "change": entry["change"],
+                               "issue": entry["issue"], "cid": entry["cid"], "pr": pr,
+                               "next": 0, "kind": "archive"})
+        builds.save()
+        say(entry["cid"], f"🗄 archiving `{entry['change']}` in PR #{pr}{tail}")
+
+    return try_propose, tick, after_merge, after_fail, after_done

@@ -17,7 +17,7 @@ import issues as gh_issues
 
 def setup(cfg, agents, hub, human, send, issues=gh_issues, log=print, builds=None,
           merger=build_merge, now=time.time, deployer=None, after_merge=None,
-          after_fail=None):
+          after_fail=None, after_done=None):
     builds = builds or build_runner.Builds(cfg)
     merging = builds.merging   # PRs waiting for their checks (phase 2), persisted
     deploying = builds.deploying   # merges on their way to the homelab (phase 3)
@@ -103,10 +103,13 @@ def setup(cfg, agents, hub, human, send, issues=gh_issues, log=print, builds=Non
                            else f"⛔ merge of PR #{m['pr']} failed: {err}") + tail)
             if not err and after_merge:
                 after_merge(m)
-            if not err and m.get("kind") != "propose" and deployer.recipe(m["repo"]):
+            if not err and m.get("kind") not in ("propose", "archive") and not deployer.recipe(m["repo"]) \
+                    and after_done:
+                after_done(m)            # no deploy for this repo: archive right away
+            if not err and m.get("kind") not in ("propose", "archive") and deployer.recipe(m["repo"]):
                 sha, why = merger.merged_sha(cfg["owner"], m["repo"], m["pr"])
                 if sha:
-                    deploying.append({k: m[k] for k in ("repo", "issue", "cid")}
+                    deploying.append({k: m.get(k) for k in ("repo", "issue", "cid", "change")}
                                      | {"sha": sha, "phase": "image", "started": now()})
                     builds.save()
                 else:
@@ -121,6 +124,8 @@ def setup(cfg, agents, hub, human, send, issues=gh_issues, log=print, builds=Non
             tail = f" · {d['repo']}#{d['issue']}"
             if state in ("done", "fail"):
                 deploying.remove(d)
+            if state == "done" and after_done:
+                after_done(d)            # deployed: archive the change
             builds.save()
             mark = {"next": "🚚", "done": "🚀", "fail": "⛔", "wait": "⏳"}[state]
             text = {"done": f"Deployed to the homelab: {msg}.", "fail": f"Deploy stopped: {msg}."}

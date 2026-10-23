@@ -107,3 +107,13 @@ When a role fails:
   ("stopped by `error_max_budget_usd`"), not only FAIL.
 - **Odin gets one follow-up turn** to start the build again if the cause is
   gone, or to tell Mark what blocks it. `builds_per_day` caps the retries.
+
+## After the deploy: the change is archived
+
+When a change is merged and, for a repository with a deploy recipe,
+deployed, the listener archives it by the same road. It makes a fresh fenced
+worktree, runs `openspec archive <id> -y` and `openspec validate --specs
+--strict`, then a PR, and merges it once CI passes. That PR is not deployed and
+wakes nobody. On 2026-10-23 odin noticed that `ingest-records-source` was
+deployed but not archived; the coding session archived it by hand (wordsworth
+#210). Now the chain does it.

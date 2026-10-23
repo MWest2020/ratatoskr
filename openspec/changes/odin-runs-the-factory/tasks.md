@@ -50,7 +50,12 @@
       against a real git remote and are immune to the hook's GIT_DIR.)
 - [x] Gap from the first build: habitat builders may run `bash verify.sh` and
       `python3 -m unittest` (habitat builder-runs-repo-gates, image e01d069).
-- [ ] Live: one wordsworth change ends on the cluster without Mark.
+- [x] Live: one wordsworth change ends on the cluster without Mark.
+      ingest-records-source, 2026-10-23: odin started it, the builder did the
+      work but its verdict JSON was rejected (habitat 9fec55d now logs why), so
+      reviewer and security ran on its branch (both PASS). PR #209 was merged by
+      the listener after CI, the image sha-efd533b was bumped in homelab (api and
+      init-job), ArgoCD was Synced Healthy, and the new columns are present.
 
 ## 4. Factory
 - [x] Skill-forge: each SKILL.md declares the tools it needs; the register
@@ -64,8 +69,11 @@
 - [ ] The handbook operating agreements: new roles by odin, closing by Mark.
 
 ## 5. Skills reach the agent
-- [ ] Habitat worker: the role's skills in `.claude/skills`.
-- [ ] Chat turn: skill descriptions in the prompt.
+- [ ] Habitat worker: the role's skills in `.claude/skills`. Deferred: no
+      execution facet declares a skill yet.
+- [x] Chat turn: skills installed per agent, `Skill(<slug>)` allowed for
+      its own only, and named in its prompt. Live: odin loaded read-state
+      itself on 2026-10-23.
 
 ## 6. Archive
 - [ ] Archive this change when phases 1 to 5 run live.

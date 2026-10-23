@@ -107,12 +107,13 @@ class Wiring(unittest.TestCase):
             return {"wt": "/wt", "branch": "b", "change": change, "proc": Proc(0),
                     "summary": summary}, ""
         cfg = {"owner": "MWest2020", "repos": ["wordsworth"]}
-        self.try_p, self.tick, self.after, self.fail = propose_wiring.setup(
+        self.try_p, self.tick, self.after, self.fail, self.done = propose_wiring.setup(
             cfg, {"odin": {"nsec": "n", "npub": "p"}}, "odin",
             lambda cid, t, *a: self.said.append(t), {}, self.builds,
             lambda cid: [{"content": "decided"}], lambda *a, **k: self.turns.append((a, k)),
             issues=Issues(), log=lambda *a, **k: None, start=start,
-            check=lambda j: "", publish=lambda j, repo, owner: (31, ""))
+            check=lambda j: "", publish=lambda j, repo, owner: (31, ""),
+            archive=lambda clone, repo, owner, change: (44, ""))
 
     def test_from_marker_to_a_merge_queued_without_deploy(self):
         self.try_p("!propose wordsworth add-x Do x.", "odin", "general", "cid", [], "mark")
@@ -151,3 +152,18 @@ class FailureWakesTheHub(Wiring):
         self.assertEqual((a[0], a[8]), ("odin", "build-failed"))
         self.assertIn("error_max_budget_usd", a[5])
         self.assertTrue(k["followup"])
+
+
+
+class ArchiveAfterDone(Wiring):
+    def test_a_done_change_is_archived_by_pr(self):
+        self.done({"repo": "wordsworth", "change": "add-x", "issue": 9, "cid": "cid"})
+        m = self.builds.merging[-1]
+        self.assertEqual((m["pr"], m["kind"], m["change"]), (44, "archive", "add-x"))
+        self.assertIn("archiving `add-x` in PR #44", self.said[-1])
+
+    def test_proposals_and_archives_are_not_archived_again(self):
+        for kind in ("propose", "archive"):
+            self.done({"repo": "wordsworth", "change": "add-x", "issue": 9, "cid": "c",
+                       "kind": kind})
+        self.assertEqual(self.builds.merging, [])
