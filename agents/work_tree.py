@@ -64,6 +64,9 @@ def install_hook(worktree, branch):
     os.makedirs(own, exist_ok=True)
     _run(["git", "-C", worktree, "config", "extensions.worktreeConfig", "true"])
     _run(["git", "-C", worktree, "config", "--worktree", "core.hooksPath", own])
+    # ~/ratatoskr carries core.bare=true; without this a worktree of it refuses
+    # `git status` ("must be run in a work tree"), measured 2026-10-23.
+    _run(["git", "-C", worktree, "config", "--worktree", "core.bare", "false"])
     path = os.path.join(own, "pre-push")
     with open(path, "w") as f:
         f.write(HOOK % branch)

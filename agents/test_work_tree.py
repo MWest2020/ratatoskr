@@ -134,3 +134,26 @@ class Create(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class BareConfiguredClone(unittest.TestCase):
+    """~/ratatoskr carries core.bare=true; a session worktree of it must still
+    answer `git status` (2026-10-23: it did not, and a propose session's work was
+    reported as "wrote nothing")."""
+
+    def test_a_worktree_of_a_bare_configured_clone_works(self):
+        with tempfile.TemporaryDirectory() as t:
+            remote, clone = os.path.join(t, "remote.git"), os.path.join(t, "clone")
+            subprocess.run(["git", "init", "-q", "--bare", "-b", "main", remote], check=True)
+            subprocess.run(["git", "clone", "-q", remote, clone], check=True,
+                           capture_output=True)
+            open(os.path.join(clone, "a"), "w").close()
+            subprocess.run(["git", "-C", clone, "add", "a"], check=True)
+            subprocess.run(["git", "-C", clone, "-c", "user.name=t", "-c", "user.email=t@t",
+                            "commit", "-qm", "a"], check=True)
+            subprocess.run(["git", "-C", clone, "push", "-q", "origin", "HEAD:main"], check=True)
+            subprocess.run(["git", "-C", clone, "config", "core.bare", "true"], check=True)
+            wt, _ = work_tree.create(clone, os.path.join(t, "wts"), "propose-x", "odin")
+            st = subprocess.run(["git", "-C", wt, "status", "--porcelain"],
+                                capture_output=True, text=True)
+            self.assertEqual(st.returncode, 0, st.stderr)

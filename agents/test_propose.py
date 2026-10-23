@@ -55,6 +55,11 @@ class Check(unittest.TestCase):
         self.write("src/evil.py")
         self.assertIn("files outside openspec/changes/add-x/", propose.check(self.job, self.run_()))
 
+    def test_a_failing_git_status_is_an_error_not_nothing(self):
+        def run(argv, **kw):
+            return subprocess.CompletedProcess(argv, 128, "", "fatal: must be run in a work tree")
+        self.assertIn("git status failed", propose.check(self.job, run))
+
     def test_validation_is_read_from_the_exit_code(self):
         self.write("openspec/changes/add-x/proposal.md")
         self.assertIn("openspec validate failed", propose.check(self.job, self.run_(1)))

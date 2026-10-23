@@ -96,8 +96,13 @@ def start(clone, cid, summary, msgs, pub2name, requester, popen=subprocess.Popen
 def check(job, run=subprocess.run):
     """'' when the worktree holds a valid change and nothing else, else why not."""
     wt, cid = job["wt"], job["change"]
-    st = run(["git", "-C", wt, "status", "--porcelain", "--untracked-files=all"],
-             capture_output=True, text=True).stdout
+    g = run(["git", "-C", wt, "status", "--porcelain", "--untracked-files=all"],
+            capture_output=True, text=True)
+    if g.returncode != 0:
+        # 2026-10-23: this failed ("must be run in a work tree") and its empty
+        # stdout was read as "wrote nothing"; a failed read is never an empty one.
+        return "git status failed: " + (g.stderr or g.stdout).strip()[-200:]
+    st = g.stdout
     paths = [ln[3:] for ln in st.splitlines() if ln.strip()
              and not ln[3:].startswith(".propose-run")]
     if not paths:

@@ -36,3 +36,14 @@ with its pid, worktree, branch and issue, like builds and merges. After a
 listener restart (every deploy) the listener adopts it and still publishes its
 PR when it finishes. On 2026-10-23 a factory test had to wait for exactly that
 reason.
+
+## A failed read is never "nothing written"
+
+On 2026-10-23 the first live propose session wrote its four files, and the
+listener reported "the session wrote nothing". `git status` had failed in the
+worktree with "must be run in a work tree": `~/ratatoskr` carries
+`core.bare=true`, and its empty stdout was read as an empty result. Two fixes:
+
+- **A failing `git status` is now an error with its reason.**
+- **Every session worktree gets `core.bare=false`** in its own worktree
+  config (`agents/work_tree.py`).
