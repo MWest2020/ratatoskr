@@ -26,10 +26,10 @@ import subprocess
 import detach
 import providers
 import work_tree
+from propose_git import BASE, archive, publish  # noqa: F401  (the wiring imports them from here)
 
 MARKER = re.compile(r"^!propose\s+([A-Za-z0-9][A-Za-z0-9._-]{0,99})\s+"
                     r"([a-z0-9][a-z0-9._-]{2,80})\s+(\S.{0,1500})$")
-BASE = os.path.expanduser("~/.worktrees/propose")
 MAX_S = 900
 CLAUDE = os.environ.get("CLAUDE_BIN", "claude")
 
@@ -45,6 +45,11 @@ docs/; repos here fail CI on code without docs). Write only what was decided; an
 as an open question, never as a requirement. Finish by running
 `openspec validate {cid} --strict` and fix it until it passes. Do not commit or
 push: the listener does that after checking your files."""
+
+
+AMEND = ("This change ALREADY EXISTS on main: AMEND it in place. Keep what was "
+         "decided; settle the open questions the summary settles; fold the named "
+         "findings into tasks.md as tasks with their proof. Change nothing else.\n")
 
 
 def read_marker(answer):
@@ -84,15 +89,16 @@ def transcript(msgs, pub2name, n=14):
 def start(clone, cid, summary, msgs, pub2name, requester, popen=subprocess.Popen,
           create=work_tree.create):
     """(job, "") or (None, reason). The job holds the worktree, branch and process."""
-    if os.path.isdir(os.path.join(clone, "openspec", "changes", cid)):
-        return None, f"a change `{cid}` already exists in the local clone"
     try:
         wt, branch = create(clone, BASE, f"propose-{cid}", requester)
     except Exception as e:
         return None, f"no worktree: {str(e)[:160]}"
-    if os.path.isdir(os.path.join(wt, "openspec", "changes", cid)):
-        return None, f"`{cid}` already exists on main"
-    prompt = (f"Change id: {cid}\nWhat was decided, in one line: {summary}\n\n"
+    # 2026-10-24: an existing change is amended, not refused. Its first build
+    # stopped on an open question and on reviewer findings, and nothing could
+    # put the answers into the change the next build reads.
+    amend = os.path.isdir(os.path.join(wt, "openspec", "changes", cid))
+    prompt = (f"Change id: {cid}\n" + (AMEND if amend else "")
+              + f"What was decided, in one line: {summary}\n\n"
               f"The channel, oldest first:\n{transcript(msgs, pub2name)}")
     out = open(os.path.join(wt, ".propose-run.jsonl"), "w")
     env = detach.env(providers.agent_env())
@@ -106,7 +112,8 @@ def start(clone, cid, summary, msgs, pub2name, requester, popen=subprocess.Popen
     out.close()
     proc.stdin.write(prompt)
     proc.stdin.close()
-    return {"wt": wt, "branch": branch, "change": cid, "proc": proc, "summary": summary}, ""
+    return {"amend": amend, "wt": wt, "branch": branch, "change": cid, "proc": proc,
+            "summary": summary}, ""
 
 
 def check(job, run=subprocess.run):
@@ -137,27 +144,6 @@ def check(job, run=subprocess.run):
     return ""
 
 
-def publish(job, repo, owner, run=subprocess.run):
-    """Commit, push the session branch, open the PR. (pr number, error)."""
-    wt, cid = job["wt"], job["change"]
-    steps = [["git", "-C", wt, "add", f"openspec/changes/{cid}"],
-             ["git", "-C", wt, "-c", "user.name=MWest2020", "-c",
-              "user.email=mwest2020@hotmail.com", "commit", "-q", "-m",
-              f"openspec: {cid}\n\n{job['summary']}\n\nWritten by a propose session on "
-              "odin's decision (ratatoskr agents/propose.py)."],
-             ["git", "-C", wt, "push", "-q", "-u", "origin", job["branch"]]]
-    for argv in steps:
-        p = run(argv, capture_output=True, text=True)
-        if p.returncode != 0:
-            return 0, (p.stderr or p.stdout).strip()[-200:]
-    p = run(["gh", "pr", "create", f"--repo={owner}/{repo}", f"--head={job['branch']}",
-             "--base=main", f"--title=openspec: {cid}",
-             f"--body={job['summary']}\n\nWritten by a propose session on odin's decision; "
-             "the listener merges it once every check passes."], capture_output=True, text=True)
-    m = re.search(r"/pull/(\d+)", p.stdout)
-    return (int(m.group(1)), "") if m else (0, (p.stderr or p.stdout).strip()[-200:])
-
-
 def clause(handle, hub):
     if handle != hub:
         return ""
@@ -165,30 +151,7 @@ def clause(handle, hub):
             "not yet written, have it written: `!propose <repo> <change-id> <what was "
             "decided, one line>` on the FIRST line of your answer. A writing session "
             "turns this channel's decision into an OpenSpec change; the listener checks "
-            "it, opens a PR, merges it once CI passes, and then wakes you to build it.")
-
-
-def archive(clone, repo, owner, change, create=work_tree.create, run=subprocess.run):
-    """Archive a built, merged and (where there is a recipe) deployed change, in
-    a fresh fenced worktree; commit, push, PR. (pr number, error)."""
-    try:
-        wt, branch = create(clone, BASE, f"archive-{change}", "listener")
-    except Exception as e:
-        return 0, f"no worktree: {str(e)[:160]}"
-    steps = [["openspec", "archive", change, "-y"],
-             ["openspec", "validate", "--specs", "--strict"],
-             ["git", "add", "-A", "openspec"],
-             ["git", "-c", "user.name=MWest2020", "-c", "user.email=mwest2020@hotmail.com",
-              "commit", "-q", "-m", f"openspec: archive {change}\n\nBuilt, merged and "
-              "deployed by the factory (ratatoskr agents/propose.py)."],
-             ["git", "push", "-q", "-u", "origin", branch]]
-    for argv in steps:
-        p = run(argv, cwd=wt, capture_output=True, text=True)
-        if p.returncode != 0:
-            return 0, f"{' '.join(argv[:2])}: {(p.stderr or p.stdout).strip()[-200:]}"
-    p = run(["gh", "pr", "create", f"--repo={owner}/{repo}", f"--head={branch}", "--base=main",
-             f"--title=openspec: archive {change}",
-             "--body=The change is built, merged and deployed; archived by the listener."],
-            cwd=wt, capture_output=True, text=True)
-    m = re.search(r"/pull/(\d+)", p.stdout)
-    return (int(m.group(1)), "") if m else (0, (p.stderr or p.stdout).strip()[-200:])
+            "it, opens a PR, merges it once CI passes, and then wakes you to build it. "
+            "The same marker with an EXISTING change id amends that change: use it when a "
+            "build stopped on an open question or on findings that belong in the change "
+            "(put the decision and the findings in the summary), then build again.")
