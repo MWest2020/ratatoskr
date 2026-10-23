@@ -5,6 +5,8 @@ last_reviewed: 2026-10-23
 
 # Reply to a message
 
+Since ratatoskr-chat **0.17.0** (2026-10-23).
+
 In the app, every message has a **↩** next to its author and time. On a phone
 you can also press and hold the bubble. The bar above the input then shows
 what you are answering (`↩ replying to architect: …`). ✕ cancels, and
