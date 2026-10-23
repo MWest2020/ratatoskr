@@ -48,7 +48,11 @@ class Check(unittest.TestCase):
         self.assertEqual(propose.check(self.job, self.run_()), "")
 
     def test_nothing_written_is_said(self):
+        open(os.path.join(self.wt, ".propose-run.jsonl"), "w").write("{}\n")
         self.assertEqual(propose.check(self.job, self.run_()), "the session wrote nothing")
+
+    def test_a_session_that_never_ran_is_said(self):
+        self.assertIn("never ran", propose.check(self.job, self.run_()))
 
     def test_a_file_outside_the_change_is_refused(self):
         self.write("openspec/changes/add-x/proposal.md")

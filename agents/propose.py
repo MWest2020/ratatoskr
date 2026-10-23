@@ -95,13 +95,14 @@ def start(clone, cid, summary, msgs, pub2name, requester, popen=subprocess.Popen
     prompt = (f"Change id: {cid}\nWhat was decided, in one line: {summary}\n\n"
               f"The channel, oldest first:\n{transcript(msgs, pub2name)}")
     out = open(os.path.join(wt, ".propose-run.jsonl"), "w")
+    env = detach.env(providers.agent_env())
     proc = popen(detach.argv([CLAUDE, "-p", "--output-format", "stream-json", "--verbose",
                   "--permission-mode", "dontAsk", "--model", "sonnet",
                   "--append-system-prompt", SYSTEM.format(cid=cid),
                   "--allowedTools", ",".join(tools(cid)),
-                  "--disallowedTools", "Task,KillShell,WebFetch,WebSearch"]),
+                  "--disallowedTools", "Task,KillShell,WebFetch,WebSearch"], env=env),
                  stdin=subprocess.PIPE, stdout=out, stderr=subprocess.DEVNULL, text=True,
-                 cwd=wt, env=providers.agent_env(), start_new_session=True)
+                 cwd=wt, env=env, start_new_session=True)
     out.close()
     proc.stdin.write(prompt)
     proc.stdin.close()
@@ -121,7 +122,12 @@ def check(job, run=subprocess.run):
     paths = [ln[3:] for ln in st.splitlines() if ln.strip()
              and not ln[3:].startswith(".propose-run")]
     if not paths:
-        return "the session wrote nothing"
+        try:
+            ran = os.path.getsize(os.path.join(wt, ".propose-run.jsonl")) > 0
+        except OSError:
+            ran = False
+        # 2026-10-24: a session that never started read as one that wrote nothing
+        return "the session wrote nothing" if ran else "the session never ran (no output at all)"
     stray = [p for p in paths if not p.startswith(f"openspec/changes/{cid}/")]
     if stray:
         return f"files outside openspec/changes/{cid}/: {stray[:5]}"
