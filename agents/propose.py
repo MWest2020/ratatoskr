@@ -23,6 +23,7 @@ import os
 import re
 import subprocess
 
+import detach
 import providers
 import work_tree
 
@@ -80,11 +81,11 @@ def start(clone, cid, summary, msgs, pub2name, requester, popen=subprocess.Popen
     prompt = (f"Change id: {cid}\nWhat was decided, in one line: {summary}\n\n"
               f"The channel, oldest first:\n{transcript(msgs, pub2name)}")
     out = open(os.path.join(wt, ".propose-run.jsonl"), "w")
-    proc = popen([CLAUDE, "-p", "--output-format", "stream-json", "--verbose",
+    proc = popen(detach.argv([CLAUDE, "-p", "--output-format", "stream-json", "--verbose",
                   "--permission-mode", "dontAsk", "--model", "sonnet",
                   "--append-system-prompt", SYSTEM.format(cid=cid),
                   "--allowedTools", ",".join(tools(cid)),
-                  "--disallowedTools", "Task,KillShell,WebFetch,WebSearch"],
+                  "--disallowedTools", "Task,KillShell,WebFetch,WebSearch"]),
                  stdin=subprocess.PIPE, stdout=out, stderr=subprocess.DEVNULL, text=True,
                  cwd=wt, env=providers.agent_env(), start_new_session=True)
     out.close()

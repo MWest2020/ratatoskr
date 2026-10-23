@@ -127,8 +127,8 @@ class Wiring(unittest.TestCase):
         self.try_build("!build ratatoskr x", "odin", "general", "cid", own=True)
         self.assertEqual(self.calls[0][:3], ("create", "ratatoskr", "build: x"))
         argv, kubectl, creds = self.argv[0]
-        self.assertTrue(argv[0].endswith("dispatch/chain.sh"))
-        self.assertEqual(argv[1:], ["x", "MWest2020/ratatoskr"])
+        argv = argv[argv.index(next(a for a in argv if a.endswith("dispatch/chain.sh"))):]
+        self.assertEqual(argv[1:], ["x", "MWest2020/ratatoskr"])   # maybe in a scope: detach
         self.assertEqual((kubectl, creds), ("ssh jumpy kubectl", ""))
         self.assertIn("build started", self.said[-1])
 
