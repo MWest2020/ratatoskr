@@ -15,10 +15,20 @@ import os
 import shutil
 
 SCOPE = ["systemd-run", "--user", "--scope", "--quiet", "--collect"]
+BUS = ("XDG_RUNTIME_DIR", "DBUS_SESSION_BUS_ADDRESS")
+
+
+def env(child, source=os.environ):
+    """The child's environment plus what systemd-run needs to reach the user
+    bus. 2026-10-24: a propose session got providers.agent_env(), which keeps
+    neither, so systemd-run failed ("Failed to connect to bus") before claude
+    ever ran, and the listener reported "the session wrote nothing"."""
+    return {**child, **{k: source[k] for k in BUS if k in source}}
 
 
 def argv(cmd, which=shutil.which, env=os.environ):
-    """`cmd`, wrapped in its own scope when a user systemd is reachable."""
+    """`cmd`, wrapped in its own scope when a user systemd is reachable from
+    `env`, the environment the child will actually get."""
     if which("systemd-run") and env.get("XDG_RUNTIME_DIR"):
         return SCOPE + list(cmd)
     return list(cmd)

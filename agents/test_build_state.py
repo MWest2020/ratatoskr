@@ -140,3 +140,17 @@ class FailureSaysWhy(unittest.TestCase):
 
     def test_no_output_no_findings(self):
         self.assertEqual(build_runner.findings("/nonexistent"), [])
+
+
+class DetachReachesTheBus(unittest.TestCase):
+    """2026-10-24: a propose session's trimmed env had no XDG_RUNTIME_DIR, so
+    systemd-run could not reach the bus and the session never ran."""
+
+    def test_the_child_env_carries_the_bus(self):
+        import detach
+        e = detach.env({"PATH": "/bin"}, {"XDG_RUNTIME_DIR": "/run/user/1", "SECRET": "x"})
+        self.assertEqual(e, {"PATH": "/bin", "XDG_RUNTIME_DIR": "/run/user/1"})
+
+    def test_wrapping_is_decided_on_the_childs_env(self):
+        import detach
+        self.assertEqual(detach.argv(["x"], lambda n: "/bin/" + n, env={"PATH": "/bin"}), ["x"])
