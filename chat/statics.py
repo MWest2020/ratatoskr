@@ -29,6 +29,7 @@ FILES = {
     "/login.js": ("login.js", "text/javascript"),
     "/app-modal.js": ("app-modal.js", "text/javascript"),
     "/app-ui.js": ("app-ui.js", "text/javascript"),
+    "/app-reply.js": ("app-reply.js", "text/javascript"),
     "/app-repos.js": ("app-repos.js", "text/javascript"),
     "/app-board.js": ("app-board.js", "text/javascript"),
     "/app-push.js": ("app-push.js", "text/javascript"),

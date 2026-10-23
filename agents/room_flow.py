@@ -25,12 +25,17 @@ def build(rooms_cfg, agents, send, run_turn, voice, pub2name,
     def say(cid, text):
         send(cid, text, voice[0], voice[1])
 
-    def handle(cname, cid, msgs, i, content, writer, mid, mentioned):
+    def handle(cname, cid, msgs, i, content, writer, mid, mentioned, parent=None):
         room = rooms_cfg[cname]
         members = [h for h in room["members"] if h in agents]
         earlier = msgs[:i]
         cur = rooms.current_issue(content, earlier, room["repos"])
         named = [h for h in members if mentioned(h)]
+        if parent:   # a reply: the parent's issue, and the parent's agent (reply-to-message)
+            cur = rooms.find_ref(parent.get("content", ""), room["repos"]) or cur
+            author = pub2name.get(parent.get("pubkey"))
+            if not named and author in members:
+                named = [author]
         last = rooms.last_agent(earlier, members, pub2name)
         title, why = content.strip().splitlines()[0][:80] if content.strip() else "", ""
         if named:

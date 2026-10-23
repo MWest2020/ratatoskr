@@ -18,6 +18,7 @@ import github  # GitHub read layer (repo/PR view + pinned context)
 import push    # Web Push — VAPID public key
 from buzzcli import buzz, list_channels_meta, valid_cid, author, ME
 from fanout import channel_overview, agent_roster, channel_roster
+import threads
 
 
 def route(h, u):
@@ -93,6 +94,7 @@ def route(h, u):
             "mine": m.get("pubkey") == ME,
             "content": m.get("content", ""),
             "ts": m.get("created_at", 0),
+            "reply_to": threads.reply_parent(m.get("tags")),
         } for m in msgs]
         out_msgs.sort(key=lambda x: x["ts"])
         return h._send(200, json.dumps({"messages": out_msgs})) or True

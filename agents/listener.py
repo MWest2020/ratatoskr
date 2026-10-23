@@ -24,6 +24,7 @@ import build
 import build_wiring
 import factory_wiring
 import relay
+import replies
 import room_flow
 import rooms
 import session_followup
@@ -152,16 +153,17 @@ def main():
                 if writer == ME_NAME:
                     try_build(content, writer, cname, cid, own=False)
                     try_yes(content, writer, cid)
+                parent = replies.parent_of(m, msgs[:i])   # a reply's parent, or None
                 if cname in ROOMS:
                     room(cname, cid, msgs, i, content, writer, mid,
-                         lambda h, c=content: prompts.mentioned(c, h))
+                         lambda h, c=content: prompts.mentioned(c, h), parent=parent)
                     continue
                 # (a) @mentions of agents scoped here or relay members; (b) else: follow-up.
                 targets, reason = triggers.pick(
                     content, msgs[:i], cname, AGENTS, PUB2NAME,
                     lambda h: scoped(h, cname, cid),
                     lambda h: prompts.mentioned(content, h),
-                    DEFAULTS.get(cname))
+                    DEFAULTS.get(cname), replied=replies.agent_of(parent, PUB2NAME, AGENTS))
                 for handle in targets:
                     run_turn(handle, cname, cid, msgs, i, content, writer, mid, reason)
         reg.tick(session_post)  # progress/completion of running work sessions

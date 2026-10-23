@@ -9,6 +9,7 @@ tested by running the listener; here it is a pure function.
 The order is the contract:
 
 1. **mention** — an @handle of an agent that may speak here;
+1b. **reply** — a reply to an agent's message addresses that agent;
 2. **follow-up** — no mention, but an agent spoke recently and this channel is
    in its own definition;
 3. **default** — nobody named and nothing this channel may continue: the cold
@@ -24,7 +25,7 @@ FOLLOW_UP_WINDOW = 10
 
 
 def pick(content, earlier, cname, agents, pub2name, may_speak, mentions,
-         default_agent=None):
+         default_agent=None, replied=None):
     """`(targets, reason)` for one human message.
 
     `earlier` are the messages before this one, oldest first; only the last
@@ -35,6 +36,10 @@ def pick(content, earlier, cname, agents, pub2name, may_speak, mentions,
     named = [h for h in agents if mentions(h) and may_speak(h)]
     if named:
         return named, "mention"
+    # A reply to an agent's message addresses that agent (reply-to-message);
+    # after an explicit @mention, before the follow-up guess.
+    if replied in agents and may_speak(replied):
+        return [replied], "reply"
 
     for prev in reversed(earlier[-FOLLOW_UP_WINDOW:]):
         handle = pub2name.get(prev.get("pubkey"))

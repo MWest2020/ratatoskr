@@ -146,7 +146,8 @@ class H(BaseHTTPRequestHandler):
         if u.path != "/api/send":
             return self._send(404, json.dumps({"error": "not found"}))
         code, payload = actions.send(body.get("channel"), body.get("content"),
-                                     force=bool(body.get("force")))
+                                     force=bool(body.get("force")),
+                                     reply_to=body.get("reply_to") or None)
         return self._send(code, json.dumps(payload))
 
 

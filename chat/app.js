@@ -145,19 +145,20 @@ function renderMessages(msgs, force){
     // characters from the relay payload, and that is not ours.
     add(row, add(el("div","meta"), el("span",cls,m.author), " · "+fmtTime(m.ts)),
              el("div","bubble", m.content));
+    if(typeof decorateRow==="function") decorateRow(row, m, msgs);   // app-reply.js
     box.appendChild(row);
   }
   if(force||near) box.scrollTop=box.scrollHeight;
 }
 
-async function send(text){ return await _postSend(text, current.id, false, new Set()); }
+async function send(text){ const ok=await _postSend(text, current.id, false, new Set()); if(ok&&typeof replyClear==="function") replyClear(); return ok; }
 
 // The cid is pinned through the whole retry flow (the server sends it along in
 // the 409), so switching channels does not send the message to the wrong one.
 async function _postSend(text, cid, force, added){
   let r;
   try {
-    r = await postJSON("/api/send",{channel:cid, content:text, force:force});
+    r = await postJSON("/api/send",{channel:cid, content:text, force:force, reply_to:(typeof replyId==="function"?replyId():null)});
   } catch(e){ toast("network error — message not sent"); return false; }
   const j = await r.json().catch(()=>({}));
   if(r.ok && !j.error) return true;

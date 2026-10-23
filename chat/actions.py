@@ -9,6 +9,7 @@ import sys
 
 import roster
 from buzzcli import ADMIN_OFF, buzz, buzz_admin, channel_member_pubkeys, valid_cid
+import threads
 
 _NAME_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,30}$")
 _MENTION_ERR = re.compile(r"mention '@([A-Za-z0-9_-]+)' does not match")
@@ -43,7 +44,7 @@ def add_agent(cid, name):
     return 200, {"ok": True, "name": name}
 
 
-def send(cid, content, force=False):
+def send(cid, content, force=False, reply_to=None):
     """Send a message. Without --mention the relay resolves an @agent to the
     member and triggers it; an @name that is not a member gives a 409 with a
     choice (add it when it is an agent, or 'send anyway'). With `force` we pass a
@@ -54,7 +55,11 @@ def send(cid, content, force=False):
     content = (content or "").strip()
     if not content:
         return 400, {"error": "empty message"}
+    if reply_to and not threads.valid_event_id(reply_to):
+        return 400, {"error": "reply_to is not a message id (64 hex characters)"}
     args = ["messages", "send", "--channel", cid, "--content", "-"]
+    if reply_to:
+        args += ["--reply-to", reply_to]   # a thread reply: ["e", id, "", "reply"]
     if force:
         anchor = _a_member_of(cid)
         if anchor:
