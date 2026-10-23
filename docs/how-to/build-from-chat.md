@@ -93,3 +93,17 @@ written and the deploy stops. The deployer works in its own homelab worktree
 
 **alma is never a target.** It is in no recipe, and a manifest path outside
 `cluster-config/infra/`, or one that names alma, makes the recipe invalid.
+
+## Budget, and when a role fails
+
+Each role run gets `max_budget_usd` from `agents/factory.yml` (15 dollars),
+passed as `HABITAT_MAX_BUDGET_USD`. Habitat's own default of 5 dollars was too
+tight for a real change. On 2026-10-23 wordsworth's builder stopped at it after
+86 turns (`error_max_budget_usd`) with most of the change already pushed.
+
+When a role fails:
+
+- **The issue comment names the stop reason** from the run report
+  ("stopped by `error_max_budget_usd`"), not only FAIL.
+- **Odin gets one follow-up turn** to start the build again if the cause is
+  gone, or to tell Mark what blocks it. `builds_per_day` caps the retries.
