@@ -176,3 +176,16 @@ and odin told Mark a session had started when none had. Since then:
 - **The prompt says "first line".**
 - **A misplaced marker is said in the channel:** `⚠ \`!sessie\` was not on
   the first line of this answer, so nothing was started.`
+
+## A session odin started wakes odin
+
+Odin often starts a session and plans to do something with its report:
+consult architect, build a change. The report is posted under odin's own
+name, and the listener never gives a turn on an agent's message, so until
+2026-10-23 that plan never fired. Now, when a session odin started finishes,
+the listener gives odin **one** follow-up turn in that channel, with the
+report as the last message (`agents/session_followup.py`). In that turn odin
+may consult or build, but not start another session. A session that wakes a
+turn that starts a session would be a loop. A session cut off by its time
+budget does not wake odin; its partial work is already in the channel.
+

@@ -44,7 +44,7 @@ def build_turn(agents, hub, reg, send, channels, pub2name, root, try_session, lo
     """`run_turn(...) -> (answer, posted)`, closed over the listener's state."""
 
     def run_turn(handle, cname, cid, msgs, i, content, writer, mid, reason,
-                 extra="", suffix="", clean=None):
+                 extra="", suffix="", clean=None, followup=False):
         """`extra` goes in front of the prompt (room context), `suffix` after the
         posted answer (the issue reference), `clean` takes the room's markers
         out of what is posted. Returns the answer as the model wrote it (the
@@ -101,6 +101,10 @@ def build_turn(agents, hub, reg, send, channels, pub2name, root, try_session, lo
         if text and send(cid, text + suffix, cfg["nsec"], cfg["npub"]):
             log(f"[listener] {handle} antwoordde in #{cname} ({reason})", flush=True)
             posted = text
+        if mk and followup:
+            # A follow-up to a finished session may not start the next one.
+            send(cid, "⚠ no new session from a follow-up turn", cfg["nsec"], cfg["npub"])
+            mk = None
         if mk:
             # The agent wrote the marker, but the question came from `writer`.
             try_session(ans, handle, writer, cname, cid, mid, own=True)

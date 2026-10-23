@@ -58,6 +58,9 @@ class Register:
         self.cfg = cfg
         self.runs = runs
         self.running = []
+        # Sessions that ended, for the listener to wake their starter (a hub's
+        # report must reach the hub: agent messages never trigger a turn).
+        self.finished = []
         os.makedirs(runs, exist_ok=True)
 
     def start(self, type_name, task, starter, requester, cname, cid, message_id=""):
@@ -166,6 +169,7 @@ class Register:
                 continue
             if s["proc"].poll() is not None:
                 post(s, session_report.result_text(s, elapsed))
+                self.finished.append(s)
                 self._close(s)
                 done += 1
         return done

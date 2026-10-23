@@ -26,6 +26,7 @@ import factory_wiring
 import relay
 import room_flow
 import rooms
+import session_followup
 import session_wiring
 import sessions
 import prompts
@@ -164,6 +165,7 @@ def main():
                 for handle in targets:
                     run_turn(handle, cname, cid, msgs, i, content, writer, mid, reason)
         reg.tick(session_post)  # progress/completion of running work sessions
+        session_followup.wake_hub(reg, HUB, fetch, run_turn)  # report reaches the hub
         build_tick()            # progress of running habitat chains
         factory_tick()          # roles the factory is making
         notify.flush()          # deliver what the push cooldown held back

@@ -88,3 +88,26 @@ class Markers(unittest.TestCase):
     def test_the_turn_posts_the_note(self):
         (_, posted), sent, _ = Turn().run_one("Starting.\n!build wordsworth x")
         self.assertIn("was not on the first line", sent[0][1])
+
+
+class FollowUp(unittest.TestCase):
+    def test_a_follow_up_cannot_start_a_session(self):
+        started = []
+        sent = []
+
+        def fake_run(provider, system, prompt, **k):
+            return {"answer": "!sessie research more\nOn it.", "error": ""}
+        with tempfile.TemporaryDirectory() as root, \
+             mock.patch.object(providers, "run", fake_run), \
+             mock.patch("reporting.report_run"), \
+             mock.patch("reporting.progress_poster", return_value=None):
+            os.makedirs(os.path.join(root, "knowledge"), exist_ok=True)
+            turn = agent_turn.build_turn({"bouwer": CFG}, "odin", FakeReg(),
+                                         lambda cid, t, *a: sent.append(t) or True, {}, {}, root,
+                                         lambda *a, **k: started.append(a),
+                                         log=lambda *a, **k: None)
+            msgs = [{"pubkey": "pm", "content": "x", "id": "m1"}]
+            turn("bouwer", "general", "cid", msgs, 0, "x", "mark", "m1", "session-done",
+                 followup=True)
+        self.assertEqual(started, [])
+        self.assertTrue(any("no new session from a follow-up turn" in t for t in sent))
