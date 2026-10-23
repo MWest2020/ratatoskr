@@ -107,7 +107,7 @@ class Wiring(unittest.TestCase):
             return {"wt": "/wt", "branch": "b", "change": change, "proc": Proc(0),
                     "summary": summary}, ""
         cfg = {"owner": "MWest2020", "repos": ["wordsworth"]}
-        self.try_p, self.tick, self.after = propose_wiring.setup(
+        self.try_p, self.tick, self.after, self.fail = propose_wiring.setup(
             cfg, {"odin": {"nsec": "n", "npub": "p"}}, "odin",
             lambda cid, t, *a: self.said.append(t), {}, self.builds,
             lambda cid: [{"content": "decided"}], lambda *a, **k: self.turns.append((a, k)),
@@ -141,3 +141,13 @@ class Wiring(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class FailureWakesTheHub(Wiring):
+    def test_a_failed_build_wakes_the_hub_to_decide(self):
+        self.fail({"repo": "wordsworth", "change": "x", "issue": 9, "cid": "cid",
+                   "cname": "general"}, "**builder: FAIL** (stopped by `error_max_budget_usd`)")
+        a, k = self.turns[0]
+        self.assertEqual((a[0], a[8]), ("odin", "build-failed"))
+        self.assertIn("error_max_budget_usd", a[5])
+        self.assertTrue(k["followup"])

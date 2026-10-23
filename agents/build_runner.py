@@ -65,7 +65,9 @@ def comment(kind, role, detail):
     facts = ", ".join(f"{k} {v}" for k, v in shown.items() if v is not None)
     if kind == "passed":
         return f"**{role}: PASS** ({facts or 'no run report'}). Branch `{detail['branch']}`."
-    return f"**{role}: FAIL** ({facts or 'no run report'}). {detail.get('why') or ''}".strip()
+    why = r.get("subtype") if r.get("subtype") not in (None, "success") else ""
+    return (f"**{role}: FAIL** ({facts or 'no run report'})"
+            + (f", stopped by `{why}`" if why else "") + f". {detail.get('why') or ''}").strip()
 
 
 class Pid:
@@ -115,13 +117,14 @@ class Builds:
         out.flush()
         env = dict(os.environ, WORKER_IMAGE=self.cfg["worker_image"],
                    KUBECTL=self.cfg["kubectl"], HABITAT_LOGDIR=self.cfg["logdir"],
-                   CLAUDE_CREDS_FILE="")
+                   CLAUDE_CREDS_FILE="",
+                   HABITAT_MAX_BUDGET_USD=f"{float(self.cfg.get('max_budget_usd', 5)):.2f}")
         proc = self.popen([os.path.join(self.cfg["habitat_dir"], "dispatch", "chain.sh"),
                            change, f"{self.cfg['owner']}/{repo}"],
                           stdout=out, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
                           env=env, cwd=self.cfg["habitat_dir"], start_new_session=True)
         out.close()  # the child holds its own descriptor
-        b = {"repo": repo, "change": change, "issue": issue, "cid": cid, "path": path,
+        b = {"repo": repo, "change": change, "issue": issue, "cid": cid, "cname": cname, "path": path,
              "proc": proc, "pid": getattr(proc, "pid", None), "seen": 0}
         self.running.append(b)
         self.save()

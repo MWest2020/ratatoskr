@@ -92,7 +92,8 @@ def main():
     late = {}   # filled once run_turn exists: a merged proposal wakes the hub
     try_build, build_tick = build_wiring.setup(
         factory, AGENTS, HUB, ME_NAME, send,
-        after_merge=lambda m: late["after_merge"](m) if "after_merge" in late else None)
+        after_merge=lambda m: late["after_merge"](m) if "after_merge" in late else None,
+        after_fail=lambda b, t: late["after_fail"](b, t) if "after_fail" in late else None)
     try_factory, try_yes, factory_tick = factory_wiring.setup(
         AGENTS, HUB, ME_NAME, send, CHANNELS, factory["runs"], BASE)
     run_turn = agent_turn.build_turn(AGENTS, HUB, reg, send, CHANNELS, PUB2NAME, ROOT,
@@ -106,7 +107,7 @@ def main():
     room = room_flow.build(ROOMS, AGENTS, send, run_turn,
                            (read_nsec, NPUBS.get("orchestrator")), PUB2NAME)
 
-    late["try_propose"], propose_tick, late["after_merge"] = propose_wiring.setup(
+    late["try_propose"], propose_tick, late["after_merge"], late["after_fail"] = propose_wiring.setup(
         factory, AGENTS, HUB, send, PUB2NAME, build_wiring.builds_of(build_tick), fetch, run_turn)
     reporting.report_missing_memberships(run, AGENTS, CHANNELS, PUB2NAME)
     name2pub = {h: p for p, h in PUB2NAME.items()}   # so we do not answer agents

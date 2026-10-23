@@ -91,4 +91,14 @@ def setup(cfg, agents, hub, send, pub2name, builds, fetch, run_turn, issues=gh_i
                  f"`!build {m['repo']} {m['change']} {m['issue']}` on the first line.",
                  "", "", "propose-merged", followup=True)
 
-    return try_propose, tick, after_merge
+    def after_fail(b, text):
+        """A failed build wakes the hub too: retry or tell Mark (the daily build
+        budget caps retries)."""
+        msgs = fetch(b["cid"]) or []
+        run_turn(hub, b.get("cname", ""), b["cid"], msgs, max(len(msgs) - 1, 0),
+                 f"The build of `{b['change']}` on {b['repo']} failed: {text} "
+                 f"(issue {b['repo']}#{b['issue']}). Decide: start it again with `!build` "
+                 "if the cause is gone, or tell Mark what blocks it.",
+                 "", "", "build-failed", followup=True)
+
+    return try_propose, tick, after_merge, after_fail

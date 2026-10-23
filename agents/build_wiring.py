@@ -16,7 +16,8 @@ import issues as gh_issues
 
 
 def setup(cfg, agents, hub, human, send, issues=gh_issues, log=print, builds=None,
-          merger=build_merge, now=time.time, deployer=None, after_merge=None):
+          merger=build_merge, now=time.time, deployer=None, after_merge=None,
+          after_fail=None):
     builds = builds or build_runner.Builds(cfg)
     merging = builds.merging   # PRs waiting for their checks (phase 2), persisted
     deploying = builds.deploying   # merges on their way to the homelab (phase 3)
@@ -62,6 +63,8 @@ def setup(cfg, agents, hub, human, send, issues=gh_issues, log=print, builds=Non
         b.setdefault("verdicts", []).append(text.splitlines()[0])
         if kind == "done":
             open_pr(b, detail["branch"])
+        elif kind == "failed" and after_fail:
+            after_fail(b, text)   # the hub decides: retry, or tell Mark
 
     def open_pr(b, branch):
         """The chain passed every role: a PR, merged later once CI agrees."""
