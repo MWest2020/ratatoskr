@@ -77,7 +77,10 @@ def main(argv=None):
         done.append("identity in ratatoskr")
         sd = yaml.safe_load(steps.run(["sops", "-d", os.path.join(ROOT, "secrets", "identities.yaml")],
                                       cwd=ROOT, env=steps.SOPS_ENV))
-        steps.relay_membership(name, pub, nsec, [chans[c] for c in spec["channels"]],
+        # Every agent also posts in #statistics and #escalatie (reporting.py); the
+        # first live role was no member there and those posts would fail silently.
+        always = [c for c in ("statistics", "escalatie") if c in chans and c not in spec["channels"]]
+        steps.relay_membership(name, pub, nsec, [chans[c] for c in spec["channels"] + always],
                                sd["identities"]["orchestrator"]["nsec"], spec["mandate"])
         done.append("relay and channels")
         factory_ops.room_members_add(name, spec["channels"])
