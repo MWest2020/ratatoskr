@@ -33,7 +33,8 @@ class Consult(unittest.TestCase):
         def fake_run(provider, system, prompt, **k):
             who = system.split("You are ", 1)[1].split(".", 1)[0]
             prompts.append((who, prompt))
-            return {"answer": answers[who], "error": ""}
+            a = answers[who]
+            return {"answer": a.pop(0) if isinstance(a, list) else a, "error": ""}
         with tempfile.TemporaryDirectory() as root, \
              mock.patch.object(providers, "run", fake_run), \
              mock.patch("reporting.report_run"), \
@@ -52,7 +53,7 @@ class Consult(unittest.TestCase):
             "odin": "!consult architect,reviewer Is one publication end to end an MVP?\nAsking.",
             "architect": "Smallest path: ingest, pseudonymise, search.",
             "reviewer": "Judge PII recall on one document."})
-        self.assertEqual([who for who, _ in sent], ["odin", "architect", "reviewer"])
+        self.assertEqual([who for who, _ in sent][:3], ["odin", "architect", "reviewer"])
         self.assertEqual(sent[0][1], "Asking.")              # the marker is not posted
         arch = dict(prompts)["architect"]
         self.assertIn("Is one publication end to end an MVP?", arch)
@@ -68,7 +69,7 @@ class Consult(unittest.TestCase):
         sent, prompts = self.run_hub({
             "odin": "!consult architect,reviewer,bouwer,odin,ghost q",
             "architect": "a", "reviewer": "r", "bouwer": "b"})
-        self.assertEqual([w for w, _ in prompts], ["odin", "architect", "reviewer"])
+        self.assertEqual([w for w, _ in prompts][:3], ["odin", "architect", "reviewer"])
         note = next(t for who, t in sent if t.startswith("⚠ not consulted"))
         for why in ("bouwer: at most 2", "odin is not an agent to consult",
                     "ghost is not an agent to consult"):
@@ -88,6 +89,28 @@ class Consult(unittest.TestCase):
     def test_only_the_hub_is_told(self):
         self.assertEqual(consult.clause("architect", "odin"), "")
         self.assertIn("!consult", consult.clause("odin", "odin"))
+
+
+
+class ConsultFollowUp(Consult):
+    """2026-10-23: odin announced its next step after a consult and was never
+    woken to take it. Now it gets one turn with the answers, and no more."""
+
+    def test_the_hub_acts_on_the_answers_once(self):
+        sent, prompts = self.run_hub({
+            "odin": ["!consult architect,reviewer Is the plan right?\nAsking.",
+                     "!consult architect again?\nOpening the issue."],
+            "architect": "Right, with a manifest.", "reviewer": "Go, with a provenance test."})
+        self.assertEqual([w for w, _ in prompts], ["odin", "architect", "reviewer", "odin"])
+        last = prompts[-1][1]
+        self.assertIn("**architect:** Right, with a manifest.", last)
+        self.assertIn("**reviewer:** Go, with a provenance test.", last)
+        self.assertIn("is this an MVP?", last)
+        self.assertIn("⚠ no consult from a follow-up turn", sent[-1][1])
+
+    def test_no_answers_no_follow_up(self):
+        sent, prompts = self.run_hub({"odin": "!consult architect q", "architect": ""})
+        self.assertEqual([w for w, _ in prompts], ["odin", "architect"])
 
 
 if __name__ == "__main__":

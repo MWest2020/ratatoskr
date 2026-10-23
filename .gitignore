@@ -24,3 +24,5 @@ listener.log
 listener.log.*
 # chat agents' declared skills, copied at listener start (agents/agent_skills.py)
 .claude/skills/
+# read-only clones of the factory's readable repos (agents/repo_read.py)
+.repos/

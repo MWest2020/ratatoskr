@@ -12,7 +12,11 @@ Limits, enforced here and not in a prompt:
 
 - only the hub's own answer, FIRST line (a quote further down never acts);
 - at most MAX agents per answer, existing ones, not the hub itself;
-- a consulted agent's answer is never read for `!consult`, so no chains.
+- a consulted agent's answer is never read for `!consult`, so no chains;
+- once they have answered, the hub gets ONE follow-up turn with their answers
+  (2026-10-23: odin wrote "then I open the issues and !propose" after its
+  consult, and nothing ever woke it to do so). That turn cannot consult or
+  start a session, so it ends there.
 """
 import re
 
@@ -57,6 +61,15 @@ def prompt_for(question, human_message, hub):
     return (f"{hub} consults you on Mark's message. Answer the question for your part, "
             f"as your contract says; you cannot consult others yourself.\n\n"
             f"{hub}'s question: {question}\n\nMark's message:\n{human_message}")
+
+
+def followup_for(answers, human_message):
+    """The hub's prompt once the consulted agents have answered."""
+    return ("The agents you consulted have answered:\n\n" + "\n\n".join(answers)
+            + "\n\nAct on it now: take the next step you announced (an issue, "
+            "`!propose`, `!build`), or tell Mark in one message what blocks it. "
+            "You cannot consult again or start a session from this turn.\n\n"
+            f"Mark's message, for reference:\n{human_message}")
 
 
 def clause(handle, hub):

@@ -26,6 +26,7 @@ import build_wiring
 import factory_wiring
 import relay
 import replies
+import repo_read
 import room_flow
 import rooms
 import session_followup
@@ -91,6 +92,7 @@ def main():
 
     session_post, try_session = session_wiring.build(reg, AGENTS, send, HUB)
     factory = build.load()
+    read_tick = repo_read.ticker(factory, ROOT, time.time)   # .repos/<name> for chat turns
     late = {}   # filled once run_turn exists: a merged proposal wakes the hub
     try_build, build_tick = build_wiring.setup(
         factory, AGENTS, HUB, ME_NAME, send,
@@ -182,6 +184,7 @@ def main():
         session_followup.wake_hub(reg, HUB, fetch, run_turn)  # report reaches the hub
         build_tick()            # progress of running habitat chains
         factory_tick()          # roles the factory is making
+        read_tick()             # readable repos, at most every ten minutes
         propose_tick()          # changes being written
         notify.flush()          # deliver what the push cooldown held back
         time.sleep(POLL)

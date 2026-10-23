@@ -5,6 +5,9 @@ owner: MWest2020
 # Repositories odin may start a habitat build on. alma is not a repository and
 # is never a target; production lives outside this list on purpose.
 repos: [ratatoskr, handbook, wordsworth, habitat, skill-forge, Wanderer, zettelkast, Gitsweeper]
+# Readable by every chat agent as .repos/<name>/ (agents/repo_read.py). Its own
+# list: a private repository is never readable by accident.
+readable: [ratatoskr, handbook, wordsworth, habitat]
 builds_per_day: 6
 # Budget per habitat role run (HABITAT_MAX_BUDGET_USD). $5 was too tight for a
 # real change: wordsworth ingest-records-source's builder hit it at 86 turns
