@@ -18,6 +18,22 @@ on the **first** line of odin's answer (`agents/consult.py`).
   speak in that channel. Anyone refused is named in the channel with the
   reason.
 - **No chains.** A consulted agent's answer is not read for `!consult`.
+- **Then odin acts.** Once they have answered, odin gets one follow-up turn
+  with their answers, to take the step it announced (an issue, `!propose`,
+  `!build`) or to tell Mark what blocks it. That turn cannot consult again or
+  start a session, so the exchange ends there. Before 2026-10-23 nothing woke
+  odin after a consult, and its "then I open the issues" never happened.
+
+## The consulted agents can read the code
+
+A chat turn may only read inside the listener tree. So the listener keeps a
+shallow clone of main for each repository in `agents/factory.yml`
+`readable` under `.repos/<name>/` (gitignored; `agents/repo_read.py`),
+refreshed at most every ten minutes, and every agent is told where they are.
+Nothing about them is writable: chat agents have Write and Edit denied.
+`readable` is its own list rather than `repos`, so a private repository is
+never readable by accident. Before this, the reviewer judged the wordsworth
+pilot plan with "LIMIT: I can't read wordsworth".
 
 ## Why `!route` was not enough
 

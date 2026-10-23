@@ -11,6 +11,7 @@ import re
 import agent_skills
 import build
 import consult
+import repo_read
 import propose
 import factory_wiring
 import prompts
@@ -78,6 +79,7 @@ def build_turn(agents, hub, reg, send, channels, pub2name, root, try_session, lo
                               + build.clause(handle, hub, factory or {})
                               + factory_wiring.clause(handle, hub)
                               + consult.clause(handle, hub)
+                              + repo_read.clause(factory or {})
                               + propose.clause(handle, hub)
                               + agent_skills.clause(cfg.get("skills")), p,
                               model=cfg.get("model"),
@@ -95,6 +97,9 @@ def build_turn(agents, hub, reg, send, channels, pub2name, root, try_session, lo
         ck = consult.read_marker(ans) if handle == hub else None
         if ck:
             text = consult.strip_marker(text)
+            if followup:      # the follow-up to a consult ends the exchange
+                text += "\n\n⚠ no consult from a follow-up turn"
+                ck = None
         if try_propose and handle == hub and propose.read_marker(ans):
             try_propose(ans, handle, cname, cid, msgs, writer)
             text = text.split("\n", 1)[1].strip() if "\n" in text else ""
@@ -124,9 +129,15 @@ def build_turn(agents, hub, reg, send, channels, pub2name, root, try_session, lo
                                          lambda h: may_speak(h, cname, cid))
             if refused:
                 send(cid, "⚠ not consulted: " + "; ".join(refused), cfg["nsec"], cfg["npub"])
+            answers = []
             for name in take:
-                run_turn(name, cname, cid, msgs, i, consult.prompt_for(ck[1], content, hub),
-                         writer, mid, "consult")
+                _, said = run_turn(name, cname, cid, msgs, i,
+                                   consult.prompt_for(ck[1], content, hub), writer, mid, "consult")
+                if said:
+                    answers.append(f"**{name}:** {said}")
+            if answers:
+                run_turn(hub, cname, cid, msgs, i, consult.followup_for(answers, content),
+                         writer, mid, "consult-done", followup=True)
         return ans, posted
 
     return run_turn
