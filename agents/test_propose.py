@@ -173,3 +173,16 @@ class ArchiveAfterDone(Wiring):
             self.done({"repo": "wordsworth", "change": "add-x", "issue": 9, "cid": "c",
                        "kind": kind})
         self.assertEqual(self.builds.merging, [])
+
+
+class LongSummary(unittest.TestCase):
+    """2026-10-24: odin's summaries ran to ~400 characters and were dropped."""
+    LONG = "!propose wordsworth pilot-ingest-manifest " + "Extend the ingest. " * 20
+
+    def test_a_long_summary_is_read(self):
+        self.assertEqual(propose.read_marker(self.LONG)[1], "pilot-ingest-manifest")
+
+    def test_a_line_that_does_not_parse_is_said(self):
+        self.assertIn("not understood", propose.unread("!propose wordsworth X Bad id."))
+        self.assertEqual(propose.unread(self.LONG), "")
+        self.assertEqual(propose.unread("no marker"), "")
