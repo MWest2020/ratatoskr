@@ -64,6 +64,6 @@ channels:
     id: f7324a19-531f-44ec-b12c-ac3106575f78
     doel: shared room — agents pick up work by contract, every piece of work is a GitHub issue (change shared-room)
     room:
-      members: [architect, bouwer, reviewer]
+      members: [architect, bouwer, reviewer, pilotleider]
       repos: [ratatoskr, handbook, wordsworth, habitat]   # the first is the default
       max_hops: 3
