@@ -73,6 +73,14 @@ events were already reported, and the PR number. After a listener restart
 (every deploy), it goes on from there without repeating a comment. A chain
 that ended while the listener was down is closed with what its run file says.
 
+The chain itself survives the restart too. It runs in its own transient scope
+(`systemd-run --user --scope`, see `agents/detach.py`), because the unit's
+`KillMode=control-group` otherwise stops every child with the listener; that
+is how the first propose-road build died on 2026-10-23. Propose sessions run
+the same way. A chain that has ended leaves the running list before its
+failure is reported, so the hub's retry is not refused as "another build is
+still running".
+
 ## After the merge: deploy to the homelab
 
 For a repository with a recipe under `deploy:` in `agents/factory.yml`

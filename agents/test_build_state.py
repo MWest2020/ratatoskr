@@ -93,3 +93,33 @@ class ProposeSurvivesRestart(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class EndedChainLeavesFirst(unittest.TestCase):
+    """2026-10-23: a chain killed by a restart woke odin, whose retry was refused
+    because the dead chain still counted as running."""
+
+    def test_the_hub_sees_no_running_chain_when_told_it_failed(self):
+        import tempfile
+        import build_runner
+        with tempfile.TemporaryDirectory() as t:
+            builds = build_runner.Builds({"runs": t}, popen=None)
+            path = f"{t}/r.log"
+            open(path, "w").write("{}\n=== keten: rol architect ===\n")
+
+            class Gone:
+                def poll(self):
+                    return -1
+            builds.running.append({"path": path, "proc": Gone(), "seen": 0})
+            seen = []
+            builds.tick(lambda b, kind, role, d: seen.append((kind, len(builds.running))))
+        self.assertIn(("failed", 0), seen)
+
+
+class Detach(unittest.TestCase):
+    def test_wrapped_in_a_scope_when_systemd_is_there(self):
+        import detach
+        self.assertEqual(detach.argv(["x"], lambda n: "/usr/bin/" + n, {"XDG_RUNTIME_DIR": "/r"})[-1], "x")
+        self.assertEqual(detach.argv(["x"], lambda n: "/usr/bin/" + n, {"XDG_RUNTIME_DIR": "/r"})[0],
+                         "systemd-run")
+        self.assertEqual(detach.argv(["x"], lambda n: None, {}), ["x"])

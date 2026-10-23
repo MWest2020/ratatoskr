@@ -21,6 +21,8 @@ import re
 import subprocess
 import time
 
+import detach
+
 ROLE = re.compile(r"^=== keten: rol (\w+) ===")
 BRANCH = re.compile(r"^\[dispatch\] branch=(\S+)")
 STORE = re.compile(r"^\[dispatch\] \d+ artefact\(en\) -> (\S+)")
@@ -122,8 +124,9 @@ class Builds:
                    KUBECTL=self.cfg["kubectl"], HABITAT_LOGDIR=self.cfg["logdir"],
                    CLAUDE_CREDS_FILE="",
                    HABITAT_MAX_BUDGET_USD=f"{float(self.cfg.get('max_budget_usd', 5)):.2f}")
-        proc = self.popen([os.path.join(self.cfg["habitat_dir"], "dispatch", "chain.sh"),
-                           change, f"{self.cfg['owner']}/{repo}"],
+        proc = self.popen(detach.argv([os.path.join(self.cfg["habitat_dir"], "dispatch",
+                                                    "chain.sh"),
+                                       change, f"{self.cfg['owner']}/{repo}"]),
                           stdout=out, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
                           env=env, cwd=self.cfg["habitat_dir"], start_new_session=True)
         out.close()  # the child holds its own descriptor
@@ -137,19 +140,22 @@ class Builds:
         """Report what is new; drop chains that have ended."""
         changed = False
         for b in list(self.running):
+            code = b["proc"].poll()          # before reading: an exit's last lines count
             with open(b["path"]) as fh:
                 lines = fh.read().splitlines()[1:]
             evs = events(lines)
+            if code is not None:
+                # off the list before any event: a failure wakes the hub, whose
+                # retry was refused as "another build is still running" (2026-10-23)
+                self.running.remove(b)
+                self.save()
+                changed = True
             for kind, role, detail in evs[b["seen"]:]:
                 on_event(b, kind, role, detail)
                 changed = True
             b["seen"] = len(evs)
-            code = b["proc"].poll()
-            if code is not None:
-                if not any(k in ("failed", "done") for k, _, _ in evs):
-                    tail = " / ".join(lines[-3:])[-300:] or "no output"
-                    on_event(b, "failed", "chain", {"why": f"exit {code}: {tail}"})
-                self.running.remove(b)
-                changed = True
+            if code is not None and not any(k in ("failed", "done") for k, _, _ in evs):
+                tail = " / ".join(lines[-3:])[-300:] or "no output"
+                on_event(b, "failed", "chain", {"why": f"exit {code}: {tail}"})
         if changed:
             self.save()
