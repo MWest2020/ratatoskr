@@ -97,3 +97,9 @@ identities:
     pubkey_hex: 50fafd69e6d2076e79f0cb488f428ab2fc76decabf2b63e4d9500f656e7b1790
     npub: npub12ra0660x6grku70sedyg7s52kt78dhk2hu4k8exe2q8k2mnmz7gqjduvnt
     aangemaakt: '2026-09-15'
+  pilotleider:
+    rol: chat-agent
+    status: actief
+    pubkey_hex: 9bd7f09e3a6862d068a15493aade05e8492b58b788e51829b2f02b178b0e41e9
+    npub: npub1n0tlp836dp3dq69p2jf64hs9apyjkk9h3rj3s2dj7q430zcwg85s93cejp
+    aangemaakt: '2026-10-23'
