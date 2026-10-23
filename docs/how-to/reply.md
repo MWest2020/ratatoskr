@@ -31,3 +31,13 @@ small quote of the message it answers.
 | send with `reply_to`, refused when not 64 hex | `chat/actions.py`, `chat/server.py` |
 | `reply_to` on every message, from the tags | `chat/threads.py`, `chat/read_routes.py` |
 | who a reply addresses | `agents/replies.py`, `agents/triggers.py`, `agents/room_flow.py` |
+
+## How it is tested
+
+- **Unit:** `chat/test_threads.py` covers the parent read from the tags, the
+  send with `--reply-to`, and a malformed id refused. `agents/test_replies.py`
+  covers the order against @mention, the scope, and the room's issue.
+- **Browser, against the installation:**
+  `NAAM=… WW=… node chat/e2e/reply.js` posts two messages in
+  `#r6-smoke-4692` (not polled by the listener), so no agent is triggered.
+  It checks the bar, the relay's `reply` tag and the quote.
