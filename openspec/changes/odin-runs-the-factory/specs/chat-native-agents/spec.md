@@ -47,3 +47,29 @@ proposal with `!yes`, from his current pubkey.
 
 - **WHEN** odin proposes to archive a channel
 - **THEN** nothing is archived until Mark answers `!yes`
+
+### Requirement: The hub consults other agents itself
+
+The hub MAY put `!consult <agent>[,<agent>] <question>` on the first line of
+its answer. The listener SHALL then give each named agent (at most two;
+existing, not the hub, and allowed to speak in that channel) one turn in the
+same channel. That turn gets Mark's message and the hub's question, and the
+agent answers under its own name. A consulted agent's answer SHALL NOT be read
+for `!consult`, so consulting never chains. An agent that is refused SHALL be
+named in the channel with the reason.
+
+Added on Mark's decision of 2026-10-23 ("ja, bouw !consult"). Until then odin
+had to ask Mark to post its questions to other agents: a `!route`d message is
+posted under odin's key, and the loop guard skips agent messages, so nobody
+answered it.
+
+#### Scenario: Odin asks architect and reviewer
+
+- **WHEN** odin answers with `!consult architect,reviewer Is this an MVP?`
+- **THEN** after odin's answer, architect and then reviewer answer in the same
+  channel, each with Mark's message and odin's question
+
+#### Scenario: No chains
+
+- **WHEN** a consulted agent writes `!consult bouwer …` itself
+- **THEN** bouwer gets no turn

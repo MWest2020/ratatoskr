@@ -9,6 +9,7 @@ and a hand-off cannot be written as "another iteration of the loop".
 import re
 
 import build
+import consult
 import factory_wiring
 import prompts
 import providers
@@ -24,7 +25,7 @@ MAX_CTX = 8
 # Markers count on an answer's FIRST line only (a quote further down must never
 # act). On 2026-10-23 the prompt told agents the LAST line, odin obeyed, and its
 # `!sessie` was dropped without a word while it told Mark a session had started.
-MARKER = re.compile(r"^!(sessie|build|role|channel|close)\b", re.M)
+MARKER = re.compile(r"^!(sessie|build|role|channel|close|consult)\b", re.M)
 
 
 def misplaced(answer):
@@ -38,7 +39,8 @@ def misplaced(answer):
 
 
 def build_turn(agents, hub, reg, send, channels, pub2name, root, try_session, log=print,
-               human="mark", try_build=None, factory=None, try_factory=None):
+               human="mark", try_build=None, factory=None, try_factory=None,
+               may_speak=lambda handle, cname, cid: True):
     """`run_turn(...) -> (answer, posted)`, closed over the listener's state."""
 
     def run_turn(handle, cname, cid, msgs, i, content, writer, mid, reason,
@@ -72,7 +74,8 @@ def build_turn(agents, hub, reg, send, channels, pub2name, root, try_session, lo
                               + readshell.clause(cfg)
                               + session_inbox.clause(handle, hub)
                               + build.clause(handle, hub, factory or {})
-                              + factory_wiring.clause(handle, hub), p,
+                              + factory_wiring.clause(handle, hub)
+                              + consult.clause(handle, hub), p,
                               model=cfg.get("model"), allow=cfg.get("allow"),
                               deny=cfg.get("deny"),
                               progress=reporting.progress_poster(send, cid, cfg, handle))
@@ -84,6 +87,9 @@ def build_turn(agents, hub, reg, send, channels, pub2name, root, try_session, lo
         mk = sessions.read_own_marker(ans)
         text = sessions.strip_own_marker(ans) if mk else ans
         text += misplaced(ans)
+        ck = consult.read_marker(ans) if handle == hub else None
+        if ck:
+            text = consult.strip_marker(text)
         if try_factory and handle == hub:
             try_factory(ans, handle, cname, cid)
         if try_build and build.read_marker(ans):
@@ -99,6 +105,16 @@ def build_turn(agents, hub, reg, send, channels, pub2name, root, try_session, lo
             # The agent wrote the marker, but the question came from `writer`.
             try_session(ans, handle, writer, cname, cid, mid, own=True)
         reporting.report_run(send, channels, handle, cname, cfg, r)
+        if ck:
+            # Only the hub's own answer is read for !consult, and the consulted
+            # turns below are not: no chains (consult.py).
+            take, refused = consult.plan(ck[0], hub, agents,
+                                         lambda h: may_speak(h, cname, cid))
+            if refused:
+                send(cid, "⚠ not consulted: " + "; ".join(refused), cfg["nsec"], cfg["npub"])
+            for name in take:
+                run_turn(name, cname, cid, msgs, i, consult.prompt_for(ck[1], content, hub),
+                         writer, mid, "consult")
         return ans, posted
 
     return run_turn

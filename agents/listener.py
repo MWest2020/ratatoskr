@@ -91,7 +91,8 @@ def main():
         AGENTS, HUB, ME_NAME, send, CHANNELS, factory["runs"], BASE)
     run_turn = agent_turn.build_turn(AGENTS, HUB, reg, send, CHANNELS, PUB2NAME, ROOT,
                                      try_session, human=ME_NAME, try_build=try_build,
-                                     factory=factory, try_factory=try_factory)
+                                     factory=factory, try_factory=try_factory,
+                                     may_speak=lambda h, c, i: scoped(h, c, i))
     # In a room the listener speaks as the orchestrator (the channel owner), and
     # those lines are never input: otherwise a claim line would trigger a turn.
     orch_pub = name2pub_of(PUB2NAME, "orchestrator")
