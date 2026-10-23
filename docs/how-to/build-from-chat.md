@@ -43,7 +43,9 @@ image. Each role leaves two traces:
 - **a comment on the issue,** with PASS or FAIL, the run report's verdict,
   turns and cost, and the branch. A FAIL also lists the role's own findings,
   blocking first, so the hub can decide between a retry and a fix without
-  reading the artifacts (2026-10-23: odin saw only "verdict failed");
+  reading the artifacts (2026-10-23: odin saw only "verdict failed"). A
+  verdict without findings, like the architect's, shows its summary and
+  risks instead;
 - **a line in the channel the build came from:** `✅ architect: PASS …`,
   `❌ builder: FAIL …`, `🏁 Chain passed …`.
 

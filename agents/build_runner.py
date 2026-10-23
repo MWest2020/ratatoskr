@@ -67,6 +67,12 @@ def findings(store, limit=4):
     except (OSError, ValueError, TypeError, StopIteration):
         return []
     rows = sorted(d.get("findings") or [], key=lambda f: f.get("severity") != "blocking")
+    if not rows:
+        # the architect's verdict carries summary/risks/plan, not findings
+        # (2026-10-24: its FAIL showed nothing, and odin asked Mark for the cause)
+        short = lambda v: " ".join(str(v).split())[:600]  # noqa: E731
+        return ([f"- [summary] {short(d['summary'])}"] if d.get("summary") else []) + \
+            [f"- [risk] {short(r)}" for r in (d.get("risks") or [])[:limit - 1]]
     return [f"- [{f.get('severity', '?')}] {f.get('location', '')}: "
             f"{' '.join(str(f.get('description', '')).split())[:600]}" for f in rows[:limit]]
 

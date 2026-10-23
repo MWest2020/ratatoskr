@@ -53,3 +53,20 @@ worktree with "must be run in a work tree": `~/ratatoskr` carries
 - **A failing `git status` is now an error with its reason.**
 - **Every session worktree gets `core.bare=false`** in its own worktree
   config (`agents/work_tree.py`).
+
+## Amending a change
+
+The same marker with an id that already exists on main amends that change
+instead of being refused. Use it when a build stops on something that belongs
+in the change: an open question the architect settled, or reviewer findings
+the next builder must see. A retry rebuilds from main, so a finding that is
+only on the issue never reaches the next builder. The summary carries the
+decision and the findings; the session edits the change in place
+(`openspec/changes/<id>/` only, as always), and the PR is titled
+`openspec: amend <id>`. After the merge odin is woken to build again.
+
+2026-10-24, wordsworth `pilot-ingest-manifest`: the reviewer failed the first
+build (scratch files committed, a file over the line limit), the retry's
+architect stopped on an open question it had answered but could not write
+down, and odin had no road but asking Mark. The git half of the road moved to
+`agents/propose_git.py` for the line limit.
