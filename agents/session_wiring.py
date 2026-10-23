@@ -11,6 +11,7 @@ start en een startbericht, en dat is goed los te testen.
 ze gebruikte. De afhankelijkheden gaan erin in plaats van dat ze uit een module
 komen, zodat een test geen relay, geen agents en geen SOPS nodig heeft.
 """
+import handbook_read
 import sessions
 
 
@@ -37,6 +38,7 @@ def build(reg, agents, send, hub, log=print):
         if not mk:
             return
         type_name, task = mk
+        stale = handbook_read.refresh()   # sessions read handbook main, not a stale copy
         s, reason = reg.start(type_name, task, starter, requester, cname, cid, message_id)
         if not s:
             log(f"[listener] sessie geweigerd ({starter}→{requester}/{type_name}): {reason}",
@@ -49,6 +51,7 @@ def build(reg, agents, send, hub, log=print):
             flush=True)
         session_post(s, f"▶️ session `{type_name}` started by @{starter}{on_behalf} "
                         f"(max {s['max_s'] // 60} min) — "
-                        f"task: {task[:120] or '(none)'}")
+                        f"task: {task[:120] or '(none)'}"
+                        + (f"\n⚠ handbook docs not refreshed: {stale}" if stale else ""))
 
     return session_post, try_session

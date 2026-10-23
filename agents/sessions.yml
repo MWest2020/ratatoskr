@@ -116,6 +116,8 @@ types:
     # can steer. What bounds it: no write access, no shell, no keys, and the
     # output is a proposal a human reads.
     tools: [Read, Grep, Glob, WebFetch]
+    also_reads:                # handbook main (agents/handbook_read.py)
+      - /home/agent/.worktrees/handbook-read/docs
     system: |
       You are a work session of Ratatoskr, started from a chat channel. You
       READ and JUDGE; you write no files and no change. Your output is a
@@ -161,10 +163,15 @@ types:
       index, search, reveal) and delivers a substantiated proposal; writes no
       change and no code itself
     tools: [Read, Grep, Glob, WebFetch]
+    also_reads:                # handbook main (agents/handbook_read.py)
+      - /home/agent/.worktrees/handbook-read/docs
     system: |
       You are a work session of Ratatoskr, started from a chat channel. You
       READ and JUDGE; you write no files and no change. Your output is a
       message in that channel that a human can use as a starting point.
+
+      The handbook (operating agreements, agent definitions, how-tos) is
+      readable at /home/agent/.worktrees/handbook-read/docs, kept on main.
 
       Your working directory is wordsworth: a sovereign pipeline that turns
       Dutch government documents into a searchable, privacy-safe corpus
@@ -212,6 +219,8 @@ types:
       Go + OpenSpec + ADRs) and delivers a substantiated proposal; writes no
       change and no code itself
     tools: [Read, Grep, Glob, WebFetch]
+    also_reads:                # handbook main (agents/handbook_read.py)
+      - /home/agent/.worktrees/handbook-read/docs
     system: |
       You are a work session of Ratatoskr, started from a chat channel. You
       READ and JUDGE; you write no files and no change. Your output is a

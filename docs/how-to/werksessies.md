@@ -189,3 +189,12 @@ may consult or build, but not start another session. A session that wakes a
 turn that starts a session would be a loop. A session cut off by its time
 budget does not wake odin; its partial work is already in the channel.
 
+## Sessions read the handbook from main
+
+The ratatoskr, wordsworth and wanderer sessions may also read
+`~/.worktrees/handbook-read/docs` (`also_reads` in `agents/sessions.yml`).
+Before every session starts, `agents/handbook_read.py` moves that worktree to
+handbook `origin/main`, so a session never reads a stale copy. On 2026-10-23
+`~/handbook` itself was 14 commits behind. If the refresh fails, the session's
+start line says so (`⚠ handbook docs not refreshed: …`).
+
