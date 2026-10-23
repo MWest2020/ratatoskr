@@ -162,7 +162,7 @@ services:
   # De chat: PWA + API. Praat met de relay over het interne netwerk (buzz-net),
   # dus hij heeft de gepubliceerde relay-poort niet nodig.
   chat:
-    image: ghcr.io/mwest2020/ratatoskr-chat:0.16.0
+    image: ghcr.io/mwest2020/ratatoskr-chat:0.17.0
     env_file:
       - .env
     environment:

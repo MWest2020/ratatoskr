@@ -21,7 +21,7 @@
 - [x] Tests, mutation-checked.
 
 ## 4. Release and proof
-- [ ] `bash verify.sh` green; tag `chat-v0.17.0`; pin it in
+- [x] `bash verify.sh` green; tag `chat-v0.17.0`; pin it in
       `deploy/docker-compose.yml`; roll it out on the relay VM.
 - [ ] e2e: `after-deploy.sh` (api, connection and smoke), plus a reply in the
       browser that the relay shows with its `reply` tag.
