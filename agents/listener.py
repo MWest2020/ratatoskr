@@ -18,6 +18,7 @@ right it lacked; the listener acts, under conditions you can read.
 import os
 import time
 
+import agent_skills
 import agent_turn
 import bootstrap
 import build
@@ -54,6 +55,7 @@ BASE = CFG["registry_base"]
 AGENTS = bootstrap.build_agents(CFG, BASE, NPUBS)
 # Who answers in a channel when nobody is named. Checked here so a default that
 # cannot speak fails at startup instead of silently at the first message.
+agent_skills.install(AGENTS, ROOT)   # declared skills, readable from the turn's cwd
 DEFAULTS = bootstrap.load_channel_defaults(ROOT)
 ROOMS = rooms.load(ROOT)   # shared rooms: channels with a `room:` block
 bootstrap.check_channel_defaults(DEFAULTS, AGENTS)

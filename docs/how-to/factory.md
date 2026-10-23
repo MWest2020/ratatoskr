@@ -77,3 +77,21 @@ On `!yes` a channel is archived on the relay and marked `archived:` in
 `channels.yml`. A role leaves the run list and its identity becomes
 `inactief`, while its handbook definition stays as history. Odin cannot
 propose closing itself.
+
+## Skills reach the agent (phase 5)
+
+A chat agent's declared skills are now usable, not only declared:
+
+- **Installed:** at listener start, `agents/agent_skills.py` copies every
+  skill some agent declares from the skill-forge checkout
+  (`~/skill-forge/skills/<slug>/`) into `<listener>/.claude/skills/<slug>/`.
+  That is the project skills directory Claude Code reads from the turn's
+  working directory, and it is gitignored. A declared skill the checkout lacks
+  is logged. A skill no longer declared is removed.
+- **Allowed:** each turn gets `Skill(<slug>)` for that agent's own skills only.
+  Under `--permission-mode dontAsk` every other `Skill(...)` is refused, so the
+  coding session's own skills in `~/.claude/skills` stay out of reach.
+
+The habitat side is deferred on purpose: no execution facet declares a skill
+yet, and a mechanism for none is built for nobody. When one does, the role's
+skills go into the worker through git or the image, never as chat text.

@@ -8,6 +8,7 @@ and a hand-off cannot be written as "another iteration of the loop".
 """
 import re
 
+import agent_skills
 import build
 import consult
 import propose
@@ -78,7 +79,8 @@ def build_turn(agents, hub, reg, send, channels, pub2name, root, try_session, lo
                               + factory_wiring.clause(handle, hub)
                               + consult.clause(handle, hub)
                               + propose.clause(handle, hub), p,
-                              model=cfg.get("model"), allow=cfg.get("allow"),
+                              model=cfg.get("model"),
+                              allow=(cfg.get("allow") or []) + agent_skills.allow_rules(cfg.get("skills")),
                               deny=cfg.get("deny"),
                               progress=reporting.progress_poster(send, cid, cfg, handle))
         except Exception as e:  # incl. timeout: the turn must never crash
