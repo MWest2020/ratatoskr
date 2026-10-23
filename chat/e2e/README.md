@@ -11,6 +11,7 @@ en of de laag eronder ook echt aan staat.
     node chat/e2e/login-flow.js     # browser: inloggen, sessie, uitloggen
     node chat/e2e/ui.js           # browser: shell, kanalen, laden, token-modal
     node chat/e2e/xss.js          # regressietest op de GitHub-rendering
+    NAAM=… WW=… node chat/e2e/reply.js  # reply to a message: bar, relay e-tag, quote
     node chat/e2e/deeplink.js     # melding -> juiste kanaal
     node chat/e2e/offline-boot.js # koude start zonder tunnel, en herstel
     NAAM=… WW=… node chat/e2e/push-states.js  # zegt de app iets in ELKE meldingsstaat?

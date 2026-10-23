@@ -23,7 +23,11 @@
 ## 4. Release and proof
 - [x] `bash verify.sh` green; tag `chat-v0.17.0`; pin it in
       `deploy/docker-compose.yml`; roll it out on the relay VM.
-- [ ] e2e: `after-deploy.sh` (api, connection and smoke), plus a reply in the
-      browser that the relay shows with its `reply` tag.
-- [ ] Live: a reply to an agent's message gets that agent's answer without an
-      @.
+- [x] e2e: `after-deploy.sh` (api, connection and smoke), plus a reply in the
+      browser that the relay shows with its `reply` tag. 2026-10-23 on 0.17.0:
+      api 39/39, connection 7/7, smoke 12/12; `chat/e2e/reply.js` 6/6 in
+      #r6-smoke-4692. The temporary account was deleted afterwards.
+- [x] Live: a reply to an agent's message gets that agent's answer without an
+      @. 2026-10-23 20:20, #general: a reply to architect's message, with no @,
+      got `reply @architect` and architect answered, not odin (the channel's
+      default).
