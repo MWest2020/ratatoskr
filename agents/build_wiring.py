@@ -16,7 +16,7 @@ import issues as gh_issues
 
 
 def setup(cfg, agents, hub, human, send, issues=gh_issues, log=print, builds=None,
-          merger=build_merge, now=time.time, deployer=None):
+          merger=build_merge, now=time.time, deployer=None, after_merge=None):
     builds = builds or build_runner.Builds(cfg)
     merging = builds.merging   # PRs waiting for their checks (phase 2), persisted
     deploying = builds.deploying   # merges on their way to the homelab (phase 3)
@@ -98,7 +98,9 @@ def setup(cfg, agents, hub, human, send, issues=gh_issues, log=print, builds=Non
                            if not err else f"Merge of PR #{m['pr']} failed: {err}")
             say(m["cid"], (f"✅ merged PR #{m['pr']} ({detail})" if not err
                            else f"⛔ merge of PR #{m['pr']} failed: {err}") + tail)
-            if not err and deployer.recipe(m["repo"]):
+            if not err and after_merge:
+                after_merge(m)
+            if not err and m.get("kind") != "propose" and deployer.recipe(m["repo"]):
                 sha, why = merger.merged_sha(cfg["owner"], m["repo"], m["pr"])
                 if sha:
                     deploying.append({k: m[k] for k in ("repo", "issue", "cid")}
@@ -127,4 +129,9 @@ def setup(cfg, agents, hub, human, send, issues=gh_issues, log=print, builds=Non
         follow_merges()
         follow_deploys()
 
+    tick.builds = builds   # the propose road queues its PRs on the same follower
     return try_build, tick
+
+
+def builds_of(tick):
+    return tick.builds

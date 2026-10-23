@@ -103,3 +103,40 @@ class Flow(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ProposeIsNotDeployed(unittest.TestCase):
+    def test_a_merged_proposal_wakes_the_hub_and_is_not_deployed(self):
+        woke, deployed = [], []
+
+        class Merger:
+            def checks(self, *a):
+                return "merge", "2 checks passed"
+
+            def merge(self, *a):
+                return ""
+
+            def merged_sha(self, *a):
+                deployed.append("sha asked")
+                return "a" * 40, ""
+
+        class Deployer:
+            def recipe(self, repo):
+                return {"x": 1}
+
+        class Issues:
+            def comment(self, *a):
+                return ""
+        with tempfile.TemporaryDirectory() as t:
+            builds = build_runner.Builds({"owner": "MWest2020", "runs": t}, popen=None)
+            builds.merging.append({"repo": "wordsworth", "issue": 9, "cid": "c", "pr": 31,
+                                   "next": 0, "kind": "propose"})
+            _, tick = build_wiring.setup({"owner": "MWest2020", "runs": t}, {}, "odin", "mark",
+                                         lambda *a: True, issues=Issues(), builds=builds,
+                                         merger=Merger(), deployer=Deployer(),
+                                         after_merge=woke.append, log=lambda *a, **k: None)
+            builds.tick = lambda on_event: None
+            tick()
+        self.assertEqual(len(woke), 1)
+        self.assertEqual(deployed, [])
+        self.assertEqual(builds.deploying, [])

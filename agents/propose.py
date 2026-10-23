@@ -1,0 +1,142 @@
+# SPDX-License-Identifier: MIT
+"""`!propose <repo> <change-id> <one line>`: a decided change gets written.
+
+2026-10-23: odin, architect and reviewer decided `ingest-records-source` for
+wordsworth in #general, and then nobody could write it. No agent may write to a
+repository from a chat turn, and habitat's cage takes no chat text. The coding
+session had to write the change by hand.
+
+The propose road: the listener starts a WRITING session in a fresh worktree of
+the repository (work_tree.py: its own branch and a pre-push fence). It is told
+the decision (the channel's recent messages) and may write ONLY under
+`openspec/changes/<change-id>/`, with `openspec validate` as its only command.
+Then the listener, not the model, checks the result:
+
+- every changed path is under that directory;
+- `openspec validate <id> --strict` passes, by its exit code;
+
+and it commits, pushes the branch and opens a PR. That PR is merged once CI
+agrees, by the same road as a build (build_wiring). Chat text reaches a cage
+only through git, after review, which is what the habitat-bridge spec says.
+"""
+import os
+import re
+import subprocess
+
+import providers
+import work_tree
+
+MARKER = re.compile(r"^!propose\s+([A-Za-z0-9][A-Za-z0-9._-]{0,99})\s+"
+                    r"([a-z0-9][a-z0-9._-]{2,80})\s+(\S.{0,300})$")
+BASE = os.path.expanduser("~/.worktrees/propose")
+MAX_S = 900
+CLAUDE = os.environ.get("CLAUDE_BIN", "claude")
+
+SYSTEM = """You write ONE OpenSpec change, decided in a chat channel, and nothing else.
+Write only under openspec/changes/{cid}/: proposal.md (why, in the people's own
+words where quoted, and what changes), design.md (choices and rejected
+alternatives), tasks.md (each task names the test or check that proves it) and
+specs/<capability>/spec.md with ## ADDED/MODIFIED Requirements in the repo's
+style (read openspec/specs/ first; a MODIFIED requirement keeps its existing
+scenarios). Write only what was decided; anything open goes into the proposal
+as an open question, never as a requirement. Finish by running
+`openspec validate {cid} --strict` and fix it until it passes. Do not commit or
+push: the listener does that after checking your files."""
+
+
+def read_marker(answer):
+    first = (answer or "").strip().split("\n", 1)[0].strip()
+    m = MARKER.match(first)
+    return (m.group(1), m.group(2), m.group(3)) if m else None
+
+
+def tools(cid):
+    """Write and Edit fenced to the change's own directory; one command."""
+    d = f"./openspec/changes/{cid}/**"
+    return ["Read", "Grep", "Glob", f"Write({d})", f"Edit({d})",
+            f"Bash(openspec validate {cid} --strict)"]
+
+
+def transcript(msgs, pub2name, n=14):
+    """The decision as the channel holds it: the last messages, with authors."""
+    out = []
+    for m in (msgs or [])[-n:]:
+        who = pub2name.get(m.get("pubkey"), "someone")
+        out.append(f"--- {who}:\n{(m.get('content') or '').strip()[:4000]}")
+    return "\n".join(out)
+
+
+def start(clone, cid, summary, msgs, pub2name, requester, popen=subprocess.Popen,
+          create=work_tree.create):
+    """(job, "") or (None, reason). The job holds the worktree, branch and process."""
+    if os.path.isdir(os.path.join(clone, "openspec", "changes", cid)):
+        return None, f"a change `{cid}` already exists in the local clone"
+    try:
+        wt, branch = create(clone, BASE, f"propose-{cid}", requester)
+    except Exception as e:
+        return None, f"no worktree: {str(e)[:160]}"
+    if os.path.isdir(os.path.join(wt, "openspec", "changes", cid)):
+        return None, f"`{cid}` already exists on main"
+    prompt = (f"Change id: {cid}\nWhat was decided, in one line: {summary}\n\n"
+              f"The channel, oldest first:\n{transcript(msgs, pub2name)}")
+    out = open(os.path.join(wt, ".propose-run.jsonl"), "w")
+    proc = popen([CLAUDE, "-p", "--output-format", "stream-json", "--verbose",
+                  "--permission-mode", "dontAsk", "--model", "sonnet",
+                  "--append-system-prompt", SYSTEM.format(cid=cid),
+                  "--allowedTools", ",".join(tools(cid)),
+                  "--disallowedTools", "Task,KillShell,WebFetch,WebSearch"],
+                 stdin=subprocess.PIPE, stdout=out, stderr=subprocess.DEVNULL, text=True,
+                 cwd=wt, env=providers.agent_env(), start_new_session=True)
+    out.close()
+    proc.stdin.write(prompt)
+    proc.stdin.close()
+    return {"wt": wt, "branch": branch, "change": cid, "proc": proc, "summary": summary}, ""
+
+
+def check(job, run=subprocess.run):
+    """'' when the worktree holds a valid change and nothing else, else why not."""
+    wt, cid = job["wt"], job["change"]
+    st = run(["git", "-C", wt, "status", "--porcelain", "--untracked-files=all"],
+             capture_output=True, text=True).stdout
+    paths = [ln[3:] for ln in st.splitlines() if ln.strip()
+             and not ln[3:].startswith(".propose-run")]
+    if not paths:
+        return "the session wrote nothing"
+    stray = [p for p in paths if not p.startswith(f"openspec/changes/{cid}/")]
+    if stray:
+        return f"files outside openspec/changes/{cid}/: {stray[:5]}"
+    v = run(["openspec", "validate", cid, "--strict"], cwd=wt, capture_output=True, text=True)
+    if v.returncode != 0:
+        return "openspec validate failed: " + (v.stdout + v.stderr).strip()[-300:]
+    return ""
+
+
+def publish(job, repo, owner, run=subprocess.run):
+    """Commit, push the session branch, open the PR. (pr number, error)."""
+    wt, cid = job["wt"], job["change"]
+    steps = [["git", "-C", wt, "add", f"openspec/changes/{cid}"],
+             ["git", "-C", wt, "-c", "user.name=MWest2020", "-c",
+              "user.email=mwest2020@hotmail.com", "commit", "-q", "-m",
+              f"openspec: {cid}\n\n{job['summary']}\n\nWritten by a propose session on "
+              "odin's decision (ratatoskr agents/propose.py)."],
+             ["git", "-C", wt, "push", "-q", "-u", "origin", job["branch"]]]
+    for argv in steps:
+        p = run(argv, capture_output=True, text=True)
+        if p.returncode != 0:
+            return 0, (p.stderr or p.stdout).strip()[-200:]
+    p = run(["gh", "pr", "create", f"--repo={owner}/{repo}", f"--head={job['branch']}",
+             "--base=main", f"--title=openspec: {cid}",
+             f"--body={job['summary']}\n\nWritten by a propose session on odin's decision; "
+             "the listener merges it once every check passes."], capture_output=True, text=True)
+    m = re.search(r"/pull/(\d+)", p.stdout)
+    return (int(m.group(1)), "") if m else (0, (p.stderr or p.stdout).strip()[-200:])
+
+
+def clause(handle, hub):
+    if handle != hub:
+        return ""
+    return ("\n\nWhen a change is DECIDED (with architect/reviewer where it matters) but "
+            "not yet written, have it written: `!propose <repo> <change-id> <what was "
+            "decided, one line>` on the FIRST line of your answer. A writing session "
+            "turns this channel's decision into an OpenSpec change; the listener checks "
+            "it, opens a PR, merges it once CI passes, and then wakes you to build it.")

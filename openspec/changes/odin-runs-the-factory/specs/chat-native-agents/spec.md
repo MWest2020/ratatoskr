@@ -73,3 +73,21 @@ answered it.
 
 - **WHEN** a consulted agent writes `!consult bouwer …` itself
 - **THEN** bouwer gets no turn
+
+### Requirement: A decided change gets written without the coding session
+
+The hub MAY put `!propose <repo> <change-id> <summary>` on the first line of
+its answer, for a repository on the factory's list. The listener SHALL open an
+issue for it, and SHALL start a writing session in a fresh worktree that may
+write only under `openspec/changes/<change-id>/`, with `openspec validate` as
+its only command. When the session ends, the listener SHALL check that every
+changed path is under that directory and that
+`openspec validate <change-id> --strict` exits zero. Only then SHALL it commit,
+push the session branch and open a pull request. The PR SHALL be merged once
+every check passes and SHALL NOT be deployed. After the merge, the hub SHALL
+get one follow-up turn to build the change.
+
+#### Scenario: A stray file stops the proposal
+
+- **WHEN** the session also writes a file outside `openspec/changes/<id>/`
+- **THEN** no PR is opened, and the issue and the channel say which file

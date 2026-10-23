@@ -31,6 +31,7 @@ import session_followup
 import session_wiring
 import sessions
 import prompts
+import propose_wiring
 import notify
 import reporting
 import topology
@@ -88,19 +89,25 @@ def main():
 
     session_post, try_session = session_wiring.build(reg, AGENTS, send, HUB)
     factory = build.load()
-    try_build, build_tick = build_wiring.setup(factory, AGENTS, HUB, ME_NAME, send)
+    late = {}   # filled once run_turn exists: a merged proposal wakes the hub
+    try_build, build_tick = build_wiring.setup(
+        factory, AGENTS, HUB, ME_NAME, send,
+        after_merge=lambda m: late["after_merge"](m) if "after_merge" in late else None)
     try_factory, try_yes, factory_tick = factory_wiring.setup(
         AGENTS, HUB, ME_NAME, send, CHANNELS, factory["runs"], BASE)
     run_turn = agent_turn.build_turn(AGENTS, HUB, reg, send, CHANNELS, PUB2NAME, ROOT,
                                      try_session, human=ME_NAME, try_build=try_build,
                                      factory=factory, try_factory=try_factory,
-                                     may_speak=lambda h, c, i: scoped(h, c, i))
+                                     may_speak=lambda h, c, i: scoped(h, c, i),
+                                     try_propose=lambda *a: late["try_propose"](*a))
     # In a room the listener speaks as the orchestrator (the channel owner), and
     # those lines are never input: otherwise a claim line would trigger a turn.
     orch_pub = name2pub_of(PUB2NAME, "orchestrator")
     room = room_flow.build(ROOMS, AGENTS, send, run_turn,
                            (read_nsec, NPUBS.get("orchestrator")), PUB2NAME)
 
+    late["try_propose"], propose_tick, late["after_merge"] = propose_wiring.setup(
+        factory, AGENTS, HUB, send, PUB2NAME, build_wiring.builds_of(build_tick), fetch, run_turn)
     reporting.report_missing_memberships(run, AGENTS, CHANNELS, PUB2NAME)
     name2pub = {h: p for p, h in PUB2NAME.items()}   # so we do not answer agents
     for h in AGENTS:
@@ -170,6 +177,7 @@ def main():
         session_followup.wake_hub(reg, HUB, fetch, run_turn)  # report reaches the hub
         build_tick()            # progress of running habitat chains
         factory_tick()          # roles the factory is making
+        propose_tick()          # changes being written
         notify.flush()          # deliver what the push cooldown held back
         time.sleep(POLL)
 

@@ -10,6 +10,7 @@ import re
 
 import build
 import consult
+import propose
 import factory_wiring
 import prompts
 import providers
@@ -25,7 +26,7 @@ MAX_CTX = 8
 # Markers count on an answer's FIRST line only (a quote further down must never
 # act). On 2026-10-23 the prompt told agents the LAST line, odin obeyed, and its
 # `!sessie` was dropped without a word while it told Mark a session had started.
-MARKER = re.compile(r"^!(sessie|build|role|channel|close|consult)\b", re.M)
+MARKER = re.compile(r"^!(sessie|build|role|channel|close|consult|propose)\b", re.M)
 
 
 def misplaced(answer):
@@ -40,7 +41,7 @@ def misplaced(answer):
 
 def build_turn(agents, hub, reg, send, channels, pub2name, root, try_session, log=print,
                human="mark", try_build=None, factory=None, try_factory=None,
-               may_speak=lambda handle, cname, cid: True):
+               may_speak=lambda handle, cname, cid: True, try_propose=None):
     """`run_turn(...) -> (answer, posted)`, closed over the listener's state."""
 
     def run_turn(handle, cname, cid, msgs, i, content, writer, mid, reason,
@@ -75,7 +76,8 @@ def build_turn(agents, hub, reg, send, channels, pub2name, root, try_session, lo
                               + session_inbox.clause(handle, hub)
                               + build.clause(handle, hub, factory or {})
                               + factory_wiring.clause(handle, hub)
-                              + consult.clause(handle, hub), p,
+                              + consult.clause(handle, hub)
+                              + propose.clause(handle, hub), p,
                               model=cfg.get("model"), allow=cfg.get("allow"),
                               deny=cfg.get("deny"),
                               progress=reporting.progress_poster(send, cid, cfg, handle))
@@ -90,6 +92,9 @@ def build_turn(agents, hub, reg, send, channels, pub2name, root, try_session, lo
         ck = consult.read_marker(ans) if handle == hub else None
         if ck:
             text = consult.strip_marker(text)
+        if try_propose and handle == hub and propose.read_marker(ans):
+            try_propose(ans, handle, cname, cid, msgs, writer)
+            text = text.split("\n", 1)[1].strip() if "\n" in text else ""
         if try_factory and handle == hub:
             try_factory(ans, handle, cname, cid)
         if try_build and build.read_marker(ans):
