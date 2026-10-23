@@ -14,7 +14,10 @@ on the **first** line of odin's answer (`agents/propose.py`,
 2. **A writing session** gets a fresh worktree on its own branch, with a
    pre-push fence. It is given the channel's recent messages, which hold the
    decision. It may write **only** under `openspec/changes/<id>/`, and its only
-   command is `openspec validate <id> --strict`.
+   command is `openspec validate <id> --strict`. When the change touches
+   code, its tasks must name the docs that change with it. The repos gate on
+   docs drift, and the first propose-road build was failed by its reviewer
+   for exactly that gap.
 3. **The listener checks the result, not the model.** Every changed path
    must be under that directory, and validation must exit zero. If not, no
    PR, and the issue says why.

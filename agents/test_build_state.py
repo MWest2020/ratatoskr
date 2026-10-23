@@ -123,3 +123,20 @@ class Detach(unittest.TestCase):
         self.assertEqual(detach.argv(["x"], lambda n: "/usr/bin/" + n, {"XDG_RUNTIME_DIR": "/r"})[0],
                          "systemd-run")
         self.assertEqual(detach.argv(["x"], lambda n: None, {}), ["x"])
+
+
+class FailureSaysWhy(unittest.TestCase):
+    def test_a_fail_carries_the_roles_findings_blocking_first(self):
+        with tempfile.TemporaryDirectory() as t:
+            json.dump({"verdict": "failed", "num_turns": "49", "total_cost_usd": "1.5"},
+                      open(os.path.join(t, "run-report.json"), "w"))
+            open(os.path.join(t, "run-output-1.md"), "w").write(
+                "# x\n\n" + json.dumps({"verdict": "FAIL", "findings": [
+                    {"severity": "minor", "location": "t.py:1", "description": "weak test"},
+                    {"severity": "blocking", "location": "docs/a.md", "description": "no docs"}]}))
+            text = build_runner.comment("failed", "reviewer", {"store": t, "why": "(exit 1)"})
+        self.assertIn("cost $1.50", text)
+        self.assertLess(text.index("[blocking] docs/a.md: no docs"), text.index("[minor]"))
+
+    def test_no_output_no_findings(self):
+        self.assertEqual(build_runner.findings("/nonexistent"), [])

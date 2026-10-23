@@ -39,7 +39,9 @@ words where quoted, and what changes), design.md (choices and rejected
 alternatives), tasks.md (each task names the test or check that proves it) and
 specs/<capability>/spec.md with ## ADDED/MODIFIED Requirements in the repo's
 style (read openspec/specs/ first; a MODIFIED requirement keeps its existing
-scenarios). Write only what was decided; anything open goes into the proposal
+scenarios). When the change touches code, tasks.md also names the docs that
+describe that behaviour and must change with it (find them with Grep under
+docs/; repos here fail CI on code without docs). Write only what was decided; anything open goes into the proposal
 as an open question, never as a requirement. Finish by running
 `openspec validate {cid} --strict` and fix it until it passes. Do not commit or
 push: the listener does that after checking your files."""

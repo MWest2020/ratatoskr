@@ -15,5 +15,11 @@
 - [ ] A given number that is an open issue is used as before. Proof: a test that
       asserts no issue is created and the build starts on the given number.
 
-## 3. Gates
+## 3. Docs
+- [ ] `docs/how-to/build-from-chat.md`, section "What the listener checks":
+      a given number must be an open issue, else a fresh build issue is opened
+      and the channel names both numbers. Proof: the docs-drift gate passes.
+      (Added 2026-10-23 after the reviewer failed the first build for this gap.)
+
+## 4. Gates
 - [ ] `bash scripts/verify.sh` is green (line limit, pin check, tests).

@@ -56,20 +56,42 @@ def report(store):
         return {}
 
 
+def findings(store, limit=4):
+    """The role's own findings, from the JSON verdict in its run output. A FAIL
+    without them left odin unable to say why (2026-10-23: the reviewer found
+    a missing docs update; the issue said only "verdict failed")."""
+    try:
+        name = next(f for f in os.listdir(store) if f.startswith("run-output-"))
+        text = open(os.path.join(store, name)).read()
+        d = json.JSONDecoder().raw_decode(text[text.index('{"verdict"'):])[0]
+    except (OSError, ValueError, TypeError, StopIteration):
+        return []
+    rows = sorted(d.get("findings") or [], key=lambda f: f.get("severity") != "blocking")
+    return [f"- [{f.get('severity', '?')}] {f.get('location', '')}: "
+            f"{' '.join(str(f.get('description', '')).split())[:600]}" for f in rows[:limit]]
+
+
+def _cost(r):
+    try:
+        return f"${float(r['total_cost_usd']):.2f}"
+    except (KeyError, TypeError, ValueError):
+        return None
+
+
 def comment(kind, role, detail):
     """The issue comment for one event: the trail Mark asked for."""
     if kind == "done":
         return f"**Chain passed.** Builder branch: `{detail['branch']}`."
     r = report(detail.get("store"))
-    shown = {"verdict": r.get("verdict"), "turns": r.get("num_turns"),
-             "cost": f"${r['total_cost_usd']:.2f}" if isinstance(r.get("total_cost_usd"),
-                                                                (int, float)) else None}
+    shown = {"verdict": r.get("verdict"), "turns": r.get("num_turns"), "cost": _cost(r)}
     facts = ", ".join(f"{k} {v}" for k, v in shown.items() if v is not None)
     if kind == "passed":
         return f"**{role}: PASS** ({facts or 'no run report'}). Branch `{detail['branch']}`."
     why = r.get("subtype") if r.get("subtype") not in (None, "success") else ""
+    found = findings(detail.get("store"))
     return (f"**{role}: FAIL** ({facts or 'no run report'})"
-            + (f", stopped by `{why}`" if why else "") + f". {detail.get('why') or ''}").strip()
+            + (f", stopped by `{why}`" if why else "") + f". {detail.get('why') or ''}").strip() \
+        + ("\n\nFindings:\n" + "\n".join(found) if found else "")
 
 
 class Pid:
