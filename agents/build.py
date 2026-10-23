@@ -12,7 +12,9 @@ GitHub. Every condition is checked here and not in a prompt:
 2. the OpenSpec change exists on that repository's main;
 3. the daily budget is not used up and no other chain is running;
 4. there is an issue. A build without one opens one first, so no build runs
-   untracked.
+   untracked;
+5. a given issue number is an open issue, not a pull request and not closed.
+   One that fails this opens a fresh issue instead, same as no number at all.
 
 For an agent's answer the marker counts on the FIRST line only, the rule
 sessions.py keeps for `!sessie`: text further down can be a quote.
@@ -67,6 +69,19 @@ def change_exists(owner, repo, change, runner=subprocess.run):
     if p.returncode != 0:
         return f"no OpenSpec change `{change}` on {owner}/{repo} main", False
     return "", True
+
+
+def open_issue(owner, repo, number, runner=subprocess.run):
+    """True when `number` is an open issue on owner/repo — not a pull request,
+    not closed. GitHub serves pull requests through the issues API too, so the
+    answer is read for both `pull_request` and `state`."""
+    try:
+        p = runner(["gh", "api", f"repos/{owner}/{repo}/issues/{number}", "--jq",
+                    'if .pull_request then "pr" else .state end'],
+                   capture_output=True, text=True, timeout=30)
+    except (subprocess.TimeoutExpired, OSError):
+        return False
+    return p.returncode == 0 and p.stdout.strip() == "open"
 
 
 def builds_today(runs_dir, now=time.time):
