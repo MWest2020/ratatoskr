@@ -60,5 +60,29 @@ class Render(unittest.TestCase):
         self.assertEqual(d["deny"], ["Write", "Edit", "Bash"])
 
 
+
+class Lists(unittest.TestCase):
+    def test_list_fields_render_as_sub_bullets(self):
+        spec = {**SPEC, "contract": {**SPEC["contract"], "not_mine": ["building", "verdicts"]}}
+        d = defparse.parse_def(fd.render(spec, "npub1x", REG, "2026-10-23"))
+        self.assertIn("- **Not mine:**\n  - building\n  - verdicts", d["contract"])
+        self.assertNotIn("['", d["contract"])
+
+
+class RoomMembers(unittest.TestCase):
+    YML = ("channels:\n  general:\n    id: g\n  werkplaats:\n    id: w\n    room:\n"
+           "      members: [architect, bouwer, reviewer]\n      repos: [ratatoskr]\n")
+
+    def test_a_role_in_a_room_joins_its_triage(self):
+        import factory_ops
+        out = factory_ops.with_room_member(self.YML, "pilotleider", ["werkplaats"])
+        self.assertIn("members: [architect, bouwer, reviewer, pilotleider]", out)
+        self.assertEqual(factory_ops.with_room_member(out, "pilotleider", ["werkplaats"]), out)
+
+    def test_a_channel_that_is_no_room_is_left_alone(self):
+        import factory_ops
+        self.assertEqual(factory_ops.with_room_member(self.YML, "x", ["general"]), self.YML)
+
+
 if __name__ == "__main__":
     unittest.main()

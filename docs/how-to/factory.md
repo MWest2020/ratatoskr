@@ -95,3 +95,13 @@ A chat agent's declared skills are now usable, not only declared:
 The habitat side is deferred on purpose: no execution facet declares a skill
 yet, and a mechanism for none is built for nobody. When one does, the role's
 skills go into the worker through git or the image, never as chat text.
+
+## Two lessons from the first live role (pilotleider, 2026-10-23)
+
+- **List fields render as sub-bullets.** Odin wrote `produces`, `hands_off_to`
+  and `not_mine` as lists, and the factory rendered them as Python lists
+  (`['…', '…']`) in the handbook. The renderer now writes a sentence or
+  sub-bullets.
+- **A role created in a shared room joins that room's triage.** Its name is
+  added to `room.members` in `channels.yml`; otherwise it would only ever
+  answer an @mention there.

@@ -70,6 +70,13 @@ def _flow(items):
     return "[" + ", ".join(f'"{i}"' if "(" in i else i for i in items) + "]"
 
 
+def _field(label, value):
+    """A contract field: a sentence, or (2026-10-23: odin gave lists) sub-bullets."""
+    if isinstance(value, (list, tuple)):
+        return f"- **{label}:**\n" + "\n".join(f"  - {str(v).strip()}" for v in value)
+    return f"- **{label}:** {' '.join(str(value).split())}"
+
+
 def _quote(text):
     return "\n".join("> " + ln if ln.strip() else ">" for ln in text.strip().splitlines())
 
@@ -79,8 +86,7 @@ def render(spec, npub, register, today):
     allow = tools_for(spec.get("skills") or [], register)
     deny = ["Write", "Edit"] + ([] if any(t.startswith("Bash") for t in allow) else ["Bash"])
     chans = spec["channels"]
-    contract = "\n".join(f"- **{label}:** {str(spec['contract'][k]).strip()}"
-                         for k, label in FIELDS)
+    contract = "\n".join(_field(label, spec["contract"][k]) for k, label in FIELDS)
     return f"""---
 status: actief
 last_reviewed: {today}

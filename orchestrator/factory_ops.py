@@ -7,6 +7,7 @@ factory_steps.py to keep both under 200 lines.
 """
 import json
 import os
+import re
 import subprocess
 
 import yaml
@@ -18,6 +19,8 @@ def _ratatoskr_commit(tag, edit, message):
     """Edit files in a fresh ratatoskr worktree and push one commit to main."""
     wt = fresh_worktree(RATATOSKR, f"rt-factory-{tag}", bare_repo=True)
     paths = edit(wt)
+    if not paths:
+        return
     run(["git", "add", *paths], cwd=wt)
     run(["git", *ID, "commit", "-q", "-m", message], cwd=wt)
     run(["git", "push", "-q", "origin", "HEAD:main"], cwd=wt, timeout=600)
@@ -86,3 +89,34 @@ def redeploy_listener(tree=os.path.expanduser("~/ratatoskr-listener")):
     run(["git", "-C", tree, "checkout", "-q", "--detach", "origin/main"])
     subprocess.Popen(["systemctl", "--user", "restart", "ratatoskr-agents"],
                      start_new_session=True)
+
+
+
+def with_room_member(text, name, channels):
+    """channels.yml text with `name` added to the room members of each channel
+    in `channels` that is a shared room; unchanged when none is a room. Pure."""
+    doc = yaml.safe_load(text)
+    for c in channels:
+        if not (doc["channels"].get(c) or {}).get("room"):
+            continue
+        m = re.search(rf"(\n  {re.escape(c)}:\n(?:    .*\n)*?      members: \[)([^\]]*)\]", text)
+        if not m:
+            raise StepError(f"#{c}: no `members: [...]` line in its room block")
+        if name not in [x.strip() for x in m.group(2).split(",")]:
+            text = text[:m.end(2)] + f", {name}" + text[m.end(2):]
+    return text
+
+
+def room_members_add(name, channels):
+    """A new role in a shared room joins that room's triage; otherwise it only
+    ever answers an @mention (2026-10-23, pilotleider in #werkplaats)."""
+    def edit(wt):
+        p = os.path.join(wt, "channels.yml")
+        old = open(p).read()
+        new = with_room_member(old, name, channels)
+        if new == old:
+            return []
+        with open(p, "w") as fh:
+            fh.write(new)
+        return ["channels.yml"]
+    _ratatoskr_commit(f"room-{name}", edit, f"channels: {name} joins the room(s) {channels}")

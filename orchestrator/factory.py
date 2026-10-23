@@ -27,6 +27,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 import factory_def  # noqa: E402
+import factory_ops  # noqa: E402
 import factory_steps as steps  # noqa: E402
 
 
@@ -79,6 +80,8 @@ def main(argv=None):
         steps.relay_membership(name, pub, nsec, [chans[c] for c in spec["channels"]],
                                sd["identities"]["orchestrator"]["nsec"], spec["mandate"])
         done.append("relay and channels")
+        factory_ops.room_members_add(name, spec["channels"])
+        done.append("room triage")
     except (steps.StepError, OSError) as e:
         print(json.dumps({"ok": False, "name": name, "done": done, "error": str(e)}))
         return 1
