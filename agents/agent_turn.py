@@ -6,6 +6,8 @@ the shared room (room_flow.py), where a hand-off gives the next agent a turn
 without a new human message. The loop body was the only place this existed,
 and a hand-off cannot be written as "another iteration of the loop".
 """
+import re
+
 import build
 import factory_wiring
 import prompts
@@ -17,6 +19,22 @@ import session_inbox
 import sessions
 
 MAX_CTX = 8
+
+
+# Markers count on an answer's FIRST line only (a quote further down must never
+# act). On 2026-10-23 the prompt told agents the LAST line, odin obeyed, and its
+# `!sessie` was dropped without a word while it told Mark a session had started.
+MARKER = re.compile(r"^!(sessie|build|role|channel|close)\b", re.M)
+
+
+def misplaced(answer):
+    """A visible note when an answer has a marker that is NOT on its first line."""
+    body = (answer or "").strip().split("\n", 1)
+    hits = MARKER.findall(body[1]) if len(body) > 1 else []
+    if not hits:
+        return ""
+    return (f"\n\n⚠ `!{hits[0]}` was not on the first line of this answer, so nothing "
+            "was started. A marker only counts on the first line.")
 
 
 def build_turn(agents, hub, reg, send, channels, pub2name, root, try_session, log=print,
@@ -65,6 +83,7 @@ def build_turn(agents, hub, reg, send, channels, pub2name, root, try_session, lo
         ans = session_inbox.handle(ans, handle, hub, cname, msgs, pub2name, human)
         mk = sessions.read_own_marker(ans)
         text = sessions.strip_own_marker(ans) if mk else ans
+        text += misplaced(ans)
         if try_factory and handle == hub:
             try_factory(ans, handle, cname, cid)
         if try_build and build.read_marker(ans):

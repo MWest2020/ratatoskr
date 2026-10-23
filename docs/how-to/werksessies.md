@@ -1,6 +1,6 @@
 ---
 status: current
-last_reviewed: 2026-09-21
+last_reviewed: 2026-10-23
 ---
 
 # Een werksessie starten vanuit de chat
@@ -164,3 +164,15 @@ er van buiten uit als een listener die niet draait.
   van dat type (PR).
 - Niets gebeurt na een marker: draait de listener met deze code? De marker wordt
   alleen gelezen door `agents/listener.py`, niet door de webchat.
+
+## The marker counts on the first line only
+
+An agent's own `!sessie` (and `!build`, `!role`, `!channel`, `!close`)
+counts only on the **first** line of its answer. A quoted page further down
+must never start anything. Until 2026-10-23 the prompt told agents to use the
+**last** line. Odin did that, the listener dropped the marker without a word,
+and odin told Mark a session had started when none had. Since then:
+
+- **The prompt says "first line".**
+- **A misplaced marker is said in the channel:** `⚠ \`!sessie\` was not on
+  the first line of this answer, so nothing was started.`

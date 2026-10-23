@@ -78,7 +78,7 @@ def session_clause(cfg, handle, requester=None):
                      for n, t in sorted(types.items()))
     return ("\n\nYou can start a WORK SESSION yourself: a longer, READING claude run "
             "with its own tools and its own working directory, that posts its result "
-            "in this channel. To do that, make the LAST line of your answer exactly:\n"
+            "in this channel. To do that, make the FIRST line of your answer exactly:\n"
             "!sessie <type> <task in one sentence>\n"
             f"Available types:\n{lines}\n"
             "Only do that when the requested work really needs looking into — for a "

@@ -65,3 +65,26 @@ class Turn(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class Markers(unittest.TestCase):
+    """2026-10-23: the prompt said LAST line, the listener reads the FIRST; odin's
+    `!sessie` was dropped without a word while it told Mark a session started."""
+
+    def test_the_prompt_says_first_line(self):
+        import prompts
+        cfg = {"types": {"wordsworth": {"starters": ["mark", "odin"], "description": "wordsworth"}}}
+        clause = prompts.session_clause(cfg, "odin", "mark")
+        self.assertIn("FIRST line", clause)
+        self.assertNotIn("LAST line", clause)
+
+    def test_a_marker_on_the_last_line_is_said_not_swallowed(self):
+        ans = "I'll start a session.\n\n!sessie wordsworth Can it ingest a publication?"
+        note = agent_turn.misplaced(ans)
+        self.assertIn("`!sessie` was not on the first line", note)
+        self.assertEqual(agent_turn.misplaced("!sessie wordsworth go\nok"), "")
+        self.assertEqual(agent_turn.misplaced("no markers here"), "")
+
+    def test_the_turn_posts_the_note(self):
+        (_, posted), sent, _ = Turn().run_one("Starting.\n!build wordsworth x")
+        self.assertIn("was not on the first line", sent[0][1])
