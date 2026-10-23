@@ -8,7 +8,10 @@ last_reviewed: 2026-10-23
     !propose wordsworth ingest-records-source Provenance at ingest; the published-dossier MVP.
 
 on the **first** line of odin's answer (`agents/propose.py`,
-`agents/propose_wiring.py`).
+`agents/propose_wiring.py`). The id is lowercase, 3 to 81 characters; the
+summary is one line of at most 1500. A first line that starts with
+`!propose` and does not parse is answered with "not understood" (2026-10-24:
+two proposals with a 400-character summary were dropped without a word).
 
 1. **An issue** is opened on the repository (`propose: <id>`).
 2. **A writing session** gets a fresh worktree on its own branch, with a

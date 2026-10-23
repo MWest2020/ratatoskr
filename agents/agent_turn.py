@@ -103,6 +103,8 @@ def build_turn(agents, hub, reg, send, channels, pub2name, root, try_session, lo
         if try_propose and handle == hub and propose.read_marker(ans):
             try_propose(ans, handle, cname, cid, msgs, writer)
             text = text.split("\n", 1)[1].strip() if "\n" in text else ""
+        elif handle == hub:
+            text += propose.unread(ans)
         if try_factory and handle == hub:
             try_factory(ans, handle, cname, cid)
         if try_build and build.read_marker(ans):
