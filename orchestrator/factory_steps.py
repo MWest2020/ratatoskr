@@ -108,7 +108,18 @@ def ratatoskr_identity(name, pub, npub, priv, nsec, today):
             fh.write(text.rstrip("\n") + f"\n  - {name}\n")
     run(["git", "add", "identities.yml", "secrets/identities.yaml", "agents/agents.yml"], cwd=wt)
     run(["git", *ID, "commit", "-q", "-m", f"identity: {name}, created by the factory"], cwd=wt)
-    run(["git", "push", "-q", "origin", "HEAD:main"], cwd=wt, timeout=600)
+    push_registry(wt)
+
+
+# A factory commit is registry DATA (identity, key, run list, channels), not
+# code; ratatoskr's pre-push docs-drift guard would refuse it as "code without
+# docs" (2026-10-23, the first live role). That is the case its escape hatch is
+# for, and the reason is in every factory commit message.
+REGISTRY_PUSH_ENV = dict(os.environ, DOCS_DRIFT_OK="1")
+
+
+def push_registry(wt):
+    run(["git", "push", "-q", "origin", "HEAD:main"], cwd=wt, timeout=600, env=REGISTRY_PUSH_ENV)
 
 
 def relay_membership(name, pub, nsec, channels, orchestrator_nsec, about):

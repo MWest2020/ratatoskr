@@ -12,7 +12,8 @@ import subprocess
 
 import yaml
 
-from factory_steps import BUZZ, ID, RATATOSKR, RELAY, StepError, fresh_worktree, run
+from factory_steps import (BUZZ, ID, RATATOSKR, RELAY, StepError, fresh_worktree, push_registry,
+                           run)
 
 
 def _ratatoskr_commit(tag, edit, message):
@@ -23,7 +24,7 @@ def _ratatoskr_commit(tag, edit, message):
         return
     run(["git", "add", *paths], cwd=wt)
     run(["git", *ID, "commit", "-q", "-m", message], cwd=wt)
-    run(["git", "push", "-q", "origin", "HEAD:main"], cwd=wt, timeout=600)
+    push_registry(wt)
 
 
 def channel_record(name, cid, purpose):
