@@ -51,3 +51,14 @@ def install(agents, root, source=SOURCE, log=print):
     for stale in set(os.listdir(dest)) - set(wanted):   # no longer declared by anyone
         shutil.rmtree(os.path.join(dest, stale), ignore_errors=True)
     return result
+
+
+def clause(skills):
+    """The agent's own skills, named in its prompt, so it loads them instead of
+    improvising (2026-10-23: odin had read-state and used the read shell bare)."""
+    names = [s for s in skills or [] if SLUG.match(s)]
+    if not names:
+        return ""
+    return ("\n\nYour SKILLS: " + ", ".join(f"`{n}`" for n in names) + ". Load the "
+            "matching skill with the Skill tool before you do what it covers; it says "
+            "how, and what its answers mean.")

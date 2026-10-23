@@ -78,7 +78,8 @@ def build_turn(agents, hub, reg, send, channels, pub2name, root, try_session, lo
                               + build.clause(handle, hub, factory or {})
                               + factory_wiring.clause(handle, hub)
                               + consult.clause(handle, hub)
-                              + propose.clause(handle, hub), p,
+                              + propose.clause(handle, hub)
+                              + agent_skills.clause(cfg.get("skills")), p,
                               model=cfg.get("model"),
                               allow=(cfg.get("allow") or []) + agent_skills.allow_rules(cfg.get("skills")),
                               deny=cfg.get("deny"),

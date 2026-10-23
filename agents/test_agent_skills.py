@@ -35,6 +35,10 @@ class Install(unittest.TestCase):
             self.assertIn("no ghost/SKILL.md", res["ghost"])
             self.assertTrue(logs)
 
+    def test_the_prompt_names_the_agents_skills(self):
+        self.assertIn("`read-state`", agent_skills.clause(["read-state"]))
+        self.assertEqual(agent_skills.clause([]), "")
+
     def test_allow_rules_only_for_sane_slugs(self):
         self.assertEqual(agent_skills.allow_rules(["read-state", "../x", "A b"]),
                          ["Skill(read-state)"])
