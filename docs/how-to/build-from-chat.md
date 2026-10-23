@@ -82,7 +82,11 @@ The chain itself survives the restart too. It runs in its own transient scope
 (`systemd-run --user --scope`, see `agents/detach.py`), because the unit's
 `KillMode=control-group` otherwise stops every child with the listener; that
 is how the first propose-road build died on 2026-10-23. Propose sessions run
-the same way. A chain that has ended leaves the running list before its
+the same way. A scoped child needs `XDG_RUNTIME_DIR` and the D-Bus address to
+reach the user bus, so `detach.env()` adds those two (and nothing else) to a
+trimmed agent environment. Without them, `systemd-run` failed before claude
+ran (2026-10-24, wordsworth#211), and a run file with no output now reads "the
+session never ran" instead of "wrote nothing". A chain that has ended leaves the running list before its
 failure is reported, so the hub's retry is not refused as "another build is
 still running".
 
