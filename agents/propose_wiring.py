@@ -132,11 +132,23 @@ def setup(cfg, agents, hub, send, pub2name, builds, fetch, run_turn, issues=gh_i
                  "the cause belongs in it, then build; or tell Mark what blocks it.",
                  "", "", "build-failed", followup=True)
 
+    def wake_next(entry):
+        msgs = fetch(entry["cid"]) or []
+        run_turn(hub, entry.get("cname", ""), entry["cid"], msgs, max(len(msgs) - 1, 0),
+                 f"The change `{entry['change']}` is built and merged on {entry['repo']} "
+                 f"(issue {entry['repo']}#{entry['issue']}); it is archived next. Take the "
+                 "assignment's next step now, in this answer: propose or build what the plan "
+                 "says comes next, or say what is left and who it waits on.",
+                 "", "", "build-done", followup=True)
+
     def after_done(entry):
         """A change that is merged (and deployed where a recipe says so) gets
-        archived by the same road: PR, CI, merge; no deploy, no wake."""
+        archived by the same road: PR, CI, merge; no deploy. And the hub is
+        woken to take the assignment's next step (2026-10-24: convergence
+        fundament merged, nothing woke odin, and wave 2 never started)."""
         if entry.get("kind") in ("propose", "archive") or not entry.get("change"):
             return
+        wake_next(entry)
         pr, err = archive(os.path.join(CLONES, entry["repo"]), entry["repo"], cfg["owner"],
                           entry["change"])
         tail = f" · {entry['repo']}#{entry['issue']}"

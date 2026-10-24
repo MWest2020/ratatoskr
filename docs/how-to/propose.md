@@ -109,3 +109,15 @@ and an existing PR is found from gh's "already exists" answer. On 2026-10-24
 a restart cut the convergence `fundament` publish off between commit and
 push; the job had already left the state, and the change was stranded until
 it was pushed by hand (convergence #8).
+
+## After a build: the next step, and the archive
+
+When a build is merged (and deployed, where its repository has a recipe),
+the listener archives the change and wakes the hub with one follow-up turn:
+take the assignment's next step. Before 2026-10-24 nothing woke odin after a
+build, and the convergence graph stopped after `fundament`.
+
+A change that creates a new capability gets a real Purpose on archive:
+openspec writes a "TBD - created by archiving change …" placeholder there,
+strict validation refuses it, and `propose_git.fill_purposes` replaces it
+with the first sentence of the change's own Why.
