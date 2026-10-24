@@ -100,14 +100,16 @@ def builds_today(runs_dir, now=time.time):
     return n
 
 
-def check(cfg, repo, change, running, runner=subprocess.run, now=time.time):
-    """(canonical repo, "") when a build may start, else (None, the reason)."""
+def check(cfg, repo, change, running, runner=subprocess.run, now=time.time, capped=True):
+    """(canonical repo, "") when a build may start, else (None, the reason).
+    `capped=False` for a build Mark types himself: the daily budget guards the
+    agents' loop, not his own decision (2026-10-24, the 7th build of a day)."""
     name = canonical_repo(cfg, repo)
     if not name:
         return None, f"`{repo}` is not on the factory's list of repositories"
     if len(running) >= int(cfg.get("max_concurrent", 1)):
         return None, "another build is still running; one chain at a time"
-    if builds_today(cfg["runs"], now) >= int(cfg.get("builds_per_day", 0)):
+    if capped and builds_today(cfg["runs"], now) >= int(cfg.get("builds_per_day", 0)):
         return None, f"today's build budget ({cfg.get('builds_per_day')}) is used up"
     why, ok = change_exists(cfg["owner"], name, change, runner)
     return (name, "") if ok else (None, why)
