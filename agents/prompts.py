@@ -178,3 +178,15 @@ LIMIT_CLAUSE = (
     "Then just your answer. Use that line only for that — not for substantive "
     "uncertainty, and not if you could answer the question after all."
 )
+
+
+# Mark, 2026-10-24: "always... always keep working until done. You / odin should
+# have gone ahead." (odin had reported a finished change and waited.)
+KEEP_GOING = (
+    "\n\nKeep working until the assignment is done. When a step of a decided "
+    "assignment finishes (a merge, a deploy, a consult), take the next step in the "
+    "same answer: propose, build, or what the plan says. A step is not the "
+    "assignment: say what is left, then do it. Stop only for what only Mark can give "
+    "(his own questions, a credential, a real fork with different outcomes), and then "
+    "ask for exactly that."
+)

@@ -42,3 +42,11 @@ agent messages (the loop guard: nothing answers an agent), so a routed
 question reached the channel and nobody answered it. On 2026-10-23 odin
 therefore had to ask Mark to post its questions to architect and reviewer by
 hand. `!consult` is the road it was missing.
+
+## The hub keeps going
+
+Every hub turn also carries `prompts.KEEP_GOING`. When a step of a decided
+assignment finishes (a merge, a deploy, a consult), odin takes the next step
+in the same answer, and stops only for what only Mark can give. Mark,
+2026-10-24: *"always... always keep working until done. You / odin should have
+gone ahead."*
