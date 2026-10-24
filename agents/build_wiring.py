@@ -52,15 +52,18 @@ def setup(cfg, agents, hub, human, send, issues=gh_issues, log=print, builds=Non
             return say(cid, f"⛔ build not started: {why}")
         begin(name, change, given, cname, cid, starter)
 
+    last_drain = [0.0]
+
     def drain_queue():
-        """Start queued builds as slots free up, oldest first."""
+        """Start queued builds as they may; each waits on its own reason. Once a minute."""
+        if now() - last_drain[0] < 60:
+            return
+        last_drain[0] = now()
         for q in list(builds.queued):
             name, why = build.check(cfg, q["repo"], q["change"], builds.running,
                                     capped=q["starter"] != human)
             if not name:
-                if any(w in why for w in build.QUEUEABLE):
-                    return          # still full: the rest waits too
-                continue            # e.g. the budget: it stays queued
+                continue            # still waiting, or e.g. the budget: it stays queued
             builds.queued.remove(q)
             builds.save()
             begin(name, q["change"], q["given"], q["cname"], q["cid"], q["starter"])

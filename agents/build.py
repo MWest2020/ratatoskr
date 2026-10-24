@@ -88,7 +88,11 @@ def open_issue(owner, repo, number, runner=subprocess.run):
 
 SLOTS_FULL = "API-billed chains are running, the most at once"
 BUDGET_WAIT = "waiting for the running API-billed chains to finish before the budget has room"
-QUEUEABLE = (SLOTS_FULL, BUDGET_WAIT)
+ONE_AT_A_TIME = "another build is still running; one chain at a time"
+DAY_CAP = "build budget"
+# Every wait is queued, not dropped (2026-10-24: three wordsworth builds were
+# refused by the day cap in the evening, and nothing would start them at midnight).
+QUEUEABLE = (SLOTS_FULL, BUDGET_WAIT, ONE_AT_A_TIME, DAY_CAP)
 
 
 def _repo_of(b):
@@ -168,10 +172,10 @@ def check(cfg, repo, change, running, runner=subprocess.run, now=time.time, capp
     else:
         mine = [b for b in running if not credits.repo_billed(_repo_of(b))]
         if len(mine) >= int(cfg.get("max_concurrent", 1)):
-            return None, "another build is still running; one chain at a time"
+            return None, ONE_AT_A_TIME
         if capped and builds_today(cfg["runs"], now, credits.repo_billed) >= int(
                 cfg.get("builds_per_day", 0)):
-            return None, f"today's build budget ({cfg.get('builds_per_day')}) is used up"
+            return None, f"today's {DAY_CAP} ({cfg.get('builds_per_day')}) is used up"
     why, ok = change_exists(cfg["owner"], name, change, runner)
     return (name, "") if ok else (None, why)
 

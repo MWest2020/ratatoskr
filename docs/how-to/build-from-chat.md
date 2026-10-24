@@ -25,7 +25,10 @@ The listener checks these, not the model. Limits are in `agents/factory.yml`.
 3. **No other chain is running,** and today's budget (`builds_per_day`) is
    not used up. The budget guards the agents' loop: a `!build` Mark types
    himself is not counted against it (2026-10-24, when one more build was
-   needed after six that each failed on a real, fixed cause).
+   needed after six that each failed on a real, fixed cause). A build that
+   only has to wait (another chain running, the day cap used up, no slot or
+   budget headroom yet) is **queued**, not dropped, and starts by itself when
+   it may: after the running chain ends, or after midnight.
 4. **There is an issue.** Without a number, the listener opens one (`build:
    <change>`, labels `agent-work` and `build`) before anything runs.
 5. **A given number is an open issue.** The listener asks `gh`: not a pull
