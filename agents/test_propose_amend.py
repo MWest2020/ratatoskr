@@ -105,7 +105,8 @@ class RetryOnRefusal(Wiring):
             {"owner": "MWest2020", "repos": ["wordsworth"]}, {"odin": {"nsec": "n", "npub": "p"}},
             "odin", lambda cid, t, *a: said.append(t), {}, builds, lambda cid: [],
             lambda *a, **k: None, issues=type("I", (), {"create": lambda s, *a: (9, "u", ""),
-                                                        "comment": lambda s, *a: ""})(),
+                                                        "comment": lambda s, *a: "",
+                                                        "open_titled": lambda s, *a: []})(),
             log=lambda *a, **k: None, start=start, check=lambda j: "the session wrote nothing",
             refused=lambda j: ["/wt/openspec/changes/add-x/a.md"])
         try_p("!propose wordsworth add-x Do x.", "odin", "general", "cid", [], "mark")

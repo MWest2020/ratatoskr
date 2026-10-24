@@ -141,3 +141,18 @@ worktree, runs `openspec archive <id> -y` and `openspec validate --specs
 wakes nobody. On 2026-10-23 odin noticed that `ingest-records-source` was
 deployed but not archived; the coding session archived it by hand (wordsworth
 #210). Now the chain does it.
+
+## The factory tidies up after itself
+
+Mark, 2026-10-24: *"too many branches ... I expect this to be handled without
+human intervention."*
+
+- **A chain's branches** (`agents/branches.py`): a chain that passed keeps only
+  its builder branch, the PR's head, which the repository's
+  delete-branch-on-merge setting removes on merge (on for every factory repo
+  since 2026-10-24); a chain that failed keeps none, since a rebuild starts
+  from main and every verdict and finding is on the build issue. Only branches
+  the chain's own run file names are deleted, never `main`.
+- **One proposal per change**: a `!propose` for a change already being written
+  or waiting in CI is answered, not started; an amend or retry comments on the
+  open `propose: <change>` issue instead of opening another.
