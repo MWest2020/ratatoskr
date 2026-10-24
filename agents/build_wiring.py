@@ -35,7 +35,7 @@ def setup(cfg, agents, hub, human, send, issues=gh_issues, log=print, builds=Non
         if starter not in (hub, human):
             return say(cid, f"⛔ build not started: only {hub} or {human} start builds")
         repo, change, given = mk
-        name, why = build.check(cfg, repo, change, builds.running)
+        name, why = build.check(cfg, repo, change, builds.running, capped=starter != human)
         if not name:
             log(f"[listener] build refused: {why}", flush=True)
             return say(cid, f"⛔ build not started: {why}")

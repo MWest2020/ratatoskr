@@ -67,6 +67,10 @@ class Check(unittest.TestCase):
                 fh.write(json.dumps({"started": 1_800_000_000}) + "\n")
             why = build.check(c, "ratatoskr", "x", [], gh(), now=lambda: 1_800_000_100)[1]
             self.assertIn("budget", why)
+            # Mark's own !build is not capped: the budget guards the agents' loop
+            ok = build.check(c, "ratatoskr", "x", [], gh(), now=lambda: 1_800_000_100,
+                             capped=False)
+            self.assertEqual(ok, ("ratatoskr", ""))
 
 
 def gh_issue(out, code=0):
