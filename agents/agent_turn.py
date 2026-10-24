@@ -11,6 +11,7 @@ import re
 import agent_skills
 import build
 import consult
+import credits
 import repo_read
 import propose
 import factory_wiring
@@ -69,6 +70,11 @@ def build_turn(agents, hub, reg, send, channels, pub2name, root, try_session, lo
                 p = lt + "\n\n" + p
         if extra:
             p = extra + "\n\n" + p
+        billed = credits.channel_billed(cname)   # this channel runs on the API credits
+        if billed and credits.refusal():
+            send(cid, f"⛔ {credits.refusal()}; not answering until it is raised or a "
+                      "new month starts", cfg["nsec"], cfg["npub"])
+            return "", ""
         try:
             r = providers.run(cfg.get("provider"),
                               cfg["system"] + prompts.LIMIT_CLAUSE
@@ -85,9 +91,12 @@ def build_turn(agents, hub, reg, send, channels, pub2name, root, try_session, lo
                               model=cfg.get("model"),
                               allow=(cfg.get("allow") or []) + agent_skills.allow_rules(cfg.get("skills")),
                               deny=cfg.get("deny"),
-                              progress=reporting.progress_poster(send, cid, cfg, handle))
+                              progress=reporting.progress_poster(send, cid, cfg, handle),
+                              env=credits.env(providers.agent_env()) if billed else None)
         except Exception as e:  # incl. timeout: the turn must never crash
             r = {"answer": f"(fout: {e})", "error": str(e)[:120]}
+        if billed:
+            credits.record("turn", r.get("cost"), f"{handle}#{cname}")
         ans = r.get("answer", "(geen antwoord)")
         ans = routing.handle(ans, handle, cfg, cname, msgs, pub2name, channels, send, cid)
         ans = session_inbox.handle(ans, handle, hub, cname, msgs, pub2name, human)

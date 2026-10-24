@@ -10,7 +10,7 @@ to monitor status on it as well. can be done on the individual project, like
 wordsworth and the new game."*
 
 Each project has a GitHub Project board, listed in `agents/factory.yml`
-`boards:` (`wordsworth` → project 1, `convergence` → project 2). The Status
+`boards:` (`wordsworth` → project 1, `convergence` → project 2, `ratatoskr` → project 3). The Status
 column holds the factory's stages: Todo, Writing change, Building, CI,
 Deployed, Done, Blocked.
 

@@ -24,10 +24,12 @@ import os
 import re
 import subprocess
 
+import credits
 import detach
 import providers
 import work_tree
 from propose_git import BASE, archive, publish  # noqa: F401  (the wiring imports them from here)
+from propose_run import cost, refused_writes  # noqa: F401  (same)
 
 MARKER = re.compile(r"^!propose\s+([A-Za-z0-9][A-Za-z0-9._-]{0,99})\s+"
                     r"([a-z0-9][a-z0-9._-]{2,80})\s+(\S.{0,1500})$")
@@ -70,29 +72,6 @@ def unread(answer):
     return ("\n\n⚠ `!propose` not understood, nothing started. The first line must be "
             "`!propose <repo> <change-id> <one-line summary>`: a lowercase id of 3-81 "
             "characters, a summary of at most 1500.")
-
-
-def refused_writes(job):
-    """Writes INSIDE the fence that the session was refused. They should never
-    happen; on 2026-10-24 two amend sessions had every Edit refused, and the
-    same run again worked. The wiring retries once when this is not empty."""
-    fence = f"/openspec/changes/{job['change']}/"
-    try:
-        lines = open(os.path.join(job["wt"], ".propose-run.jsonl")).read().splitlines()
-    except OSError:
-        return []
-    out = []
-    for ln in lines:
-        if '"type":"result"' not in ln.replace(" ", ""):
-            continue
-        try:
-            denials = json.loads(ln).get("permission_denials") or []
-        except ValueError:
-            continue
-        out += [d["tool_input"].get("file_path", "") for d in denials
-                if d.get("tool_name") in ("Edit", "Write")
-                and fence in (d.get("tool_input") or {}).get("file_path", "")]
-    return out
 
 
 def tools(cid, wt=None):
@@ -140,6 +119,8 @@ def start(clone, cid, summary, msgs, pub2name, requester, popen=subprocess.Popen
     debug = os.path.join(DEBUG_DIR, os.path.basename(os.path.normpath(wt)) + ".log")
     os.makedirs(DEBUG_DIR, exist_ok=True)
     env = detach.env(providers.agent_env())
+    if credits.repo_billed(os.path.basename(os.path.normpath(clone))):
+        env = credits.env(env)                  # this repo runs on the API credits
     proc = popen(detach.argv([CLAUDE, "-p", "--debug-file", debug,
                   "--output-format", "stream-json", "--verbose",
                   "--permission-mode", "dontAsk", "--model", "sonnet",

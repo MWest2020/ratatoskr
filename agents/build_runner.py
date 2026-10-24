@@ -21,6 +21,7 @@ import re
 import subprocess
 import time
 
+import credits
 import detach
 from role_verdict import findings  # noqa: F401  (tests and comment() use it here)
 
@@ -132,6 +133,9 @@ class Builds:
                    KUBECTL=self.cfg["kubectl"], HABITAT_LOGDIR=self.cfg["logdir"],
                    CLAUDE_CREDS_FILE="",
                    HABITAT_MAX_BUDGET_USD=f"{float(self.cfg.get('max_budget_usd', 5)):.2f}")
+        if credits.repo_billed(repo):   # habitat's worker runs on the API key (HABITAT_AUTH)
+            env.update(HABITAT_AUTH="api", HABITAT_MAX_BUDGET_USD=(
+                f"{float(self.cfg.get('api_max_budget_usd', 5)):.2f}"))
         proc = self.popen(detach.argv([os.path.join(self.cfg["habitat_dir"], "dispatch",
                                                     "chain.sh"),
                                        change, f"{self.cfg['owner']}/{repo}"]),
