@@ -130,6 +130,13 @@ def check(job, run=subprocess.run):
     st = g.stdout
     paths = [ln[3:] for ln in st.splitlines() if ln.strip()
              and not ln[3:].startswith(".propose-run")]
+    # and what is already committed on the session branch: a restart can cut a
+    # publish off after its commit (2026-10-24, convergence fundament)
+    base = run(["git", "-C", wt, "merge-base", "HEAD", "origin/main"], capture_output=True, text=True)
+    if base.returncode == 0 and base.stdout.strip():
+        d = run(["git", "-C", wt, "diff", "--name-only", base.stdout.strip(), "HEAD"],
+                capture_output=True, text=True)
+        paths += [x for x in d.stdout.splitlines() if x.strip() and x not in paths]
     if not paths:
         try:
             ran = os.path.getsize(os.path.join(wt, ".propose-run.jsonl")) > 0

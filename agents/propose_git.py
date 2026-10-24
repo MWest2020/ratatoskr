@@ -14,12 +14,17 @@ def publish(job, repo, owner, run=subprocess.run):
     """Commit, push the session branch, open the PR. (pr number, error)."""
     wt, cid = job["wt"], job["change"]
     verb = "amend " if job.get("amend") else ""
-    steps = [["git", "-C", wt, "add", f"openspec/changes/{cid}"],
-             ["git", "-C", wt, "-c", "user.name=MWest2020", "-c",
+    # Idempotent, because a restart can cut it off anywhere (2026-10-24): an
+    # existing commit is not made again, and an existing PR is found, not failed on.
+    p = run(["git", "-C", wt, "add", f"openspec/changes/{cid}"], capture_output=True, text=True)
+    if p.returncode != 0:
+        return 0, (p.stderr or p.stdout).strip()[-200:]
+    staged = run(["git", "-C", wt, "diff", "--cached", "--quiet"], capture_output=True, text=True)
+    steps = [["git", "-C", wt, "-c", "user.name=MWest2020", "-c",
               "user.email=mwest2020@hotmail.com", "commit", "-q", "-m",
               f"openspec: {verb}{cid}\n\n{job['summary']}\n\nWritten by a propose session on "
-              "odin's decision (ratatoskr agents/propose.py)."],
-             ["git", "-C", wt, "push", "-q", "-u", "origin", job["branch"]]]
+              "odin's decision (ratatoskr agents/propose.py)."]] if staged.returncode else []
+    steps.append(["git", "-C", wt, "push", "-q", "-u", "origin", job["branch"]])
     for argv in steps:
         p = run(argv, capture_output=True, text=True)
         if p.returncode != 0:
@@ -28,7 +33,7 @@ def publish(job, repo, owner, run=subprocess.run):
              "--base=main", f"--title=openspec: {verb}{cid}",
              f"--body={job['summary']}\n\nWritten by a propose session on odin's decision; "
              "the listener merges it once every check passes."], capture_output=True, text=True)
-    m = re.search(r"/pull/(\d+)", p.stdout)
+    m = re.search(r"/pull/(\d+)", p.stdout + p.stderr)   # "already exists" names the PR too
     return (int(m.group(1)), "") if m else (0, (p.stderr or p.stdout).strip()[-200:])
 
 

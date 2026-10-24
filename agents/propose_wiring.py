@@ -101,9 +101,12 @@ def setup(cfg, agents, hub, send, pub2name, builds, fetch, run_turn, issues=gh_i
                     builds.save()
                     say(j["cid"], f"⏹ the propose session for `{j['change']}` ran out of time")
                 continue
+            try:
+                finish(j)   # before it leaves the state: a restart mid-publish adopts it again
+            except Exception as e:     # never a job that fails on every tick
+                log(f"[listener] propose finish {j.get('change')}: {e}", flush=True)
             jobs.remove(j)
             builds.save()
-            finish(j)
 
     def after_merge(m):
         """A merged proposal wakes the hub to build it."""

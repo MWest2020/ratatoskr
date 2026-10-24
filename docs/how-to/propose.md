@@ -98,3 +98,14 @@ The safety net stays as well. The listener now:
   starts the session **once** more with the same decision, saying so on the
   issue;
 - names the count in "No PR: …" when the retry is refused too.
+
+## A restart mid-publish
+
+A propose job stays in `state.json` until its publish has finished, so a
+listener restart in the middle adopts it and publishes again. Publishing is
+idempotent: a change already committed on the session branch is not
+committed twice (`check` also counts what the branch has over `origin/main`),
+and an existing PR is found from gh's "already exists" answer. On 2026-10-24
+a restart cut the convergence `fundament` publish off between commit and
+push; the job had already left the state, and the change was stranded until
+it was pushed by hand (convergence #8).
