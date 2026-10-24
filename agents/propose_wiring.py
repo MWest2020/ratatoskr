@@ -30,9 +30,10 @@ def setup(cfg, agents, hub, send, pub2name, builds, fetch, run_turn, issues=gh_i
             send(cid, text, voice["nsec"], voice["npub"])
 
     def try_propose(answer, starter, cname, cid, msgs, requester):
-        mk = propose.read_marker(answer) if starter == hub else None
-        if not mk:
-            return
+        for mk in (propose.read_markers(answer) if starter == hub else []):
+            one(mk, cname, cid, msgs, requester)   # a leading block fans out (graph)
+
+    def one(mk, cname, cid, msgs, requester):
         repo, change, summary = mk
         name = build.canonical_repo(cfg, repo)
         if not name:

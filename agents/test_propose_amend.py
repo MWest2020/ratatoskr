@@ -116,5 +116,24 @@ class RetryOnRefusal(Wiring):
         self.assertIn("1 writes inside the fence were refused", said[-1])
 
 
+class FanOut(unittest.TestCase):
+    """2026-10-24, Mark: "if we can do it via graph, go for it". The hub may
+    have independent changes written at once, from a leading block only."""
+
+    def test_a_leading_block_fans_out(self):
+        ans = ("!propose convergence gdd-economy The GDD and the simulation.\n"
+               "!propose convergence site-landing The landing page.\nBoth started.")
+        self.assertEqual([m[1] for m in propose.read_markers(ans)], ["gdd-economy", "site-landing"])
+        self.assertEqual(propose.strip_markers(ans), "Both started.")
+
+    def test_a_marker_after_text_does_not_count(self):
+        ans = "!propose convergence a-one One.\ntext\n!propose convergence b-two Two."
+        self.assertEqual([m[1] for m in propose.read_markers(ans)], ["a-one"])
+
+    def test_at_most_five(self):
+        ans = "\n".join(f"!propose convergence c-{i}x Change {i}." for i in range(8))
+        self.assertEqual(len(propose.read_markers(ans)), propose.FANOUT)
+
+
 if __name__ == "__main__":
     unittest.main()
