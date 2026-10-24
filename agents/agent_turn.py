@@ -85,6 +85,7 @@ def build_turn(agents, hub, reg, send, channels, pub2name, root, try_session, lo
                               + build.clause(handle, hub, factory or {})
                               + factory_wiring.clause(handle, hub)
                               + consult.clause(handle, hub)
+                              + (prompts.KEEP_GOING if handle == hub else "")
                               + repo_read.clause(factory or {})
                               + propose.clause(handle, hub)
                               + agent_skills.clause(cfg.get("skills")), p,

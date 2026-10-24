@@ -113,5 +113,29 @@ class ConsultFollowUp(Consult):
         self.assertEqual([w for w, _ in prompts], ["odin", "architect"])
 
 
+class KeepGoing(Consult):
+    def test_only_the_hub_is_told_to_keep_going(self):
+        seen = {}
+        import providers as pv
+
+        def fake_run(provider, system, prompt, **k):
+            who = system.split("You are ", 1)[1].split(".", 1)[0]
+            seen[who] = "Keep working until the assignment is done" in system
+            return {"answer": "!consult architect q" if who == "odin" else "a", "error": ""}
+        import os
+        import tempfile
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as root, mock.patch.object(pv, "run", fake_run), \
+                mock.patch("reporting.report_run"), \
+                mock.patch("reporting.progress_poster", return_value=None):
+            os.makedirs(os.path.join(root, "knowledge"), exist_ok=True)
+            turn = agent_turn.build_turn(AGENTS, "odin", FakeReg(), lambda *a: True, {}, {}, root,
+                                         lambda *a, **k: None, log=lambda *a, **k: None)
+            turn("odin", "general", "cid", [{"pubkey": "pm", "content": "go", "id": "m1"}], 0,
+                 "go", "mark", "m1", "mention")
+        self.assertTrue(seen["odin"])
+        self.assertFalse(seen["architect"])
+
+
 if __name__ == "__main__":
     unittest.main()
