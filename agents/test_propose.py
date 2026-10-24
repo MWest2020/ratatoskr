@@ -119,6 +119,9 @@ class Wiring(unittest.TestCase):
             def comment(s, *a):
                 return ""
 
+            def open_titled(s, *a):
+                return []
+
         def start(clone, change, summary, msgs, pub2name, requester):
             self.started.append((clone, change))
             return {"wt": "/wt", "branch": "b", "change": change, "proc": Proc(0),

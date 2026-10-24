@@ -9,6 +9,7 @@ the build came from (so Mark sees it happen).
 import time
 
 import activity
+import branches
 import build
 import build_merge
 import build_runner
@@ -102,6 +103,9 @@ def setup(cfg, agents, hub, human, send, issues=gh_issues, log=print, builds=Non
         say(b["cid"], f"{mark} {text.splitlines()[0]}{tail}"
                       + (f" (⚠ not on the issue: {err})" if err else ""))
         b.setdefault("verdicts", []).append(text.splitlines()[0])
+        if kind in ("done", "failed"):
+            branches.tidy(cfg["owner"], b, keep=(detail["branch"],) if kind == "done" else (),
+                          log=log)
         if kind == "done":
             open_pr(b, detail["branch"])
         elif kind == "failed" and after_fail:

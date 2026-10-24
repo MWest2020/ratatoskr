@@ -41,10 +41,25 @@ def setup(cfg, agents, hub, send, pub2name, builds, fetch, run_turn, issues=gh_i
             return say(cid, f"⛔ no proposal: `{repo}` is not on the factory's list")
         if credits.repo_billed(name) and credits.refusal(3.0):
             return say(cid, f"⛔ no proposal for `{change}`: {credits.refusal(3.0)}")
-        n, _, err = issues.create(name, f"propose: {change}", f"**{hub}** in #{cname}: {summary}\n\n"
-                                  "A propose session writes the OpenSpec change; the PR "
-                                  "merges once CI passes, then the change is built.",
-                                  ["agent-work", "propose"])
+        # One proposal per change in flight, one issue per change (2026-10-24, Mark:
+        # "what's up with the proposals on the same topic? that's kinda bad.")
+        busy = [j for j in jobs if j.get("repo") == name and j.get("change") == change]
+        if busy:
+            return say(cid, f"ℹ `{change}` is already being written · {name}#{busy[0]['issue']}")
+        queued = [m for m in builds.merging if m.get("repo") == name
+                  and m.get("change") == change and m.get("kind") == "propose"]
+        if queued:
+            return say(cid, f"ℹ `{change}` is already proposed in PR #{queued[0]['pr']}, "
+                            "waiting for CI; amend it after it merges")
+        open_ = issues.open_titled(name, f"propose: {change}")
+        if open_:
+            n, err = open_[0], ""
+            issues.comment(name, n, f"**{hub}** in #{cname}, again: {summary}")
+        else:
+            n, _, err = issues.create(name, f"propose: {change}", f"**{hub}** in #{cname}: {summary}\n\n"
+                                      "A propose session writes the OpenSpec change; the PR "
+                                      "merges once CI passes, then the change is built.",
+                                      ["agent-work", "propose"])
         if err:
             return say(cid, f"⛔ no proposal: could not open an issue on {name}: {err}")
         job, why = start(os.path.join(CLONES, name), change, summary, msgs, pub2name, requester)
