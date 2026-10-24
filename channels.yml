@@ -64,7 +64,6 @@ channels:
     id: 64dde86e-28d8-4130-82f2-3c723a6eac95
     doel: the game (repo MWest2020/convergence), billed to the API credits (agents/credits.py)
     billing: api
-    default_agent: odin   # odin runs the game's graph and consults architect, ontwerper, bouwer, reviewer
   werkplaats:
     id: f7324a19-531f-44ec-b12c-ac3106575f78
     doel: shared room — agents pick up work by contract, every piece of work is a GitHub issue (change shared-room)
