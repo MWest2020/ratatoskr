@@ -22,6 +22,7 @@ import subprocess
 import time
 
 import detach
+from role_verdict import findings  # noqa: F401  (tests and comment() use it here)
 
 ROLE = re.compile(r"^=== keten: rol (\w+) ===")
 BRANCH = re.compile(r"^\[dispatch\] branch=(\S+)")
@@ -54,27 +55,6 @@ def report(store):
         return json.load(open(os.path.join(store, "run-report.json")))
     except (OSError, ValueError, TypeError):
         return {}
-
-
-def findings(store, limit=4):
-    """The role's own findings, from the JSON verdict in its run output. A FAIL
-    without them left odin unable to say why (2026-10-23: the reviewer found
-    a missing docs update; the issue said only "verdict failed")."""
-    try:
-        name = next(f for f in os.listdir(store) if f.startswith("run-output-"))
-        text = open(os.path.join(store, name)).read()
-        d = json.JSONDecoder().raw_decode(text[text.index('{"verdict"'):])[0]
-    except (OSError, ValueError, TypeError, StopIteration):
-        return []
-    rows = sorted(d.get("findings") or [], key=lambda f: f.get("severity") != "blocking")
-    if not rows:
-        # the architect's verdict carries summary/risks/plan, not findings
-        # (2026-10-24: its FAIL showed nothing, and odin asked Mark for the cause)
-        short = lambda v: " ".join(str(v).split())[:600]  # noqa: E731
-        return ([f"- [summary] {short(d['summary'])}"] if d.get("summary") else []) + \
-            [f"- [risk] {short(r)}" for r in (d.get("risks") or [])[:limit - 1]]
-    return [f"- [{f.get('severity', '?')}] {f.get('location', '')}: "
-            f"{' '.join(str(f.get('description', '')).split())[:600]}" for f in rows[:limit]]
 
 
 def _cost(r):

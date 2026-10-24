@@ -154,3 +154,12 @@ class DetachReachesTheBus(unittest.TestCase):
     def test_wrapping_is_decided_on_the_childs_env(self):
         import detach
         self.assertEqual(detach.argv(["x"], lambda n: "/bin/" + n, env={"PATH": "/bin"}), ["x"])
+
+
+class VerdictAnywhere(unittest.TestCase):
+    def test_a_verdict_key_after_the_summary_is_found(self):
+        with tempfile.TemporaryDirectory() as t:
+            open(os.path.join(t, "run-output-1.md"), "w").write("# r\n\n" + json.dumps(
+                {"summary": "x", "verdict": "FAIL",
+                 "findings": [{"severity": "blocking", "location": "a", "description": "b"}]}))
+            self.assertEqual(build_runner.findings(t), ["- [blocking] a: b"])

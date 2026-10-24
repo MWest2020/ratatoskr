@@ -7,7 +7,7 @@ last_reviewed: 2026-10-05
 
 A chat turn has `Read/Grep/Glob` on the deployed listener tree. That is enough
 to read code, but not enough to see the state of the work, which lives on
-GitHub. The **read shell** (`agents/readshell.py`) fills that gap. It is six
+GitHub. The **read shell** (`agents/readshell.py`) fills that gap. It is seven
 read-only lookups on a `MWest2020` repository:
 
 | command | answer |
@@ -18,6 +18,7 @@ read-only lookups on a `MWest2020` repository:
 | `prs <repo> [n]` | open pull requests |
 | `issues <repo> [label]` | open issues, optionally with one label |
 | `checks <repo> <pr>` | the checks of one pull request |
+| `comments <repo> <issue> [n]` | the last n comments (default 4) on an issue or PR: where a build's PASS/FAIL verdicts and findings are posted |
 
 You can run it yourself from the repo root to see what an agent sees:
 
@@ -60,7 +61,7 @@ Expect `True False`, then restart.
 ## What the agent is told
 
 When the definition allows the rule, the system prompt gets a paragraph
-listing the six commands in the exact form to run them. Without the rule it
+listing the seven commands in the exact form to run them. Without the rule it
 gets nothing. That paragraph is generated from the definition, so it cannot
 promise a shell the agent does not have.
 

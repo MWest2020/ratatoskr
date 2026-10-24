@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MIT
-"""The read shell: six read-only GitHub lookups a chat agent may run.
+"""The read shell: seven read-only GitHub lookups a chat agent may run.
 
 Mark, 2026-10-05, in #architectuur: "@odin hoe ver weg zijn we van jou en een
 shell?". A chat agent gets this program as its ONLY Bash, through the rule
@@ -31,6 +31,9 @@ COMMANDS = {
     "prs": "prs <repo> [n] — open pull requests",
     "issues": "issues <repo> [label] — open issues, optionally with one label",
     "checks": "checks <repo> <pr> — the checks of one pull request",
+    # 2026-10-24: a role's FAIL verdict is posted on the build issue, and odin
+    # could not read it, so it held a build twice for a cause on the issue
+    "comments": "comments <repo> <issue> [n] — the last n comments on an issue or PR",
 }
 
 
@@ -72,8 +75,10 @@ def parser():
             s.add_argument("n", type=count, nargs="?", default=15)
         if name == "issues":
             s.add_argument("label", type=label, nargs="?")
-        if name == "checks":
+        if name in ("checks", "comments"):
             s.add_argument("pr", type=pr_number)
+        if name == "comments":
+            s.add_argument("n", type=count, nargs="?", default=4)
     return p
 
 
@@ -98,6 +103,9 @@ def argv(a):
                "--json=number,title,labels", "--jq",
                r'.[] | "#\(.number) \(.title) [\([.labels[].name] | join(", "))]"']
         return cmd + ([f"--label={a.label}"] if a.label else [])
+    if a.cmd == "comments":
+        return ["gh", "issue", "view", str(a.pr), f"--repo={r}", "--json=comments", "--jq",
+                f".comments[-{a.n}:][] | " r'"— \(.author.login) \(.createdAt[0:16]):\n\(.body)"']
     return ["gh", "pr", "checks", str(a.pr), f"--repo={r}"]
 
 
