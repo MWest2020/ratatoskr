@@ -116,6 +116,7 @@ class Builds:
         self.running = [{**b, "proc": Pid(b.get("pid"))} for b in st.get("running", [])]
         self.merging = st.get("merging", [])
         self.deploying = st.get("deploying", [])
+        self.queued = st.get("queued", [])      # billed builds waiting for a slot
         # propose sessions too: a restart (every deploy) must not orphan one
         self.proposing = [{**j, "proc": Pid(j.get("pid"))} for j in st.get("proposing", [])]
 
@@ -124,6 +125,7 @@ class Builds:
         tmp = self.state + ".tmp"
         with open(tmp, "w") as fh:
             json.dump({"running": keep, "merging": self.merging, "deploying": self.deploying,
+                       "queued": self.queued,
                        "proposing": [{k: v for k, v in j.items() if k != "proc"}
                                      for j in self.proposing]}, fh)
         os.replace(tmp, self.state)

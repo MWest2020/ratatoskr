@@ -37,10 +37,34 @@ def setup(cfg, agents, hub, human, send, issues=gh_issues, log=print, builds=Non
         if starter not in (hub, human):
             return say(cid, f"⛔ build not started: only {hub} or {human} start builds")
         repo, change, given = mk
+        if any(b.get("change") == change for b in builds.running + builds.queued):
+            return say(cid, f"ℹ `{change}` is already building or queued")
         name, why = build.check(cfg, repo, change, builds.running, capped=starter != human)
+        if not name and build.SLOTS_FULL in why:
+            # 2026-10-24: a refused build was dropped and had to be asked for again
+            builds.queued.append({"repo": repo, "change": change, "given": given,
+                                  "cname": cname, "cid": cid, "starter": starter})
+            builds.save()
+            return say(cid, f"⏳ `{change}` queued: {why}; it starts when a chain finishes")
         if not name:
             log(f"[listener] build refused: {why}", flush=True)
             return say(cid, f"⛔ build not started: {why}")
+        begin(name, change, given, cname, cid, starter)
+
+    def drain_queue():
+        """Start queued builds as slots free up, oldest first."""
+        for q in list(builds.queued):
+            name, why = build.check(cfg, q["repo"], q["change"], builds.running,
+                                    capped=q["starter"] != human)
+            if not name:
+                if build.SLOTS_FULL in why:
+                    return          # still full: the rest waits too
+                continue            # e.g. the budget: it stays queued
+            builds.queued.remove(q)
+            builds.save()
+            begin(name, q["change"], q["given"], q["cname"], q["cid"], q["starter"])
+
+    def begin(name, change, given, cname, cid, starter):
         number = given
         if number and not build.open_issue(cfg["owner"], name, number):
             log(f"[listener] #{number} is not an open issue; opening a fresh one", flush=True)
@@ -157,6 +181,7 @@ def setup(cfg, agents, hub, human, send, issues=gh_issues, log=print, builds=Non
 
     def tick():
         builds.tick(on_event)
+        drain_queue()
         follow_merges()
         follow_deploys()
 

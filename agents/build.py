@@ -86,6 +86,9 @@ def open_issue(owner, repo, number, runner=subprocess.run):
     return p.returncode == 0 and p.stdout.strip() == "open"
 
 
+SLOTS_FULL = "API-billed chains are running, the most at once"
+
+
 def _repo_of(b):
     return b.get("repo", "") if isinstance(b, dict) else ""
 
@@ -126,7 +129,7 @@ def check(cfg, repo, change, running, runner=subprocess.run, now=time.time, capp
         # run side by side, guarded by money, not by the subscription's day cap
         mine = [b for b in running if credits.repo_billed(_repo_of(b))]
         if len(mine) >= int(cfg.get("max_concurrent_api", 3)):
-            return None, f"{len(mine)} API-billed chains are running, the most at once"
+            return None, f"{len(mine)} {SLOTS_FULL}"
         why = credits.refusal(chain_cost(cfg) * (len(mine) + 1))
         if why:
             return None, why

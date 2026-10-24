@@ -35,6 +35,11 @@ no keys, so unbilled work never sees it.
 - Billed chains run side by side, at most `max_concurrent_api` (3), and do
   not count against the subscription's `builds_per_day`; money guards them.
   Subscription chains keep their own limit of one at a time.
+- A billed build that finds every slot taken is **queued**, not dropped: it
+  is kept in `state.json` (`queued`) and starts on the first tick a slot is
+  free, oldest first. A build of a change already running or queued is said
+  so and not started twice. (2026-10-24: with three chains running, pitch was
+  refused and had to be asked for again.)
 
 The Console's own spend limit on the key's workspace is the hard stop behind
 this one.
