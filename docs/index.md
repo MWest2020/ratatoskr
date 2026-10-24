@@ -23,7 +23,8 @@ tailnet.
   [relay-herstel](how-to/relay-herstel.md).
 
 - [Het werk-overzicht](how-to/werk-overzicht.md)
-- [Give a chat agent the read shell](how-to/read-shell.md) — six read-only GitHub lookups, the only Bash a chat agent may have
+- [Give a chat agent the read shell](how-to/read-shell.md) — seven read-only GitHub lookups, the only Bash a chat agent may have
+- [Project boards](how-to/boards.md) — each project's GitHub board follows the factory's stages
 - [Wat kost de vloot](explanation/wat-kost-de-vloot.md) — wat er in `#statistics` staat en wie er een regel post
 
 ## Channels (2026-10-22)

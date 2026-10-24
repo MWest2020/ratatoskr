@@ -20,6 +20,7 @@ import time
 
 import agent_skills
 import agent_turn
+import board
 import bootstrap
 import build
 import build_wiring
@@ -92,6 +93,7 @@ def main():
 
     session_post, try_session = session_wiring.build(reg, AGENTS, send, HUB)
     factory = build.load()
+    board.enable(factory)                                    # boards follow the stages
     read_tick = repo_read.ticker(factory, ROOT, time.time)   # .repos/<name> for chat turns
     late = {}   # filled once run_turn exists: a merged proposal wakes the hub
     try_build, build_tick = build_wiring.setup(

@@ -9,6 +9,8 @@ not on its issue must never look like one that is.
 import re
 import subprocess
 
+import board
+
 OWNER = "MWest2020"
 TIMEOUT_S = 30
 NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$")
@@ -61,13 +63,17 @@ def create(repo, title, body, label_names, runner=subprocess.run):
     m = re.search(r"/issues/(\d+)\s*$", out.strip())
     if err or not m:
         return 0, "", err or f"no issue url in gh output: {out.strip()[:80]!r}"
+    board.note(repo, int(m.group(1)), body, title=title)   # the card follows the issue
     return int(m.group(1)), out.strip(), ""
 
 
 def comment(repo, number, body, runner=subprocess.run):
     argv = ["gh", "issue", "comment", str(int(number)), f"--repo={_repo(repo)}",
             "--body-file=-"]
-    return _gh(argv, runner, body)[1]
+    err = _gh(argv, runner, body)[1]
+    if not err:
+        board.note(repo, number, body)
+    return err
 
 
 def relabel(repo, number, old, new, runner=subprocess.run):
