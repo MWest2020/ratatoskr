@@ -140,3 +140,44 @@ class ProposeIsNotDeployed(unittest.TestCase):
         self.assertEqual(len(woke), 1)
         self.assertEqual(deployed, [])
         self.assertEqual(builds.deploying, [])
+
+
+class CiStopWakesTheHub(unittest.TestCase):
+    """2026-10-24: every role passed wordsworth#217, CI failed one test, and
+    the listener said "not merged" to nobody who could act."""
+
+    def test_the_hub_gets_the_failing_lines(self):
+        woke = []
+
+        class Merger:
+            def checks(self, *a):
+                return "stop", "failing: Fast test gate (offline)"
+
+            def failure_excerpt(self, *a):
+                return "- Fast test gate (offline): FAILED tests/x.py::test_y - AssertionError"
+
+        class Issues:
+            def comment(self, *a):
+                return ""
+        with tempfile.TemporaryDirectory() as t:
+            builds = build_runner.Builds({"owner": "MWest2020", "runs": t}, popen=None)
+            builds.merging.append({"repo": "wordsworth", "issue": 9, "cid": "c", "pr": 31,
+                                   "next": 0, "change": "add-x"})
+            _, tick = build_wiring.setup({"owner": "MWest2020", "runs": t}, {}, "odin", "mark",
+                                         lambda *a: True, issues=Issues(), builds=builds,
+                                         merger=Merger(), after_fail=lambda m, t: woke.append(t),
+                                         log=lambda *a, **k: None)
+            builds.tick = lambda on_event: None
+            tick()
+        self.assertEqual(len(woke), 1)
+        self.assertIn("FAILED tests/x.py::test_y", woke[0])
+
+    def test_the_excerpt_reads_the_failed_log(self):
+        def runner(argv, **kw):
+            if argv[:3] == ["gh", "pr", "checks"]:
+                out = json.dumps([{"name": "gate", "bucket": "fail",
+                                   "link": "https://github.com/o/r/actions/runs/42/job/1"}])
+            else:
+                out = "gate\tRun tests\t2026-10-24T00:26:42Z \x1b[31mFAILED\x1b[0m tests/a.py::t - boom\n"
+            return subprocess.CompletedProcess(argv, 0, out, "")
+        self.assertEqual(bm.failure_excerpt("o", "r", 5, runner), "- gate: FAILED tests/a.py::t - boom")

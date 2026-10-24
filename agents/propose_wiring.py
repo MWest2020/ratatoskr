@@ -102,7 +102,8 @@ def setup(cfg, agents, hub, send, pub2name, builds, fetch, run_turn, issues=gh_i
         run_turn(hub, b.get("cname", ""), b["cid"], msgs, max(len(msgs) - 1, 0),
                  f"The build of `{b['change']}` on {b['repo']} failed: {text} "
                  f"(issue {b['repo']}#{b['issue']}). Decide: start it again with `!build` "
-                 "if the cause is gone, or tell Mark what blocks it.",
+                 "if the cause is gone; amend the change with `!propose` (same id) when "
+                 "the cause belongs in it, then build; or tell Mark what blocks it.",
                  "", "", "build-failed", followup=True)
 
     def after_done(entry):

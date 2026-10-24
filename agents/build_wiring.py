@@ -98,8 +98,14 @@ def setup(cfg, agents, hub, human, send, issues=gh_issues, log=print, builds=Non
             builds.save()
             tail = f" · {m['repo']}#{m['issue']}"
             if verdict == "stop":
-                issues.comment(m["repo"], m["issue"], f"Not merged: {detail}.")
+                why = getattr(merger, "failure_excerpt", lambda *a: "")(cfg["owner"], m["repo"],
+                                                                      m["pr"])
+                issues.comment(m["repo"], m["issue"], f"Not merged: {detail}."
+                               + (f"\n\n{why}" if why else ""))
                 say(m["cid"], f"⛔ PR #{m['pr']} not merged: {detail}{tail}")
+                if after_fail and m.get("kind") != "archive" and m.get("change"):
+                    after_fail(m, f"CI stopped the merge of PR #{m['pr']}: {detail}."
+                               + (f"\n\n{why}" if why else ""))
                 continue
             err = merger.merge(cfg["owner"], m["repo"], m["pr"])
             issues.comment(m["repo"], m["issue"], f"Merged PR #{m['pr']} ({detail})."
