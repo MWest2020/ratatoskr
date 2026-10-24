@@ -56,5 +56,13 @@ class Report(unittest.TestCase):
         self.assertEqual(s["billing_cost"], {"subscription": 0.5, "api": 2.0})
 
 
+class OffInTests(unittest.TestCase):
+    def test_the_real_log_is_not_written_until_enabled(self):
+        before = os.path.getsize(activity.LOG) if os.path.exists(activity.LOG) else 0
+        activity.record("chat", "test-agent", "x")
+        after = os.path.getsize(activity.LOG) if os.path.exists(activity.LOG) else 0
+        self.assertEqual(before, after)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -23,6 +23,13 @@ import time
 from collections import Counter
 
 LOG = os.path.expanduser("~/.local/state/ratatoskr/activity.jsonl")
+_on = {"live": False}
+
+
+def enable():
+    """The listener turns the live log on; tests never do, so a test turn
+    never lands in the real log (2026-10-24: the first suite run did)."""
+    _on["live"] = True
 
 
 def tools_from_stream(lines):
@@ -56,7 +63,11 @@ def model_from_stream(lines):
 
 def record(kind, agent, project, model="", skills=None, skills_used=None, tools=None,
            cost=0.0, turns=0, billing="subscription", ref="", ts=None, log=LOG):
-    """Append one run. Never raises: tracking must not break the work."""
+    """Append one run. Never raises: tracking must not break the work. The
+    default log is written only once the listener enabled it; an explicit
+    `log` (the backfill, the tests) always is."""
+    if log == LOG and not _on["live"]:
+        return
     try:
         row = {"ts": int(ts if ts is not None else time.time()), "kind": kind,
                "agent": agent, "project": project, "model": model or "",

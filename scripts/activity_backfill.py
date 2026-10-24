@@ -100,7 +100,9 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--before", type=float, default=time.time())
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--log", default=activity.LOG)
     a = ap.parse_args()
+    activity.enable()          # an explicit run writes the log, like the listener
     counts = {}
     for source in (habitat_rows, propose_rows, chat_rows):
         for row in source():
@@ -108,7 +110,7 @@ def main():
                 continue
             counts[row["kind"]] = counts.get(row["kind"], 0) + 1
             if not a.dry_run:
-                activity.record(**row)
+                activity.record(**row, log=a.log)
     print("backfilled:", counts)
 
 

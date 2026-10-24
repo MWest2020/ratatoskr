@@ -18,6 +18,7 @@ right it lacked; the listener acts, under conditions you can read.
 import os
 import time
 
+import activity
 import agent_skills
 import agent_turn
 import board
@@ -96,6 +97,7 @@ def main():
     factory = build.load()
     board.enable(factory)                                    # boards follow the stages
     credits.load(ROOT, factory)                              # API-billed work: key + budget
+    activity.enable()                                        # one line per run (activity.py)
     read_tick = repo_read.ticker(factory, ROOT, time.time)   # .repos/<name> for chat turns
     late = {}   # filled once run_turn exists: a merged proposal wakes the hub
     try_build, build_tick = build_wiring.setup(
