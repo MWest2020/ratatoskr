@@ -166,3 +166,15 @@ class Seam(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class Comments(unittest.TestCase):
+    def test_the_last_comments_of_one_issue(self):
+        a = rs.parser().parse_args(["comments", "wordsworth", "219", "2"])
+        cmd = rs.argv(a)
+        self.assertEqual(cmd[:5], ["gh", "issue", "view", "219", "--repo=MWest2020/wordsworth"])
+        self.assertTrue(cmd[-1].startswith(".comments[-2:][]"))
+
+    def test_a_number_is_required(self):
+        with self.assertRaises(SystemExit):
+            rs.parser().parse_args(["comments", "wordsworth", "x"])
