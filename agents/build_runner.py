@@ -141,8 +141,10 @@ class Builds:
                    CLAUDE_CREDS_FILE="",
                    HABITAT_MAX_BUDGET_USD=f"{float(self.cfg.get('max_budget_usd', 5)):.2f}")
         if credits.repo_billed(repo):   # habitat's worker runs on the API key (HABITAT_AUTH)
-            env.update(HABITAT_AUTH="api", HABITAT_MAX_BUDGET_USD=(
-                f"{float(self.cfg.get('api_max_budget_usd', 5)):.2f}"))
+            role = float(self.cfg.get("api_max_budget_usd", 5))
+            env.update(HABITAT_AUTH="api", HABITAT_MAX_BUDGET_USD=f"{role:.2f}",
+                       HABITAT_BUILDER_BUDGET_USD=(
+                           f"{float(self.cfg.get('api_builder_budget_usd', role)):.2f}"))
         proc = self.popen(detach.argv([os.path.join(self.cfg["habitat_dir"], "dispatch",
                                                     "chain.sh"),
                                        change, f"{self.cfg['owner']}/{repo}"]),

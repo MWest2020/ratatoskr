@@ -96,8 +96,27 @@ def _repo_of(b):
 
 
 def chain_cost(cfg):
-    """The most an API-billed chain can cost: four roles at their budget."""
-    return 4 * float(cfg.get("api_max_budget_usd", 5))
+    """The most an API-billed chain can cost: three roles at their budget and
+    the builder at its own (habitat builder-budget)."""
+    role = float(cfg.get("api_max_budget_usd", 5))
+    return 3 * role + float(cfg.get("api_builder_budget_usd", role))
+
+
+def change_builds_today(runs_dir, repo, change, now=time.time):
+    """How often this change was built today: the circuit breaker's count."""
+    day = time.strftime("%Y-%m-%d", time.localtime(now()))
+    n = 0
+    for f in os.listdir(runs_dir) if os.path.isdir(runs_dir) else []:
+        if not f.startswith(f"{repo}-{change}-"):
+            continue
+        try:
+            with open(os.path.join(runs_dir, f)) as fh:
+                head = json.loads(fh.readline())
+        except (OSError, ValueError):
+            continue
+        n += head.get("change") == change and time.strftime(
+            "%Y-%m-%d", time.localtime(head.get("started", 0))) == day
+    return n
 
 
 def builds_today(runs_dir, now=time.time, skip=lambda repo: False):
@@ -129,6 +148,12 @@ def check(cfg, repo, change, running, runner=subprocess.run, now=time.time, capp
     if credits.repo_billed(name):
         # API credits (2026-10-24, Mark: "fail fast, burn fast ... Nitro"): chains
         # run side by side, guarded by money, not by the subscription's day cap
+        # Circuit breaker (2026-10-24: gdd-economy was amended and rebuilt six
+        # times, $26, each failing on another role): split it, do not loop.
+        tries = int(cfg.get("max_builds_per_change_day", 3))
+        if capped and change_builds_today(cfg["runs"], name, change, now) >= tries:
+            return None, (f"`{change}` was built {tries} times today without a merge: split it "
+                          "into smaller changes with the architect instead of rebuilding")
         mine = [b for b in running if credits.repo_billed(_repo_of(b))]
         if len(mine) >= int(cfg.get("max_concurrent_api", 3)):
             return None, f"{len(mine)} {SLOTS_FULL}"

@@ -15,6 +15,8 @@ boards: {wordsworth: 1, convergence: 2, ratatoskr: 3}
 api_repos: [convergence]
 api_budget_usd: 95           # a month; the credits are $100
 api_max_budget_usd: 5        # per habitat role of a billed chain
+api_builder_budget_usd: 10   # the builder's own (habitat builder-budget)
+max_builds_per_change_day: 3 # circuit breaker: then split the change, do not loop
 max_concurrent_api: 3        # billed chains side by side ("Nitro", Mark 2026-10-24)
 builds_per_day: 6
 # Budget per habitat role run (HABITAT_MAX_BUDGET_USD). $5 was too tight for a

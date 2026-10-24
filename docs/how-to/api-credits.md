@@ -46,3 +46,15 @@ no keys, so unbilled work never sees it.
 
 The Console's own spend limit on the key's workspace is the hard stop behind
 this one.
+
+## Room for the builder, and a brake
+
+- The builder of a billed chain gets its own budget, `api_builder_budget_usd`
+  (10), the other roles keep `api_max_budget_usd` (5); a chain's worst case
+  is three roles plus the builder. convergence builders hit the shared $5
+  three times at 127-138 turns, while no other role passed $1.03.
+- **Circuit breaker**: a billed change built `max_builds_per_change_day` (3)
+  times in a day without a merge is refused a fourth, with the advice to split
+  it into smaller changes with the architect. gdd-economy was amended and
+  rebuilt six times on 2026-10-24 ($26), each time failing on another role. A
+  build Mark types himself is not braked.

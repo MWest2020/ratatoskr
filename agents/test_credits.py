@@ -139,5 +139,30 @@ class Headroom(Credits):
             credits.LEDGER = orig
 
 
+class Breaker(Credits):
+    """2026-10-24: gdd-economy was amended and rebuilt six times ($26). After
+    three builds of a change in a day the listener says to split it."""
+
+    def test_the_fourth_build_of_a_change_today_is_refused(self):
+        import json as _j
+        import time as _t
+        cfg = {"repos": ["convergence"], "owner": "MWest2020", "runs": self.t.name,
+               "max_concurrent": 1, "builds_per_day": 0, **self.factory, "api_budget_usd": 1000}
+        for i in range(3):
+            open(os.path.join(self.t.name, f"convergence-gdd-economy-{i}.log"), "w").write(
+                _j.dumps({"repo": "convergence", "change": "gdd-economy", "started": int(_t.time())}) + "\n")
+        gh = lambda argv, **kw: subprocess.CompletedProcess(argv, 0, "[]", "")  # noqa: E731
+        orig = credits.LEDGER
+        credits.LEDGER = self.ledger
+        try:
+            why = build.check(cfg, "convergence", "gdd-economy", [], gh)[1]
+            self.assertIn("split it", why)
+            self.assertEqual(build.check(cfg, "convergence", "other", [], gh)[0], "convergence")
+            self.assertEqual(build.check(cfg, "convergence", "gdd-economy", [], gh, capped=False)[0],
+                             "convergence")      # Mark's own build is not braked
+        finally:
+            credits.LEDGER = orig
+
+
 if __name__ == "__main__":
     unittest.main()
