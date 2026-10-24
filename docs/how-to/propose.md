@@ -121,3 +121,7 @@ A change that creates a new capability gets a real Purpose on archive:
 openspec writes a "TBD - created by archiving change …" placeholder there,
 strict validation refuses it, and `propose_git.fill_purposes` replaces it
 with the first sentence of the change's own Why.
+
+When the archive PR merges, every open issue titled `propose: <change>`
+(the first proposal and any amends) is closed with a note, so the boards
+show the change as done and not as a pile of open proposals.

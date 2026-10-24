@@ -51,5 +51,27 @@ class FillPurpose(unittest.TestCase):
             self.assertEqual(run("openspec", "validate", "--specs", "--strict").returncode, 0)
 
 
+class CloseOnArchive(Wiring):
+    def test_a_merged_archive_closes_the_proposal_issues(self):
+        closed = []
+        import propose_wiring as pw
+
+        class Issues:
+            def open_titled(s, repo, title):
+                return [10, 23] if title == "propose: add-x" else []
+
+            def close(s, repo, n, body):
+                closed.append(n)
+
+            def comment(s, *a):
+                return ""
+        _, _, after, _, _ = pw.setup(
+            {"owner": "MWest2020", "repos": ["wordsworth"]}, {"odin": {"nsec": "n", "npub": "p"}},
+            "odin", lambda *a: None, {}, self.builds, lambda cid: [], lambda *a, **k: None,
+            issues=Issues(), log=lambda *a, **k: None)
+        after({"kind": "archive", "repo": "wordsworth", "change": "add-x", "pr": 44, "cid": "c"})
+        self.assertEqual(closed, [10, 23])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -111,7 +111,14 @@ def setup(cfg, agents, hub, send, pub2name, builds, fetch, run_turn, issues=gh_i
             builds.save()
 
     def after_merge(m):
-        """A merged proposal wakes the hub to build it."""
+        """A merged proposal wakes the hub to build it; a merged archive closes
+        every proposal issue of that change (2026-10-24: superseded ones piled
+        up open on the boards)."""
+        if m.get("kind") == "archive" and m.get("change"):
+            for n in issues.open_titled(m["repo"], f"propose: {m['change']}"):
+                issues.close(m["repo"], n, f"Done: `{m['change']}` is built, merged and "
+                             f"archived (PR #{m['pr']}).")
+            return
         if m.get("kind") != "propose":
             return
         msgs = fetch(m["cid"]) or []
