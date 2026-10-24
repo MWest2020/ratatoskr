@@ -87,6 +87,8 @@ def open_issue(owner, repo, number, runner=subprocess.run):
 
 
 SLOTS_FULL = "API-billed chains are running, the most at once"
+BUDGET_WAIT = "waiting for the running API-billed chains to finish before the budget has room"
+QUEUEABLE = (SLOTS_FULL, BUDGET_WAIT)
 
 
 def _repo_of(b):
@@ -130,9 +132,14 @@ def check(cfg, repo, change, running, runner=subprocess.run, now=time.time, capp
         mine = [b for b in running if credits.repo_billed(_repo_of(b))]
         if len(mine) >= int(cfg.get("max_concurrent_api", 3)):
             return None, f"{len(mine)} {SLOTS_FULL}"
-        why = credits.refusal(chain_cost(cfg) * (len(mine) + 1))
+        # Out of money: even this chain's worst case does not fit -> refuse.
+        why = credits.refusal(chain_cost(cfg))
         if why:
             return None, why
+        # Only short of headroom while others run -> wait in the queue
+        # (2026-10-24: $58 left, yet refused, and dropped).
+        if mine and credits.refusal(chain_cost(cfg) * (len(mine) + 1)):
+            return None, f"{BUDGET_WAIT} ({len(mine)} running)"
     else:
         mine = [b for b in running if not credits.repo_billed(_repo_of(b))]
         if len(mine) >= int(cfg.get("max_concurrent", 1)):

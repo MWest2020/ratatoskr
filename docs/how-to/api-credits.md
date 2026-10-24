@@ -30,8 +30,11 @@ no keys, so unbilled work never sees it.
   report).
 - `api_budget_usd` (95 a month) is the limit. Billed work starts only while
   the month has room: a chat turn needs any room, a proposal $3, a chain its
-  worst case (four roles at `api_max_budget_usd`) for itself and every billed
-  chain already running. Otherwise the listener says why and does not start.
+  worst case (four roles at `api_max_budget_usd`). When that does not fit,
+  the build is refused. When it fits but not alongside the worst case of every
+  billed chain already running, the build is **queued** and starts once those
+  finish and their real cost is known (2026-10-24: $58 of $95 left, a third
+  chain was refused and dropped).
 - Billed chains run side by side, at most `max_concurrent_api` (3), and do
   not count against the subscription's `builds_per_day`; money guards them.
   Subscription chains keep their own limit of one at a time.
