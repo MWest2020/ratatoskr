@@ -116,5 +116,28 @@ class Queue(Credits):
             build.change_exists, credits.LEDGER = orig_ok, orig_ledger
 
 
+class Headroom(Credits):
+    """2026-10-24: $58 of $95 left, two chains running, and a third was refused
+    and dropped. Short of headroom waits in the queue; only out of money refuses."""
+
+    def test_short_of_headroom_waits_out_of_money_refuses(self):
+        cfg = {"repos": ["convergence"], "owner": "MWest2020", "runs": self.t.name,
+               "max_concurrent": 1, "builds_per_day": 0, **{**self.factory,
+               "api_budget_usd": 10, "api_max_budget_usd": 1, "max_concurrent_api": 5}}
+        gh = lambda argv, **kw: subprocess.CompletedProcess(argv, 0, "[]", "")  # noqa: E731
+        orig = credits.LEDGER
+        credits.LEDGER = self.ledger
+        try:
+            credits.record("build-role", 3.0, "x", ledger=self.ledger)     # $7 left
+            running = [{"repo": "convergence"}] * 2                        # needs 3 x $4
+            why = build.check(cfg, "convergence", "x", running, gh)[1]
+            self.assertIn(build.BUDGET_WAIT, why)
+            credits.record("build-role", 4.5, "y", ledger=self.ledger)     # $2.50 left
+            why = build.check(cfg, "convergence", "x", [], gh)[1]
+            self.assertIn("used up", why)
+        finally:
+            credits.LEDGER = orig
+
+
 if __name__ == "__main__":
     unittest.main()

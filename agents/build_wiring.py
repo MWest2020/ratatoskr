@@ -40,7 +40,7 @@ def setup(cfg, agents, hub, human, send, issues=gh_issues, log=print, builds=Non
         if any(b.get("change") == change for b in builds.running + builds.queued):
             return say(cid, f"ℹ `{change}` is already building or queued")
         name, why = build.check(cfg, repo, change, builds.running, capped=starter != human)
-        if not name and build.SLOTS_FULL in why:
+        if not name and any(q in why for q in build.QUEUEABLE):
             # 2026-10-24: a refused build was dropped and had to be asked for again
             builds.queued.append({"repo": repo, "change": change, "given": given,
                                   "cname": cname, "cid": cid, "starter": starter})
@@ -57,7 +57,7 @@ def setup(cfg, agents, hub, human, send, issues=gh_issues, log=print, builds=Non
             name, why = build.check(cfg, q["repo"], q["change"], builds.running,
                                     capped=q["starter"] != human)
             if not name:
-                if build.SLOTS_FULL in why:
+                if any(w in why for w in build.QUEUEABLE):
                     return          # still full: the rest waits too
                 continue            # e.g. the budget: it stays queued
             builds.queued.remove(q)
