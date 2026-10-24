@@ -140,5 +140,40 @@ class FanOut(unittest.TestCase):
         self.assertEqual(len(propose.read_markers(ans)), propose.FANOUT)
 
 
+class RestartSafePublish(unittest.TestCase):
+    """2026-10-24, convergence fundament: a restart cut publish off after its
+    commit; the job had already left the state and the change was stranded."""
+
+    def runner(self, staged, pr_exists):
+        calls = []
+
+        def run(argv, **kw):
+            calls.append(argv)
+            if argv[-2:] == ["--cached", "--quiet"]:
+                return subprocess.CompletedProcess(argv, 1 if staged else 0, "", "")
+            if argv[0] == "gh":
+                if pr_exists:
+                    return subprocess.CompletedProcess(
+                        argv, 1, "", 'a pull request for branch "b" already exists:\n'
+                        "https://github.com/o/r/pull/8\n")
+                return subprocess.CompletedProcess(argv, 0, "https://github.com/o/r/pull/9\n", "")
+            return subprocess.CompletedProcess(argv, 0, "", "")
+        return run, calls
+
+    def test_an_existing_commit_and_pr_are_reused(self):
+        run, calls = self.runner(staged=False, pr_exists=True)
+        n, err = propose.publish({"wt": "/w", "change": "x", "branch": "b", "summary": "s"},
+                                 "r", "o", run)
+        self.assertEqual((n, err), (8, ""))
+        self.assertFalse(any("commit" in a for a in calls))
+
+    def test_a_fresh_change_is_committed(self):
+        run, calls = self.runner(staged=True, pr_exists=False)
+        n, _ = propose.publish({"wt": "/w", "change": "x", "branch": "b", "summary": "s"},
+                               "r", "o", run)
+        self.assertEqual(n, 9)
+        self.assertTrue(any("commit" in a for a in calls))
+
+
 if __name__ == "__main__":
     unittest.main()
