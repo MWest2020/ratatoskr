@@ -27,6 +27,7 @@ tailnet.
 - [Project boards](how-to/boards.md) — each project's GitHub board follows the factory's stages
 - [Which agent ran, on what](how-to/activity.md) — one line per run: agent, model, skills, tools, cost, bill
 - [Work on the API credits](how-to/api-credits.md) — the game bills to the API key, with a monthly budget and parallel chains
+- [Lessons from running an agent factory](explanation/lessons-agent-factory.md) — the top 10 to be mindful of, each with its incident
 - [Wat kost de vloot](explanation/wat-kost-de-vloot.md) — wat er in `#statistics` staat en wie er een regel post
 
 ## Channels (2026-10-22)
