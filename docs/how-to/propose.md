@@ -12,6 +12,10 @@ on the **first** line of odin's answer (`agents/propose.py`,
 summary is one line of at most 1500. A first line that starts with
 `!propose` and does not parse is answered with "not understood" (2026-10-24:
 two proposals with a 400-character summary were dropped without a word).
+Independent changes can be written at once: up to five `!propose` lines as
+the first lines of one answer, each its own issue and session (Mark,
+2026-10-24: *"if we can do it via graph, go for it"*). Only a leading block
+counts; a marker after any other line is quoted text.
 
 1. **An issue** is opened on the repository (`propose: <id>`).
 2. **A writing session** gets a fresh worktree on its own branch, with a

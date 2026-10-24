@@ -21,7 +21,6 @@ only through git, after review, which is what the habitat-bridge spec says.
 """
 import json
 import os
-import re
 import subprocess
 
 import credits
@@ -30,9 +29,9 @@ import providers
 import work_tree
 from propose_git import BASE, archive, publish  # noqa: F401  (the wiring imports them from here)
 from propose_run import cost, refused_writes  # noqa: F401  (same)
+from propose_marker import (FANOUT, MARKER, read_marker, read_markers,  # noqa: F401
+                            strip_markers, unread)
 
-MARKER = re.compile(r"^!propose\s+([A-Za-z0-9][A-Za-z0-9._-]{0,99})\s+"
-                    r"([a-z0-9][a-z0-9._-]{2,80})\s+(\S.{0,1500})$")
 MAX_S = 900
 CLAUDE = os.environ.get("CLAUDE_BIN", "claude")
 DEBUG_DIR = os.path.expanduser("~/.local/state/ratatoskr/propose-debug")
@@ -54,24 +53,6 @@ push: the listener does that after checking your files."""
 AMEND = ("This change ALREADY EXISTS on main: AMEND it in place. Keep what was "
          "decided; settle the open questions the summary settles; fold the named "
          "findings into tasks.md as tasks with their proof. Change nothing else.\n")
-
-
-def read_marker(answer):
-    first = (answer or "").strip().split("\n", 1)[0].strip()
-    m = MARKER.match(first)
-    return (m.group(1), m.group(2), m.group(3)) if m else None
-
-
-def unread(answer):
-    """A note when the first line starts with `!propose` and does not parse.
-    2026-10-24: two of odin's proposals had a 400-character summary against a
-    300 limit, and were dropped without a word."""
-    first = (answer or "").strip().split("\n", 1)[0].strip()
-    if not first.startswith("!propose") or MARKER.match(first):
-        return ""
-    return ("\n\n⚠ `!propose` not understood, nothing started. The first line must be "
-            "`!propose <repo> <change-id> <one-line summary>`: a lowercase id of 3-81 "
-            "characters, a summary of at most 1500.")
 
 
 def tools(cid, wt=None):
@@ -175,4 +156,6 @@ def clause(handle, hub):
             "it, opens a PR, merges it once CI passes, and then wakes you to build it. "
             "The same marker with an EXISTING change id amends that change: use it when a "
             "build stopped on an open question or on findings that belong in the change "
-            "(put the decision and the findings in the summary), then build again.")
+            "(put the decision and the findings in the summary), then build again. "
+            f"Independent changes can be written at once: up to {FANOUT} `!propose` lines, "
+            "one per line, as the first lines of your answer.")
