@@ -97,7 +97,7 @@ def model_matches(requested, actual):
 
 
 def run(provider, system, prompt, model=None, allow=None, deny=None, progress=None,
-        no_tools=False):
+        no_tools=False, env=None):
     """Run one turn. Returns {answer, model, cost, turns, denials, error}.
 
     `denials` = the tool calls the permission layer refused; the listener reports
@@ -135,7 +135,8 @@ def run(provider, system, prompt, model=None, allow=None, deny=None, progress=No
     t0 = time.time()
     try:
         proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE, text=True, env=agent_env())
+                                stderr=subprocess.PIPE, text=True,
+                                env=env if env is not None else agent_env())
     except OSError as e:
         return {"answer": f"(kan {CLAUDE} niet starten)", "model": model or "", "cost": 0.0,
                 "turns": 0, "denials": [], "error": str(e)[:120]}

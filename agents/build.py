@@ -27,6 +27,8 @@ import time
 
 import yaml
 
+import credits
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 MARKER = re.compile(r"^!build\s+([A-Za-z0-9][A-Za-z0-9._-]{0,99})\s+"
                     r"([a-z0-9][a-z0-9._-]{0,99})(?:\s+#?(\d{1,7}))?\s*$", re.I)
@@ -84,8 +86,18 @@ def open_issue(owner, repo, number, runner=subprocess.run):
     return p.returncode == 0 and p.stdout.strip() == "open"
 
 
-def builds_today(runs_dir, now=time.time):
-    """How many builds started today, from the run files' first lines."""
+def _repo_of(b):
+    return b.get("repo", "") if isinstance(b, dict) else ""
+
+
+def chain_cost(cfg):
+    """The most an API-billed chain can cost: four roles at their budget."""
+    return 4 * float(cfg.get("api_max_budget_usd", 5))
+
+
+def builds_today(runs_dir, now=time.time, skip=lambda repo: False):
+    """How many builds started today, from the run files' first lines; `skip`
+    leaves out API-billed ones, which the subscription's day cap does not count."""
     if not os.path.isdir(runs_dir):
         return 0
     day = time.strftime("%Y-%m-%d", time.localtime(now()))
@@ -95,6 +107,8 @@ def builds_today(runs_dir, now=time.time):
             with open(os.path.join(runs_dir, f)) as fh:
                 head = json.loads(fh.readline())
         except (OSError, ValueError):
+            continue
+        if skip(head.get("repo", "")):
             continue
         n += time.strftime("%Y-%m-%d", time.localtime(head.get("started", 0))) == day
     return n
@@ -107,10 +121,22 @@ def check(cfg, repo, change, running, runner=subprocess.run, now=time.time, capp
     name = canonical_repo(cfg, repo)
     if not name:
         return None, f"`{repo}` is not on the factory's list of repositories"
-    if len(running) >= int(cfg.get("max_concurrent", 1)):
-        return None, "another build is still running; one chain at a time"
-    if capped and builds_today(cfg["runs"], now) >= int(cfg.get("builds_per_day", 0)):
-        return None, f"today's build budget ({cfg.get('builds_per_day')}) is used up"
+    if credits.repo_billed(name):
+        # API credits (2026-10-24, Mark: "fail fast, burn fast ... Nitro"): chains
+        # run side by side, guarded by money, not by the subscription's day cap
+        mine = [b for b in running if credits.repo_billed(_repo_of(b))]
+        if len(mine) >= int(cfg.get("max_concurrent_api", 3)):
+            return None, f"{len(mine)} API-billed chains are running, the most at once"
+        why = credits.refusal(chain_cost(cfg) * (len(mine) + 1))
+        if why:
+            return None, why
+    else:
+        mine = [b for b in running if not credits.repo_billed(_repo_of(b))]
+        if len(mine) >= int(cfg.get("max_concurrent", 1)):
+            return None, "another build is still running; one chain at a time"
+        if capped and builds_today(cfg["runs"], now, credits.repo_billed) >= int(
+                cfg.get("builds_per_day", 0)):
+            return None, f"today's build budget ({cfg.get('builds_per_day')}) is used up"
     why, ok = change_exists(cfg["owner"], name, change, runner)
     return (name, "") if ok else (None, why)
 

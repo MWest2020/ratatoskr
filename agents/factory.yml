@@ -9,7 +9,13 @@ repos: [ratatoskr, handbook, wordsworth, habitat, skill-forge, Wanderer, zettelk
 # list: a private repository is never readable by accident.
 readable: [ratatoskr, handbook, wordsworth, habitat, convergence]
 # GitHub boards that follow the factory's stages (agents/board.py)
-boards: {wordsworth: 1, convergence: 2}
+boards: {wordsworth: 1, convergence: 2, ratatoskr: 3}
+# API credits (agents/credits.py): these repos bill chats, proposals and builds
+# to Mark's API key instead of his subscription, guarded by money, not a day cap.
+api_repos: [convergence]
+api_budget_usd: 95           # a month; the credits are $100
+api_max_budget_usd: 5        # per habitat role of a billed chain
+max_concurrent_api: 3        # billed chains side by side ("Nitro", Mark 2026-10-24)
 builds_per_day: 6
 # Budget per habitat role run (HABITAT_MAX_BUDGET_USD). $5 was too tight for a
 # real change: wordsworth ingest-records-source's builder hit it at 86 turns

@@ -12,6 +12,7 @@ import os
 import time
 
 import build
+import credits
 import issues as gh_issues
 import propose
 
@@ -36,6 +37,8 @@ def setup(cfg, agents, hub, send, pub2name, builds, fetch, run_turn, issues=gh_i
         name = build.canonical_repo(cfg, repo)
         if not name:
             return say(cid, f"⛔ no proposal: `{repo}` is not on the factory's list")
+        if credits.repo_billed(name) and credits.refusal(3.0):
+            return say(cid, f"⛔ no proposal for `{change}`: {credits.refusal(3.0)}")
         n, _, err = issues.create(name, f"propose: {change}", f"**{hub}** in #{cname}: {summary}\n\n"
                                   "A propose session writes the OpenSpec change; the PR "
                                   "merges once CI passes, then the change is built.",
@@ -55,6 +58,8 @@ def setup(cfg, agents, hub, send, pub2name, builds, fetch, run_turn, issues=gh_i
 
     def finish(j):
         tail = f" · {j['repo']}#{j['issue']}"
+        if credits.repo_billed(j["repo"]):
+            credits.record("propose", propose.cost(j), f"{j['repo']}:{j['change']}")
         why = check(j)
         denied = refused(j) if why else []
         if denied and not j.get("retried"):

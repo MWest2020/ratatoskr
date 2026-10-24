@@ -11,6 +11,7 @@ import time
 import build
 import build_merge
 import build_runner
+import credits
 import deploy
 import issues as gh_issues
 
@@ -60,6 +61,9 @@ def setup(cfg, agents, hub, human, send, issues=gh_issues, log=print, builds=Non
 
     def on_event(b, kind, role, detail):
         text = build_runner.comment(kind, role, detail)
+        if kind in ("passed", "failed") and credits.repo_billed(b["repo"]):
+            credits.record("build-role", build_runner.report(detail.get("store")).get(
+                "total_cost_usd"), f"{b['repo']}:{b['change']}:{role}")
         err = issues.comment(b["repo"], b["issue"], text)
         tail = f" · {b['repo']}#{b['issue']}"
         mark = {"passed": "✅", "failed": "❌", "done": "🏁"}[kind]
