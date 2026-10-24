@@ -8,7 +8,7 @@ set -euo pipefail
 ROLE=${1:?role (architect|builder|reviewer|security)}
 CHANGE=${2:?change name}
 REPO=${3:?target repo (owner/repo)}
-WORKER_IMAGE=${WORKER_IMAGE:-ghcr.io/mwest2020/habitat-worker:d03b2339a4e55cc3bd3cc56f50f2f520e32f63d1}
+WORKER_IMAGE=${WORKER_IMAGE:-ghcr.io/mwest2020/habitat-worker:6f65f515096f75bd99459294edebebaf8b2f9d4b}
 BASE=${HABITAT_BASE_BRANCH:-}
 JUMPY=${JUMPY:-jumpy}
 

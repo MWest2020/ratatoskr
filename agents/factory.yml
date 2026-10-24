@@ -23,7 +23,7 @@ builds_per_day: 6
 max_budget_usd: 15
 max_concurrent: 1            # one chain at a time: four Jobs and Mark's quota
 habitat_dir: /home/agent/habitat
-worker_image: ghcr.io/mwest2020/habitat-worker:d03b2339a4e55cc3bd3cc56f50f2f520e32f63d1
+worker_image: ghcr.io/mwest2020/habitat-worker:6f65f515096f75bd99459294edebebaf8b2f9d4b
 kubectl: ssh -o BatchMode=yes jumpy kubectl
 logdir: ~/.local/state/habitat/run-logs
 runs: ~/.local/state/ratatoskr/builds
