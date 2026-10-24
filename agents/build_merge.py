@@ -68,6 +68,31 @@ def checks(owner, repo, pr, runner=subprocess.run):
     return "merge", f"{sum(r.get('bucket') == 'pass' for r in rows)} checks passed"
 
 
+ANSI = re.compile(r"\x1b\[[0-9;]*m")
+
+
+def failure_excerpt(owner, repo, pr, runner=subprocess.run, n=8):
+    """The failing checks' own error lines, for the hub (2026-10-24: a PR that
+    every role passed failed CI, and nothing woke odin to decide)."""
+    out, err = _gh(["gh", "pr", "checks", str(int(pr)), f"--repo={owner}/{repo}",
+                    "--json=name,bucket,link"], runner)
+    try:
+        rows = json.loads(out or "[]")
+    except ValueError:
+        return ""
+    lines = []
+    for r in rows:
+        m = re.search(r"/actions/runs/(\d+)", r.get("link") or "")
+        if r.get("bucket") not in ("fail", "cancel") or not m:
+            continue
+        log, _ = _gh(["gh", "run", "view", m.group(1), f"--repo={owner}/{repo}", "--log-failed"],
+                     runner)
+        plain = [ANSI.sub("", ln.split("Z ", 1)[-1]).strip() for ln in (log or "").splitlines()]
+        hits = [ln for ln in plain if re.search(r"FAILED |Error:|AssertionError|error:", ln)]
+        lines += [f"- {r['name']}: {h[:300]}" for h in hits[-n:]]
+    return "\n".join(dict.fromkeys(lines))
+
+
 def merge(owner, repo, pr, runner=subprocess.run):
     return _gh(["gh", "pr", "merge", str(int(pr)), f"--repo={owner}/{repo}", "--merge"],
                runner)[1]

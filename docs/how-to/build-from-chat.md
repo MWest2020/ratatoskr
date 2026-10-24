@@ -66,7 +66,10 @@ When all four roles pass:
    - **wait** while anything is pending. Zero checks also waits, because
      nothing verified the branch;
    - **stop** on a failing or cancelled check, naming it on the issue and in
-     the channel.
+     the channel, with the failing lines from the check's log. The stop also
+     wakes the hub to decide: rebuild, amend the change (`!propose`, same id),
+     or tell Mark (2026-10-24: wordsworth#217 passed every role, failed one
+     test in CI, and nobody who could act was told).
 3. **The merge closes the issue.**
 
 Mark decided this on 2026-10-22 ("absolutely"). alma is not a repository on
