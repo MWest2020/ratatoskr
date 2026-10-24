@@ -164,5 +164,12 @@ class Breaker(Credits):
             credits.LEDGER = orig
 
 
+class SubscriptionWaitsQueue(Credits):
+    def test_the_day_cap_and_one_at_a_time_are_queued_not_dropped(self):
+        for why in (f"today's {build.DAY_CAP} (6) is used up", build.ONE_AT_A_TIME):
+            self.assertTrue(any(q in why for q in build.QUEUEABLE), why)
+        self.assertFalse(any(q in "`x` is not on the factory's list" for q in build.QUEUEABLE))
+
+
 if __name__ == "__main__":
     unittest.main()
