@@ -78,8 +78,10 @@ On 2026-10-24 two amend sessions (wordsworth#214, #218) had every Edit inside
 the same run again worked. Both had started within a minute of a listener
 restart; the cause is not yet known. So the listener now:
 
-- gives each session a debug log (`.propose-run.debug`) and keeps its stderr
-  (`.propose-run.err`), both in the worktree;
+- gives each session a debug log in `~/.local/state/ratatoskr/propose-debug/`
+  (outside the worktree: `--debug-file` also writes a `latest` symlink, which
+  in the worktree failed the fence check, #219) and keeps its stderr in
+  `.propose-run.err`;
 - counts writes inside the fence that were refused, and when there are any,
   starts the session **once** more with the same decision, saying so on the
   issue;

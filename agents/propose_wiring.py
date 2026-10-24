@@ -62,13 +62,14 @@ def setup(cfg, agents, hub, send, pub2name, builds, fetch, run_turn, issues=gh_i
                                j.get("msgs") or [], pub2name, j.get("requester", hub))
             if again:
                 issues.comment(j["repo"], j["issue"], f"{len(denied)} writes inside the fence "
-                               "were refused (see `.propose-run.debug` in the worktree); "
+                               "were refused (debug log in `~/.local/state/ratatoskr/propose-debug/`); "
                                "retrying the session once.")
                 jobs.append({**j, **again, "retried": True, "started": now(),
                              "pid": getattr(again["proc"], "pid", None)})
                 return builds.save()
         if denied:
-            why += f"; {len(denied)} writes inside the fence were refused (see .propose-run.debug)"
+            why += (f"; {len(denied)} writes inside the fence were refused "
+                    "(see ~/.local/state/ratatoskr/propose-debug/)")
         if why:
             issues.comment(j["repo"], j["issue"], f"No PR: {why}.")
             return say(j["cid"], f"⛔ change `{j['change']}` not proposed: {why}{tail}")
