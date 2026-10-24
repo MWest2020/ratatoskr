@@ -12,6 +12,7 @@ import os
 import time
 
 import activity
+import branches
 import build
 import credits
 import issues as gh_issues
@@ -130,6 +131,8 @@ def setup(cfg, agents, hub, send, pub2name, builds, fetch, run_turn, issues=gh_i
         every proposal issue of that change (2026-10-24: superseded ones piled
         up open on the boards)."""
         if m.get("kind") == "archive" and m.get("change"):
+            branches.delete(cfg["owner"], m["repo"], branches.of_change(cfg["owner"], m["repo"],
+                                                                        m["change"]))
             for n in issues.open_titled(m["repo"], f"propose: {m['change']}"):
                 issues.close(m["repo"], n, f"Done: `{m['change']}` is built, merged and "
                              f"archived (PR #{m['pr']}).")

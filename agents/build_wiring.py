@@ -108,7 +108,7 @@ def setup(cfg, agents, hub, human, send, issues=gh_issues, log=print, builds=Non
         b.setdefault("verdicts", []).append(text.splitlines()[0])
         if kind in ("done", "failed"):
             branches.tidy(cfg["owner"], b, keep=(detail["branch"],) if kind == "done" else (),
-                          log=log)
+                          log=log, keep_builder=kind == "failed")
         if kind == "done":
             open_pr(b, detail["branch"])
         elif kind == "failed" and after_fail:

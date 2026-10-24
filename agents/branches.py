@@ -7,8 +7,11 @@ human intervention." Each habitat role pushes a branch (`habitat/<role>/<change>
 
 - A chain that passed keeps only its builder branch: that is the PR's head, and
   the repository's delete-branch-on-merge setting removes it on merge.
-- A chain that failed keeps none: a rebuild always starts from main, and every
-  role's verdict and findings are already on the build issue.
+- A chain that failed keeps only its builder branch (2026-10-24: demo-slice's
+  security role failed on a schema hiccup after the builder had passed, and the
+  deleted builder branch could not be reused). The rest goes; verdicts and
+  findings are on the build issue.
+- When the change is archived, every `habitat/*/<change>-*` branch left goes.
 - The branches come from the chain's own run file (`[dispatch] branch=...`), so
   only what this chain pushed is ever deleted.
 """
@@ -41,11 +44,22 @@ def delete(owner, repo, names, keep=(), runner=subprocess.run):
     return failed
 
 
-def tidy(owner, b, keep=(), log=print, runner=subprocess.run):
+def tidy(owner, b, keep=(), log=print, runner=subprocess.run, keep_builder=False):
     """A chain's branches go once it ends; `b` is the running build (its run file)."""
     try:
         lines = open(b["path"]).read().splitlines()
     except (OSError, KeyError):
         return
-    for name, err in delete(owner, b["repo"], of_chain(lines), keep=keep, runner=runner):
+    names = of_chain(lines)
+    if keep_builder:
+        keep = tuple(keep) + tuple(n for n in names if n.startswith("habitat/builder/"))
+    for name, err in delete(owner, b["repo"], names, keep=keep, runner=runner):
         log(f"[listener] branch {name} not deleted: {err}", flush=True)
+
+
+def of_change(owner, repo, change, runner=subprocess.run):
+    """Every habitat branch a change's chains left on the repository."""
+    p = runner(["gh", "api", f"repos/{owner}/{repo}/branches", "--paginate", "-q", ".[].name"],
+               capture_output=True, text=True)
+    return [n for n in (p.stdout or "").split()
+            if n.startswith("habitat/") and f"/{change}-" in n]
