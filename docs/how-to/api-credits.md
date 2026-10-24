@@ -50,8 +50,9 @@ this one.
 ## Room for the builder, and a brake
 
 - The builder of a billed chain gets its own budget, `api_builder_budget_usd`
-  (10), the other roles keep `api_max_budget_usd` (5); a chain's worst case
-  is three roles plus the builder. convergence builders hit the shared $5
+  (8), the reviewing roles `api_max_budget_usd` (3); a chain's worst case is
+  three roles plus the builder ($17). Set from what runs cost on 2026-10-24:
+  no reviewing role passed $1.53, the demo-slice builder took $5.41. convergence builders hit the shared $5
   three times at 127-138 turns, while no other role passed $1.03.
 - **Circuit breaker**: a billed change built `max_builds_per_change_day` (3)
   times in a day without a merge is refused a fourth, with the advice to split
