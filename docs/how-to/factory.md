@@ -105,3 +105,15 @@ skills go into the worker through git or the image, never as chat text.
 - **A role created in a shared room joins that room's triage.** Its name is
   added to `room.members` in `channels.yml`; otherwise it would only ever
   answer an @mention there.
+
+## Two meters: the subscription and the API credits
+
+Everything the factory runs today, the chat agents and the habitat chains,
+bills to Mark's Claude subscription. Mark also has $100 of Anthropic API
+credits a month, which only API-key use draws on; unused, they lapse. The key
+is in `secrets/anthropic-api.yaml` (SOPS, field `anthropic_api_key`, added
+2026-10-24 and verified: `claude -p` reports `apiKeySource:
+ANTHROPIC_API_KEY`). It is not wired to any agent yet. The plan is a new role
+with its own channel and repo (Mark's game idea), billed to the key with a
+monthly budget, and leftover credit at the end of a month spent on habitat
+builds of the existing repos.
