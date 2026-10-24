@@ -59,8 +59,9 @@ def repo_billed(repo):
     return str(repo).split("/")[-1] in _state["repos"]
 
 
-def spent(now=time.time, ledger=LEDGER):
+def spent(now=time.time, ledger=None):
     """This month's billed total."""
+    ledger = ledger or LEDGER       # read at call time, so a test can point it elsewhere
     month = time.strftime("%Y-%m", time.localtime(now()))
     total = 0.0
     try:
@@ -76,7 +77,7 @@ def spent(now=time.time, ledger=LEDGER):
     return total
 
 
-def refusal(need=0.0, now=time.time, ledger=LEDGER):
+def refusal(need=0.0, now=time.time, ledger=None):
     """"" when billed work costing up to `need` may start, else the reason."""
     if not _state["key"]:
         return "the API key is not loaded, so billed work is off"
@@ -93,7 +94,8 @@ def env(base):
     return {**base, "ANTHROPIC_API_KEY": _state["key"]}
 
 
-def record(kind, cost, ref, now=time.time, ledger=LEDGER):
+def record(kind, cost, ref, now=time.time, ledger=None):
+    ledger = ledger or LEDGER
     try:
         cost = float(cost or 0)
     except (TypeError, ValueError):
