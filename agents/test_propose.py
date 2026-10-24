@@ -72,10 +72,17 @@ class Check(unittest.TestCase):
 class Fence(unittest.TestCase):
     def test_tools_are_fenced_to_the_change(self):
         t = propose.tools("add-x")
-        self.assertIn("Write(./openspec/changes/add-x/**)", t)
+        self.assertIn("Edit(./openspec/changes/add-x/**)", t)
         self.assertIn("Bash(openspec validate add-x --strict)", t)
         self.assertNotIn("Write", t)
         self.assertNotIn("Bash", t)
+
+    def test_the_fence_is_absolute_when_the_worktree_is_known(self):
+        # 2026-10-24: a session ran `cd openspec/changes/<id>`, and the relative
+        # fence then named a path that did not exist; every Edit was refused
+        t = propose.tools("add-x", "/home/a/wt/")
+        self.assertIn("Edit(//home/a/wt/openspec/changes/add-x/**)", t)
+        self.assertFalse(any(x.startswith("Write(") for x in t))
 
     def test_first_line_only(self):
         self.assertEqual(propose.read_marker("!propose wordsworth add-x Do x.\nok"),

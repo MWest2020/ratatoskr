@@ -172,3 +172,9 @@ class Writing(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class AbsoluteScope(unittest.TestCase):
+    def test_a_known_root_makes_the_scope_survive_cd(self):
+        out = providers.scoped(["Read", "Edit", "Bash"], root="/home/a/wt/")
+        self.assertEqual(out, ["Read(//home/a/wt/**)", "Edit(//home/a/wt/**)", "Bash"])
