@@ -130,6 +130,11 @@ class FanOut(unittest.TestCase):
         ans = "!propose convergence a-one One.\ntext\n!propose convergence b-two Two."
         self.assertEqual([m[1] for m in propose.read_markers(ans)], ["a-one"])
 
+    def test_a_long_precise_summary_is_read(self):
+        # 2026-10-24: odin's fundament summary for the game was 2449 characters
+        ans = "!propose convergence fundament " + "Decide x precisely. " * 120
+        self.assertEqual(propose.read_marker(ans)[1], "fundament")
+
     def test_at_most_five(self):
         ans = "\n".join(f"!propose convergence c-{i}x Change {i}." for i in range(8))
         self.assertEqual(len(propose.read_markers(ans)), propose.FANOUT)

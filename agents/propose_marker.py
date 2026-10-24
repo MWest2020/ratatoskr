@@ -5,7 +5,7 @@ of markers began to fan out)."""
 import re
 
 MARKER = re.compile(r"^!propose\s+([A-Za-z0-9][A-Za-z0-9._-]{0,99})\s+"
-                    r"([a-z0-9][a-z0-9._-]{2,80})\s+(\S.{0,1500})$")
+                    r"([a-z0-9][a-z0-9._-]{2,80})\s+(\S.{0,4000})$")
 
 
 FANOUT = 5   # independent changes the hub may have written at once (graph, 2026-10-24)
@@ -44,4 +44,4 @@ def unread(answer):
         return ""
     return ("\n\n⚠ `!propose` not understood, nothing started. The first line must be "
             "`!propose <repo> <change-id> <one-line summary>`: a lowercase id of 3-81 "
-            "characters, a summary of at most 1500.")
+            "characters, a summary of at most 4000.")

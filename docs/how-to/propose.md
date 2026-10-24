@@ -9,7 +9,7 @@ last_reviewed: 2026-10-23
 
 on the **first** line of odin's answer (`agents/propose.py`,
 `agents/propose_wiring.py`). The id is lowercase, 3 to 81 characters; the
-summary is one line of at most 1500. A first line that starts with
+summary is one line of at most 4000 (raised 2026-10-24: odin's fundament summary for the game ran to 2449 characters and was precise, not padded). A first line that starts with
 `!propose` and does not parse is answered with "not understood" (2026-10-24:
 two proposals with a 400-character summary were dropped without a word).
 Independent changes can be written at once: up to five `!propose` lines as
