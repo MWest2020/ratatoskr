@@ -19,6 +19,7 @@ and it commits, pushes the branch and opens a PR. That PR is merged once CI
 agrees, by the same road as a build (build_wiring). Chat text reaches a cage
 only through git, after review, which is what the habitat-bridge spec says.
 """
+import json
 import os
 import re
 import subprocess
@@ -70,6 +71,29 @@ def unread(answer):
             "characters, a summary of at most 1500.")
 
 
+def refused_writes(job):
+    """Writes INSIDE the fence that the session was refused. They should never
+    happen; on 2026-10-24 two amend sessions had every Edit refused, and the
+    same run again worked. The wiring retries once when this is not empty."""
+    fence = f"/openspec/changes/{job['change']}/"
+    try:
+        lines = open(os.path.join(job["wt"], ".propose-run.jsonl")).read().splitlines()
+    except OSError:
+        return []
+    out = []
+    for ln in lines:
+        if '"type":"result"' not in ln.replace(" ", ""):
+            continue
+        try:
+            denials = json.loads(ln).get("permission_denials") or []
+        except ValueError:
+            continue
+        out += [d["tool_input"].get("file_path", "") for d in denials
+                if d.get("tool_name") in ("Edit", "Write")
+                and fence in (d.get("tool_input") or {}).get("file_path", "")]
+    return out
+
+
 def tools(cid):
     """Write and Edit fenced to the change's own directory; one command."""
     d = f"./openspec/changes/{cid}/**"
@@ -101,15 +125,20 @@ def start(clone, cid, summary, msgs, pub2name, requester, popen=subprocess.Popen
               + f"What was decided, in one line: {summary}\n\n"
               f"The channel, oldest first:\n{transcript(msgs, pub2name)}")
     out = open(os.path.join(wt, ".propose-run.jsonl"), "w")
+    # a debug log and stderr: the refusals of 2026-10-24 came without a reason
+    err = open(os.path.join(wt, ".propose-run.err"), "w")
+    debug = os.path.join(wt, ".propose-run.debug")
     env = detach.env(providers.agent_env())
-    proc = popen(detach.argv([CLAUDE, "-p", "--output-format", "stream-json", "--verbose",
+    proc = popen(detach.argv([CLAUDE, "-p", "--debug-file", debug,
+                  "--output-format", "stream-json", "--verbose",
                   "--permission-mode", "dontAsk", "--model", "sonnet",
                   "--append-system-prompt", SYSTEM.format(cid=cid),
                   "--allowedTools", ",".join(tools(cid)),
                   "--disallowedTools", "Task,KillShell,WebFetch,WebSearch"], env=env),
-                 stdin=subprocess.PIPE, stdout=out, stderr=subprocess.DEVNULL, text=True,
+                 stdin=subprocess.PIPE, stdout=out, stderr=err, text=True,
                  cwd=wt, env=env, start_new_session=True)
     out.close()
+    err.close()
     proc.stdin.write(prompt)
     proc.stdin.close()
     return {"amend": amend, "wt": wt, "branch": branch, "change": cid, "proc": proc,

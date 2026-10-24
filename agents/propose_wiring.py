@@ -20,7 +20,7 @@ CLONES = os.path.expanduser("~")
 
 def setup(cfg, agents, hub, send, pub2name, builds, fetch, run_turn, issues=gh_issues,
           now=time.time, log=print, start=propose.start, check=propose.check,
-          publish=propose.publish, archive=propose.archive):
+          publish=propose.publish, archive=propose.archive, refused=propose.refused_writes):
     voice = agents.get(hub) or {}
     jobs = builds.proposing   # persisted in state.json, adopted after a restart
 
@@ -47,6 +47,7 @@ def setup(cfg, agents, hub, send, pub2name, builds, fetch, run_turn, issues=gh_i
             issues.comment(name, n, f"Not started: {why}.")
             return say(cid, f"⛔ no proposal for `{change}`: {why} · {name}#{n}")
         jobs.append({**job, "repo": name, "issue": n, "cid": cid, "cname": cname,
+                     "msgs": msgs[-14:], "requester": requester,
                      "started": now(), "pid": getattr(job["proc"], "pid", None)})
         builds.save()
         log(f"[listener] propose session {name} {change} #{n}", flush=True)
@@ -55,6 +56,19 @@ def setup(cfg, agents, hub, send, pub2name, builds, fetch, run_turn, issues=gh_i
     def finish(j):
         tail = f" · {j['repo']}#{j['issue']}"
         why = check(j)
+        denied = refused(j) if why else []
+        if denied and not j.get("retried"):
+            again, err = start(os.path.join(CLONES, j["repo"]), j["change"], j["summary"],
+                               j.get("msgs") or [], pub2name, j.get("requester", hub))
+            if again:
+                issues.comment(j["repo"], j["issue"], f"{len(denied)} writes inside the fence "
+                               "were refused (see `.propose-run.debug` in the worktree); "
+                               "retrying the session once.")
+                jobs.append({**j, **again, "retried": True, "started": now(),
+                             "pid": getattr(again["proc"], "pid", None)})
+                return builds.save()
+        if denied:
+            why += f"; {len(denied)} writes inside the fence were refused (see .propose-run.debug)"
         if why:
             issues.comment(j["repo"], j["issue"], f"No PR: {why}.")
             return say(j["cid"], f"⛔ change `{j['change']}` not proposed: {why}{tail}")
