@@ -8,6 +8,7 @@ the build came from (so Mark sees it happen).
 """
 import time
 
+import activity
 import build
 import build_merge
 import build_runner
@@ -61,9 +62,16 @@ def setup(cfg, agents, hub, human, send, issues=gh_issues, log=print, builds=Non
 
     def on_event(b, kind, role, detail):
         text = build_runner.comment(kind, role, detail)
-        if kind in ("passed", "failed") and credits.repo_billed(b["repo"]):
-            credits.record("build-role", build_runner.report(detail.get("store")).get(
-                "total_cost_usd"), f"{b['repo']}:{b['change']}:{role}")
+        if kind in ("passed", "failed"):
+            rep = build_runner.report(detail.get("store"))
+            billed = credits.repo_billed(b["repo"])
+            if billed:
+                credits.record("build-role", rep.get("total_cost_usd"),
+                               f"{b['repo']}:{b['change']}:{role}")
+            activity.record("habitat", role, b["repo"], model=detail.get("model") or "default",
+                            cost=rep.get("total_cost_usd"), turns=rep.get("num_turns"),
+                            billing="api" if billed else "subscription",
+                            ref=f"{b['change']}:{rep.get('verdict', kind)}")
         err = issues.comment(b["repo"], b["issue"], text)
         tail = f" · {b['repo']}#{b['issue']}"
         mark = {"passed": "✅", "failed": "❌", "done": "🏁"}[kind]

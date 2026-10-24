@@ -11,6 +11,7 @@ change it decided gets built without anyone nudging it.
 import os
 import time
 
+import activity
 import build
 import credits
 import issues as gh_issues
@@ -61,6 +62,7 @@ def setup(cfg, agents, hub, send, pub2name, builds, fetch, run_turn, issues=gh_i
         tail = f" · {j['repo']}#{j['issue']}"
         if credits.repo_billed(j["repo"]):
             credits.record("propose", propose.cost(j), f"{j['repo']}:{j['change']}")
+        activity.record_propose(j, billing="api" if credits.repo_billed(j["repo"]) else "subscription")
         why = check(j)
         denied = refused(j) if why else []
         if denied and not j.get("retried"):
