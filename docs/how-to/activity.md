@@ -26,3 +26,8 @@ skills and tools? I prob need this for a linkedin post."*
   a recent window).
 - `python3 scripts/activity_report.py [--json out.json]` summarises it per agent,
   model, project, tool, skill and bill.
+
+The live log is written only after `activity.enable()`, which the listener
+and the backfill call. Tests never do, so a test turn never lands in the real
+log; the first suite run after the hooks went in did, and those rows were
+removed.
