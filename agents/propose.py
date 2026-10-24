@@ -95,10 +95,17 @@ def refused_writes(job):
     return out
 
 
-def tools(cid):
-    """Write and Edit fenced to the change's own directory; one command."""
-    d = f"./openspec/changes/{cid}/**"
-    return ["Read", "Grep", "Glob", f"Write({d})", f"Edit({d})",
+def tools(cid, wt=None):
+    """Edit fenced to the change's own directory; one command.
+
+    The fence is ABSOLUTE when the worktree is known (2026-10-24, found from
+    the debug logs): `./` resolves against the session's CURRENT directory,
+    and every refused amend had run `cd openspec/changes/<id>` first, after
+    which `./openspec/changes/<id>/**` named a path that does not exist.
+    `Edit` rules cover Write too; a `Write(path)` rule is ignored by Claude
+    Code's file checks, so it is not given."""
+    base = f"/{os.path.normpath(wt)}" if wt else "."
+    return ["Read", "Grep", "Glob", f"Edit({base}/openspec/changes/{cid}/**)",
             f"Bash(openspec validate {cid} --strict)"]
 
 
@@ -137,7 +144,7 @@ def start(clone, cid, summary, msgs, pub2name, requester, popen=subprocess.Popen
                   "--output-format", "stream-json", "--verbose",
                   "--permission-mode", "dontAsk", "--model", "sonnet",
                   "--append-system-prompt", SYSTEM.format(cid=cid),
-                  "--allowedTools", ",".join(tools(cid)),
+                  "--allowedTools", ",".join(tools(cid, wt)),
                   "--disallowedTools", "Task,KillShell,WebFetch,WebSearch"], env=env),
                  stdin=subprocess.PIPE, stdout=out, stderr=err, text=True,
                  cwd=wt, env=env, start_new_session=True)

@@ -39,13 +39,16 @@ PATH_TOOLS = {"Read", "Grep", "Glob", "Edit", "Write", "NotebookEdit"}
 READ_TOOLS = ("Read", "Grep", "Glob")
 
 
-def scoped(tools, extra=None):
-    """Path tools get a work-tree scope; the rest stays as it is.
+def scoped(tools, extra=None, root=None):
+    """Path tools get a work-tree scope; the rest stays as it is. With `root`
+    the scope is absolute, so a session that runs `cd` keeps its permits
+    (2026-10-24: a relative `./**` follows the session's current directory).
 
     `extra` = explicitly declared EXTRA read paths (per session type in
     sessions.yml). Every path becomes its own, equally tight scope — not a
     widening of the work-tree scope, but a second permit beside it."""
-    out = [f"{t}(./**)" if t in PATH_TOOLS else t for t in (tools or [])]
+    base = f"/{os.path.normpath(root)}" if root else "."
+    out = [f"{t}({base}/**)" if t in PATH_TOOLS else t for t in (tools or [])]
     for path in (extra or []):
         out += [f"{t}({path.rstrip('/')}/**)" for t in READ_TOOLS if t in (tools or [])]
     return out

@@ -76,7 +76,15 @@ down, and odin had no road but asking Mark. The git half of the road moved to
 On 2026-10-24 two amend sessions (wordsworth#214, #218) had every Edit inside
 `openspec/changes/<id>/` refused, although the fence allows exactly that, and
 the same run again worked. Both had started within a minute of a listener
-restart; the cause is not yet known. So the listener now:
+restart. **Cause, found 2026-10-24 from the debug logs:** the fence was
+relative (`Edit(./openspec/changes/<id>/**)`), and `./` resolves against the
+session's *current* directory. Every refused session had run
+`cd openspec/changes/<id>` first; from there the fence named a path that does
+not exist. The fence is now absolute (`Edit(//<worktree>/openspec/changes/<id>/**)`),
+proven with a session that `cd`s first, and work sessions' scopes are absolute
+the same way (`providers.scoped(..., root=)`). `Write(...)` rules are not
+given: Claude Code's file checks only match `Edit(...)`, which covers Write.
+The safety net stays as well. The listener now:
 
 - gives each session a debug log in `~/.local/state/ratatoskr/propose-debug/`
   (outside the worktree: `--debug-file` also writes a `latest` symlink, which

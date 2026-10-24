@@ -92,7 +92,7 @@ class Register:
         cmd = [CLAUDE, "-p", "--output-format", "stream-json", "--verbose",
                "--permission-mode", "dontAsk",
                "--append-system-prompt", t.get("system") or "",
-               "--allowedTools", ",".join(providers.scoped(tools, t.get("also_reads"))),
+               "--allowedTools", ",".join(providers.scoped(tools, t.get("also_reads"), root=workdir)),
                "--disallowedTools", ",".join(forbidden)]
         if t.get("model"):
             cmd += ["--model", t["model"]]
