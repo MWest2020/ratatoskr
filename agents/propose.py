@@ -33,6 +33,7 @@ MARKER = re.compile(r"^!propose\s+([A-Za-z0-9][A-Za-z0-9._-]{0,99})\s+"
                     r"([a-z0-9][a-z0-9._-]{2,80})\s+(\S.{0,1500})$")
 MAX_S = 900
 CLAUDE = os.environ.get("CLAUDE_BIN", "claude")
+DEBUG_DIR = os.path.expanduser("~/.local/state/ratatoskr/propose-debug")
 
 SYSTEM = """You write ONE OpenSpec change, decided in a chat channel, and nothing else.
 Write only under openspec/changes/{cid}/: proposal.md (why, in the people's own
@@ -127,7 +128,10 @@ def start(clone, cid, summary, msgs, pub2name, requester, popen=subprocess.Popen
     out = open(os.path.join(wt, ".propose-run.jsonl"), "w")
     # a debug log and stderr: the refusals of 2026-10-24 came without a reason
     err = open(os.path.join(wt, ".propose-run.err"), "w")
-    debug = os.path.join(wt, ".propose-run.debug")
+    # outside the worktree: --debug-file also writes a `latest` symlink beside
+    # the log, and in the worktree that is a file outside the fence (#219)
+    debug = os.path.join(DEBUG_DIR, os.path.basename(os.path.normpath(wt)) + ".log")
+    os.makedirs(DEBUG_DIR, exist_ok=True)
     env = detach.env(providers.agent_env())
     proc = popen(detach.argv([CLAUDE, "-p", "--debug-file", debug,
                   "--output-format", "stream-json", "--verbose",
