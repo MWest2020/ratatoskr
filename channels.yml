@@ -60,6 +60,9 @@ channels:
   standup:
     id: bd75be15-28ad-4243-8d2a-a15ed50826e6
     doel: dagelijkse ochtend-standup (08:00, open werk + blokkades) en gedaan-terugblik (18:00); recurring jobs
+  convergence:
+    id: 64dde86e-28d8-4130-82f2-3c723a6eac95
+    doel: the game (repo MWest2020/convergence), billed to the API credits; for now Mark and odin only, the roles join once API billing is wired
   werkplaats:
     id: f7324a19-531f-44ec-b12c-ac3106575f78
     doel: shared room — agents pick up work by contract, every piece of work is a GitHub issue (change shared-room)
