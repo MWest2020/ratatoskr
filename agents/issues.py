@@ -6,6 +6,7 @@ list built from validated parts, as in readshell.py. A failure returns a reason
 instead of raising, so the room can SAY that the trail broke; a turn that is
 not on its issue must never look like one that is.
 """
+import json
 import re
 import subprocess
 
@@ -94,3 +95,14 @@ def close(repo, number, body, runner=subprocess.run):
 def url(repo, number):
     return f"https://github.com/{_repo(repo)}/issues/{int(number)}"
 
+
+def open_titled(repo, title, runner=subprocess.run):
+    """Numbers of the open issues whose title is exactly `title`."""
+    out, err = _gh(["gh", "issue", "list", f"--repo={_repo(repo)}", "--state=open",
+                    "--limit=50", f"--search={title} in:title", "--json=number,title"], runner)
+    if err:
+        return []
+    try:
+        return [r["number"] for r in json.loads(out or "[]") if r.get("title") == title]
+    except ValueError:
+        return []
