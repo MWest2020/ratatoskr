@@ -153,8 +153,10 @@ human intervention."*
 - **A chain's branches** (`agents/branches.py`): a chain that passed keeps only
   its builder branch, the PR's head, which the repository's
   delete-branch-on-merge setting removes on merge (on for every factory repo
-  since 2026-10-24); a chain that failed keeps none, since a rebuild starts
-  from main and every verdict and finding is on the build issue. Only branches
+  since 2026-10-24); a chain that failed keeps only its builder branch, so the
+  work survives a failure after the builder (a lost builder branch cost the
+  demo-slice a full rebuild); when the change is archived, every habitat
+  branch it left goes. Only branches
   the chain's own run file names are deleted, never `main`.
 - **One proposal per change**: a `!propose` for a change already being written
   or waiting in CI is answered, not started; an amend or retry comments on the

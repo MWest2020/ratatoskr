@@ -48,5 +48,22 @@ class OneProposalPerChange(Wiring):
         self.assertIn("already proposed in PR #31", self.said[-1])
 
 
+class FailedChainKeepsItsBuilder(unittest.TestCase):
+    def test_a_failed_chain_keeps_only_the_builder_branch(self):
+        import os
+        import tempfile
+        calls = []
+
+        def run(argv, **kw):
+            calls.append(argv[-1].rsplit("/heads/", 1)[-1])
+            return subprocess.CompletedProcess(argv, 0, "", "")
+        with tempfile.TemporaryDirectory() as t:
+            path = os.path.join(t, "run.log")
+            open(path, "w").write("{}\n" + "\n".join(RUN) + "\n")
+            branches.tidy("o", {"path": path, "repo": "r"}, keep_builder=True, runner=run,
+                          log=lambda *a, **k: None)
+        self.assertEqual(calls, ["habitat/architect/x-1", "habitat/reviewer/x-3"])
+
+
 if __name__ == "__main__":
     unittest.main()
