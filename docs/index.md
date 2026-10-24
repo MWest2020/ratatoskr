@@ -25,6 +25,7 @@ tailnet.
 - [Het werk-overzicht](how-to/werk-overzicht.md)
 - [Give a chat agent the read shell](how-to/read-shell.md) — seven read-only GitHub lookups, the only Bash a chat agent may have
 - [Project boards](how-to/boards.md) — each project's GitHub board follows the factory's stages
+- [Which agent ran, on what](how-to/activity.md) — one line per run: agent, model, skills, tools, cost, bill
 - [Work on the API credits](how-to/api-credits.md) — the game bills to the API key, with a monthly budget and parallel chains
 - [Wat kost de vloot](explanation/wat-kost-de-vloot.md) — wat er in `#statistics` staat en wie er een regel post
 

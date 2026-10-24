@@ -8,6 +8,7 @@ and a hand-off cannot be written as "another iteration of the loop".
 """
 import re
 
+import activity
 import agent_skills
 import build
 import consult
@@ -98,6 +99,10 @@ def build_turn(agents, hub, reg, send, channels, pub2name, root, try_session, lo
             r = {"answer": f"(fout: {e})", "error": str(e)[:120]}
         if billed:
             credits.record("turn", r.get("cost"), f"{handle}#{cname}")
+        activity.record("chat", handle, cname, model=r.get("model"), skills=cfg.get("skills"),
+                        skills_used=r.get("skills_used"), tools=r.get("tools"),
+                        cost=r.get("cost"), turns=r.get("turns"),
+                        billing="api" if billed else "subscription", ref=reason)
         ans = r.get("answer", "(geen antwoord)")
         ans = routing.handle(ans, handle, cfg, cname, msgs, pub2name, channels, send, cid)
         ans = session_inbox.handle(ans, handle, hub, cname, msgs, pub2name, human)

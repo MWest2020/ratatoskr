@@ -31,20 +31,25 @@ STORE = re.compile(r"^\[dispatch\] \d+ artefact\(en\) -> (\S+)")
 PASSED = re.compile(r"^keten: (\w+) -> (\S+)")
 FAILED = re.compile(r"^keten: rol (\w+) niet geslaagd(.*)$")
 DONE = re.compile(r"^keten klaar — builder-branch: (\S+)")
+MODEL = re.compile(r"^\[habitat\] model uit rolbestand: (\S+)")   # the role file's model
 
 
 def events(lines):
     """[(kind, role, detail)] for the lines of a chain run, in order."""
-    out, store = [], ""
+    out, store, model = [], "", ""
     for ln in lines:
         if m := ROLE.match(ln):
-            store = ""
+            store, model = "", ""
+        elif m := MODEL.match(ln):
+            model = m.group(1)
         elif m := STORE.match(ln):
             store = m.group(1)
         elif m := PASSED.match(ln):
-            out.append(("passed", m.group(1), {"branch": m.group(2), "store": store}))
+            out.append(("passed", m.group(1), {"branch": m.group(2), "store": store,
+                                               "model": model}))
         elif m := FAILED.match(ln):
-            out.append(("failed", m.group(1), {"why": m.group(2).strip(" —"), "store": store}))
+            out.append(("failed", m.group(1), {"why": m.group(2).strip(" —"), "store": store,
+                                               "model": model}))
         elif m := DONE.match(ln):
             out.append(("done", "chain", {"branch": m.group(1)}))
     return out

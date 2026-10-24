@@ -146,7 +146,7 @@ def run(provider, system, prompt, model=None, allow=None, deny=None, progress=No
     except BrokenPipeError:
         pass
 
-    d = {}
+    d, used, skills_used = {}, {}, []
     for line in proc.stdout:
         if time.time() - t0 > MAX_TURN_S:
             proc.kill()
@@ -158,10 +158,14 @@ def run(provider, system, prompt, model=None, allow=None, deny=None, progress=No
             continue
         if ev.get("type") == "result":
             d = ev
-        elif ev.get("type") == "assistant" and progress:
+        elif ev.get("type") == "assistant":
             for c in (ev.get("message") or {}).get("content", []):
                 if c.get("type") == "tool_use":
-                    progress(f"{c.get('name')} {_target(c.get('input') or {})}".strip())
+                    used[c.get("name")] = used.get(c.get("name"), 0) + 1   # activity.py
+                    if c.get("name") == "Skill":
+                        skills_used.append(str((c.get("input") or {}).get("skill")))
+                    if progress:
+                        progress(f"{c.get('name')} {_target(c.get('input') or {})}".strip())
     proc.wait(timeout=10)
     if not d:
         err = (proc.stderr.read() or "").strip()[:200]
@@ -174,4 +178,5 @@ def run(provider, system, prompt, model=None, allow=None, deny=None, progress=No
             "cost": float(d.get("total_cost_usd") or 0.0),
             "turns": int(d.get("num_turns") or 0),
             "denials": d.get("permission_denials") or [],
+            "tools": used, "skills_used": skills_used,
             "error": "" if not d.get("is_error") else str(d.get("subtype") or "error")}
