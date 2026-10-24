@@ -70,3 +70,17 @@ build (scratch files committed, a file over the line limit), the retry's
 architect stopped on an open question it had answered but could not write
 down, and odin had no road but asking Mark. The git half of the road moved to
 `agents/propose_git.py` for the line limit.
+
+## Refused writes inside the fence
+
+On 2026-10-24 two amend sessions (wordsworth#214, #218) had every Edit inside
+`openspec/changes/<id>/` refused, although the fence allows exactly that, and
+the same run again worked. Both had started within a minute of a listener
+restart; the cause is not yet known. So the listener now:
+
+- gives each session a debug log (`.propose-run.debug`) and keeps its stderr
+  (`.propose-run.err`), both in the worktree;
+- counts writes inside the fence that were refused, and when there are any,
+  starts the session **once** more with the same decision, saying so on the
+  issue;
+- names the count in "No PR: …" when the retry is refused too.

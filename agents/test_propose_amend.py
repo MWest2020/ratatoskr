@@ -7,6 +7,7 @@ import tempfile
 import unittest
 
 import propose
+from test_propose import Builds, Proc, Wiring
 
 
 class LongSummary(unittest.TestCase):
@@ -68,6 +69,51 @@ class Amend(unittest.TestCase):
     def test_odin_is_told_how_to_amend(self):
         self.assertIn("EXISTING change id amends", propose.clause("odin", "odin"))
 
+
+
+class RefusedWrites(unittest.TestCase):
+    """2026-10-24: two amend sessions had every Edit inside the fence refused,
+    and the same run again worked. Those refusals are named and retried once."""
+
+    def test_only_writes_inside_the_fence_count(self):
+        import json
+        with tempfile.TemporaryDirectory() as wt:
+            inside = f"{wt}/openspec/changes/add-x/tasks.md"
+            res = {"type": "result", "permission_denials": [
+                {"tool_name": "Edit", "tool_input": {"file_path": inside}},
+                {"tool_name": "Bash", "tool_input": {"command": "python3 -"}},
+                {"tool_name": "Edit", "tool_input": {"file_path": f"{wt}/src/x.py"}}]}
+            open(os.path.join(wt, ".propose-run.jsonl"), "w").write(json.dumps(res) + "\n")
+            self.assertEqual(propose.refused_writes({"wt": wt, "change": "add-x"}), [inside])
+
+    def test_no_run_file_no_refusals(self):
+        self.assertEqual(propose.refused_writes({"wt": "/nonexistent", "change": "x"}), [])
+
+
+class RetryOnRefusal(Wiring):
+    def test_refused_writes_retry_once_then_say_so(self):
+        import propose_wiring as pw
+        started = []
+
+        def start(clone, change, summary, msgs, pub2name, requester):
+            started.append(change)
+            return {"wt": "/wt2", "branch": "b2", "change": change, "proc": Proc(0),
+                    "summary": summary}, ""
+        builds = Builds()
+        said = []
+        try_p, tick, *_ = pw.setup(
+            {"owner": "MWest2020", "repos": ["wordsworth"]}, {"odin": {"nsec": "n", "npub": "p"}},
+            "odin", lambda cid, t, *a: said.append(t), {}, builds, lambda cid: [],
+            lambda *a, **k: None, issues=type("I", (), {"create": lambda s, *a: (9, "u", ""),
+                                                        "comment": lambda s, *a: ""})(),
+            log=lambda *a, **k: None, start=start, check=lambda j: "the session wrote nothing",
+            refused=lambda j: ["/wt/openspec/changes/add-x/a.md"])
+        try_p("!propose wordsworth add-x Do x.", "odin", "general", "cid", [], "mark")
+        tick()                                 # refused -> one retry
+        self.assertEqual(started, ["add-x", "add-x"])
+        tick()                                 # refused again -> said, no third start
+        self.assertEqual(len(started), 2)
+        self.assertIn("1 writes inside the fence were refused", said[-1])
 
 
 if __name__ == "__main__":
