@@ -74,5 +74,47 @@ class BilledBuilds(Credits):
             credits.LEDGER = orig
 
 
+class Queue(Credits):
+    """2026-10-24: with three billed chains running, a fourth build was refused
+    and dropped; it now waits in a queue and starts when a slot frees."""
+
+    def test_a_full_house_queues_and_drains(self):
+        import build_runner
+        import build_wiring
+        said, started = [], []
+        cfg = {"repos": ["convergence"], "owner": "MWest2020", "runs": self.t.name,
+               "max_concurrent": 1, "builds_per_day": 0, "worker_image": "img:abc",
+               **self.factory}
+        builds = build_runner.Builds(cfg, popen=None)
+        builds.start = lambda *a: started.append(a[1]) or {"path": "p"}
+        builds.tick = lambda on_event: None
+        builds.running = [{"repo": "convergence", "change": "a"}, {"repo": "convergence", "change": "b"}]
+
+        class Issues:
+            def create(self, *a):
+                return 9, "u", ""
+
+            def comment(self, *a):
+                return ""
+        orig_ok, orig_ledger = build.change_exists, credits.LEDGER
+        build.change_exists = lambda *a: ("", True)
+        credits.LEDGER = self.ledger            # never the real month's spend
+        try:
+            try_build, tick = build_wiring.setup(cfg, {"odin": {"nsec": "n", "npub": "p"}}, "odin",
+                                                 "mark", lambda cid, t, *a: said.append(t),
+                                                 issues=Issues(), builds=builds,
+                                                 log=lambda *a, **k: None)
+            try_build("!build convergence c 7", "odin", "convergence", "cid", own=True)
+            self.assertIn("queued", said[-1])
+            try_build("!build convergence c 7", "odin", "convergence", "cid", own=True)
+            self.assertIn("already building or queued", said[-1])
+            builds.running = builds.running[:1]        # a chain finished
+            tick()
+            self.assertEqual(started, ["c"])
+            self.assertEqual(builds.queued, [])
+        finally:
+            build.change_exists, credits.LEDGER = orig_ok, orig_ledger
+
+
 if __name__ == "__main__":
     unittest.main()
