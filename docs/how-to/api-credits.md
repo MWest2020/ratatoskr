@@ -28,7 +28,10 @@ no keys, so unbilled work never sees it.
 - Every billed cost is a line in `~/.local/state/ratatoskr/api-ledger.jsonl`:
   each chat turn, each propose session, each habitat role (from its run
   report).
-- `api_budget_usd` (95 a month) is the limit. Billed work starts only while
+- `api_budget_usd` is the limit, in **ledger** dollars a month. The ledger and
+  the Anthropic Console do not agree exactly; the Console is the truth. Set the
+  limit from what the Console says is left (2026-10-25: $34 left, ledger at
+  $84.27, limit 114). The limit is enforced like this: billed work starts only while
   the month has room: a chat turn needs any room, a proposal $3, a chain its
   worst case (four roles at `api_max_budget_usd`). When that does not fit,
   the build is refused. When it fits but not alongside the worst case of every
