@@ -13,7 +13,9 @@ boards: {wordsworth: 1, convergence: 2, ratatoskr: 3}
 # API credits (agents/credits.py): these repos bill chats, proposals and builds
 # to Mark's API key instead of his subscription, guarded by money, not a day cap.
 api_repos: [convergence]
-api_budget_usd: 95           # a month; the credits are $100
+api_budget_usd: 114          # a month, in LEDGER dollars. Mark 2026-10-25: the Console shows
+                             # $34 credit left while the ledger counts $84.27 spent (the two differ;
+                             # the Console is the truth), so 84 + 30 stops with ~$4 of real credit left.
 api_max_budget_usd: 3        # per reviewing habitat role (max seen 2026-10-24: $1.53)
 api_builder_budget_usd: 8    # the builder's own (demo-slice builder: $5.41)
 max_builds_per_change_day: 3 # circuit breaker: then split the change, do not loop
