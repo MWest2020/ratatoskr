@@ -11,6 +11,12 @@ the subscription. Its assignment: *"Stop at a cost overrun and report it,
 instead of going on."* And Mark, on the pace: *"fail fast, burn fast. quick
 results, but solid ones ... Nitro!"* (2026-10-24).
 
+Since 2026-10-25 the game's proposals and builds are back on the subscription
+(`api_repos: []`): the month's credit no longer fitted a build's worst case,
+and Mark said *"alles wat openstaat: go"*. `#convergence` itself stays billed,
+so odin's chat there runs on what is left. To put a repository back on the
+credits, list it in `api_repos` again.
+
 ## What is billed
 
 | work | billed when | how |
