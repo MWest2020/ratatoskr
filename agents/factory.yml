@@ -12,7 +12,9 @@ readable: [ratatoskr, handbook, wordsworth, habitat, convergence]
 boards: {wordsworth: 1, convergence: 2, ratatoskr: 3}
 # API credits (agents/credits.py): these repos bill chats, proposals and builds
 # to Mark's API key instead of his subscription, guarded by money, not a day cap.
-api_repos: [convergence]
+api_repos: []               # 2026-10-25: convergence moved to the subscription once the credits no
+                             # longer fit a build (Mark: "alles wat openstaat: go"); its channel
+                             # stays billed (channels.yml) so odin can still talk there on the rest.
 api_budget_usd: 114          # a month, in LEDGER dollars. Mark 2026-10-25: the Console shows
                              # $34 credit left while the ledger counts $84.27 spent (the two differ;
                              # the Console is the truth), so 84 + 30 stops with ~$4 of real credit left.
