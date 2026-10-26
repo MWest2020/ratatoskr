@@ -168,3 +168,12 @@ human intervention."*
 - **One proposal per change**: a `!propose` for a change already being written
   or waiting in CI is answered, not started; an amend or retry comments on the
   open `propose: <change>` issue instead of opening another.
+
+## Where the roles come from
+
+Every habitat role (architect, builder, reviewer, security) is read from the
+handbook, `docs/agents/seeds/<role>.md`, at the commit `handbook_ref` in
+`agents/factory.yml` pins (habitat #44, handbook #35). One source for every
+project; a repository's own `.claude/agents/` is no longer used. To roll out a
+role change: merge it in the handbook, then move `handbook_ref`. A pinned commit
+without a seed for a role stops that role's run; it never falls back.

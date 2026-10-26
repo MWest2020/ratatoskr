@@ -163,3 +163,15 @@ class VerdictAnywhere(unittest.TestCase):
                 {"summary": "x", "verdict": "FAIL",
                  "findings": [{"severity": "blocking", "location": "a", "description": "b"}]}))
             self.assertEqual(build_runner.findings(t), ["- [blocking] a: b"])
+
+
+class HandbookRefReachesHabitat(unittest.TestCase):
+    """2026-10-26: the roles come from the handbook at a pinned commit."""
+    CFG = {"worker_image": "w:1", "kubectl": "k", "logdir": "/l"}
+
+    def test_the_pin_is_passed_when_set(self):
+        e = build_runner.child_env({**self.CFG, "handbook_ref": "3e0d0a1"}, "x", {})
+        self.assertEqual(e["HABITAT_HANDBOOK_REF"], "3e0d0a1")
+
+    def test_no_pin_no_variable(self):
+        self.assertNotIn("HABITAT_HANDBOOK_REF", build_runner.child_env(self.CFG, "x", {}))
