@@ -12,8 +12,8 @@ readable: [ratatoskr, handbook, wordsworth, habitat, convergence]
 boards: {wordsworth: 1, convergence: 2, ratatoskr: 3}
 # API credits (agents/credits.py): these repos bill chats, proposals and builds
 # to Mark's API key instead of his subscription, guarded by money, not a day cap.
-api_repos: [convergence]     # back on the credits 2026-10-26: Mark, "er is nog $25"; parallel
-                             # builds, no daily cap. The ledger stops it before the credit does.
+api_repos: []                # 2026-10-27: convergence builds on the subscription again; the credit
+                             # left ($13.38 of ledger room) no longer fits a chain's $14 reserve.
 api_budget_usd: 122          # a month, in LEDGER dollars; the Console is the truth. 2026-10-26:
                              # Console $25 left, ledger at $101.35, so 101 + 21 stops with ~$4 left.
 api_max_budget_usd: 2        # per reviewing habitat role (max seen: $1.53; architect on opus $1.06,

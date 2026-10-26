@@ -14,7 +14,8 @@ results, but solid ones ... Nitro!"* (2026-10-24).
 On 2026-10-25 the game's proposals and builds moved to the subscription when
 the month's credit no longer fitted a build's worst case; on 2026-10-26 they
 came back (Mark: *"er is nog $25"*), with the limit set from the Console's
-remaining credit. To move a repository between the two, edit `api_repos`.
+remaining credit, and on 2026-10-27 they moved to the subscription again when
+that credit ran low. To move a repository between the two, edit `api_repos`.
 
 ## What is billed
 
