@@ -16,7 +16,8 @@ api_repos: [convergence]     # back on the credits 2026-10-26: Mark, "er is nog 
                              # builds, no daily cap. The ledger stops it before the credit does.
 api_budget_usd: 122          # a month, in LEDGER dollars; the Console is the truth. 2026-10-26:
                              # Console $25 left, ledger at $101.35, so 101 + 21 stops with ~$4 left.
-api_max_budget_usd: 3        # per reviewing habitat role (max seen 2026-10-24: $1.53)
+api_max_budget_usd: 2        # per reviewing habitat role (max seen: $1.53; architect on opus $1.06,
+                             # 2026-10-26). 2 makes a chain reserve $14, not $17.
 api_builder_budget_usd: 8    # the builder's own (demo-slice builder: $5.41)
 max_builds_per_change_day: 3 # circuit breaker: then split the change, do not loop
 max_concurrent_api: 3        # billed chains side by side ("Nitro", Mark 2026-10-24)
