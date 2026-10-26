@@ -51,3 +51,12 @@ deploy:
     app: wordsworth                           # ArgoCD Application
     namespace: wordsworth
     deployment: wordsworth-api
+  convergence:
+    images:                                   # one CI run builds both; deployed together
+      - {package: convergence-server, image: ghcr.io/mwest2020/convergence-server}
+      - {package: convergence-web, image: ghcr.io/mwest2020/convergence-web}
+    manifests:
+      - cluster-config/infra/convergence/deployment.yaml
+    app: convergence
+    namespace: convergence
+    deployment: convergence
