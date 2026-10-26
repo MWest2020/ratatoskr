@@ -103,19 +103,26 @@ still running".
 ## After the merge: deploy to the homelab
 
 For a repository with a recipe under `deploy:` in `agents/factory.yml`
-(wordsworth so far), the merge does not end there. The listener takes one step
+(wordsworth and convergence), the merge does not end there. The listener takes one step
 per round, with each step on the issue and in the channel (`🚚`, then `🚀` or
 `⛔`):
 
 | step | what happens |
 |---|---|
-| image | wait for the image of the merge commit (`sha-<7>`, up to 45 min), read its digest from GitHub's package API |
-| push | bump that digest in **every** manifest of the recipe (wordsworth: api **and** init-job, otherwise the migrations do not run), commit to homelab main, push |
+| image | wait for the image(s) of the merge commit (`sha-<7>`, up to 45 min), read each digest from GitHub's package API |
+| push | bump every digest in **every** manifest of the recipe (wordsworth: api **and** init-job, otherwise the migrations do not run), commit to homelab main, push |
 | sync | `argocd.argoproj.io/refresh=hard` on the Application, over `ssh jumpy` |
-| verify | the deployment runs the new digest and its rollout is complete (up to 20 min) |
+| verify | every image of the recipe runs its new digest, matched by image name, and the rollout is complete (up to 20 min) |
 
-The bump is all or nothing: if one manifest has no line to bump, nothing is
-written and the deploy stops. The deployer works in its own homelab worktree
+The bump is all or nothing: if one manifest has no line to bump, or one image
+of the recipe is in no manifest, nothing is written and the deploy stops.
+
+A recipe names one image (`package` and `image`, wordsworth) or several
+(`images:`, a list of `{package, image}`: convergence builds a server and a
+web image from one commit). Several images deploy together or not at all:
+the deploy waits until every one has the merge commit's tag. A manifest line
+may pin a tag before the digest (`<image>:sha-<7>@sha256:…`); the tag is
+rewritten with the digest, so the two never name different commits. The deployer works in its own homelab worktree
 (`~/.worktrees/homelab-deploy`), never in a shared checkout.
 
 **alma is never a target.** It is in no recipe, and a manifest path outside
