@@ -12,12 +12,10 @@ readable: [ratatoskr, handbook, wordsworth, habitat, convergence]
 boards: {wordsworth: 1, convergence: 2, ratatoskr: 3}
 # API credits (agents/credits.py): these repos bill chats, proposals and builds
 # to Mark's API key instead of his subscription, guarded by money, not a day cap.
-api_repos: []               # 2026-10-25: convergence moved to the subscription once the credits no
-                             # longer fit a build (Mark: "alles wat openstaat: go"); its channel
-                             # stays billed (channels.yml) so odin can still talk there on the rest.
-api_budget_usd: 114          # a month, in LEDGER dollars. Mark 2026-10-25: the Console shows
-                             # $34 credit left while the ledger counts $84.27 spent (the two differ;
-                             # the Console is the truth), so 84 + 30 stops with ~$4 of real credit left.
+api_repos: [convergence]     # back on the credits 2026-10-26: Mark, "er is nog $25"; parallel
+                             # builds, no daily cap. The ledger stops it before the credit does.
+api_budget_usd: 122          # a month, in LEDGER dollars; the Console is the truth. 2026-10-26:
+                             # Console $25 left, ledger at $101.35, so 101 + 21 stops with ~$4 left.
 api_max_budget_usd: 3        # per reviewing habitat role (max seen 2026-10-24: $1.53)
 api_builder_budget_usd: 8    # the builder's own (demo-slice builder: $5.41)
 max_builds_per_change_day: 3 # circuit breaker: then split the change, do not loop
@@ -29,7 +27,10 @@ builds_per_day: 6
 max_budget_usd: 15
 max_concurrent: 1            # one chain at a time: four Jobs and Mark's quota
 habitat_dir: /home/agent/habitat
-worker_image: ghcr.io/mwest2020/habitat-worker:6f65f515096f75bd99459294edebebaf8b2f9d4b
+worker_image: ghcr.io/mwest2020/habitat-worker:ef0b4ef47b902c4a8c6e5a17651b4a71961d6ca9
+# The handbook commit every role seed is read from (habitat #44, handbook #35):
+# one source of the roles for every project. Move it to roll out a role change.
+handbook_ref: 3e0d0a1de837428d3af595330778f26d1f865344
 kubectl: ssh -o BatchMode=yes jumpy kubectl
 logdir: ~/.local/state/habitat/run-logs
 runs: ~/.local/state/ratatoskr/builds

@@ -11,11 +11,10 @@ the subscription. Its assignment: *"Stop at a cost overrun and report it,
 instead of going on."* And Mark, on the pace: *"fail fast, burn fast. quick
 results, but solid ones ... Nitro!"* (2026-10-24).
 
-Since 2026-10-25 the game's proposals and builds are back on the subscription
-(`api_repos: []`): the month's credit no longer fitted a build's worst case,
-and Mark said *"alles wat openstaat: go"*. `#convergence` itself stays billed,
-so odin's chat there runs on what is left. To put a repository back on the
-credits, list it in `api_repos` again.
+On 2026-10-25 the game's proposals and builds moved to the subscription when
+the month's credit no longer fitted a build's worst case; on 2026-10-26 they
+came back (Mark: *"er is nog $25"*), with the limit set from the Console's
+remaining credit. To move a repository between the two, edit `api_repos`.
 
 ## What is billed
 

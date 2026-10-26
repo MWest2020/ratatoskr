@@ -136,15 +136,7 @@ class Builds:
         out.write(json.dumps({"repo": repo, "change": change, "issue": issue, "channel": cname,
                               "starter": starter, "started": int(self.now())}) + "\n")
         out.flush()
-        env = dict(os.environ, WORKER_IMAGE=self.cfg["worker_image"],
-                   KUBECTL=self.cfg["kubectl"], HABITAT_LOGDIR=self.cfg["logdir"],
-                   CLAUDE_CREDS_FILE="",
-                   HABITAT_MAX_BUDGET_USD=f"{float(self.cfg.get('max_budget_usd', 5)):.2f}")
-        if credits.repo_billed(repo):   # habitat's worker runs on the API key (HABITAT_AUTH)
-            role = float(self.cfg.get("api_max_budget_usd", 5))
-            env.update(HABITAT_AUTH="api", HABITAT_MAX_BUDGET_USD=f"{role:.2f}",
-                       HABITAT_BUILDER_BUDGET_USD=(
-                           f"{float(self.cfg.get('api_builder_budget_usd', role)):.2f}"))
+        env = child_env(self.cfg, repo, os.environ)
         proc = self.popen(detach.argv([os.path.join(self.cfg["habitat_dir"], "dispatch",
                                                     "chain.sh"),
                                        change, f"{self.cfg['owner']}/{repo}"]),
@@ -180,3 +172,22 @@ class Builds:
                 on_event(b, "failed", "chain", {"why": f"exit {code}: {tail}"})
         if changed:
             self.save()
+
+
+def child_env(cfg, repo, base):
+    """The environment of one habitat chain. `handbook_ref` pins the commit of
+    MWest2020/handbook the worker reads each role's seed from (habitat #44):
+    the handbook is the one source of the roles, for every project (Mark,
+    2026-10-25). Without it habitat falls back to the target repo's own copy."""
+    env = dict(base, WORKER_IMAGE=cfg["worker_image"],
+               KUBECTL=cfg["kubectl"], HABITAT_LOGDIR=cfg["logdir"],
+               CLAUDE_CREDS_FILE="",
+               HABITAT_MAX_BUDGET_USD=f"{float(cfg.get('max_budget_usd', 5)):.2f}")
+    if cfg.get("handbook_ref"):
+        env["HABITAT_HANDBOOK_REF"] = str(cfg["handbook_ref"])
+    if credits.repo_billed(repo):   # habitat's worker runs on the API key (HABITAT_AUTH)
+        role = float(cfg.get("api_max_budget_usd", 5))
+        env.update(HABITAT_AUTH="api", HABITAT_MAX_BUDGET_USD=f"{role:.2f}",
+                   HABITAT_BUILDER_BUDGET_USD=(
+                       f"{float(cfg.get('api_builder_budget_usd', role)):.2f}"))
+    return env
