@@ -58,8 +58,10 @@ this one.
 ## Room for the builder, and a brake
 
 - The builder of a billed chain gets its own budget, `api_builder_budget_usd`
-  (8), the reviewing roles `api_max_budget_usd` (3); a chain's worst case is
-  three roles plus the builder ($17). Set from what runs cost on 2026-10-24:
+  (8), the reviewing roles `api_max_budget_usd` (2); a chain's worst case is
+  three roles plus the builder ($14). The roles were capped at $3 until
+  2026-10-26, when that $17 reserve refused a ~$5 build with $15.73 of room
+  left; the opus architect costs about $1.06. Set from what runs cost on 2026-10-24:
   no reviewing role passed $1.53, the demo-slice builder took $5.41. convergence builders hit the shared $5
   three times at 127-138 turns, while no other role passed $1.03.
 - **Circuit breaker**: a billed change built `max_builds_per_change_day` (3)
