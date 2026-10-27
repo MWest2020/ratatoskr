@@ -35,6 +35,7 @@ class ArchiveHooks(unittest.TestCase):
         with tempfile.TemporaryDirectory() as t:
             builds = build_runner.Builds({"owner": "MWest2020", "runs": t}, popen=None)
             builds.merging.append({"repo": "r", "change": "c", "issue": 9, "cid": "c", "pr": 31,
+                                   "cname": "convergence",
                                    "next": 0, **({"kind": kind} if kind else {})})
             _, tick = build_wiring.setup({"owner": "MWest2020", "runs": t}, {}, "odin", "mark",
                                          lambda *a: True, issues=Issues(), builds=builds,
@@ -52,6 +53,10 @@ class ArchiveHooks(unittest.TestCase):
         done, builds = self.run_merge(recipe=True)
         self.assertEqual(done, [])
         self.assertEqual(builds.deploying[0]["change"], "c")
+
+    def test_the_deploy_keeps_the_channel_the_hub_is_woken_in(self):
+        _, builds = self.run_merge(recipe=True)
+        self.assertEqual(builds.deploying[0]["cname"], "convergence")
 
     def test_an_archive_merge_is_not_archived_again(self):
         done, _ = self.run_merge(recipe=False, kind="archive")

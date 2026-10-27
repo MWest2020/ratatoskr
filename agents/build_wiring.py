@@ -163,7 +163,7 @@ def setup(cfg, agents, hub, human, send, issues=gh_issues, log=print, builds=Non
             if not err and m.get("kind") not in ("propose", "archive") and deployer.recipe(m["repo"]):
                 sha, why = merger.merged_sha(cfg["owner"], m["repo"], m["pr"])
                 if sha:
-                    deploying.append({k: m.get(k) for k in ("repo", "issue", "cid", "change")}
+                    deploying.append({k: m.get(k) for k in ("repo", "issue", "cid", "cname", "change")}
                                      | {"sha": sha, "phase": "image", "started": now()})
                     builds.save()
                 else:
