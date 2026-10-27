@@ -125,6 +125,10 @@ may pin a tag before the digest (`<image>:sha-<7>@sha256:…`); the tag is
 rewritten with the digest, so the two never name different commits. The deployer works in its own homelab worktree
 (`~/.worktrees/homelab-deploy`), never in a shared checkout.
 
+When the deploy is done, odin is woken in the channel the build started in,
+to take the next step. The deploy keeps that channel for it; until 2026-10-27
+it did not, and odin woke in no channel and stopped after demo-zone-rules.
+
 **alma is never a target.** It is in no recipe, and a manifest path outside
 `cluster-config/infra/`, or one that names alma, makes the recipe invalid.
 
