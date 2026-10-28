@@ -89,6 +89,7 @@ class Build(unittest.TestCase):
 
     def test_generated_time_is_amsterdam(self):
         self.assertTrue(self.data()["generated"].endswith("+01:00"))
+        self.assertEqual(len(self.data()["generated"]), 25)
 
 
 class Publish(unittest.TestCase):

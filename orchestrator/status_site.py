@@ -147,7 +147,7 @@ def build(now, run=subprocess.run, state=None, homelab_log=""):
                              "url": public_url(f"https://github.com/{OWNER}/{repo}", public)})
     for why in refusals((now - datetime.timedelta(hours=24)).strftime("%Y-%m-%d %H:%M:%S"), run):
         stuck_all.append({"repo": "", "change": "", "why": f"build refused: {why}", "url": None})
-    data = {"generated": now.isoformat(timespec="minutes"), "projects": projects,
+    data = {"generated": now.isoformat(timespec="seconds"), "projects": projects,
             "stuck": stuck_all, "waiting": waiting(run)}
     return clean_tree(data)
 
