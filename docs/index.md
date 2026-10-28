@@ -17,6 +17,7 @@ tailnet.
   invarianten die een installatie door derden niet overleven, plus de drie
   beslissingen die de rest bepalen.
 - Inloggen en uitnodigen: [how-to](how-to/inloggen.md).
+- Het publieke overzicht op westerweel.work/nu/: [how-to](how-to/status-site.md).
 - Fasering en specs: `openspec/changes/` — fasen 0–3 zijn gebouwd; changes nog
   te archiveren zodra de taken zijn afgevinkt.
 - How-to's: [de app op je telefoon zetten](how-to/pwa-installeren.md) en

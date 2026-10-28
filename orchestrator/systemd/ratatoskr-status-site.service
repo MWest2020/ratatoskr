@@ -1,0 +1,11 @@
+[Unit]
+Description=Ratatoskr status site — rebuild data/status.json for westerweel.work/nu/ and push when it changed
+
+[Service]
+# Same tree as the listener (see ratatoskr-live.service). The script pushes at
+# most once every two hours and only when the content changed: Cloudflare
+# Pages' free tier has a monthly build budget. docs/how-to/status-site.md.
+Type=oneshot
+WorkingDirectory=/home/agent/ratatoskr-listener
+Environment=STATUS_SITE_DIR=/home/agent/.worktrees/westerweel-status
+ExecStart=/usr/bin/python3 orchestrator/status_site.py

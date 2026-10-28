@@ -1,0 +1,9 @@
+[Unit]
+Description=Ververs het overzicht op westerweel.work/nu/ elke twee uur
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=2h
+
+[Install]
+WantedBy=timers.target
