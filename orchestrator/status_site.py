@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
 """The public overview on westerweel.work/nu/: what the factory is working on.
 
-Mark, 2026-10-28: a dedicated overview on his own site, built from facts, not
-written by a model. This script reads the build state, the run files and GitHub
-(proposal issues, merged PRs, issues labelled `waiting-on-mark`), passes every
-string through status_scrub, and writes `data/status.json` into a worktree of
-MWest2020/westerweel-work. Hugo renders it; Cloudflare Pages deploys on push.
+Mark, 2026-10-28: a dedicated overview on his own site, built from facts (build
+state, run files, GitHub) with every string through status_scrub, written to
+`data/status.json` in a westerweel-work worktree; Cloudflare Pages deploys it.
 
 It pushes only when the content changed (the generation time aside) and at most
 once every two hours: Cloudflare Pages' free tier has a monthly build budget.
@@ -147,8 +145,12 @@ def build(now, run=subprocess.run, state=None, homelab_log=""):
                              "url": public_url(f"https://github.com/{OWNER}/{repo}", public)})
     for why in refusals((now - datetime.timedelta(hours=24)).strftime("%Y-%m-%d %H:%M:%S"), run):
         stuck_all.append({"repo": "", "change": "", "why": f"build refused: {why}", "url": None})
+    asks = waiting(run)
+    for w in asks:  # a question in a private repo is shown, its link is not
+        vis = gh(["repo", "view", f"{OWNER}/{w['repo']}", "--json", "visibility"], run) or {}
+        w["url"] = public_url(w["url"], vis.get("visibility") == "PUBLIC")
     data = {"generated": now.isoformat(timespec="seconds"), "projects": projects,
-            "stuck": stuck_all, "waiting": waiting(run)}
+            "stuck": stuck_all, "waiting": asks}
     return clean_tree(data)
 
 

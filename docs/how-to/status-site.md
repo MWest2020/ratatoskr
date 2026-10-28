@@ -36,8 +36,9 @@ every push to `main`.
 - e-mail addresses and UUIDs (channel ids, document ids) are replaced;
 - wordsworth appears with change names and PR titles only, never document
   names or content;
-- a private repository (convergence) is named with its changes and stages,
-  but never linked.
+- a private repository (convergence) is named with its changes, stages and
+  questions, but never linked; that holds for the waiting-on-Mark list too
+  (it leaked one issue link on the first publish, 2026-10-28).
 
 ## When it runs
 
