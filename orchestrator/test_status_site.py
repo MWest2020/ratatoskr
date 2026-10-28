@@ -65,7 +65,9 @@ class Build(unittest.TestCase):
         self.run = fake_gh({"issue list": issues_for, "pr list": [], "repo view": visibility,
                             "search issues": [{"number": 196, "title": "Ranking questions", "url": "u",
                                                "body": "Question\nDefault: the report stays open",
-                                               "repository": {"name": "wordsworth"}}]})
+                                               "repository": {"name": "wordsworth"}},
+                                              {"number": 95, "title": "Legal sign-off", "url": "https://github.com/MWest2020/convergence/issues/95",
+                                               "body": "Default: devnet only", "repository": {"name": "convergence"}}]})
         self.state = {"queued": [{"repo": "wordsworth", "change": "a-change"}]}
 
     def data(self):
@@ -86,6 +88,11 @@ class Build(unittest.TestCase):
 
     def test_waiting_carries_the_default(self):
         self.assertEqual(self.data()["waiting"][0]["default"], "the report stays open")
+
+    def test_a_question_in_a_private_repo_has_no_link(self):
+        w = next(x for x in self.data()["waiting"] if x["repo"] == "convergence")
+        self.assertIsNone(w["url"])
+        self.assertEqual(w["default"], "devnet only")
 
     def test_generated_time_is_amsterdam(self):
         self.assertTrue(self.data()["generated"].endswith("+01:00"))
