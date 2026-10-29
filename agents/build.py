@@ -136,10 +136,18 @@ def builds_today(runs_dir, now=time.time, skip=lambda repo: False):
                 head = json.loads(fh.readline())
         except (OSError, ValueError):
             continue
-        if skip(head.get("repo", "")):
+        if skip(head.get("repo", "")) or not _reached_builder(os.path.join(runs_dir, f)):
             continue
         n += time.strftime("%Y-%m-%d", time.localtime(head.get("started", 0))) == day
     return n
+
+
+def _reached_builder(path):
+    """Only a chain that reached the builder spends a day slot (2026-10-29: 5 of 6 were architect FAILs)."""
+    try:
+        return "rol=builder" in open(path).read()
+    except OSError:
+        return False
 
 
 def check(cfg, repo, change, running, runner=subprocess.run, now=time.time, capped=True):
@@ -149,15 +157,14 @@ def check(cfg, repo, change, running, runner=subprocess.run, now=time.time, capp
     name = canonical_repo(cfg, repo)
     if not name:
         return None, f"`{repo}` is not on the factory's list of repositories"
+    # Circuit breaker, every build (2026-10-24 gdd-economy x6; 2026-10-30 subscription too).
+    tries = int(cfg.get("max_builds_per_change_day", 3))
+    if capped and change_builds_today(cfg["runs"], name, change, now) >= tries:
+        return None, (f"`{change}` was built {tries} times today without a merge: split it "
+                      "into smaller changes with the architect instead of rebuilding")
     if credits.repo_billed(name):
         # API credits (2026-10-24, Mark: "fail fast, burn fast ... Nitro"): chains
         # run side by side, guarded by money, not by the subscription's day cap
-        # Circuit breaker (2026-10-24: gdd-economy was amended and rebuilt six
-        # times, $26, each failing on another role): split it, do not loop.
-        tries = int(cfg.get("max_builds_per_change_day", 3))
-        if capped and change_builds_today(cfg["runs"], name, change, now) >= tries:
-            return None, (f"`{change}` was built {tries} times today without a merge: split it "
-                          "into smaller changes with the architect instead of rebuilding")
         mine = [b for b in running if credits.repo_billed(_repo_of(b))]
         if len(mine) >= int(cfg.get("max_concurrent_api", 3)):
             return None, f"{len(mine)} {SLOTS_FULL}"

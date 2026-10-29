@@ -65,6 +65,7 @@ class Check(unittest.TestCase):
             os.makedirs(c["runs"])
             with open(os.path.join(c["runs"], "a.log"), "w") as fh:
                 fh.write(json.dumps({"started": 1_800_000_000}) + "\n")
+                fh.write("[dispatch] Job=habitat-builder-y rol=builder change=y\n")  # reached the builder
             why = build.check(c, "ratatoskr", "x", [], gh(), now=lambda: 1_800_000_100)[1]
             self.assertIn("budget", why)
             # Mark's own !build is not capped: the budget guards the agents' loop
