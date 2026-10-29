@@ -106,6 +106,12 @@ gates are human, and do not let them leak in either direction.**
 - **Count everything.** Which agent ran, on which model, with which tools, at
   what cost: one line per run (`docs/how-to/activity.md`). Without it, a loop
   like lesson 1 is invisible until the budget is gone.
+- **Prove the new path before you remove the old one.** On 2026-10-29 the coding
+  session moved wordsworth-api's tailnet name onto a redundant proxy group; the
+  switch removed the old proxy first, the new one then failed (the operator's
+  OAuth client lacked a scope), and a leftover secret blocked the rollback: the
+  name was down for 17 minutes (wordsworth #192). Create and test the new route
+  next to the old one, and have the rollback written down before the switch.
 - **The coding session makes mistakes too.** It merged a PR with a failing
   docs check (fixed forward), polluted the activity log from its own tests,
   and scaffolded docs the gate rejected. The same rules apply to it:
