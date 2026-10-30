@@ -1,0 +1,21 @@
+# Roadmap, as data. Drafted 2026-10-30 by the odin coding session from this
+# repository's own docs and merged work, for the overview at westerweel.work/nu/.
+# Mark reviews and corrects it; until then it is a proposal. An item is "done"
+# only with evidence (a PR, issue or doc); everything else is "open".
+# Schema: project, goal, current (a phase id), phases [id, name, summary], and
+# done_means for the current phase [item, status done|open, evidence].
+project: ratatoskr
+goal: "The coordination layer of Mark's agent ecosystem: channels where people and agents work together, and the factory that turns a decision in chat into a deployed change."
+current: factory
+phases:
+  - {id: chat, name: "Phases 0-3: relay and chat agents", summary: "self-hosted relay, notifications, chat agents from one source, chat to habitat"}
+  - {id: factory, name: "The factory runs itself", summary: "propose, build, merge and deploy from chat, within budgets, without Mark in the loop"}
+  - {id: ecosystem, name: "Ecosystem", summary: "every project on the factory, readable through one MCP"}
+done_means:
+  - {item: "Propose, build, merge and deploy from chat", status: done, evidence: "https://github.com/MWest2020/ratatoskr/blob/main/docs/how-to/build-from-chat.md"}
+  - {item: "Budgets and a circuit breaker on every build", status: done, evidence: "https://github.com/MWest2020/ratatoskr/pull/210"}
+  - {item: "Deploys of repositories with several images", status: done, evidence: "https://github.com/MWest2020/ratatoskr/pull/202"}
+  - {item: "Roles read from the handbook at a pinned commit", status: done, evidence: "https://github.com/MWest2020/ratatoskr/pull/203"}
+  - {item: "The hub is woken in the right channel after every outcome", status: done, evidence: "https://github.com/MWest2020/ratatoskr/pull/206"}
+  - {item: "A public overview of phase and gap per project", status: open, evidence: "https://github.com/MWest2020/ratatoskr/blob/main/docs/how-to/status-site.md"}
+  - {item: "A daily digest mail of decisions and impediments for Mark", status: open, evidence: "https://github.com/MWest2020/ratatoskr/blob/main/docs/how-to/status-site.md"}
