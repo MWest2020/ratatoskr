@@ -22,7 +22,7 @@ The listener checks these, not the model. Limits are in `agents/factory.yml`.
 1. **The repository is on `repos`.** alma never is.
 2. **`openspec/changes/<change>/` exists on that repository's main.** Build
    only what is decided.
-3. **No other chain is running,** and today's budget (`builds_per_day`) is
+3. **Fewer than `max_concurrent` chains are running** (2 since 2026-10-30; it was 1), and today's budget (`builds_per_day`, 10) is
    not used up. The budget guards the agents' loop: a `!build` Mark types
    himself is not counted against it (2026-10-24, when one more build was
    needed after six that each failed on a real, fixed cause). Only a chain

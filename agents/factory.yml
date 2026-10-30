@@ -21,12 +21,13 @@ api_max_budget_usd: 2        # per reviewing habitat role (max seen: $1.53; arch
 api_builder_budget_usd: 8    # the builder's own (demo-slice builder: $5.41)
 max_builds_per_change_day: 3 # circuit breaker: then split the change, do not loop
 max_concurrent_api: 3        # billed chains side by side ("Nitro", Mark 2026-10-24)
-builds_per_day: 6
+builds_per_day: 10           # 2026-10-30, Mark: "gebruik rustig graph ... we hebben nog 33% usage voor het
+                             # weekend": more of the week's quota used, two chains side by side.
 # Budget per habitat role run (HABITAT_MAX_BUDGET_USD). $5 was too tight for a
 # real change: wordsworth ingest-records-source's builder hit it at 86 turns
 # (2026-10-23). Mark has room for it ("$100 credits each month").
 max_budget_usd: 15
-max_concurrent: 1            # one chain at a time: four Jobs and Mark's quota
+max_concurrent: 2            # two subscription chains at a time (was 1); data autonomy runs first
 habitat_dir: /home/agent/habitat
 worker_image: ghcr.io/mwest2020/habitat-worker:ef0b4ef47b902c4a8c6e5a17651b4a71961d6ca9
 # The handbook commit every role seed is read from (habitat #44, handbook #35):
