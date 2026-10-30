@@ -1,0 +1,12 @@
+[Unit]
+Description=Ratatoskr site freshness — check westerweel.work's standing pages against the facts, weekly
+
+[Service]
+# Same tree as the listener. Mechanical fixes go into one open PR on
+# westerweel-work (never merged by the job); narrative findings into one open
+# waiting-on-mark issue; the findings into the daily digest.
+# docs/how-to/site-freshness.md.
+Type=oneshot
+WorkingDirectory=/home/agent/ratatoskr-listener
+Environment=SITE_FRESHNESS_DIR=/home/agent/.worktrees/westerweel-freshness
+ExecStart=/usr/bin/python3 orchestrator/site_freshness.py

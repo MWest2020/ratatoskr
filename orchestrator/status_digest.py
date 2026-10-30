@@ -66,11 +66,32 @@ def impediments(now, stuck, refused, asks):
     return out
 
 
-def digest(now, owner, gh, run, stuck):
+SITE_STATE = os.path.expanduser("~/.local/state/ratatoskr/site-freshness.json")
+SITE_FRESH = datetime.timedelta(days=8)
+
+
+def site_stale(now, path=SITE_STATE):
+    """The weekly site-freshness findings (site_freshness.py) as one impediment,
+    while that run is recent and found something."""
+    try:
+        with open(path, encoding="utf-8") as fh:
+            state = json.load(fh)
+    except (OSError, ValueError):
+        return []
+    since, found = _when(state.get("generated")), state.get("findings") or []
+    if not found or not since or now - since > SITE_FRESH:
+        return []
+    first = "; ".join(f.get("message", "") for f in found[:2])
+    return [{"kind": "site-stale", "why": f"{len(found)} finding(s) on westerweel.work: {first}",
+             "since": state["generated"], "url": state.get("pr") or state.get("issue")}]
+
+
+def digest(now, owner, gh, run, stuck, site_state=SITE_STATE):
     asks = waiting(owner, gh, run)
     day_ago = (now - datetime.timedelta(hours=24)).strftime("%Y-%m-%d %H:%M:%S")
+    found = impediments(now, stuck, refusals(day_ago, run), asks) + site_stale(now, site_state)
     return clean_tree({"generated": now.isoformat(timespec="seconds"), "waiting": asks,
-                       "impediments": impediments(now, stuck, refusals(day_ago, run), asks)})
+                       "impediments": found})
 
 
 def write(data, path):
