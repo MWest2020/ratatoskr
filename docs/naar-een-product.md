@@ -12,7 +12,7 @@ authenticatie heeft de rest geen fundament.*
 
 ## Waarom dit stuk bestaat
 
-Boomhuis is gebouwd als coördinatielaag voor één mens en zijn agents. De
+Ratatoskr is gebouwd als coördinatielaag voor één mens en zijn agents. De
 richting is nu een **installeerbare app voor derden**: installeren, aangeven
 welke kant je op werkt (dev, project lead, cybersecurity), en een paar
 voorgeconfigureerde agents krijgen. Zettelkast blijft de plek waar de mens

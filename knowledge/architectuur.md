@@ -7,7 +7,7 @@ Kernprincipes van het ecosysteem (gebruik deze als vaste grond bij advies):
 - **De kooi is niet-onderhandelbaar.** Habitat-workers: default-deny egress,
   RBAC per rol, geen relay-toegang, geen push-credential in de agent.
 - **Eén bron van waarheid voor agents.** Canonieke defs in de handbook
-  (`docs/agents/`), MCP-leesbaar; boomhuis en habitat lézen, kopiëren niet.
+  (`docs/agents/`), MCP-leesbaar; ratatoskr en habitat lézen, kopiëren niet.
   Drift is een CI-gate, geen hoop.
 - **Proposal-first (OpenSpec).** Geen code vóór "apply"; cross-repo via de
   handbook, kooi-rakend via een amendement in habitat.
