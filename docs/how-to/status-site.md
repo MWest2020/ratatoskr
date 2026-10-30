@@ -5,27 +5,41 @@ last_reviewed: 2026-10-28
 
 # The public overview on westerweel.work/nu/
 
-Mark, 2026-10-28: a dedicated overview on his own site of what the factory is
-working on; everything public, except sensitive information. It lives at
-<https://westerweel.work/nu/> (NL) and <https://westerweel.work/en/now/> (EN).
+Mark, 2026-10-28: a dedicated overview on his own site; everything public,
+except sensitive information. 2026-10-30: *"what I really want is the phase and
+the roadmap, high-level, and what the gap is until it's done. Waiting on Mark I'd
+rather have daily by mail; stuck is an impediment? then also in the mail."* It
+lives at <https://westerweel.work/nu/> (NL) and <https://westerweel.work/en/now/>
+(EN).
 
 ## How it is built
 
-`orchestrator/status_site.py` builds `data/status.json` from facts only:
+`orchestrator/status_site.py` builds two things from facts, on every run:
 
-- the build state (`~/.local/state/ratatoskr/builds/state.json`): proposing,
-  queued, building, merging, deploying;
-- per project, the open `propose:` issues (a change in flight) and their last
-  role verdict (a FAIL means stuck until an amend);
-- merged PRs of the last seven days, marked *deployed* when the homelab log
-  carries the factory's `deploy <sha>` commit for them;
-- `build refused` lines from the listener's journal of the last 24 hours;
-- issues labelled `waiting-on-mark` in any MWest2020 repository: the title is
-  the question, and a line `Default: …` in the body says what happens if Mark
-  does not answer.
+- **the page**, `data/status.json` in a westerweel-work worktree: per project
+  its goal, the phase strip (past, current, next), progress toward done for the
+  current phase, and the gap (the open items), read from the project's own
+  `docs/reference/roadmap.yml` (`status_roadmap.py`), plus one compact line of
+  the changes in flight (from the build state and open `propose:` issues);
+- **the digest**, `~/.local/state/ratatoskr/mark-digest.json`, never on the
+  page (`status_digest.py`): the open `waiting-on-mark` questions with their
+  `Default:`, and the impediments: a build whose last verdict is a FAIL that has
+  not moved for 12 hours, a build refusal of the last 24 hours (the breaker's
+  "split it" among them), and a question open for more than three days. The
+  coding session mails it to Mark once a day.
 
-Hugo renders the file with the site's `now` layout; Cloudflare Pages deploys on
+Hugo renders the page with the site's `now` layout; Cloudflare Pages deploys on
 every push to `main`.
+
+## A roadmap, as data
+
+Each project keeps `docs/reference/roadmap.yml`: `project`, `goal`, `current`
+(a phase id), `phases` (`id`, `name`, `summary`) and `done_means` for the
+current phase, each item with `status: done|open` and an `evidence` link (a PR,
+issue or doc). An item is done only with evidence. A roadmap that does not parse
+(an unknown current phase, an item without a link) is left out rather than
+shown wrong. The first versions were drafted from each repository's own docs on
+2026-10-30 and await Mark's review.
 
 ## What never reaches the page
 
@@ -63,6 +77,6 @@ reset to `origin/main` on every run; nothing else may work in it.
 ## Asking Mark something
 
 Open an issue in the repository it is about, label it `waiting-on-mark`, put
-the question in the title, a link in the body and a line `Default: …`. Then
-mail it to him (the agreement in his memory: points for Mark go by mail, with
-a link). It shows on the page at the next run.
+the question in the title, a link in the body and a line `Default: …`, and keep
+going with that default. It reaches Mark in the next daily digest mail, not on
+the page.

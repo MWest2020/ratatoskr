@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
-"""The public overview on westerweel.work/nu/: what the factory is working on.
+"""The public overview on westerweel.work/nu/: phase, roadmap and gap per project.
 
 Mark, 2026-10-28: a dedicated overview on his own site, built from facts (build
 state, run files, GitHub) with every string through status_scrub, written to
 `data/status.json` in a westerweel-work worktree; Cloudflare Pages deploys it.
+2026-10-30: the page shows each project's roadmap (status_roadmap) and the gap
+to done; what waits on Mark and what is stuck go to a local digest for his
+daily mail (status_digest), not on the page.
 
 It pushes only when the content changed (the generation time aside) and at most
 once every two hours: Cloudflare Pages' free tier has a monthly build budget.
@@ -17,13 +20,15 @@ import sys
 from zoneinfo import ZoneInfo
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import status_digest  # noqa: E402
+import status_roadmap  # noqa: E402
 from status_scrub import clean_tree, public_url  # noqa: E402
 
 OWNER = "MWest2020"
 BASE = ["wordsworth", "convergence", "ratatoskr", "habitat", "handbook", "homelab"]
 STATE = os.path.expanduser("~/.local/state/ratatoskr")
 SITE = os.path.expanduser(os.environ.get("STATUS_SITE_DIR", "~/.worktrees/westerweel-status"))
-HOMELAB = os.path.expanduser("~/homelab")
+DIGEST = os.path.join(STATE, "mark-digest.json")
 MIN_GAP_S = 2 * 3600
 TZ = ZoneInfo("Europe/Amsterdam")
 STAGES = {"proposing": "proposing", "queued": "queued", "running": "building",
@@ -59,14 +64,14 @@ def stage_of(repo, change, state):
 
 
 def failed(comments):
-    """The last role verdict on a build issue, when it is a FAIL: (role, why)."""
+    """The last role verdict on a build issue, when it is a FAIL: (role, why, when)."""
     for c in reversed(comments or []):
         body = c.get("body") or ""
         if body.startswith("**") and ": FAIL" in body.split("\n", 1)[0]:
             role = body[2:].split(":", 1)[0]
             first = next((ln[len("- [summary] "):] for ln in body.splitlines()
                           if ln.startswith("- [summary] ")), "")
-            return role, first[:220]
+            return role, first[:220], c.get("createdAt")
         if body.startswith("Merged PR") or "PASS" in body.split("\n", 1)[0]:
             return None
     return None
@@ -84,74 +89,37 @@ def in_flight(repo, state, run=subprocess.run):
         verdict = None if stage else failed(i.get("comments"))
         entry = {"change": change, "issue": i["number"], "url": i["url"]}
         if verdict:
-            stuck.append({**entry, "why": f"{verdict[0]} FAIL: {verdict[1]}".strip()})
+            stuck.append({**entry, "repo": repo, "since": verdict[2],
+                          "why": f"{verdict[0]} FAIL: {verdict[1]}".strip()})
         else:
             flight.append({**entry, "stage": stage or "proposed"})
     return flight, stuck
 
 
-def delivered(repo, since, run=subprocess.run, homelab_log=""):
-    prs = gh(["pr", "list", "--repo", f"{OWNER}/{repo}", "--state", "merged", "--limit", "40",
-              "--search", f"merged:>={since:%Y-%m-%d}",
-              "--json", "number,title,url,mergedAt,mergeCommit"], run) or []
-    out = []
-    for p in prs:
-        t = p["title"]
-        if t.startswith("openspec: archive") or t.startswith("openspec: amend"):
-            continue
-        sha = ((p.get("mergeCommit") or {}).get("oid") or "")[:7]
-        deployed = bool(sha) and f"deploy {sha}" in homelab_log
-        kind = "spec" if t.startswith("openspec:") else ("deployed" if deployed else "merged")
-        out.append({"title": t, "pr": p["number"], "url": p["url"], "when": p["mergedAt"],
-                    "kind": kind})
-    return sorted(out, key=lambda x: x["when"], reverse=True)[:8]
-
-
-def refusals(since, run=subprocess.run):
-    p = run(["journalctl", "--user", "-u", "ratatoskr-agents", "--since", since, "--no-pager",
-             "-o", "cat"], capture_output=True, text=True)
-    return [ln.split("build refused: ", 1)[1][:220] for ln in (p.stdout or "").splitlines()
-            if "build refused: " in ln]
-
-
-def waiting(run=subprocess.run):
-    items = gh(["search", "issues", "--owner", OWNER, "--label", "waiting-on-mark", "--state",
-                "open", "--json", "number,title,url,body,repository"], run) or []
-    out = []
-    for i in items:
-        body = i.get("body") or ""
-        default = next((ln.split(":", 1)[1].strip() for ln in body.splitlines()
-                        if ln.strip().lower().startswith("default:")), "")
-        out.append({"repo": i["repository"]["name"], "issue": i["number"], "url": i["url"],
-                    "question": i["title"], "default": default})
-    return out
-
-
-def build(now, run=subprocess.run, state=None, homelab_log=""):
+def collect(now, run=subprocess.run, state=None):
+    """(page data, digest data): the page is public and high-level, the digest is Mark's."""
     state = state if state is not None else json.load(open(os.path.join(STATE, "builds", "state.json")))
-    since = now - datetime.timedelta(days=7)
     projects, stuck_all = [], []
     for repo in repos(now):
         vis = gh(["repo", "view", f"{OWNER}/{repo}", "--json", "visibility"], run) or {}
         public = vis.get("visibility") == "PUBLIC"
         flight, stuck = in_flight(repo, state, run)
-        done = delivered(repo, since, run, homelab_log)
-        for x in flight + stuck + done:
-            x["url"] = public_url(x.get("url"), public)
-        for s in stuck:
-            stuck_all.append({**s, "repo": repo})
-        if flight or stuck or done:
-            projects.append({"name": repo, "public": public, "in_flight": flight, "delivered": done,
-                             "url": public_url(f"https://github.com/{OWNER}/{repo}", public)})
-    for why in refusals((now - datetime.timedelta(hours=24)).strftime("%Y-%m-%d %H:%M:%S"), run):
-        stuck_all.append({"repo": "", "change": "", "why": f"build refused: {why}", "url": None})
-    asks = waiting(run)
-    for w in asks:  # a question in a private repo is shown, its link is not
-        vis = gh(["repo", "view", f"{OWNER}/{w['repo']}", "--json", "visibility"], run) or {}
-        w["url"] = public_url(w["url"], vis.get("visibility") == "PUBLIC")
-    data = {"generated": now.isoformat(timespec="seconds"), "projects": projects,
-            "stuck": stuck_all, "waiting": asks}
-    return clean_tree(data)
+        stuck_all += stuck
+        roadmap = status_roadmap.fetch(OWNER, repo, gh, run)
+        if not roadmap and not flight:
+            continue
+        project = {"name": repo, "public": public,
+                   "url": public_url(f"https://github.com/{OWNER}/{repo}", public),
+                   "in_flight": [{"change": f["change"], "stage": f["stage"]} for f in flight]}
+        if roadmap:
+            project.update(status_roadmap.row(roadmap, public))
+        projects.append(project)
+    page = clean_tree({"generated": now.isoformat(timespec="seconds"), "projects": projects})
+    return page, status_digest.digest(now, OWNER, gh, run, stuck_all)
+
+
+def build(now, run=subprocess.run, state=None):
+    return collect(now, run, state)[0]
 
 
 def same_content(a, b):
@@ -187,13 +155,13 @@ def publish(data, site=SITE, run=subprocess.run, now=None, mark=os.path.join(STA
 
 def main():
     now = datetime.datetime.now(TZ)
-    log = subprocess.run(["git", "-C", HOMELAB, "log", "--oneline", "-200", "origin/main"],
-                         capture_output=True, text=True).stdout
-    data = build(now, homelab_log=log)
+    page, digest = collect(now)
+    status_digest.write(digest, DIGEST)
     if "--print" in sys.argv:
-        print(json.dumps(data, indent=1, ensure_ascii=False))
+        print(json.dumps(page, indent=1, ensure_ascii=False))
         return
-    print(f"[status-site] {publish(data)}")
+    print(f"[status-site] {publish(page)}; digest: {len(digest['waiting'])} waiting, "
+          f"{len(digest['impediments'])} impediments")
 
 
 if __name__ == "__main__":
