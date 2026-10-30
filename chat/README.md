@@ -1,4 +1,4 @@
-# chat — mobiele boomhuis-interface
+# chat — mobiele Ratatoskr-interface
 
 Slack/Telegram-achtige webchat op de relay-VM: lezen én posten in de kanalen,
 vanaf de telefoonbrowser over het tailnet. De backend is opgesplitst (elk bestand

@@ -1,6 +1,6 @@
 # notify
 
-`buzz-notify.sh` post habitat-run-gebeurtenissen naar het boomhuis via
+`buzz-notify.sh` post habitat-run-gebeurtenissen naar Ratatoskr via
 `buzz-cli`, als de orchestrator-identiteit. Best-effort: een onbereikbare relay
 of een fout laat een run nooit falen (exit 0, gemiste post in `notify.log`).
 

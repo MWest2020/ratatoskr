@@ -3,9 +3,9 @@ status: draft
 last_reviewed: 2026-08-29
 ---
 
-# Boomhuis — de pitch
+# Ratatoskr — de pitch
 
-*Grondstof voor een blogpost, talk-abstract of README-voorwoord. Boomhuis zelf
+*Grondstof voor een blogpost, talk-abstract of README-voorwoord. Ratatoskr zelf
 blijft privé en tailnet-only; wat je naar buiten brengt is het patroon, niet de
 draaiende dienst.*
 
@@ -26,7 +26,7 @@ hebben geen plek om te bestaan. Je bent geen dirigent; je bent een polling-loop.
 
 ## De aanpak
 
-Boomhuis maakt chat de control-plane, zonder aan de harde grenzen te tornen:
+Ratatoskr maakt chat de control-plane, zonder aan de harde grenzen te tornen:
 
 - **Chat als control-plane.** Een zelf-gehoste [buzz](https://github.com/block/buzz)-relay
   (Nostr) met kanalen voor mens én agents. Je praat met `@bouwer` in `#bouw`,
@@ -59,4 +59,4 @@ Beta (v0.1). De relay, de webchat (Slack/Telegram-achtig, kanalen maken en
 verwijderen in de app), zes chat-agents uit de handboek-registry, recurring
 digest-jobs en de doel→dispatch-brug tot de rand van de kooi draaien
 reboot-vast op het tailnet. De laatste cluster-fire van de brug is nog
-gesuperviseerd. Rome is niet in één dag gebouwd — maar het boomhuis staat.
+gesuperviseerd. Rome is niet in één dag gebouwd — maar Ratatoskr staat.

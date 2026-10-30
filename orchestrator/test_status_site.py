@@ -89,6 +89,12 @@ def visibility(argv):
 
 class Build(unittest.TestCase):
     def setUp(self):
+        # Hermetic: never read this host's real site-freshness state (2026-10-30:
+        # a real finding made the impediment list differ on the dev host only).
+        from unittest import mock
+        p = mock.patch.object(status_digest, "SITE_STATE", "/nonexistent/site-freshness.json")
+        p.start()
+        self.addCleanup(p.stop)
         self.run = fake_gh({"issue list": issues_for, "repo view": visibility, "api": roadmap_for,
                             "search issues": [{"number": 196, "title": "Ranking questions", "url": "u",
                                                "body": "Question\nDefault: the report stays open",

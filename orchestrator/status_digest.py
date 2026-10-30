@@ -70,11 +70,11 @@ SITE_STATE = os.path.expanduser("~/.local/state/ratatoskr/site-freshness.json")
 SITE_FRESH = datetime.timedelta(days=8)
 
 
-def site_stale(now, path=SITE_STATE):
+def site_stale(now, path=None):
     """The weekly site-freshness findings (site_freshness.py) as one impediment,
     while that run is recent and found something."""
     try:
-        with open(path, encoding="utf-8") as fh:
+        with open(path or SITE_STATE, encoding="utf-8") as fh:   # resolved now: tests patch it
             state = json.load(fh)
     except (OSError, ValueError):
         return []
@@ -86,7 +86,7 @@ def site_stale(now, path=SITE_STATE):
              "since": state["generated"], "url": state.get("pr") or state.get("issue")}]
 
 
-def digest(now, owner, gh, run, stuck, site_state=SITE_STATE):
+def digest(now, owner, gh, run, stuck, site_state=None):
     asks = waiting(owner, gh, run)
     day_ago = (now - datetime.timedelta(hours=24)).strftime("%Y-%m-%d %H:%M:%S")
     found = impediments(now, stuck, refusals(day_ago, run), asks) + site_stale(now, site_state)

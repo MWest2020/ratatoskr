@@ -3,7 +3,7 @@ status: actief
 last_reviewed: 2026-09-13
 ---
 
-# De Boomhuis-app op je telefoon zetten (PWA)
+# De Ratatoskr-app op je telefoon zetten (PWA)
 
 De webchat is een installeerbare PWA: geen app store, gewoon de site "toevoegen
 aan je beginscherm". Daarna start hij als losse app, zonder browserbalk.
@@ -37,7 +37,7 @@ als de relay zelf stuk is, is [relay-herstel](relay-herstel.md) aan de orde.
    onderaan. Tik die aan.
 3. Zie je hem niet: menu **⋮** → **App installeren** (of **Toevoegen aan
    startscherm**).
-4. Bevestig. Het Boomhuis-icoon staat nu tussen je apps.
+4. Bevestig. Het Ratatoskr-icoon staat nu tussen je apps.
 
 ## iOS (Safari)
 
