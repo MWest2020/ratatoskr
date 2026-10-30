@@ -116,18 +116,18 @@ def setup(cfg, agents, hub, human, send, issues=gh_issues, log=print, builds=Non
 
     def open_pr(b, branch):
         """The chain passed every role: a PR, merged later once CI agrees."""
-        pr, err = merger.open_pr(cfg["owner"], b["repo"], branch, b["change"], b["issue"],
-                                 b.get("verdicts", []))
+        pr, err = merger.open_pr(cfg["owner"], b["repo"], branch, b["change"], b["issue"], b.get("verdicts", []))
         tail = f" · {b['repo']}#{b['issue']}"
+        if err and "No commits between" in err and after_done:  # passed, nothing to merge: done
+            issues.comment(b["repo"], b["issue"], "Chain passed with no code change: archiving.")
+            return after_done(b)
         if err:
             issues.comment(b["repo"], b["issue"], f"Could not open the PR: {err}")
             return say(b["cid"], f"⚠ no PR for `{b['change']}`: {err}{tail}")
-        issues.comment(b["repo"], b["issue"], f"PR #{pr} opened from `{branch}`; it is "
-                       "merged once every check passes.")
+        issues.comment(b["repo"], b["issue"], f"PR #{pr} opened from `{branch}`; merged once checks pass.")
         say(b["cid"], f"🔀 PR #{pr} opened; merging when CI passes{tail}")
         merging.append({k: v for k, v in b.items() if k != "proc"} | {"pr": pr, "next": 0})
         builds.save()
-
     def follow_merges():
         """At most once a minute per PR: merge, wait, or stop."""
         for m in list(merging):
