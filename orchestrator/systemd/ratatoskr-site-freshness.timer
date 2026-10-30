@@ -1,0 +1,9 @@
+[Unit]
+Description=Controleer westerweel.work wekelijks op verouderde tekst
+
+[Timer]
+OnCalendar=Mon *-*-* 06:17
+Persistent=true
+
+[Install]
+WantedBy=timers.target
