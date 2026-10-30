@@ -104,6 +104,11 @@ session never ran" instead of "wrote nothing". A chain that has ended leaves the
 failure is reported, so the hub's retry is not refused as "another build is
 still running".
 
+A chain that passes every role but leaves no commits (the change needed only a
+spec amend that is already merged) has nothing to merge: the listener comments
+that on the issue and archives the change, as after a merge (2026-10-31:
+convergence demo-zone-travel stalled on "No commits between").
+
 ## After the merge: deploy to the homelab
 
 For a repository with a recipe under `deploy:` in `agents/factory.yml`

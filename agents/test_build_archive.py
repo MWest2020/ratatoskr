@@ -93,3 +93,31 @@ class ArchiveAfterDeploy(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class NoCommitsIsDone(unittest.TestCase):
+    """2026-10-31: convergence demo-zone-travel passed every role with nothing left
+    to change (the spec amend was already merged); "No commits between" left the
+    issue open and the change unarchived."""
+
+    def test_a_passed_chain_with_no_commits_is_archived(self):
+        done = []
+
+        class Merger:
+            def open_pr(self, *a):
+                return None, "GraphQL: No commits between main and habitat/builder/x (createPullRequest)"
+
+        class Issues:
+            def comment(self, *a):
+                return ""
+        with tempfile.TemporaryDirectory() as t:
+            builds = build_runner.Builds({"owner": "MWest2020", "runs": t}, popen=None)
+            _, tick = build_wiring.setup({"owner": "MWest2020", "runs": t}, {}, "odin", "mark",
+                                         lambda *a: True, issues=Issues(), builds=builds,
+                                         merger=Merger(), deployer=None,
+                                         after_done=done.append, log=lambda *a, **k: None)
+            b = {"repo": "r", "change": "c", "issue": 9, "cid": "c"}
+            builds.tick = lambda on_event: on_event(b, "done", "security",
+                                                    {"branch": "habitat/builder/x"})
+            tick()
+        self.assertEqual([d["change"] for d in done], ["c"])
