@@ -20,7 +20,8 @@ lives at <https://westerweel.work/nu/> (NL) and <https://westerweel.work/en/now/
   its goal, the phase strip (past, current, next), progress toward done for the
   current phase, and the gap (the open items), read from the project's own
   `docs/reference/roadmap.yml` (`status_roadmap.py`), plus one compact line of
-  the changes in flight (from the build state and open `propose:` issues);
+  the changes in flight (from the build state and open `propose:` issues, and
+  `build:` issues the listener opens for a `!build` from chat, once per change);
 - **the digest**, `~/.local/state/ratatoskr/mark-digest.json`, never on the
   page (`status_digest.py`): the open `waiting-on-mark` questions with their
   `Default:`, and the impediments: a build whose last verdict is a FAIL that has
