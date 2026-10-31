@@ -77,14 +77,21 @@ def failed(comments):
     return None
 
 
+PREFIXES = ("propose: ", "build: ")
+
+
 def in_flight(repo, state, run=subprocess.run):
-    issues = gh(["issue", "list", "--repo", f"{OWNER}/{repo}", "--state", "open", "--limit", "40",
-                 "--search", "propose: in:title", "--json", "number,title,comments,url"], run) or []
-    flight, stuck = [], []
+    # A build started from chat gets a `build:` issue, not a `propose:` one
+    # (2026-10-31: a 19-hour architect FAIL on a build issue never reached the digest).
+    issues = gh(["issue", "list", "--repo", f"{OWNER}/{repo}", "--state", "open", "--limit", "60",
+                 "--search", "propose OR build in:title", "--json", "number,title,comments,url"], run) or []
+    flight, stuck, seen = [], [], set()
     for i in issues:
-        if not i["title"].startswith("propose: "):
+        prefix = next((p for p in PREFIXES if i["title"].startswith(p)), None)
+        change = i["title"][len(prefix):].strip() if prefix else None
+        if not change or change in seen:
             continue
-        change = i["title"][len("propose: "):].strip()
+        seen.add(change)
         stage = stage_of(repo, change, state)
         verdict = None if stage else failed(i.get("comments"))
         entry = {"change": change, "issue": i["number"], "url": i["url"]}

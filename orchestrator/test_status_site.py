@@ -54,7 +54,14 @@ def issues_for(argv):
                  "comments": []},
                 {"number": 6, "title": "propose: broken", "url": "https://github.com/MWest2020/wordsworth/issues/6",
                  "comments": [{"body": "**architect: FAIL** (verdict failed)\n- [summary] gap in spec",
-                               "createdAt": "2026-10-27T08:00:00Z"}]}]
+                               "createdAt": "2026-10-27T08:00:00Z"}]},
+                {"number": 8, "title": "build: from-chat", "url": "https://github.com/MWest2020/wordsworth/issues/8",
+                 "comments": [{"body": "**architect: FAIL** (verdict failed)\n- [summary] seam gap",
+                               "createdAt": "2026-10-27T09:00:00Z"}]},
+                {"number": 9, "title": "build: a-change", "url": "https://github.com/MWest2020/wordsworth/issues/9",
+                 "comments": []},
+                {"number": 10, "title": "Unrelated build question", "url": "https://github.com/MWest2020/wordsworth/issues/10",
+                 "comments": []}]
     if repo.endswith("/convergence"):
         return [{"number": 7, "title": "propose: secret-game", "url": "https://github.com/MWest2020/convergence/issues/7",
                  "comments": []}]
@@ -135,7 +142,14 @@ class Build(unittest.TestCase):
         kinds = sorted(i["kind"] for i in self.collect()[1]["impediments"])
         # broken failed 2026-10-27 08:00 (>12h before NOW), a refusal in the journal,
         # #196 open since 2026-10-20 (>3 days); #95 is only a day old
-        self.assertEqual(kinds, ["build-failed", "refused", "waiting-too-long"])
+        self.assertEqual(kinds, ["build-failed", "build-failed", "refused", "waiting-too-long"])
+
+    def test_a_build_issue_from_chat_counts_once(self):
+        found = [i["change"] for i in self.collect()[1]["impediments"] if i["kind"] == "build-failed"]
+        self.assertIn("from-chat", found)
+        ww = next(p for p in self.collect()[0]["projects"] if p["name"] == "wordsworth")
+        self.assertEqual([f["change"] for f in ww["in_flight"]].count("a-change"), 1)
+        self.assertNotIn("Unrelated build question", str(ww["in_flight"]))
 
     def test_generated_time_is_amsterdam(self):
         g = self.collect()[0]["generated"]
