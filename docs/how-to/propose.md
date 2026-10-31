@@ -122,6 +122,14 @@ openspec writes a "TBD - created by archiving change …" placeholder there,
 strict validation refuses it, and `propose_git.fill_purposes` replaces it
 with the first sentence of the change's own Why.
 
-When the archive PR merges, every open issue titled `propose: <change>`
-(the first proposal and any amends) is closed with a note, so the boards
-show the change as done and not as a pile of open proposals.
+When the archive PR merges, every open issue titled `build: <change>` or
+`propose: <change>` (the first proposal and any amends) is closed with a
+note naming the archive path, so the boards show the change as done and not
+as a pile of open proposals.
+
+A change can also leave `openspec/changes/` another way: archived by hand by
+a coding session, or split or removed in a PR. A 30-minute tick checks main
+itself for every open `build:`/`propose:` issue, detects both cases the same
+way as the chain's own archive, and closes the issue the same way. A change
+that is gone from `openspec/changes` without an archive directory is never
+closed — only logged, so a human decides (`agents/close_on_archive.py`).

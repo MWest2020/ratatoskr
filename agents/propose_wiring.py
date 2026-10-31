@@ -9,11 +9,13 @@ When that PR merges, `after_merge` gives the hub one follow-up turn, so the
 change it decided gets built without anyone nudging it.
 """
 import os
+import subprocess
 import time
 
 import activity
 import branches
 import build
+import close_on_archive
 import credits
 import issues as gh_issues
 import propose
@@ -23,7 +25,8 @@ CLONES = os.path.expanduser("~")
 
 def setup(cfg, agents, hub, send, pub2name, builds, fetch, run_turn, issues=gh_issues,
           now=time.time, log=print, start=propose.start, check=propose.check,
-          publish=propose.publish, archive=propose.archive, refused=propose.refused_writes):
+          publish=propose.publish, archive=propose.archive, refused=propose.refused_writes,
+          gh=subprocess.run):
     voice = agents.get(hub) or {}
     jobs = builds.proposing   # persisted in state.json, adopted after a restart
 
@@ -128,14 +131,14 @@ def setup(cfg, agents, hub, send, pub2name, builds, fetch, run_turn, issues=gh_i
 
     def after_merge(m):
         """A merged proposal wakes the hub to build it; a merged archive closes
-        every proposal issue of that change (2026-10-24: superseded ones piled
-        up open on the boards)."""
+        every build:/propose: issue of that change, through the same closer the
+        30-minute tick uses for a hand-archived or out-of-chain change
+        (2026-10-24: superseded proposals piled up open on the boards)."""
         if m.get("kind") == "archive" and m.get("change"):
             branches.delete(cfg["owner"], m["repo"], branches.of_change(cfg["owner"], m["repo"],
                                                                         m["change"]))
-            for n in issues.open_titled(m["repo"], f"propose: {m['change']}"):
-                issues.close(m["repo"], n, f"Done: `{m['change']}` is built, merged and "
-                             f"archived (PR #{m['pr']}).")
+            close_on_archive.close_change(cfg["owner"], m["repo"], m["change"], issues=issues,
+                                          runner=gh, log=log)
             return
         if m.get("kind") != "propose":
             return

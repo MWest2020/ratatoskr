@@ -25,6 +25,7 @@ import board
 import bootstrap
 import build
 import build_wiring
+import close_on_archive
 import credits
 import factory_wiring
 import relay
@@ -100,27 +101,25 @@ def main():
     activity.enable()                                        # one line per run (activity.py)
     read_tick = repo_read.ticker(factory, ROOT, time.time)   # .repos/<name> for chat turns
     late = {}   # filled once run_turn exists: a merged proposal wakes the hub
-    try_build, build_tick = build_wiring.setup(
-        factory, AGENTS, HUB, ME_NAME, send,
+    try_build, build_tick = build_wiring.setup(factory, AGENTS, HUB, ME_NAME, send,
         after_merge=lambda m: late["after_merge"](m) if "after_merge" in late else None,
         after_fail=lambda b, t: late["after_fail"](b, t) if "after_fail" in late else None,
         after_done=lambda e: late["after_done"](e) if "after_done" in late else None)
     try_factory, try_yes, factory_tick = factory_wiring.setup(
         AGENTS, HUB, ME_NAME, send, CHANNELS, factory["runs"], BASE)
-    run_turn = agent_turn.build_turn(AGENTS, HUB, reg, send, CHANNELS, PUB2NAME, ROOT,
-                                     try_session, human=ME_NAME, try_build=try_build,
-                                     factory=factory, try_factory=try_factory,
-                                     may_speak=lambda h, c, i: scoped(h, c, i),
+    close_tick = close_on_archive.ticker(factory["owner"], factory["repos"])
+    run_turn = agent_turn.build_turn(AGENTS, HUB, reg, send, CHANNELS, PUB2NAME, ROOT, try_session,
+                                     human=ME_NAME, try_build=try_build, factory=factory,
+                                     try_factory=try_factory, may_speak=lambda h, c, i: scoped(h, c, i),
                                      try_propose=lambda *a: late["try_propose"](*a))
     # In a room the listener speaks as the orchestrator (the channel owner), and
     # those lines are never input: otherwise a claim line would trigger a turn.
     orch_pub = name2pub_of(PUB2NAME, "orchestrator")
-    room = room_flow.build(ROOMS, AGENTS, send, run_turn,
-                           (read_nsec, NPUBS.get("orchestrator")), PUB2NAME)
+    room = room_flow.build(ROOMS, AGENTS, send, run_turn, (read_nsec, NPUBS.get("orchestrator")), PUB2NAME)
 
-    (late["try_propose"], propose_tick, late["after_merge"], late["after_fail"],
-     late["after_done"]) = propose_wiring.setup(
-        factory, AGENTS, HUB, send, PUB2NAME, build_wiring.builds_of(build_tick), fetch, run_turn)
+    (late["try_propose"], propose_tick, late["after_merge"], late["after_fail"], late["after_done"]) = \
+        propose_wiring.setup(factory, AGENTS, HUB, send, PUB2NAME, build_wiring.builds_of(build_tick),
+                             fetch, run_turn)
     reporting.report_missing_memberships(run, AGENTS, CHANNELS, PUB2NAME)
     name2pub = {h: p for p, h in PUB2NAME.items()}   # so we do not answer agents
     for h in AGENTS:
@@ -192,6 +191,7 @@ def main():
         factory_tick()          # roles the factory is making
         read_tick()             # readable repos, at most every ten minutes
         propose_tick()          # changes being written
+        close_tick()            # build:/propose: issues of an archived change
         notify.flush()          # deliver what the push cooldown held back
         time.sleep(POLL)
 

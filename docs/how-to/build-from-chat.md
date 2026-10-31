@@ -181,6 +181,14 @@ human intervention."*
 - **One proposal per change**: a `!propose` for a change already being written
   or waiting in CI is answered, not started; an amend or retry comments on the
   open `propose: <change>` issue instead of opening another.
+- **Issues of an archived change close by themselves**: a 30-minute tick reads
+  `openspec/changes` and its archive on each repository with an open
+  `build:`/`propose:` issue, and closes the issue with the archive path once
+  the change is archived there — whether that happened through the chain's
+  own archive PR or by hand. No snapshot is kept, so a restart loses nothing
+  and a hand-archive is found the same way. A change that is gone without an
+  archive directory (a split, a removal) is only logged, never closed: a
+  wrong close is worse than a missed one (`agents/close_on_archive.py`).
 
 ## Where the roles come from
 
