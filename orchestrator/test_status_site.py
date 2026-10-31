@@ -58,10 +58,8 @@ def issues_for(argv):
                 {"number": 8, "title": "build: from-chat", "url": "https://github.com/MWest2020/wordsworth/issues/8",
                  "comments": [{"body": "**architect: FAIL** (verdict failed)\n- [summary] seam gap",
                                "createdAt": "2026-10-27T09:00:00Z"}]},
-                {"number": 9, "title": "build: a-change", "url": "https://github.com/MWest2020/wordsworth/issues/9",
-                 "comments": []},
-                {"number": 10, "title": "Unrelated build question", "url": "https://github.com/MWest2020/wordsworth/issues/10",
-                 "comments": []}]
+                {"number": 9, "title": "build: a-change", "url": "u9", "comments": []},
+                {"number": 10, "title": "Unrelated build question", "url": "u10", "comments": []}]
     if repo.endswith("/convergence"):
         return [{"number": 7, "title": "propose: secret-game", "url": "https://github.com/MWest2020/convergence/issues/7",
                  "comments": []}]
