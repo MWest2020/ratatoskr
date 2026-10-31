@@ -52,25 +52,38 @@ class FillPurpose(unittest.TestCase):
 
 
 class CloseOnArchive(Wiring):
-    def test_a_merged_archive_closes_the_proposal_issues(self):
+    def test_a_merged_archive_closes_the_build_and_proposal_issues(self):
         closed = []
         import propose_wiring as pw
 
         class Issues:
             def open_titled(s, repo, title):
-                return [10, 23] if title == "propose: add-x" else []
+                if title == "propose: add-x":
+                    return [10, 23]
+                if title == "build: add-x":
+                    return [31]
+                return []
 
             def close(s, repo, n, body):
                 closed.append(n)
 
             def comment(s, *a):
                 return ""
+
+        def fake_gh(argv, **kw):
+            class R:
+                returncode, stderr = 0, ""
+                stdout = "2026-10-24-add-x\n"
+            return R()
+
+        # An old `merging` entry has no "dated" field at all — the closer
+        # resolves it from the archive listing, so this still works (1.6).
         _, _, after, _, _ = pw.setup(
             {"owner": "MWest2020", "repos": ["wordsworth"]}, {"odin": {"nsec": "n", "npub": "p"}},
             "odin", lambda *a: None, {}, self.builds, lambda cid: [], lambda *a, **k: None,
-            issues=Issues(), log=lambda *a, **k: None)
+            issues=Issues(), log=lambda *a, **k: None, gh=fake_gh)
         after({"kind": "archive", "repo": "wordsworth", "change": "add-x", "pr": 44, "cid": "c"})
-        self.assertEqual(closed, [10, 23])
+        self.assertEqual(sorted(closed), [10, 23, 31])
 
 
 if __name__ == "__main__":
