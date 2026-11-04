@@ -15,8 +15,22 @@ announcement such as "I'm starting it now" on a later line started nothing.
 ## What changes
 
 - When a build's PR merges, the listener reads the merged change's `proposal.md`
-  for a `Next:` or `Depends on` line that names a step in the same sequence, and
-  queues that step's build by itself.
+  for a `Next:` line that names a step in the same sequence, and queues that
+  step's build by itself. Only `Next:` is followed. `Depends on` is read from the
+  *next* step's proposal as the eligibility check (every named parent must be
+  merged) and is never queued: following it would re-queue a prerequisite that
+  has already merged.
+- The proposal is read through `gh api` with the raw `Accept` header
+  (`application/vnd.github.raw+json`), so the body is not base64 JSON. "The read
+  failed" and "no next step is named" are different outcomes, in the log and in
+  the channel line.
+- The chain fires at the merge, while the merged change may still be deploying
+  (wordsworth, convergence). The next build therefore starts on a main that is
+  merged but not necessarily running yet; this is stated risk, see Open questions.
+- `propose_wiring.after_done` still tells odin to take the next step. The chain
+  queues first; odin's `!build` for the same step is then refused as "already
+  building or queued", so the step is never built twice and the circuit breaker
+  is not tripped by the double request.
 - The queued build goes through the same gates as any other: the circuit breaker
   (`max_builds_per_change_day`), `max_concurrent` and `builds_per_day`. Chaining
   never bypasses a gate and never counts as a build Mark typed himself.
@@ -39,3 +53,11 @@ announcement such as "I'm starting it now" on a later line started nothing.
 - **A `Depends on` with several parents** (a step that waits on two changes).
   Default: queue the step only when every named parent is merged; otherwise do
   nothing and say so.
+- **Deploy gap.** For wordsworth and convergence the chain fires at the merge,
+  while the merged change is still deploying. Alternative: the chain waits for
+  the deploy-done signal. Default: fire at the merge and state the risk (B is
+  built on a merged-but-not-yet-running main); no deploy-done wait is built.
+- **Further contradiction flagged by the architect in the verdict on issue 225.**
+  The verdict text was not available to this amendment; the `Next:`/`Depends on`
+  contradiction between spec and tasks is resolved above. Anything else in that
+  verdict is still to be settled by the person who reads it.
