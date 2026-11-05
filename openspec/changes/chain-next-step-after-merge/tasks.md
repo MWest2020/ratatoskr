@@ -1,23 +1,23 @@
-## 1. Parse
+## 1. Parse (`agents/chain_next.py`, new, pure)
 
-- [ ] `agents/chain_next.py`: parse the `Next:` line (the only line followed) and a deploy precondition from a proposal's text; parse `Depends on` only as the list of parents for the eligibility check. Proof: `agents/test_chain_next.py` (named step, `Depends on` never returned as a step to queue, none named, precondition, malformed line).
-- [ ] Read the proposal with the raw `Accept` header and tell "read failed" from "no next step named". Proof: `agents/test_chain_next_wiring.py` asserts the `gh api` call carries `Accept: application/vnd.github.raw+json`, that a base64/JSON body and a `gh` error give the "read failed" log and channel line, and that a proposal without `Next:` gives the distinct "no next step named" line.
+- [ ] `parse(text)` per the grammar in design.md: `next` (first backticked id under `## Next`), `parents` (every backticked id under `## Depends on`), `precondition` (a `## Deploy precondition` section exists), `malformed` (a `## Next` section without a backticked id). Proof: `agents/test_chain_next.py`: a named step; heading case and spacing variants; prose around ids ignored; two parents; only the first section of a name counts; no `## Next`; a `## Next` without an id is malformed; a precondition; an id inside a fenced code block under another heading is not a parent.
 
-## 2. Wire
+## 2. Read and decide (`agents/chain_wiring.py`, new)
 
-- [ ] `build_wiring.follow_merges`: after a build's merge, read the proposal from main and queue the next step through the existing queue; say what was chained or why not. Proof: `agents/test_chain_next_wiring.py` drives merge and queue together (a seam, per AGENTS.md): merge of A queues B; no line queues nothing; a `gh` failure is said, not swallowed; B already queued is not doubled.
-- [ ] Gates: a chained step respects the breaker, `max_concurrent` and `builds_per_day`. Proof: the same test file, one case per gate, and a mutation check that removing the gate call fails it.
-- [ ] Eligibility: B is queued only when every parent in B's `Depends on` is merged, and a merged parent is never queued again. Proof: `agents/test_chain_next_wiring.py` (A merges with `Next: B`, B `Depends on: A`: B queued, A not; B with an unmerged second parent: nothing queued, reason said).
-- [ ] Interplay with the wake: `propose_wiring.after_done` still tells odin to take the next step. Proof: `agents/test_chain_next_wiring.py` runs the merge (chain queues B), then odin's `!build B` through `try_build`, and asserts the refusal "already building or queued", that B has exactly one build, and that the circuit-breaker counter is unchanged.
-- [ ] Deploy gap: the chain fires at the merge, not at deploy-done. Proof: `agents/test_chain_next_wiring.py` has a case where A is still deploying and B is queued anyway, and the how-to states the risk (see Docs).
-- [ ] Build-only flag: a precondition step skips the `deploying` hand-off. Proof: `agents/test_chain_next_wiring.py` (no `deploying` entry, comment on the issue) and a control case that does deploy.
-- [ ] Keep every changed `.py` within 200 lines (`scripts/line_limit.py`); put new logic in `chain_next.py`, not in `build_wiring.py`.
+- [ ] `read_proposal(owner, repo, change, runner)` uses `gh api` with `-H "Accept: application/vnd.github.raw+json"` and returns `(text, "")` or `("", reason)`; a body starting with `{` is a failed read. Proof: `agents/test_chain_wiring.py` asserts the header in the `gh` call, a `gh` error and a JSON body both give "read failed".
+- [ ] `merged(owner, repo, parent, just_merged, runner)`: true for the just-merged change; otherwise a merged PR whose title is exactly `build: <parent>`. Proof: tests for both, a near-miss title (`build: <parent>-x`) is not merged, and a test that the title `build_merge.open_pr` writes matches this search.
+- [ ] `setup(cfg, hub, say, try_build, runner=subprocess.run, log=print)` returns `chain(m)` with the outcomes "read failed", "no next step named", "malformed `## Next`", "next step archived" (loop guard), "parent not merged" (names it), "deploy precondition, a person starts it", and "requested". Only "requested" calls `try_build(f"!build {repo} {next}", hub, cname, cid, own=True)`. Each outcome is said in `m["cid"]`, or logged when the entry has no `cid`. Proof: one test per outcome, each asserting whether `try_build` was called.
 
-## 3. Docs
+## 3. Wire (seam)
 
-- [ ] `docs/how-to/build-from-chat.md`: new section "After the merge: the next step" (what is read: only `Next:`, with `Depends on` as eligibility; the gates; build-only for a deploy precondition; odin's duplicate `!build` is refused; the chain fires at the merge, so B may build on a main that is merged but not yet deployed; "read failed" versus "no next step named") and update `last_reviewed`. Proof: `scripts/docs_drift.py` passes.
-- [ ] `agents/README.md`: mention `chain_next.py` if it lists modules (check with Grep first).
+- [ ] `propose_wiring.setup(..., try_build=None)` builds `chain` when `try_build` is given; `after_merge` calls `chain(m)` for a build (`kind` neither `propose` nor `archive`). `listener.py` passes `try_build=try_build` on its existing `propose_wiring.setup(...)` call without adding a line. `build_wiring.py` and `build.py` are not changed. Proof: `agents/test_chain_seam.py` drives `build_wiring.setup` + `propose_wiring.setup` together with fakes for `gh`, merge and habitat: merge of A with `## Next` B queues B through `try_build`; with `max_concurrent` reached B waits in `builds.queued`; with the breaker tripped for B the refusal is said; a second request (odin's `!build B`) is refused as "already building or queued", B has one build and the breaker count is unchanged.
+- [ ] Line budget: `python3 scripts/line_limit.py` stays green; check after each edit, not at the end.
 
-## 4. Check
+## 4. Docs
 
-- [ ] `bash scripts/verify.sh` is green and `openspec validate chain-next-step-after-merge --strict` passes.
+- [ ] `docs/how-to/build-from-chat.md`: section "After the merge: the next step": the `## Next` / `## Depends on` / `## Deploy precondition` grammar with an example; the "merged" rule; the gates; that a precondition step is not chained (a person starts it); the deploy gap; the loop guard; odin's duplicate `!build` being refused. Update `last_reviewed`. Proof: `scripts/docs_drift.py` passes.
+- [ ] `agents/README.md`: list `chain_next.py` and `chain_wiring.py` if it lists modules (check first).
+
+## 5. Check
+
+- [ ] `bash verify.sh` green, `openspec validate chain-next-step-after-merge --strict` passes.
