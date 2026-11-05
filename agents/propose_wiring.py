@@ -6,7 +6,8 @@ writing sessions: when one ends, the listener checks the result, opens the PR
 and hands it to the build road's merge follower (build_wiring), marked
 `kind: propose` so that it is not deployed: an OpenSpec change is Markdown.
 When that PR merges, `after_merge` gives the hub one follow-up turn, so the
-change it decided gets built without anyone nudging it.
+change it decided gets built without anyone nudging it. A merged *build*
+goes to `chain_wiring` instead (given `try_build`): its sequence's next step.
 """
 import os
 import subprocess
@@ -15,6 +16,7 @@ import time
 import activity
 import branches
 import build
+import chain_wiring
 import close_on_archive
 import credits
 import issues as gh_issues
@@ -26,13 +28,15 @@ CLONES = os.path.expanduser("~")
 def setup(cfg, agents, hub, send, pub2name, builds, fetch, run_turn, issues=gh_issues,
           now=time.time, log=print, start=propose.start, check=propose.check,
           publish=propose.publish, archive=propose.archive, refused=propose.refused_writes,
-          gh=subprocess.run):
+          gh=subprocess.run, try_build=None):
     voice = agents.get(hub) or {}
     jobs = builds.proposing   # persisted in state.json, adopted after a restart
 
     def say(cid, text):
         if voice:
             send(cid, text, voice["nsec"], voice["npub"])
+
+    chain = chain_wiring.setup(cfg, hub, say, try_build, runner=gh, log=log) if try_build else None
 
     def try_propose(answer, starter, cname, cid, msgs, requester):
         for mk in (propose.read_markers(answer) if starter == hub else []):
@@ -141,6 +145,8 @@ def setup(cfg, agents, hub, send, pub2name, builds, fetch, run_turn, issues=gh_i
                                           runner=gh, log=log)
             return
         if m.get("kind") != "propose":
+            if chain:
+                chain(m)
             return
         msgs = fetch(m["cid"]) or []
         run_turn(hub, m.get("cname", ""), m["cid"], msgs, max(len(msgs) - 1, 0),

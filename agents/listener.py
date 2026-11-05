@@ -119,7 +119,7 @@ def main():
 
     (late["try_propose"], propose_tick, late["after_merge"], late["after_fail"], late["after_done"]) = \
         propose_wiring.setup(factory, AGENTS, HUB, send, PUB2NAME, build_wiring.builds_of(build_tick),
-                             fetch, run_turn)
+                             fetch, run_turn, try_build=try_build)
     reporting.report_missing_memberships(run, AGENTS, CHANNELS, PUB2NAME)
     name2pub = {h: p for p, h in PUB2NAME.items()}   # so we do not answer agents
     for h in AGENTS:

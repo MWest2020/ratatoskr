@@ -1,6 +1,6 @@
 ---
 status: current
-last_reviewed: 2026-10-22
+last_reviewed: 2026-11-05
 ---
 
 # Build from the chat
@@ -83,6 +83,61 @@ When all four roles pass:
 
 Mark decided this on 2026-10-22 ("absolutely"). alma is not a repository on
 the list, so it is never merged into.
+
+## After the merge: the next step
+
+A build's own merge can start the next step of its sequence by itself, through
+the same `!build` road (openspec change `chain-next-step-after-merge`). The
+factory sat idle for about 21 hours twice (2 and 3 Nov 2026) after a merge
+whose next step was ready but unstarted; this closes that gap.
+
+The listener reads the merged change's `proposal.md` on main for a `## Next`
+section:
+
+    ## Next
+    `originals-ingest-write`
+
+and the next step's own `proposal.md` for its gates:
+
+    ## Depends on
+    `originals-ingest-readers`, `originals-ingest-schema`
+
+    ## Deploy precondition
+    A person restores last night's backup first.
+
+A section is a `## ` heading (case and spacing do not matter) up to the next
+one; only the first backticked id in `## Next` counts, every backticked id in
+`## Depends on` is a parent, and a `## Deploy precondition` section's mere
+presence is the gate — its text is for the person who starts that step.
+
+**"Merged"** is one rule: the change that just merged counts as merged; any
+other parent counts as merged when a PR titled `build: <parent>` (the title
+`build_merge.open_pr` writes) is merged on that repository. The openspec and
+archive listings are never used for this — at merge time the just-merged
+change is still under `openspec/changes`, not yet archived, so both would
+answer wrongly.
+
+**The gates**, in order: a failed read of either proposal says so (never
+mistaken for "no next step"); no `## Next` section, or one without a
+backticked id, says so and nothing is requested; a next step already archived
+on that repository is refused — the loop guard, since a `## Next` pointing
+back at an earlier step would otherwise loop until the day cap or breaker
+stopped it; an unmerged parent is named and nothing is requested; a
+`## Deploy precondition` means nothing is requested and the channel says a
+person starts that step — this change never builds past one.
+
+Once every gate is open, the request goes through `try_build` exactly as a
+chat `!build` would: `max_concurrent`, the daily budget, the circuit breaker
+and the "already building or queued" check all apply, and a gate that only
+needs waiting queues the step rather than dropping it. Because the chain
+requests first, odin's own `!build` for the same step (its usual follow-up
+turn) is refused as already building or queued: the step is built once, and
+the breaker is not tripped by the refusal.
+
+**The deploy gap.** The chain fires at the merge, not at the end of a deploy:
+for wordsworth and convergence the next step can start building on a main
+that is merged but not necessarily running yet. Each step's own PR checks are
+what actually verify it.
 
 ## A restart loses nothing
 
