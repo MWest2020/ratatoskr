@@ -253,3 +253,9 @@ handbook, `docs/agents/seeds/<role>.md`, at the commit `handbook_ref` in
 project; a repository's own `.claude/agents/` is no longer used. To roll out a
 role change: merge it in the handbook, then move `handbook_ref`. A pinned commit
 without a seed for a role stops that role's run; it never falls back.
+
+The worker image is pinned the same way: `worker_image` in `agents/factory.yml`
+names the habitat-worker image by commit. habitat's `worker-image.yml` builds a
+new image on every merge to its main; a worker change (such as the push retry of
+2026-11-06, which retries a failed branch push 4 times with backoff) only takes
+effect once `worker_image` moves to that image.
