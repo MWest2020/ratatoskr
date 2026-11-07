@@ -1,6 +1,6 @@
 ---
 status: current
-last_reviewed: 2026-10-28
+last_reviewed: 2026-11-07
 ---
 
 # The public overview on westerweel.work/nu/
@@ -28,6 +28,12 @@ lives at <https://westerweel.work/nu/> (NL) and <https://westerweel.work/en/now/
   not moved for 12 hours, a build refusal of the last 24 hours (the breaker's
   "split it" among them), and a question open for more than three days. The
   coding session mails it to Mark once a day.
+
+The projects are `BASE` in `status_site.py` (wordsworth, convergence, ratatoskr,
+habitat, handbook, homelab and, since 2026-11-07, bubbels, the children's games
+app) plus any repository the factory built for in the last week
+(`test_status_site_repos.py`). A project shows only once it has a roadmap that
+parses or changes in flight.
 
 Hugo renders the page with the site's `now` layout; Cloudflare Pages deploys on
 every push to `main`.
