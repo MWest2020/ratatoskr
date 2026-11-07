@@ -25,7 +25,7 @@ import status_roadmap  # noqa: E402
 from status_scrub import clean_tree, public_url  # noqa: E402
 
 OWNER = "MWest2020"
-BASE = ["wordsworth", "convergence", "ratatoskr", "habitat", "handbook", "homelab"]
+BASE = ["wordsworth", "convergence", "ratatoskr", "habitat", "handbook", "homelab", "bubbels"]
 STATE = os.path.expanduser("~/.local/state/ratatoskr")
 SITE = os.path.expanduser(os.environ.get("STATUS_SITE_DIR", "~/.worktrees/westerweel-status"))
 DIGEST = os.path.join(STATE, "mark-digest.json")
