@@ -116,3 +116,17 @@ gates are human, and do not let them leak in either direction.**
   docs check (fixed forward), polluted the activity log from its own tests,
   and scaffolded docs the gate rejected. The same rules apply to it:
   checks before merge, every fix with a test.
+
+## Experiment: bubbels2 (started 2026-11-07)
+
+Convergence went through the factory and ended in a screen Mark called "failed".
+Bubbels, an ad-free children's bubble shooter, was built in a coding session in
+one afternoon (build, play-test as a parent with screenshots, fix) and was good.
+Mark's question: is the factory's process the problem? The test: the factory
+builds `bubbels2` (private) from the same one-page brief Bubbels got, by its own
+road (repo, `!propose`, `!build`, roles, CI, merge), with no help from the
+session. Then one play-test, with the same prompt and run by the same kind of agent,
+judges both. Measured: hours to a playable game, builds and FAILs, human
+interventions, cost, and the play-test's blocking findings. That is why
+`bubbels2` is on `repos` and `readable` in `agents/factory.yml`. The result
+goes here.
