@@ -1,0 +1,5 @@
+schema: spec-driven
+
+context: |
+  {{NAME}}: {{DESCRIPTION}}
+  Checks: bash verify.sh (CI runs only that). Docs move with code (docs gate).

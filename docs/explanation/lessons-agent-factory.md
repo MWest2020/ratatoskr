@@ -130,3 +130,7 @@ judges both. Measured: hours to a playable game, builds and FAILs, human
 interventions, cost, and the play-test's blocking findings. That is why
 `bubbels2` is on `repos` and `readable` in `agents/factory.yml`. The result
 goes here.
+
+First finding (2026-11-07): the factory could not create a repository, so the
+experiment stalled at step one. Fixed with `!newrepo`
+([how-to](../how-to/new-repo-from-chat.md)).

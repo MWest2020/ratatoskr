@@ -115,13 +115,13 @@ def build_turn(agents, hub, reg, send, channels, pub2name, root, try_session, lo
             if followup:      # the follow-up to a consult ends the exchange
                 text += "\n\n⚠ no consult from a follow-up turn"
                 ck = None
+        if try_factory and handle == hub:   # first: `!newrepo` creates what `!propose` targets
+            try_factory(ans, handle, cname, cid)
         if try_propose and handle == hub and propose.read_marker(ans):
             try_propose(ans, handle, cname, cid, msgs, writer)
             text = propose.strip_markers(text)
         elif handle == hub:
             text += propose.unread(ans)
-        if try_factory and handle == hub:
-            try_factory(ans, handle, cname, cid)
         if try_build and build.read_marker(ans):
             try_build(ans, handle, cname, cid, own=True)
             text = build.strip_marker(text)

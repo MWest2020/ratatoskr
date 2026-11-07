@@ -19,7 +19,8 @@ phase 1). You can also start one yourself with the same line.
 
 The listener checks these, not the model. Limits are in `agents/factory.yml`.
 
-1. **The repository is on `repos`.** alma never is.
+1. **The repository is on `repos`**, or was created by the listener itself
+   (`!newrepo`, [how-to](new-repo-from-chat.md)). alma never is.
 2. **`openspec/changes/<change>/` exists on that repository's main.** Build
    only what is decided.
 3. **Fewer than `max_concurrent` chains are running** (2 since 2026-10-30; it was 1), and today's budget (`builds_per_day`, 10) is

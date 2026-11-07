@@ -11,11 +11,18 @@ MARKER = re.compile(r"^!propose\s+([A-Za-z0-9][A-Za-z0-9._-]{0,99})\s+"
 FANOUT = 5   # independent changes the hub may have written at once (graph, 2026-10-24)
 
 
+def _lines(answer):
+    """The answer's lines; a leading `!newrepo` line may precede the block (the
+    listener creates that repository first, agent_turn), 2026-11-07."""
+    lines = (answer or "").strip().split("\n")
+    return lines[1:] if lines and lines[0].strip().startswith("!newrepo") else lines
+
+
 def read_markers(answer):
     """The `!propose` lines at the very top of the answer, at most FANOUT. Only a
     leading block counts, so a quoted marker further down never acts."""
     out = []
-    for line in (answer or "").strip().split("\n"):
+    for line in _lines(answer):
         m = MARKER.match(line.strip())
         if not m or len(out) == FANOUT:
             break
@@ -30,7 +37,7 @@ def read_marker(answer):
 
 def strip_markers(text):
     """The answer without its leading block of `!propose` lines."""
-    lines = (text or "").strip().split("\n")
+    lines = _lines(text)
     n = len(read_markers(text))
     return "\n".join(lines[n:]).strip()
 

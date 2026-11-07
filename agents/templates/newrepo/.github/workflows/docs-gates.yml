@@ -1,0 +1,11 @@
+# Docs gates: contract and drift check per PR (handbook docs/reference/docs-gates.md).
+name: docs-gates
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+jobs:
+  gates:
+    uses: MWest2020/handbook/.github/workflows/docs-gates.yml@main
+    with:
+      code_paths: "src/,web/,lib/,server/,client/,scripts/"
+      drift_mode: "fail"
