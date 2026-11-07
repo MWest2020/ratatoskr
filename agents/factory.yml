@@ -29,7 +29,7 @@ builds_per_day: 10           # 2026-10-30, Mark: "gebruik rustig graph ... we he
 max_budget_usd: 15
 max_concurrent: 2            # two subscription chains at a time (was 1); data autonomy runs first
 habitat_dir: /home/agent/habitat
-worker_image: ghcr.io/mwest2020/habitat-worker:ef0b4ef47b902c4a8c6e5a17651b4a71961d6ca9
+worker_image: ghcr.io/mwest2020/habitat-worker:982be589fdb1bccb2d465756778ca2b7b63970ec
 # The handbook commit every role seed is read from (habitat #44, handbook #35):
 # one source of the roles for every project. Move it to roll out a role change.
 handbook_ref: 3e0d0a1de837428d3af595330778f26d1f865344
