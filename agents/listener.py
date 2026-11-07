@@ -106,7 +106,7 @@ def main():
         after_fail=lambda b, t: late["after_fail"](b, t) if "after_fail" in late else None,
         after_done=lambda e: late["after_done"](e) if "after_done" in late else None)
     try_factory, try_yes, factory_tick = factory_wiring.setup(
-        AGENTS, HUB, ME_NAME, send, CHANNELS, factory["runs"], BASE)
+        AGENTS, HUB, ME_NAME, send, CHANNELS, factory["runs"], BASE, cfg=factory)
     close_tick = close_on_archive.ticker(factory["owner"], factory["repos"])
     run_turn = agent_turn.build_turn(AGENTS, HUB, reg, send, CHANNELS, PUB2NAME, ROOT, try_session,
                                      human=ME_NAME, try_build=try_build, factory=factory,

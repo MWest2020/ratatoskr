@@ -29,6 +29,7 @@ sys.path.insert(0, os.path.join(ROOT, "orchestrator"))
 import factory_ops  # noqa: E402
 
 import bootstrap  # noqa: E402
+import newrepo  # noqa: E402
 
 ROLE = re.compile(r"^!role\s*$")
 SPEC = re.compile(r"```ya?ml\s*\n(.*?)```", re.S)
@@ -44,8 +45,10 @@ def first_line(text):
 
 def setup(agents, hub, human, send, channels, runs_dir, base, popen=subprocess.Popen,
           run=subprocess.run, ops=factory_ops, now=time.time, log=print,
-          fetch_def=bootstrap.fetch_def):
+          fetch_def=bootstrap.fetch_def, cfg=None, repos=newrepo):
     voice = agents.get(hub) or {}
+    if cfg is not None:
+        repos.merge_known(cfg)   # repos this listener created: buildable and readable
     jobs, pending = [], []
     os.makedirs(runs_dir, exist_ok=True)
 
@@ -86,10 +89,18 @@ def setup(agents, hub, human, send, channels, runs_dir, base, popen=subprocess.P
         say(cid, f"🆕 #{name} created with Mark, {', '.join(members)}; restarting to listen there")
         ops.redeploy_listener()
 
+    def start_repo(mk, starter, cid):
+        say(cid, repos.act(cfg, mk[0], mk[1], starter) if cfg is not None
+            else "⛔ repo not created: the listener has no factory config")
+
     def try_marker(text, starter, cname, cid):
         if starter != hub:
             return
         line = first_line(text)
+        if mk := repos.read_marker(text):
+            return start_repo(mk, starter, cid)
+        if note := repos.unread(text):
+            return say(cid, note)
         if ROLE.match(line):
             return start_role(text, cid)
         if m := CHANNEL.match(line):
@@ -104,6 +115,8 @@ def setup(agents, hub, human, send, channels, runs_dir, base, popen=subprocess.P
                      "here to confirm. Nothing happens until then (expires in 24 h).")
 
     def try_yes(content, writer, cid):
+        if writer == human and (mk := repos.read_marker(content, own=False)):
+            return start_repo(mk, writer, cid)   # Mark's own message: any line counts
         if writer != human or not YES.match(content or ""):
             return
         live = [p for p in pending if p["cid"] == cid and now() - p["at"] < PROPOSAL_TTL]
@@ -176,4 +189,7 @@ def clause(handle, hub):
             "and those agents.\n"
             "- `!close role <name>` or `!close channel <name>` only PROPOSES; Mark "
             "decides with `!yes`. Never close anything yourself.\n"
+            "- `!newrepo <name> <one-line description>` creates a PRIVATE repository "
+            "MWest2020/<name> with CI, openspec and docs, and puts it on the factory's "
+            "list; then `!propose` and `!build` there. Public is Mark's decision.\n"
             "Create a role only when no existing agent's contract covers the work.")

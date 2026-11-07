@@ -1,0 +1,11 @@
+# Roadmap, as data, for the overview at westerweel.work/nu/. An item is "done"
+# only with evidence (a PR, issue or doc); everything else is "open".
+# Schema: project, goal, current (a phase id), phases [id, name, summary], and
+# done_means for the current phase [item, status done|open, evidence].
+project: {{NAME}}
+goal: "{{DESCRIPTION}}"
+current: phase-1
+phases:
+  - {id: phase-1, name: "Phase 1", summary: "the first working version"}
+done_means:
+  - {item: "Repository created with checks and docs", status: done, evidence: "https://github.com/MWest2020/{{NAME}}"}
