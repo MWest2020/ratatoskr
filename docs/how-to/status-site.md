@@ -30,8 +30,8 @@ lives at <https://westerweel.work/nu/> (NL) and <https://westerweel.work/en/now/
   coding session mails it to Mark once a day.
 
 The projects are `BASE` in `status_site.py` (wordsworth, convergence, ratatoskr,
-habitat, handbook, homelab and, since 2026-11-07, bubbels, the children's games
-app) plus any repository the factory built for in the last week
+habitat, handbook, homelab and, since 2026-11-07, the children's games app,
+as `bazibo` since its repo rename on 2026-11-09) plus any repository the factory built for in the last week
 (`test_status_site_repos.py`). A project shows only once it has a roadmap that
 parses or changes in flight.
 
