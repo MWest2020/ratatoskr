@@ -260,3 +260,8 @@ names the habitat-worker image by commit. habitat's `worker-image.yml` builds a
 new image on every merge to its main; a worker change (such as the push retry of
 2026-11-06, which retries a failed branch push 4 times with backoff) only takes
 effect once `worker_image` moves to that image.
+
+Since 2026-11-09 the image has a browser for habitat's `playtester` role
+(`add-playtester-role`): between reviewer and security it opens the app and
+looks at it, in a repository that opts in with `.factory/playtest.yml`. The
+role is live only once `handbook_ref` includes its seed (handbook #42).
