@@ -10,17 +10,19 @@ import status_site
 
 
 class Repos(unittest.TestCase):
-    def test_base_projects_include_bubbels(self):
-        # Mark, 2026-11-07: bubbels (the children's games app) gets a roadmap on the overview.
+    def test_base_projects_include_bazibo(self):
+        # Mark, 2026-11-07: the children's games app gets a roadmap on the overview;
+        # its repo was renamed from bubbels to bazibo on 2026-11-09.
         now = datetime.datetime.now(datetime.timezone.utc)
         with tempfile.TemporaryDirectory() as runs:
             self.assertEqual(status_site.repos(now, runs), status_site.BASE)
-        self.assertIn("bubbels", status_site.BASE)
+        self.assertIn("bazibo", status_site.BASE)
+        self.assertNotIn("bubbels", status_site.BASE)
 
     def test_a_repo_built_this_week_is_added_once(self):
         now = datetime.datetime.now(datetime.timezone.utc)
         with tempfile.TemporaryDirectory() as runs:
-            for name in ("netnl-a-1.log", "netnl-b-2.log", "bubbels-c-3.log"):
+            for name in ("netnl-a-1.log", "netnl-b-2.log", "bazibo-c-3.log"):
                 open(os.path.join(runs, name), "w").close()
             old = os.path.join(runs, "crible-x-1.log")
             open(old, "w").close()
