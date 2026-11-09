@@ -134,3 +134,20 @@ goes here.
 First finding (2026-11-07): the factory could not create a repository, so the
 experiment stalled at step one. Fixed with `!newrepo`
 ([how-to](../how-to/new-repo-from-chat.md)).
+
+**Result (stopped 2026-11-09, ~43 h in).** The session had a playable game in
+about 1.5 h: one build, one play-test, one fix. The factory had none: five
+proposals merged in four minutes, one build (`game-canvas`), an architect FAIL
+($0.91), then nothing. One intervention (`!newrepo`). No play-test was possible,
+because there was nothing to play. Findings:
+
+1. No repository creation. Fixed (`!newrepo`).
+2. Builds start in merge order, not dependency order: `game-canvas` was built
+   before `grid-core`, which it needs.
+3. After an architect FAIL nobody restarts the chain, so the factory idles.
+4. No role looks at the visual result. Convergence's "failed screen" and Bubbels'
+   success differ exactly here.
+
+Next: a `playtester` role (finding 4, first). Later: build a change only when
+every id in its `## Depends on` is merged (2), and after an architect FAIL ask
+odin to amend with the findings and requeue instead of idling (3).
