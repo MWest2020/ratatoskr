@@ -33,7 +33,7 @@ habitat_dir: /home/agent/habitat
 worker_image: ghcr.io/mwest2020/habitat-worker:1840e1631a7eadad2666bb8988187dc1bdaeaf53
 # The handbook commit every role seed is read from (habitat #44, handbook #35):
 # one source of the roles for every project. Move it to roll out a role change.
-handbook_ref: 3e0d0a1de837428d3af595330778f26d1f865344
+handbook_ref: 32c54ad5de2c79e619884cb1395fe10ef414571a
 kubectl: ssh -o BatchMode=yes jumpy kubectl
 logdir: ~/.local/state/habitat/run-logs
 runs: ~/.local/state/ratatoskr/builds

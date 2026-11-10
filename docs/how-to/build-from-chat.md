@@ -264,4 +264,5 @@ effect once `worker_image` moves to that image.
 Since 2026-11-09 the image has a browser for habitat's `playtester` role
 (`add-playtester-role`): between reviewer and security it opens the app and
 looks at it, in a repository that opts in with `.factory/playtest.yml`. The
-role is live only once `handbook_ref` includes its seed (handbook #42).
+role is live only once `handbook_ref` includes its seed (handbook #42); since
+2026-11-10 it does (`32c54ad5`, handbook #41 and #42).
