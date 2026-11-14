@@ -37,6 +37,9 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 QUIET = 600          # seconds an identical refused marker of one agent stays dropped
 _ids = {}            # identities.yml, read once (a revocation is a git change + restart)
 _refused = {}        # (starter, repo, change, issue) -> time of the refusal
+# Only refusals that cannot change within QUIET are throttled; "no change on main" (the
+# spec PR may merge in a minute) or a GitHub hiccup is always answered (review, 2026-11-14).
+LASTING = ("is not on the factory's list", "times today without a merge")
 
 
 def identities(root=ROOT):
@@ -102,7 +105,7 @@ def take(m, writer, cname, cid, try_build, cfg, hub, human, own_posts=None,
     if own_posts is not None and own_posts.seen(cid, npub, content):
         return True          # the listener's own post in the hub's voice
     mk = build.read_marker(content, own=True)
-    key = (writer, mk[0].lower(), mk[1], mk[2]) if mk else None
+    key = (writer, mk[0].lower(), mk[1].lower(), mk[2]) if mk else None
     for k in [k for k, t in refused.items() if now() - t >= QUIET]:
         del refused[k]
     if key in refused:
@@ -110,6 +113,6 @@ def take(m, writer, cname, cid, try_build, cfg, hub, human, own_posts=None,
             f"{mk[0]} {mk[1]}", flush=True)
         return True
     out = try_build(content, writer, cname, cid, own=True)
-    if key and isinstance(out, str) and out.startswith("⛔"):
+    if key and isinstance(out, str) and out.startswith("⛔") and any(r in out for r in LASTING):
         refused[key] = now()
     return True

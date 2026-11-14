@@ -91,6 +91,14 @@ class Throttle(RoadFixture, unittest.TestCase):
         self.take("jarvis", "!build alma y")                  # another marker: answered
         self.assertEqual(len(self.said), n + 2)
 
+    def test_a_refusal_that_can_change_soon_is_always_answered(self):
+        why = "no OpenSpec change `x` on main"             # the spec PR may merge in a minute
+        with mock.patch.object(build, "check", return_value=(None, why)):
+            self.take("jarvis", "!build ratatoskr x")
+            self.take("jarvis", "!build ratatoskr x")
+        self.assertEqual(sum("⛔" in s for s in self.said[-2:]), 2)
+        self.assertEqual(self.refused, {})
+
     def test_a_started_build_is_not_throttled(self):
         self.take("claude", "!build ratatoskr x")
         self.assertEqual(self.refused, {})

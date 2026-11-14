@@ -41,9 +41,12 @@ key, text) before it sends it, because a send that times out may still have
 reached the relay.
 
 An agent may retry when it is refused. The same refused `!build` from the same
-agent identity is dropped for ten minutes: no GitHub call, no line in the
-channel, only a log line. Another marker, or another starter, is answered as
-usual, and Mark's own messages are never throttled.
+agent identity is dropped for ten minutes when the refusal cannot change that
+fast (the repository is not on the list, or the circuit breaker): no GitHub
+call, no line in the channel, only a log line. A refusal that can clear soon
+(no change on main yet, a GitHub error) is always answered. Another marker, or
+another starter, is answered as usual, and Mark's own messages are never
+throttled.
 
 The starter is named on the build issue (`started by **claude** from
 #escalatie`) and in its first comment, whoever it is. An agent's build counts
