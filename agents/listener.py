@@ -24,6 +24,7 @@ import agent_turn
 import board
 import bootstrap
 import build
+import build_starters
 import build_wiring
 import close_on_archive
 import credits
@@ -73,8 +74,7 @@ def name2pub_of(pub2name, handle):
 
 
 def main():
-    # Hold on to it as long as the listener lives: closing releases the lock.
-    lock = bootstrap.only_me()            # noqa: F841 — the reference IS the point
+    lock = bootstrap.only_me()   # noqa: F841 — held while the listener lives; closing releases it
     if lock is None:
         # Exit code 0, not an error: under systemd with `Restart=on-failure` a
         # non-zero exit would give a ten-second restart loop against a lock that
@@ -89,7 +89,7 @@ def main():
     read_nsec = os.environ.get("NSEC_ORCHESTRATOR", "").strip()
     if not read_nsec:
         raise SystemExit("[listener] NSEC_ORCHESTRATOR ontbreekt (zie agents/run.sh)")
-    send = relay.sender(RELAY)
+    send = build_starters.OwnPosts(relay.sender(RELAY))   # its own posts are never input
     fetch = lambda cid: relay.get_messages(cid, read_nsec, RELAY)  # noqa: E731
     run = relay.runner(read_nsec, RELAY)  # relay I/O for topology
     reg = sessions.Register(sessions.load(HERE))
@@ -132,8 +132,7 @@ def main():
     seen, seeded = set(), set()
 
     def seed(cid, msgs):
-        # Mark the history of a (new) channel as seen. Only on a SUCCESSFUL read
-        # (msgs≠None) — otherwise it gets 'seeded' plus history spam.
+        # Mark a (new) channel's history as seen, only on a SUCCESSFUL read (msgs≠None).
         for m in msgs:
             seen.add(m.get("id"))
         seeded.add(cid)
@@ -156,12 +155,13 @@ def main():
                 if not mid or mid in seen:  # skip id-less messages (not dedupable)
                     continue
                 seen.add(mid)
-                # Notify before the agent filter: an agent ANSWER is exactly what
-                # a human waits for. What does not notify is decided by
-                # notify.should_notify.
+                # Notify before the agent filter: an agent ANSWER is exactly what a
+                # human waits for (what does not notify: notify.should_notify).
                 writer = PUB2NAME.get(m.get("pubkey"), "?")
                 if notify.should_notify(cname, writer, m.get("content", ""), ME_NAME):
                     notify.push(cname, writer, m.get("content", ""))
+                if build_starters.take(m, writer, cname, cid, try_build, factory, HUB, ME_NAME, send):
+                    continue   # an allowed agent's message: its !build only, never chat
                 if m.get("pubkey") in AGENT_PUBS:
                     continue
                 if cname in ROOMS and m.get("pubkey") == orch_pub:
