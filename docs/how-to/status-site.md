@@ -31,7 +31,8 @@ lives at <https://westerweel.work/nu/> (NL) and <https://westerweel.work/en/now/
 
 The projects are `BASE` in `status_site.py` (wordsworth, convergence, ratatoskr,
 habitat, handbook, homelab and, since 2026-11-07, the children's games app,
-as `bazibo` since its repo rename on 2026-11-09) plus any repository the factory built for in the last week
+as `bazibo` since its repo rename on 2026-11-09, and since 2026-11-14 `jarvis`, the
+voice bridge, private so named and not linked) plus any repository the factory built for in the last week
 (`test_status_site_repos.py`). A project shows only once it has a roadmap that
 parses or changes in flight.
 
