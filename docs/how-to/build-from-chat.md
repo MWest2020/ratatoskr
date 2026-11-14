@@ -18,8 +18,10 @@ The starters are listed in `agents/factory.yml`, so Mark controls the list:
 
 Mark, 2026-11-14: *"Dat moet wel kunnen. claude, odin, or jarvis mogen dit."*
 A name is an `identities.yml` handle; the listener matches the message's
-pubkey, never a name typed in the text. Without the key only odin and Mark may
-start a build (the rule before 2026-11-14).
+pubkey, never a name typed in the text, and only while that identity is
+`actief`: a revoked key starts nothing, even when its name is still on the list.
+Without the key only odin and Mark may start a build (the rule before
+2026-11-14).
 
 | who | where the line counts |
 |---|---|
@@ -34,7 +36,14 @@ a chat agent that is not on it (architect, bouwer, …) is refused aloud (`⛔
 build not started: only mark, odin, claude or jarvis start builds`). What the listener posts itself in
 odin's voice (answers, session reports, build lines) is never read back as a
 `!build` (`agents/build_starters.py`, `OwnPosts`): a session report that happens
-to start with the marker starts nothing.
+to start with the marker starts nothing. The listener remembers a post (channel,
+key, text) before it sends it, because a send that times out may still have
+reached the relay.
+
+An agent may retry when it is refused. The same refused `!build` from the same
+agent identity is dropped for ten minutes: no GitHub call, no line in the
+channel, only a log line. Another marker, or another starter, is answered as
+usual, and Mark's own messages are never throttled.
 
 The starter is named on the build issue (`started by **claude** from
 #escalatie`) and in its first comment, whoever it is. An agent's build counts

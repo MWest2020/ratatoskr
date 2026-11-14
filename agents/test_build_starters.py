@@ -22,8 +22,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 STARTERS = ["mark", "odin", "claude", "jarvis"]
 
 
-class Road(unittest.TestCase):
-    """The poll loop's road: take() in front of the real try_build."""
+class RoadFixture:
+    """The poll loop's road: take() in front of the real try_build. A mixin, not a
+    TestCase, so test_build_starters_echo.py can reuse it without running these twice."""
 
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -55,9 +56,16 @@ class Road(unittest.TestCase):
             p.start()
             self.addCleanup(p.stop)
 
-    def take(self, writer, content, own_posts=()):
+        self.refused, self.logged, self.t = {}, [], [1000.0]
+
+    def take(self, writer, content, own_posts=None, ids=None):
         return build_starters.take({"content": content}, writer, "escalatie", "cid",
-                                   self.try_build, self.cfg, "odin", "mark", own_posts)
+                                   self.try_build, self.cfg, "odin", "mark", own_posts,
+                                   ids=ids, refused=self.refused, now=lambda: self.t[0],
+                                   log=lambda *a, **k: self.logged.append(a[0]))
+
+
+class Road(RoadFixture, unittest.TestCase):
 
     def test_an_allowed_agents_first_line_marker_starts_a_build(self):
         self.assertTrue(self.take("claude", "!build ratatoskr x\nwhy: the spec is merged"))
@@ -98,22 +106,13 @@ class Road(unittest.TestCase):
             self.take("claude", "!build ratatoskr x")
         self.assertTrue(chk.call_args.kwargs["capped"])
 
-    def test_what_the_listener_posted_itself_never_starts_a_build(self):
-        sent = []
-        own = build_starters.OwnPosts(lambda *a: sent.append(a) or True)
-        own("cid", "!build ratatoskr x\n(a session report in odin's voice)", "n", "np")
-        self.assertEqual(len(sent), 1)
-        self.assertTrue(self.take("odin", "!build ratatoskr x\n(a session report in "
-                                          "odin's voice)\n", own))
-        self.assertEqual(self.argv, [])
-
 
 class NoChat(unittest.TestCase):
     def test_an_allowed_agents_message_is_never_answered_as_chat(self):
         seen = []
         stop = build_starters.take({"content": "hello odin, how are you"}, "claude", "c",
                                    "cid", lambda *a, **k: seen.append(a),
-                                   {"build_starters": STARTERS}, "odin", "mark")
+                                   {"build_starters": STARTERS}, "odin", "mark", refused={})
         self.assertTrue(stop)
         self.assertEqual(seen, [((("hello odin, how are you", "claude", "c", "cid")))])
 
@@ -127,16 +126,23 @@ class NoChat(unittest.TestCase):
         for later in ("in AGENT_PUBS", "try_session(content", "room(cname", "triggers.pick("):
             self.assertLess(at, next(i for i, ln in enumerate(src) if later in ln), later)
 
-    def test_a_failed_send_is_not_remembered(self):
-        own = build_starters.OwnPosts(lambda *a: False)
-        self.assertFalse(own("cid", "!build ratatoskr x", "n", "np"))
-        self.assertNotIn("!build ratatoskr x", own)
-
 
 class TheList(unittest.TestCase):
     def test_without_the_key_only_hub_and_human(self):
         self.assertEqual(build_starters.allowed({}, "odin", "mark"), ["odin", "mark"])
         self.assertEqual(build_starters.who({}, "odin", "mark"), "odin or mark")
+
+    def test_a_revoked_key_starts_nothing(self):
+        ids = {n: dict(v) for n, v in build_starters.identities().items()}
+        ids["jarvis"]["status"] = "ingetrokken"
+        c = {"build_starters": STARTERS}
+        self.assertEqual(build_starters.allowed(c, "odin", "mark", ids), ["mark", "odin", "claude"])
+        self.assertEqual(build_starters.who(c, "odin", "mark", ids), "mark, odin or claude")
+        seen = []
+        self.assertFalse(build_starters.take({"content": "!build ratatoskr x"}, "jarvis", "c",
+                                             "cid", lambda *a, **k: seen.append(a), c,
+                                             "odin", "mark", ids=ids, refused={}))
+        self.assertEqual(seen, [])
 
     def test_factory_yml_names_identities_that_exist(self):
         """The seam between factory.yml and identities.yml: a name on the list with

@@ -58,8 +58,9 @@ dit."*):
   To ask odin something, go through Mark.
 - **Same gates.** The repo list, the change on main, the slots, the daily
   budget (a session's build counts, like odin's), the circuit breaker and the
-  issue check all apply; a refusal comes back as `⛔ build not started: …`. The
-  issue names you as the starter. Details: [build from the
+  issue check all apply; a refusal comes back as `⛔ build not started: …`.
+  Sending the same refused line again within ten minutes gets no answer at all:
+  fix the cause first. The issue names you as the starter. Details: [build from the
   chat](build-from-chat.md).
 
 ## The way back: Mark answers through odin
