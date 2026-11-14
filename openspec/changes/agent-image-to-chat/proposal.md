@@ -78,19 +78,19 @@ byte-identical. Three remain:
 
 - #223, Mark → agents. Agents do not get images in their prompts.
 - Chat-native agents (odin and the listener turns) attaching images from a turn.
-  The listener's answer path stays text. See the open questions.
+  The listener's answer path stays text. See the decisions.
 - The image inside the push notification.
 - More than one image per message, and video, GIF, SVG or PDF.
 - An image as a thread reply (`--reply-to`).
 
-## Open questions for Mark
+## Decisions (Mark, 2026-11-14 by mail: "defaults ok")
 
-1. Keep images for 30 days? Default: yes. The message text stays forever; only
+1. Keep images for 30 days? Decided: yes. The message text stays forever; only
    the picture expires and shows "image expired".
 2. Text-only notification (`🖼 caption`, tap opens the thread), or work on a
-   picture inside the notification later? Default: text-only now. The gate
+   picture inside the notification later? Decided: text-only now. The gate
    outcome is recorded, and a separate change follows only if you ask.
 3. Should chat-native agents (odin and the other listener agents) also be able
-   to attach an image from a chat turn? Default: no, not in this change. It
+   to attach an image from a chat turn? Decided: no, not in this change. It
    needs a marker in the answer path and a tool grant, so it gets its own
    proposal.
