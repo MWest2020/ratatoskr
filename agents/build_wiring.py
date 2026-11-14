@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: MIT
 """Glue between the listener and the build road (build.py, build_runner.py).
 
-`try_build` acts on a `!build` marker: the hub's own answer (first line only)
-or Mark's own message. `tick` follows running chains. Every step leaves two
-traces: a comment on the build's issue (the record) and a line in the channel
-the build came from (so Mark sees it happen).
+`try_build` acts on a `!build` marker of a starter on `build_starters`
+(build_starters.py). `tick` follows running chains. Every step leaves two traces:
+a comment on the build's issue (the record) and a line in the channel the build
+came from (so Mark sees it happen).
 """
 import time
 
@@ -13,6 +13,7 @@ import branches
 import build
 import build_merge
 import build_runner
+import build_starters
 import credits
 import deploy
 import issues as gh_issues
@@ -35,8 +36,8 @@ def setup(cfg, agents, hub, human, send, issues=gh_issues, log=print, builds=Non
         mk = build.read_marker(text, own=own)
         if not mk:
             return
-        if starter not in (hub, human):
-            return say(cid, f"⛔ build not started: only {hub} or {human} start builds")
+        if starter not in build_starters.allowed(cfg, hub, human):
+            return say(cid, f"⛔ build not started: only {build_starters.who(cfg, hub, human)} start builds")
         repo, change, given = mk
         if any(b.get("change") == change for b in builds.running + builds.queued):
             return say(cid, f"ℹ `{change}` is already building or queued")
@@ -53,7 +54,6 @@ def setup(cfg, agents, hub, human, send, issues=gh_issues, log=print, builds=Non
         begin(name, change, given, cname, cid, starter)
 
     last_drain = [0.0]
-
     def drain_queue():
         """Start queued builds as they may; each waits on its own reason. Once a minute."""
         if now() - last_drain[0] < 60:
