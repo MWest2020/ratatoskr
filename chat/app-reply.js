@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Reply to a message (openspec change reply-to-message). Mark, 2026-10-22:
 // "can I select an agents message and reply to it, like in slack, or
-// whatsapp?". A ↩ button (or a long press on the bubble) starts a reply; the
+// whatsapp?". The ↩ button starts a reply; the
 // compose bar shows what is being answered; the send carries `reply_to`, which
 // the server passes to the relay as a thread reply. A reply is shown with a
 // compact quote of its parent. Everything from a message goes in through
@@ -63,10 +63,7 @@ function decorateRow(row, m, all){
   btn.setAttribute("aria-label", "reply to this message");
   btn.onclick = (e) => { e.stopPropagation(); replyStart(m); };
   const meta = row.querySelector(".meta"); if(meta) meta.appendChild(btn);
-  if(!bubble) return;
-  let hold = null;   // long press on touch screens: 500 ms
-  bubble.addEventListener("touchstart", () => { hold = setTimeout(() => replyStart(m), 500); },
-                          {passive: true});
-  for(const ev of ["touchend", "touchmove", "touchcancel"])
-    bubble.addEventListener(ev, () => clearTimeout(hold), {passive: true});
+  // No long press on the bubble any more (issue #245): on a phone a long press
+  // is how text gets selected, and starting a reply there moved the focus to the
+  // composer, which dropped the selection. ↩ is the reply action.
 }

@@ -167,8 +167,21 @@
     font-size:.8rem}
   /* reply to a message (app-reply.js) */
   .quote{font-size:.78rem; color:var(--muted); border-left:2px solid var(--line); padding:.1rem .5rem; margin:0 .3rem .15rem; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
-  .replybtn{background:none; border:0; color:var(--muted); cursor:pointer; font-size:.8rem; padding:0 .3rem; margin-left:.2rem}
+  .replybtn{background:none; border:0; color:var(--muted); cursor:pointer; font-size:.8rem; padding:.15rem .5rem; margin-left:.2rem}
   .replybtn:hover,.replybtn:focus{color:var(--accent)}
   .replybar{font-size:.8rem; color:var(--muted); padding:.3rem .7rem; border-top:1px solid var(--line); display:flex; gap:.3rem; align-items:center; overflow:hidden; white-space:nowrap}
   .replybar .replyline{overflow:hidden; text-overflow:ellipsis; flex:1}
   .replyx{background:none; border:0; color:var(--muted); cursor:pointer; margin-left:auto}
+  /* selectable, copyable message text (issue #245, app-copy.js). Said out loud
+     rather than inherited: an installed PWA must not lose it to a UA default. */
+  .bubble{-webkit-user-select:text; user-select:text; -webkit-touch-callout:default; max-width:100%}
+  .bubble code{font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:.88em; background:var(--panel2); border:1px solid var(--line); border-radius:5px; padding:0 .25rem}
+  .bubble .codeblock{position:relative; margin:.35rem 0}
+  .bubble .codeblock pre{margin:0; padding:.45rem 2.3rem .45rem .55rem; background:var(--bg); border:1px solid var(--line); border-radius:8px; overflow-x:auto; white-space:pre}
+  .bubble .codeblock code{background:none; border:0; padding:0; font-size:.85rem}
+  /* the button is not part of the text: a selection across it copies no ⧉ */
+  .copybtn{-webkit-user-select:none; user-select:none; background:none; border:1px solid var(--line); color:var(--muted); border-radius:5px; font-size:.75rem; line-height:1.2; padding:.05rem .35rem; margin-left:.2rem; cursor:pointer; vertical-align:baseline}
+  .codeblock .copybtn{position:absolute; top:.3rem; right:.3rem; margin:0; background:var(--panel)}
+  .copybtn.ok{color:var(--accent2); border-color:var(--accent2)}
+  /* "N new messages — tap to show": the list waits while a selection is open */
+  .newpill{position:fixed; left:50%; transform:translateX(-50%); bottom:calc(4.8rem + env(safe-area-inset-bottom)); z-index:25; background:var(--accent2); color:#15130f; border:0; border-radius:999px; padding:.4rem .9rem; font-weight:700; font-size:.85rem; box-shadow:0 2px 8px rgba(0,0,0,.4); cursor:pointer}
