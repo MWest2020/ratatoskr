@@ -98,10 +98,10 @@ async function createChannel(name){
 function selectChannel(c){
   if(current && current.id===c.id) return;      // no reload loop through hashchange
   current=c; lastCount=0; $("#chanName").textContent=c.name;
+  if(typeof dropHeld==="function") dropHeld();   // app-copy.js: a list held for the old channel goes
   saveLastChannel(c);       // so offline knows what was open
-  // Write the hash along: a restart of the PWA (iOS freezes it in the
-  // background) brings you back to the channel you were in, and a notification
-  // can link here.
+  // Write the hash along: a restart of the PWA (iOS freezes it in the background)
+  // brings you back to the channel you were in, and a notification can link here.
   if(decodeURIComponent(location.hash.slice(1))!==c.name)
     history.replaceState(null,"","#"+encodeURIComponent(c.name));
   $("#msgs").innerHTML='<div class="empty">loading…</div>';
@@ -113,26 +113,28 @@ const fmtTime = ts => { const d=new Date(ts*1000);
 
 async function refresh(force){
   if(!current) return;
-  let response, data;
+  const cid=current.id; let response, data;
   try{ response = await fetch("/api/messages?channel="+current.id); }
   catch(e){ noteConnectionError(e); showNoConnection(); return; }
-  // A 401 is not a connection problem but a logout: go to the login page, and
-  // what is stored locally is cleared.
+  // A 401 is not a connection problem but a logout: to the login page, local data cleared.
   if(response.status === 401){ loggedOut(); return; }
   try{ data = await response.json(); }
   catch(e){ noteConnectionError(e); showNoConnection(); return; }
   if(data.error){ noteConnectionError(data.error); showNoConnection(); return; }
-  const msgs=data.messages||[];
+  const msgs=data.messages||[]; if(!current || current.id!==cid) return;   // switched meanwhile
   if(!force && msgs.length===lastCount) return;
-  lastCount=msgs.length;
-  if(current){ markSeen(current.id, msgs.length); renderBadges(); }
+  if(!force && typeof holdRender==="function" && holdRender(msgs, cid)) return;   // app-copy.js: a selection is open; wait, count nothing as seen
+  takeMessages(msgs, force);
+}
+function takeMessages(msgs, force){   // show a fetched list and count it as seen; also releases a held list
+  if(typeof dropHeld==="function") dropHeld();
+  lastCount=msgs.length; markSeen(current.id, msgs.length); renderBadges();
   saveSnapshot(current.id, msgs);     // for when there is no connection later
   renderMessages(msgs, force);
 }
 
 // Also used by the offline view (same messages, with a dated bar above them).
 function renderMessages(msgs, force){
-  if(typeof holdRender==="function" && holdRender(msgs, force)) return;   // app-copy.js: a selection is open
   const box=$("#msgs");
   const near = box.scrollHeight - box.scrollTop - box.clientHeight < 120;
   if(msgs.length===0){ box.innerHTML='<div class="empty">No messages yet — start the conversation.</div>'; return; }
@@ -141,8 +143,7 @@ function renderMessages(msgs, force){
     const row=document.createElement("div");
     row.className="row"+(m.mine?" mine":"");
     const cls = m.author==="mark"?"author-mark":(m.author==="orchestrator"?"author-orchestrator":"");
-    // Sender name through textContent: it falls back on "npub:" plus 8
-    // characters from the relay payload, and that is not ours.
+    // Sender name through textContent: its "npub:"+8 chars fallback comes from the relay payload.
     add(row, add(el("div","meta"), el("span",cls,m.author), " · "+fmtTime(m.ts)),
              (typeof bubbleFor==="function" ? bubbleFor(m.content) : el("div","bubble", m.content)));   // app-copy.js
     if(typeof decorateRow==="function") decorateRow(row, m, msgs);   // app-reply.js
@@ -162,8 +163,7 @@ async function _postSend(text, cid, force, added){
   } catch(e){ toast("network error — message not sent"); return false; }
   const j = await r.json().catch(()=>({}));
   if(r.ok && !j.error) return true;
-  // 401 separately: that is not an outage but a missing device token, and that
-  // confusion was exactly the problem.
+  // 401 separately: not an outage but a missing device token; that confusion was exactly the problem.
   if(r.status===401){ toast("sign-in required — sign in to post"); return false; }
   if(j.missing_agent){
     const who=j.missing_agent, tgt=j.channel||cid;

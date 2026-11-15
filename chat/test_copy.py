@@ -42,15 +42,33 @@ class NothingTakesTheSelectGesture(unittest.TestCase):
         self.assertRegex(css, r"\.bubble\{[^}]*user-select:text")
         self.assertRegex(css, r"\.bubble\{[^}]*-webkit-user-select:text")
 
+    # Every way to say it: addEventListener("…"), ('…'), (`…`), and on…= .
+    HANDLER = re.compile(r"""["'`](touchstart|contextmenu|selectstart)["'`]"""
+                         r"|\bon(touchstart|contextmenu|selectstart)\b")
+
     def test_no_long_press_or_context_menu_handler_in_the_app(self):
         for name in self.JS:
-            src = read(name)
-            for ev in ("touchstart", "contextmenu", "selectstart"):
-                self.assertNotIn(f'"{ev}"', src, f"{name} listens to {ev}")
+            hits = [m.group(0) for m in self.HANDLER.finditer(read(name))]
+            self.assertEqual(hits, [], f"{name} listens to the select gesture")
+
+    def test_the_handler_pattern_catches_each_form(self):
+        for src in ('a.addEventListener("touchstart", f)', "a.addEventListener('contextmenu', f)",
+                    "a.addEventListener(`selectstart`, f)", "a.ontouchstart = f",
+                    '<div ontouchstart="f()">', "a.oncontextmenu=f"):
+            self.assertRegex(src, self.HANDLER)
+        self.assertNotRegex("// no long press (touchstart timer) any more", self.HANDLER)
 
     def test_the_bubble_is_built_by_bubble_for(self):
         self.assertIn("bubbleFor(m.content)", read("app.js"))
-        self.assertIn("holdRender(msgs, force)", read("app.js"))
+        self.assertIn("holdRender(msgs, cid)", read("app.js"))
+
+    def test_nothing_is_counted_as_seen_before_the_hold(self):
+        # A held list is not shown, so it must not clear unread or move lastCount.
+        src = read("app.js")
+        body = src[src.index("async function refresh("):src.index("function takeMessages(")]
+        self.assertLess(body.index("holdRender("), body.index("takeMessages("))
+        self.assertNotIn("markSeen(", body)
+        self.assertNotIn("lastCount=", body)
 
 
 class CodeParts(unittest.TestCase):
@@ -77,19 +95,30 @@ class CodeParts(unittest.TestCase):
 
     def test_fenced_block_with_language(self):
         self.assertEqual(self.parts("run:\n```bash\nls -la\ncd /tmp\n```\ndone"),
-                         [{"text": "run:"}, {"block": "ls -la\ncd /tmp", "lang": "bash"},
+                         [{"text": "run:"}, {"block": "ls -la\ncd /tmp"},
                           {"text": "done"}])
 
     def test_fenced_block_without_language(self):
-        self.assertEqual(self.parts("```\necho hi\n```"), [{"block": "echo hi", "lang": ""}])
+        self.assertEqual(self.parts("```\necho hi\n```"), [{"block": "echo hi"}])
+
+    def test_an_empty_fence_is_an_empty_block(self):
+        # bubbleFor gives an empty block no copy button.
+        self.assertEqual(self.parts("```\n```"), [{"block": ""}])
+
+    def test_double_backticks_leave_no_stray_backtick(self):
+        self.assertEqual(self.parts("a ``x ` y`` b"),
+                         [{"text": "a "}, {"inline": "x ` y"}, {"text": " b"}])
+        self.assertEqual(self.parts("`` `tick` ``"), [{"inline": "`tick`"}])
+        self.assertEqual(self.parts("``plain`` and `one`"),
+                         [{"inline": "plain"}, {"text": " and "}, {"inline": "one"}])
 
     def test_one_line_fence(self):
         self.assertEqual(self.parts("```kubectl get pods```"),
-                         [{"block": "kubectl get pods", "lang": ""}])
+                         [{"block": "kubectl get pods"}])
 
     def test_a_first_line_that_is_not_a_language_is_content(self):
         self.assertEqual(self.parts("```git push origin main\nmore\n```"),
-                         [{"block": "git push origin main\nmore", "lang": ""}])
+                         [{"block": "git push origin main\nmore"}])
 
     def test_an_unclosed_fence_stays_text(self):
         self.assertEqual(self.parts("```\nno end"), [{"text": "```\nno end"}])
