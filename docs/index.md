@@ -25,6 +25,7 @@ tailnet.
   [relay-herstel](how-to/relay-herstel.md).
 
 - [Het werk-overzicht](how-to/werk-overzicht.md)
+- [Select and copy text in the chat](how-to/copy-from-chat.md) — native selection, and a one-tap copy button on code
 - [Give a chat agent the read shell](how-to/read-shell.md) — seven read-only GitHub lookups, the only Bash a chat agent may have
 - [A new repository from the chat](how-to/new-repo-from-chat.md) — `!newrepo`: private, bootstrapped with CI and openspec, buildable at once
 - [Project boards](how-to/boards.md) — each project's GitHub board follows the factory's stages

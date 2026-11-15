@@ -130,9 +130,9 @@ async function refresh(force){
   renderMessages(msgs, force);
 }
 
-// Also used by the offline view, which shows the same messages but with a dated
-// bar above them.
+// Also used by the offline view (same messages, with a dated bar above them).
 function renderMessages(msgs, force){
+  if(typeof holdRender==="function" && holdRender(msgs, force)) return;   // app-copy.js: a selection is open
   const box=$("#msgs");
   const near = box.scrollHeight - box.scrollTop - box.clientHeight < 120;
   if(msgs.length===0){ box.innerHTML='<div class="empty">No messages yet — start the conversation.</div>'; return; }
@@ -144,7 +144,7 @@ function renderMessages(msgs, force){
     // Sender name through textContent: it falls back on "npub:" plus 8
     // characters from the relay payload, and that is not ours.
     add(row, add(el("div","meta"), el("span",cls,m.author), " · "+fmtTime(m.ts)),
-             el("div","bubble", m.content));
+             (typeof bubbleFor==="function" ? bubbleFor(m.content) : el("div","bubble", m.content)));   // app-copy.js
     if(typeof decorateRow==="function") decorateRow(row, m, msgs);   // app-reply.js
     box.appendChild(row);
   }

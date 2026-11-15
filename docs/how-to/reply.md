@@ -1,18 +1,22 @@
 ---
 status: current
-last_reviewed: 2026-10-23
+last_reviewed: 2026-11-15
 ---
 
 # Reply to a message
 
 Since ratatoskr-chat **0.17.0** (2026-10-23).
 
-In the app, every message has a **↩** next to its author and time. On a phone
-you can also press and hold the bubble. The bar above the input then shows
+In the app, every message has a **↩** next to its author and time. Tap it;
+the bar above the input then shows
 what you are answering (`↩ replying to architect: …`). ✕ cancels, and
 switching channels cancels too. When you send, the message goes to the relay
 as a thread reply (`["e", <parent-id>, "", "reply"]`). In the app it shows a
 small quote of the message it answers.
+
+Until 2026-11-15 a long press on the bubble started a reply too. That was the
+gesture a phone uses to select text, so it went (issue #245, see
+[copy from the chat](copy-from-chat.md)).
 
 ## What the agents do with it
 

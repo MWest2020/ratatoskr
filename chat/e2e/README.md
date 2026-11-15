@@ -13,10 +13,11 @@ en of de laag eronder ook echt aan staat.
     node chat/e2e/xss.js          # regressietest op de GitHub-rendering
     NAAM=… WW=… node chat/e2e/reply.js  # reply to a message: bar, relay e-tag, quote
     node chat/e2e/deeplink.js     # melding -> juiste kanaal
+    node chat/e2e/select-copy.js  # select text, copy buttons; working copy, /api stubbed, no VM
     node chat/e2e/offline-boot.js # koude start zonder tunnel, en herstel
     NAAM=… WW=… node chat/e2e/push-states.js  # zegt de app iets in ELKE meldingsstaat?
 
-`ui.js`, `xss.js`, `deeplink.js`, `offline-boot.js`, `push-states.js` en `login-flow.js` hebben Playwright nodig en een Chromium. Staat Playwright
+`ui.js`, `xss.js`, `deeplink.js`, `select-copy.js`, `offline-boot.js`, `push-states.js` en `login-flow.js` hebben Playwright nodig en een Chromium. Staat Playwright
 elders, wijs er dan met `NODE_PATH` naar; `executablePath` bovenaan het script
 wijst naar de browser.
 
