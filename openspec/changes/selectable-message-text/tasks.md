@@ -18,7 +18,7 @@
       the hold, it fails.
 
 ## 3. Release and proof
-- [ ] Build and tag a new chat image, pin it in `deploy/docker-compose.yml`,
+- [x] Build and tag a new chat image, pin it in `deploy/docker-compose.yml`,
       and roll it out on the relay VM; `after-deploy.sh` green.
 - [ ] On Mark's phone: long-press selects a token, ⧉ copies it.
 - [ ] Archive this change (`openspec archive selectable-message-text`) once it
