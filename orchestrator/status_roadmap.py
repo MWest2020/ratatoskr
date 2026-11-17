@@ -4,15 +4,16 @@ Mark, 2026-10-30, on westerweel.work/nu/: "what I really want is the phase and
 the roadmap, high-level, and what the gap is until it's done." Each project
 keeps its roadmap as data in its own repository (`docs/reference/roadmap.yml`:
 goal, phases, the current phase and what done means for it, each item with
-evidence); this module reads it through GitHub and turns it into the page's
-per-project row. A private repository keeps its names and statuses, never its
-links.
+evidence); this module reads and checks it through GitHub. What the public
+page shows of it is `status_public`'s business.
+
+Optional, for the public page (`status_public`): `next`, two to four plain
+lines of what comes next (else the open items' headlines), and `nl`, the
+Dutch `goal`, `phase` and `next` for the NL page.
 """
 import base64
 
 import yaml
-
-from status_scrub import public_url
 
 PATH = "docs/reference/roadmap.yml"
 STATUSES = ("done", "open")
@@ -37,7 +38,21 @@ def parse(text):
             raise BadRoadmap(f"`{item.get('item')}`: status must be one of {STATUSES}")
         if not str(item.get("evidence", "")).startswith("https://"):
             raise BadRoadmap(f"`{item.get('item')}`: evidence must be a link")
+    _texts(doc.get("next"), "next")
+    nl = doc.get("nl")
+    if nl is not None:
+        if not isinstance(nl, dict) or set(nl) - {"goal", "phase", "next"}:
+            raise BadRoadmap("`nl` holds only goal, phase and next")
+        for key in ("goal", "phase"):
+            if key in nl and not isinstance(nl[key], str):
+                raise BadRoadmap(f"`nl.{key}` must be text")
+        _texts(nl.get("next"), "nl.next")
     return doc
+
+
+def _texts(value, key):
+    if value is not None and not (isinstance(value, list) and all(isinstance(v, str) for v in value)):
+        raise BadRoadmap(f"`{key}` must be a list of lines")
 
 
 def fetch(owner, repo, gh, run):
@@ -49,22 +64,3 @@ def fetch(owner, repo, gh, run):
         return parse(base64.b64decode(blob["content"]).decode("utf-8"))
     except (BadRoadmap, yaml.YAMLError, ValueError):
         return None
-
-
-def row(doc, public):
-    """What the page shows for one project: goal, the phase strip, progress
-    toward done for the current phase, and the gap (the open items)."""
-    items = doc["done_means"]
-    done = sum(1 for i in items if i["status"] == "done")
-    phases, seen_current = [], False
-    for p in doc["phases"]:
-        current = p["id"] == doc["current"]
-        phases.append({"id": p["id"], "name": p.get("name", p["id"]),
-                       "summary": p.get("summary", ""),
-                       "state": "current" if current else ("next" if seen_current else "past")})
-        seen_current = seen_current or current
-    return {"goal": doc["goal"], "phases": phases,
-            "phase": next(p["name"] for p in phases if p["state"] == "current"),
-            "progress": {"done": done, "total": len(items)},
-            "gap": [{"item": i["item"], "url": public_url(i["evidence"], public)}
-                    for i in items if i["status"] == "open"]}

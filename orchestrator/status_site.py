@@ -7,6 +7,9 @@ state, run files, GitHub) with every string through status_scrub, written to
 2026-10-30: the page shows each project's roadmap (status_roadmap) and the gap
 to done; what waits on Mark and what is stuck go to a local digest for his
 daily mail (status_digest), not on the page.
+2026-11-17: the page exposed too much. Per project only name, goal, phase,
+progress and plain "next up" lines, in NL and EN, without coordination notes;
+private projects and client names left out (status_public, status_site.yml).
 
 It pushes only when the content changed (the generation time aside) and at most
 once every two hours: Cloudflare Pages' free tier has a monthly build budget.
@@ -21,11 +24,13 @@ from zoneinfo import ZoneInfo
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import status_digest  # noqa: E402
+import status_public  # noqa: E402
 import status_roadmap  # noqa: E402
-from status_scrub import clean_tree, public_url  # noqa: E402
+from status_scrub import clean_tree  # noqa: E402
 
 OWNER = "MWest2020"
-BASE = ["wordsworth", "convergence", "ratatoskr", "habitat", "handbook", "homelab", "bazibo", "jarvis"]
+CONFIG = status_public.load()
+BASE = list(CONFIG["projects"])
 STATE = os.path.expanduser("~/.local/state/ratatoskr")
 SITE = os.path.expanduser(os.environ.get("STATUS_SITE_DIR", "~/.worktrees/westerweel-status"))
 DIGEST = os.path.join(STATE, "mark-digest.json")
@@ -103,25 +108,23 @@ def in_flight(repo, state, run=subprocess.run):
     return flight, stuck
 
 
-def collect(now, run=subprocess.run, state=None):
-    """(page data, digest data): the page is public and high-level, the digest is Mark's."""
+def collect(now, run=subprocess.run, state=None, cfg=None):
+    """(page data, digest data): the page is public and high-level, the digest is Mark's.
+    Every project feeds the digest; only the ones `status_public.shown` allows reach the page."""
     state = state if state is not None else json.load(open(os.path.join(STATE, "builds", "state.json")))
+    cfg = cfg or CONFIG
     projects, stuck_all = [], []
     for repo in repos(now):
         vis = gh(["repo", "view", f"{OWNER}/{repo}", "--json", "visibility"], run) or {}
         public = vis.get("visibility") == "PUBLIC"
-        flight, stuck = in_flight(repo, state, run)
-        stuck_all += stuck
-        roadmap = status_roadmap.fetch(OWNER, repo, gh, run)
-        if not roadmap and not flight:
+        stuck_all += in_flight(repo, state, run)[1]
+        if not status_public.shown(repo, cfg, public):
             continue
-        project = {"name": repo, "public": public,
-                   "url": public_url(f"https://github.com/{OWNER}/{repo}", public),
-                   "in_flight": [{"change": f["change"], "stage": f["stage"]} for f in flight]}
-        if roadmap:
-            project.update(status_roadmap.row(roadmap, public))
-        projects.append(project)
-    page = clean_tree({"generated": now.isoformat(timespec="seconds"), "projects": projects})
+        roadmap = status_roadmap.fetch(OWNER, repo, gh, run)
+        row = roadmap and status_public.row(repo, roadmap, cfg, public, f"https://github.com/{OWNER}/{repo}")
+        if row:
+            projects.append(row)
+    page = clean_tree({"generated": now.isoformat(timespec="seconds"), "schema": 2, "projects": projects})
     return page, status_digest.digest(now, OWNER, gh, run, stuck_all)
 
 

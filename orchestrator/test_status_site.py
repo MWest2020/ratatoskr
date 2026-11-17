@@ -118,18 +118,18 @@ class Build(unittest.TestCase):
         self.assertNotIn("waiting", page)
         self.assertNotIn("stuck", page)
 
-    def test_a_project_row_has_phase_progress_and_gap(self):
+    def test_a_project_row_has_goal_phase_progress_and_next(self):
         ww = next(p for p in self.collect()[0]["projects"] if p["name"] == "wordsworth")
-        self.assertEqual(ww["phase"], "Pilot")
+        self.assertEqual(ww["en"]["phase"], "Pilot")
         self.assertEqual(ww["progress"], {"done": 1, "total": 2})
-        self.assertEqual([g["item"] for g in ww["gap"]], ["Every PDF redacted"])
-        self.assertEqual([p["state"] for p in ww["phases"]], ["past", "current", "next"])
-        self.assertEqual(ww["in_flight"][0]["stage"], "queued")
+        self.assertEqual(ww["en"]["next"], ["Every PDF redacted"])
+        self.assertEqual((ww["phase_index"], ww["phase_count"], ww["nl"]["phase"]), (2, 3, None))
+        self.assertFalse({"in_flight", "gap", "phases", "goal"} & set(ww))
 
-    def test_a_private_project_has_no_links(self):
-        cv = next(p for p in self.collect()[0]["projects"] if p["name"] == "convergence")
-        self.assertIsNone(cv["url"])
-        self.assertTrue(all(g["url"] is None for g in cv["gap"]))
+    def test_a_private_project_is_left_out_of_the_page_not_the_digest(self):
+        page, digest = self.collect()
+        self.assertNotIn("convergence", json.dumps(page))
+        self.assertTrue(any(w["repo"] == "convergence" for w in digest["waiting"]))
 
     def test_the_digest_carries_questions_with_their_default(self):
         w = self.collect()[1]["waiting"]
@@ -145,9 +145,9 @@ class Build(unittest.TestCase):
     def test_a_build_issue_from_chat_counts_once(self):
         found = [i["change"] for i in self.collect()[1]["impediments"] if i["kind"] == "build-failed"]
         self.assertIn("from-chat", found)
-        ww = next(p for p in self.collect()[0]["projects"] if p["name"] == "wordsworth")
-        self.assertEqual([f["change"] for f in ww["in_flight"]].count("a-change"), 1)
-        self.assertNotIn("Unrelated build question", str(ww["in_flight"]))
+        flight = status_site.in_flight("wordsworth", self.state, self.run)[0]
+        self.assertEqual([f["change"] for f in flight].count("a-change"), 1)
+        self.assertNotIn("Unrelated build question", str(flight))
 
     def test_generated_time_is_amsterdam(self):
         g = self.collect()[0]["generated"]
