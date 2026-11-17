@@ -23,7 +23,7 @@ import os
 import yaml
 
 from status_scrub import public_url
-from status_strip import COORD, headline, mask_clients, plain
+from status_strip import COORD, headline, mask_clients, names_pattern, plain
 
 CONFIG = os.path.join(os.path.dirname(os.path.abspath(__file__)), "status_site.yml")
 NEXT_MAX = 4
@@ -35,11 +35,19 @@ TEMPLATE = {
 
 
 def load(path=CONFIG):
+    """The config, with the client list read from its local, untracked file
+    (`clients_file`): client names do not belong in a public repository.
+    Without that file `clients_missing` is set, and the page is not written
+    while client names are hidden."""
     with open(path) as fh:
         cfg = yaml.safe_load(fh) or {}
     cfg.setdefault("projects", {})
-    cfg.setdefault("clients", [])
     cfg["show_client_names"] = bool(cfg.get("show_client_names", False))
+    local = os.path.expanduser(os.environ.get("STATUS_CLIENTS_FILE") or cfg.get("clients_file") or "")
+    cfg["clients"], cfg["clients_missing"] = [], not (local and os.path.exists(local))
+    if not cfg["clients_missing"]:
+        with open(local) as fh:
+            cfg["clients"] = (yaml.safe_load(fh) or {}).get("clients") or []
     return cfg
 
 
@@ -53,12 +61,20 @@ def shown(name, cfg, github_public):
 
 
 def _clean(texts, cfg, lang, rule):
-    out = []
+    """Each text masked, made plain by `rule`, and dropped when it names a
+    project the page leaves out (`cfg["hidden"]`, a pattern or None)."""
+    out, hidden = [], cfg.get("hidden")
     for t in texts:
         line = rule(mask_clients(t, cfg["clients"], lang, cfg["show_client_names"]))
-        if line and line not in out:
+        if line and not (hidden and hidden.search(line)) and line not in out:
             out.append(line)
     return out
+
+
+def hide(cfg, names):
+    """`cfg` with the names of the projects the page leaves out, so that no
+    public line mentions them either."""
+    return {**cfg, "hidden": names_pattern(names)}
 
 
 def _lang(doc, cfg, lang, open_items):

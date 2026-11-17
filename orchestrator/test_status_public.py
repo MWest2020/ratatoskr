@@ -1,75 +1,48 @@
 # SPDX-License-Identifier: MIT
-"""What one project shows on westerweel.work/nu/ (status_strip, status_public).
-
-The strings below are real roadmap items from the page of 2026-11-17, the day
-Mark said it exposed too much."""
+"""Which projects reach westerweel.work/nu/ and what one project shows there
+(status_public). The client is fictional: real client names stay out of this
+public repository. The text rules themselves: test_status_strip.py."""
 import json
+import os
+import tempfile
 import unittest
+from unittest import mock
+
+import yaml
 
 import status_public
 import status_roadmap
-from status_strip import headline, mask_clients, plain
 
 CFG = {"projects": {"wordsworth": {}, "convergence": {"private": True}, "jarvis": {"show_private": False},
                     "draupnir": {"show_private": True}},
-       "clients": [{"name": "Gooise Meren", "en": "a Dutch municipality", "nl": "een gemeente"}],
+       "clients": [{"name": "Zeedorp Oost", "aliases": ["ZeedorpOost", "Zedorp Oost", "ZO"],
+                    "en": "a Dutch municipality", "nl": "een gemeente"}],
        "show_client_names": False}
 
 
-class Strip(unittest.TestCase):
-    def test_issue_and_pr_numbers_go(self):
-        self.assertEqual(
-            headline("No untokenised names left (names with particles like ter, van der): the reprocess "
-                     "with a count-only check is built (#449) and deployed (homelab#58); the run is next"),
-            "No untokenised names left (names with particles like ter, van der)")
-        self.assertEqual(
-            headline("Readable topics and search that shows the matching passage (built in #433 and #432, in "
-                     "production since 2026-11-14 with homelab#58; label quality judged at the rehearsal)"),
-            "Readable topics and search that shows the matching passage")
-        self.assertEqual(plain("see MWest2020/wordsworth#12 and #439/#440 for it"), "see and for it")
-
-    def test_waits_on_mark_and_mark_decided_go(self):
-        self.assertEqual(
-            headline("Share from the console with layered anonymisation: proposals #439/#440 merged; Mark "
-                     "decided the design (#416, 2026-11-14) and the share deploy also waits on Mark: #487"),
-            "Share from the console with layered anonymisation")
-        self.assertIsNone(headline("Change add-android-client approved by Mark: waits on Mark: #13 "
-                                   "(default: built as proposed)"))
-        self.assertIsNone(headline("Change add-drive-mode (the next phase) proposed (#9); approval waits on Mark"))
-        self.assertEqual(headline("Agents post images to the chat (agent-image-to-chat, proposed #239): the build "
-                                  "(#243) stopped at gate 1.1, which waits on Mark's step"),
-                         "Agents post images to the chat")
-
-    def test_adr_and_decision_references_go(self):
-        self.assertEqual(plain("the organisation holds the keys (ADR-0008, ADR-0009)"),
-                         "the organisation holds the keys")
-        self.assertEqual(headline("Banking at the bonfire and a program in place of the game's key (decision 0005)"),
-                         "Banking at the bonfire and a program in place of the game's key")
-        self.assertEqual(plain("Keys exportable (D36)"), "Keys exportable")
-        self.assertEqual(plain("in 3D, like ADR 12 said"), "in 3D, like said")
-
-    def test_a_short_label_keeps_its_line_and_links_go(self):
-        self.assertEqual(headline("Android app: a spoken round trip, recorded in the how-to"),
-                         "Android app: a spoken round trip, recorded in the how-to")
-        self.assertEqual(plain("read https://github.com/MWest2020/x/pull/3 first"), "read first")
-
-    def test_clean_parentheses_and_plain_text_stay(self):
-        self.assertEqual(headline("Free disk headroom on node-01 (now about 82% full)"),
-                         "Free disk headroom on node-01 (now about 82% full)")
-        self.assertEqual(headline("Note (a (nested) aside) stays"), "Note (a (nested) aside) stays")
-        self.assertEqual(headline("Note (a (nested #4) aside) goes"), "Note (a aside) goes")
-
-    def test_client_names_are_hidden_unless_allowed(self):
-        cl = CFG["clients"]
-        self.assertEqual(mask_clients("Pilot: Gooise Meren", cl, "en", False), "Pilot: a Dutch municipality")
-        self.assertEqual(mask_clients("Pilot bij gooise meren", cl, "nl", False), "Pilot bij een gemeente")
-        self.assertEqual(mask_clients("Pilot: Gooise Meren", cl, "en", True), "Pilot: Gooise Meren")
-
+class Config(unittest.TestCase):
     def test_the_default_config_hides_clients_and_convergence(self):
         cfg = status_public.load()
         self.assertFalse(cfg["show_client_names"])
-        self.assertIn("Gooise Meren", [c["name"] for c in cfg["clients"]])
         self.assertTrue(cfg["projects"]["convergence"]["private"])
+        self.assertNotIn("clients", yaml_keys(status_public.CONFIG))  # the list is local, not in git
+
+    def test_without_the_local_client_list_it_says_so(self):
+        with tempfile.TemporaryDirectory() as t:
+            with mock.patch.dict(os.environ, {"STATUS_CLIENTS_FILE": os.path.join(t, "none.yml")}):
+                self.assertTrue(status_public.load()["clients_missing"])
+            path = os.path.join(t, "c.yml")
+            with open(path, "w") as fh:
+                fh.write('clients:\n  - {name: "Zeedorp Oost", en: "a town", nl: "een dorp"}\n')
+            with mock.patch.dict(os.environ, {"STATUS_CLIENTS_FILE": path}):
+                cfg = status_public.load()
+        self.assertFalse(cfg["clients_missing"])
+        self.assertEqual(cfg["clients"][0]["nl"], "een dorp")
+
+
+def yaml_keys(path):
+    with open(path) as fh:
+        return set(yaml.safe_load(fh))
 
 
 class Shown(unittest.TestCase):
@@ -84,7 +57,7 @@ class Shown(unittest.TestCase):
 
 ROADMAP = {
     "project": "wordsworth", "goal": "A privacy-safe corpus (ADR-0008)", "current": "pilot",
-    "phases": [{"id": "poc", "name": "PoC"}, {"id": "pilot", "name": "Pilot: Gooise Meren"},
+    "phases": [{"id": "poc", "name": "PoC"}, {"id": "pilot", "name": "Pilot: Zeedorp Oost"},
                {"id": "prod", "name": "Production"}],
     "done_means": [{"item": "Report filled", "status": "done", "evidence": "https://x/1"},
                    {"item": "Every PDF redacted (#259)", "status": "open", "evidence": "https://x/2"},
@@ -108,7 +81,7 @@ class Row(unittest.TestCase):
                               "note": "2 open punten in deze fase; de omschrijving volgt."})
 
     def test_dutch_from_the_nl_block_and_next_capped_at_four(self):
-        doc = {**ROADMAP, "nl": {"goal": "Een privacyveilig corpus", "phase": "Pilot bij Gooise Meren",
+        doc = {**ROADMAP, "nl": {"goal": "Een privacyveilig corpus", "phase": "Pilot bij Zeedorp Oost",
                                  "next": ["a", "b", "c", "d", "e"]}}
         nl = self.row(doc)["nl"]
         self.assertEqual((nl["goal"], nl["phase"], nl["next"]), ("Een privacyveilig corpus", "Pilot bij een gemeente",
@@ -120,13 +93,18 @@ class Row(unittest.TestCase):
 
     def test_nothing_on_the_row_holds_a_coordination_note(self):
         text = json.dumps(self.row(), ensure_ascii=False)
-        for bad in ("#", "Mark", "ADR", "Gooise", "https://x/"):
+        for bad in ("#", "Mark", "ADR", "Zeedorp", "https://x/"):
             self.assertNotIn(bad, text)
 
     def test_an_allowed_private_repo_is_named_not_linked(self):
         row = status_public.row("draupnir", ROADMAP, CFG, False, "https://github.com/MWest2020/draupnir")
         self.assertIsNone(row["url"])
         self.assertEqual(self.row()["url"], "https://github.com/MWest2020/wordsworth")
+
+    def test_a_line_naming_a_left_out_project_is_dropped(self):
+        doc = {**ROADMAP, "next": ["Talk to it through the jarvis voice bridge", "Redact the PDFs"]}
+        row = status_public.row("wordsworth", doc, status_public.hide(CFG, ["jarvis", "convergence"]), True, "u")
+        self.assertEqual(row["en"]["next"], ["Redact the PDFs"])
 
     def test_a_done_phase_says_so(self):
         doc = {**ROADMAP, "done_means": ROADMAP["done_means"][:1]}

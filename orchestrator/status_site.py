@@ -110,21 +110,27 @@ def in_flight(repo, state, run=subprocess.run):
 
 def collect(now, run=subprocess.run, state=None, cfg=None):
     """(page data, digest data): the page is public and high-level, the digest is Mark's.
-    Every project feeds the digest; only the ones `status_public.shown` allows reach the page."""
+    Every project feeds the digest; only the ones `status_public.shown` allows reach the
+    page, and no page line names one that is left out. The page is None when client
+    names are hidden but the local client list is missing."""
     state = state if state is not None else json.load(open(os.path.join(STATE, "builds", "state.json")))
     cfg = cfg or CONFIG
-    projects, stuck_all = [], []
+    visible, stuck_all = {}, []
     for repo in repos(now):
         vis = gh(["repo", "view", f"{OWNER}/{repo}", "--json", "visibility"], run) or {}
-        public = vis.get("visibility") == "PUBLIC"
+        visible[repo] = vis.get("visibility") == "PUBLIC"
         stuck_all += in_flight(repo, state, run)[1]
-        if not status_public.shown(repo, cfg, public):
-            continue
+    shown = [r for r in visible if status_public.shown(r, cfg, visible[r])]
+    cfg = status_public.hide(cfg, [r for r in visible if r not in shown])
+    projects = []
+    for repo in shown:
         roadmap = status_roadmap.fetch(OWNER, repo, gh, run)
-        row = roadmap and status_public.row(repo, roadmap, cfg, public, f"https://github.com/{OWNER}/{repo}")
+        row = roadmap and status_public.row(repo, roadmap, cfg, visible[repo], f"https://github.com/{OWNER}/{repo}")
         if row:
             projects.append(row)
     page = clean_tree({"generated": now.isoformat(timespec="seconds"), "schema": 2, "projects": projects})
+    if cfg.get("clients_missing") and not cfg["show_client_names"]:
+        page = None
     return page, status_digest.digest(now, OWNER, gh, run, stuck_all)
 
 
@@ -164,12 +170,16 @@ def publish(data, site=SITE, run=subprocess.run, now=None, mark=os.path.join(STA
 
 
 def main():
+    """`--print` shows the page and writes nothing (no digest, no push)."""
     now = datetime.datetime.now(TZ)
     page, digest = collect(now)
-    status_digest.write(digest, DIGEST)
     if "--print" in sys.argv:
         print(json.dumps(page, indent=1, ensure_ascii=False))
         return
+    status_digest.write(digest, DIGEST)
+    if page is None:
+        sys.exit("[status-site] refused: client names are hidden but the client list "
+                 f"({CONFIG.get('clients_file')}) is missing; nothing published")
     print(f"[status-site] {publish(page)}; digest: {len(digest['waiting'])} waiting, "
           f"{len(digest['impediments'])} impediments")
 

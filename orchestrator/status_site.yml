@@ -11,7 +11,7 @@
 # here follows the same default: public on GitHub, or left out.
 projects:
   wordsworth: {}
-  convergence: {private: true}   # the crypto game; Mark 2026-11-17: never on the page
+  convergence: {private: true}   # private project; Mark 2026-11-17: never on the page
   ratatoskr: {}
   habitat: {}
   handbook: {}
@@ -23,7 +23,12 @@ projects:
   jarvis: {show_private: false}
 
 # Client names on the page. Off unless the client agreed to be named; each
-# name is then replaced by a neutral description in the page's language.
+# name (and its aliases and spellings, with a leading "gemeente" or
+# "municipality of") is then replaced by a neutral description in the page's
+# language. The list itself is NOT in this public repository: it lives in a
+# local, untracked file on the host (or $STATUS_CLIENTS_FILE), shaped as
+#   clients:
+#     - {name: "...", aliases: ["..."], en: "a Dutch municipality", nl: "een gemeente"}
+# While names are hidden and that file is missing, nothing is published.
 show_client_names: false
-clients:
-  - {name: "Gooise Meren", en: "a Dutch municipality", nl: "een gemeente"}
+clients_file: "~/.config/ratatoskr/status-clients.yml"

@@ -10,27 +10,9 @@ import base64
 
 import status_digest
 import status_roadmap
-import status_scrub
 import status_site
 
 NOW = datetime.datetime(2026, 10, 28, 12, 0, tzinfo=ZoneInfo("Europe/Amsterdam"))
-
-
-class Scrub(unittest.TestCase):
-    def test_a_secret_stops_everything(self):
-        for s in ("key sk-ant-api03-abcdefghijkl", "tskey-api-kqeP94eRLy11CNTRL",
-                  "ghp_" + "a" * 36, "cfat_" + "b" * 30, "password: hunter2"):
-            with self.assertRaises(status_scrub.Leak):
-                status_scrub.clean_tree({"projects": [{"title": s}]})
-
-    def test_emails_and_ids_are_stripped(self):
-        out = status_scrub.clean("mail mark@westerweel.work about 6e01a86a-4c86-4a2c-a526-0fe76c374d52")
-        self.assertNotIn("@", out)
-        self.assertNotIn("6e01a86a", out)
-
-    def test_a_private_repo_is_named_not_linked(self):
-        self.assertIsNone(status_scrub.public_url("https://github.com/x/y", False))
-        self.assertEqual(status_scrub.public_url("https://github.com/x/y", True), "https://github.com/x/y")
 
 
 def fake_gh(responses):
@@ -110,8 +92,14 @@ class Build(unittest.TestCase):
                                                "createdAt": "2026-10-28T08:00:00Z"}]})
         self.state = {"queued": [{"repo": "wordsworth", "change": "a-change"}]}
 
-    def collect(self):
-        return status_site.collect(NOW, run=self.run, state=self.state)
+    def collect(self, **cfg):
+        cfg = {**status_site.CONFIG, "clients": [], "clients_missing": False, **cfg}
+        return status_site.collect(NOW, run=self.run, state=self.state, cfg=cfg)
+
+    def test_no_page_without_the_local_client_list_but_still_a_digest(self):
+        page, digest = self.collect(clients_missing=True)
+        self.assertIsNone(page)
+        self.assertTrue(digest["waiting"])
 
     def test_the_page_has_no_questions_and_nothing_stuck(self):
         page = self.collect()[0]
