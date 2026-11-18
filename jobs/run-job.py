@@ -77,6 +77,26 @@ def stuur(args, env, tekst, npub, wat, name):
     return True
 
 
+# The one answer a job may give on purpose when there is nothing to post ("a quiet
+# day is no noise"). An EMPTY answer stays a failure (#150): on 2026-11-15 and
+# 2026-11-18 the zettelkast job followed its prompt ("give an empty answer") and the
+# runner reported a storing, while the real fault, a vault run dead since 9 Nov,
+# never showed up at all.
+NIETS = "NIETS"
+
+
+def bewust_stil(answer):
+    """True when the agent answered NIETS on purpose (quotes, bold, a full stop
+    and case don't matter)."""
+    return answer.strip().strip("`*_\"'. ").upper() == NIETS
+
+
+def stil_maar_leesfout(answer, context):
+    """NIETS while the context reports a read error: the dead-run case NIETS must
+    never hide (review of #255). That is a storing, not a quiet day."""
+    return bool(answer) and bewust_stil(answer) and "LEESFOUT" in (context or "")
+
+
 def meld_storing(name, job, reden, env, npub):
     """Een job die niets oplevert, zegt dát in zijn eigen kanaal.
 
@@ -146,6 +166,13 @@ def main():
         return meld_storing(name, job, f"claude niet te starten ({exc.__class__.__name__}: "
                             f"{str(exc)[:120]})", env, npub)
     answer, stats = antwoord_en_kosten(r.stdout)
+    if stil_maar_leesfout(answer, context):
+        return meld_storing(name, job, "NIETS geantwoord terwijl de context een LEESFOUT "
+                            "meldt", env, npub)
+    if answer and bewust_stil(answer):
+        print(f"[job {name}] niets te melden (bewust NIETS), niets gepost", flush=True)
+        post_statistieken(name, job, stats, env, npub)
+        return
     if not answer:
         reden = (f"claude -p eindigde met rc={r.returncode}" if r.returncode
                  else "claude -p gaf een leeg antwoord")
