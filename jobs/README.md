@@ -65,7 +65,9 @@ niet:
     ⚠️ job standup kon niet draaien: claude niet te starten (PermissionError: …)
 
 Gedekt: `claude` niet te starten (`OSError`), een time-out, een niet-nul
-returncode en een leeg antwoord. Het posten zelf kan die weg natuurlijk niet
+returncode en een leeg antwoord. Wil een job op een stille dag bewust niets
+posten (gedaan, zettelkast_dagelijks), dan antwoordt hij met precies `NIETS`:
+dat komt als "niets te melden" in het journaal, niet als storing. Het posten zelf kan die weg natuurlijk niet
 gebruiken; dat blijft in het journaal staan.
 
 Waarom dit er is: op 2026-09-21 sneuvelden om 08:00 alle vier de terugkerende

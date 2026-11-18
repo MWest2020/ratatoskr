@@ -131,3 +131,23 @@ class TestStilleStoring(unittest.TestCase):
             sys.argv = oud_argv
             os.unlink(f.name)
         self.assertIn("niet te starten", gemeld.get("reden", ""))
+
+
+class TestBewustStil(unittest.TestCase):
+    """A quiet day answers NIETS on purpose; an empty answer stays a failure."""
+
+    def test_niets_in_any_dress_is_quiet(self):
+        for a in ("NIETS", "niets", " NIETS.\n", "**NIETS**", "`NIETS`", '"Niets"'):
+            self.assertTrue(run_job.bewust_stil(a), a)
+
+    def test_a_real_digest_or_empty_is_not_quiet(self):
+        for a in ("", "📥 Zettelkast vandaag: niets verwerkt", "NIETS te melden, behalve x"):
+            self.assertFalse(run_job.bewust_stil(a), a)
+
+    def test_the_quiet_jobs_say_niets_not_empty(self):
+        jobs = yaml.safe_load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                                "jobs.yml")))
+        jobs = jobs.get("jobs", jobs)
+        for naam in ("gedaan", "zettelkast_dagelijks"):
+            self.assertIn("NIETS", jobs[naam]["prompt"], naam)
+            self.assertNotIn("geef dan een leeg antwoord", jobs[naam]["prompt"], naam)

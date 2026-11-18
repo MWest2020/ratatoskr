@@ -54,7 +54,11 @@ kanaal**:
 
 Gedekt: `claude` niet te starten, een time-out, een niet-nul returncode, een
 leeg antwoord. Het posten zelf kan die weg niet gebruiken — mislukt dát, dan
-staat het alleen in het journaal.
+staat het alleen in het journaal. Een job die op een stille dag bewust niets
+post (gedaan, zettelkast_dagelijks), antwoordt met precies `NIETS`; dat is geen
+storing. Sinds 2026-11-18 meldt zettelkast_dagelijks bovendien een mislukte
+vault-run van 06:00 als LEESFOUT, want die lag van 10 tot 18 november stil
+zonder dat iemand het zag.
 
 Aanleiding: op 2026-09-21 om 08:00 sneuvelden alle vier de terugkerende jobs
 tegelijk op een `claude` die er wél stond maar niet uitvoerbaar was. In de

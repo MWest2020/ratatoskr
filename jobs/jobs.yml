@@ -105,8 +105,9 @@ jobs:
       Maak een korte "gedaan vandaag"-terugblik voor Mark uit de context (commits
       + gemergede PR's van vandaag). Groepeer per repo/thema, noem wat concreet af
       of vooruit is. Kort, Nederlands, geen opsmuk. Begin met "🌙 Gedaan vandaag".
-      Staat er geen enkele commit of merge in de context? Geef dan een leeg antwoord
-      (dan post er niks — een stille dag is geen ruis).
+      Staat er geen enkele commit of merge in de context? Antwoord dan met precies
+      het woord NIETS (dan post er niks — een stille dag is geen ruis; een leeg
+      antwoord geldt als storing).
     context_cmd: |
       echo '== commits vandaag (lokale clones, alle branches) =='
       for d in /home/agent/*/; do
@@ -131,12 +132,18 @@ jobs:
          al afgehandelde), en wat zou ermee moeten.
       3. Eén zin: valt er iets op (een patroon, een share die niet ophaalde)?
       Staat er een LEESFOUT in de context, meld die dan expliciet — lees 'm NIET
-      als "niets te doen". Is er vandaag niets verwerkt én niets open, geef dan
-      een leeg antwoord (dan post er niks). Nederlands, kort, geen opsmuk.
+      als "niets te doen". Is er vandaag niets verwerkt én niets open én geen
+      LEESFOUT, antwoord dan met precies het woord NIETS (dan post er niks; een
+      leeg antwoord geldt als storing). Nederlands, kort, geen opsmuk.
       Begin met "📥 Zettelkast vandaag".
     context_cmd: |
       Z=/home/agent/zettelkast
       cd "$Z" 2>/dev/null || { echo "(LEESFOUT: zettelkast-clone niet gevonden)"; exit 0; }
+      # The 06:00 vault run does the capturing. When it fails, "nothing processed"
+      # is not a quiet day: from 10 to 18 Nov it failed daily and nobody saw it.
+      if systemctl --user is-failed --quiet zettelkast-daily.service 2>/dev/null; then
+        echo "(LEESFOUT: de dagelijkse zettelkast-run van 06:00 is mislukt — journalctl --user -u zettelkast-daily)"
+      fi
       echo '== logregels van vandaag =='
       grep "^$(date +%F)" wiki/log.md 2>/dev/null | cut -c1-450 || true
       echo '== commits van vandaag =='
