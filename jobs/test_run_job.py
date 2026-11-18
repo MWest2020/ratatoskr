@@ -151,3 +151,9 @@ class TestBewustStil(unittest.TestCase):
         for naam in ("gedaan", "zettelkast_dagelijks"):
             self.assertIn("NIETS", jobs[naam]["prompt"], naam)
             self.assertNotIn("geef dan een leeg antwoord", jobs[naam]["prompt"], naam)
+
+    def test_niets_with_a_read_error_in_the_context_is_a_storing(self):
+        self.assertTrue(run_job.stil_maar_leesfout(
+            "NIETS", "(LEESFOUT: de dagelijkse zettelkast-run van 06:00 is mislukt)"))
+        self.assertFalse(run_job.stil_maar_leesfout("NIETS", "== commits van vandaag =="))
+        self.assertFalse(run_job.stil_maar_leesfout("📥 Zettelkast vandaag ...", "(LEESFOUT: x)"))

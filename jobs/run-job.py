@@ -91,6 +91,12 @@ def bewust_stil(answer):
     return answer.strip().strip("`*_\"'. ").upper() == NIETS
 
 
+def stil_maar_leesfout(answer, context):
+    """NIETS while the context reports a read error: the dead-run case NIETS must
+    never hide (review of #255). That is a storing, not a quiet day."""
+    return bool(answer) and bewust_stil(answer) and "LEESFOUT" in (context or "")
+
+
 def meld_storing(name, job, reden, env, npub):
     """Een job die niets oplevert, zegt dát in zijn eigen kanaal.
 
@@ -160,6 +166,9 @@ def main():
         return meld_storing(name, job, f"claude niet te starten ({exc.__class__.__name__}: "
                             f"{str(exc)[:120]})", env, npub)
     answer, stats = antwoord_en_kosten(r.stdout)
+    if stil_maar_leesfout(answer, context):
+        return meld_storing(name, job, "NIETS geantwoord terwijl de context een LEESFOUT "
+                            "meldt", env, npub)
     if answer and bewust_stil(answer):
         print(f"[job {name}] niets te melden (bewust NIETS), niets gepost", flush=True)
         post_statistieken(name, job, stats, env, npub)
