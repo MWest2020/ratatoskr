@@ -1,0 +1,34 @@
+# Which projects the public overview at westerweel.work/nu/ shows, and how.
+# Read by orchestrator/status_public.py; see docs/how-to/status-site.md.
+#
+# Every project listed here is read on every run: its build issues still feed
+# Mark's digest. Whether it reaches the PAGE:
+#   private: true        never on the page, whatever GitHub says.
+#   show_private: true   a private GitHub repository may be shown (named, not
+#                        linked). Without it a private repository is left out;
+#                        so is a repository whose visibility cannot be read.
+# A repository the factory built for in the last week but that is not listed
+# here follows the same default: public on GitHub, or left out.
+projects:
+  wordsworth: {}
+  convergence: {private: true}   # private project; Mark 2026-11-17: never on the page
+  ratatoskr: {}
+  habitat: {}
+  handbook: {}
+  homelab: {}
+  bazibo: {}
+  # Private repository. Mark allowed it on /nu on 2026-11-14; his task of
+  # 2026-11-17 says "exclude any project marked private", and the page marked
+  # jarvis private, so it stays off until he says otherwise (waiting-on-mark).
+  jarvis: {show_private: false}
+
+# Client names on the page. Off unless the client agreed to be named; each
+# name (and its aliases and spellings, with a leading "gemeente" or
+# "municipality of") is then replaced by a neutral description in the page's
+# language. The list itself is NOT in this public repository: it lives in a
+# local, untracked file on the host (or $STATUS_CLIENTS_FILE), shaped as
+#   clients:
+#     - {name: "...", aliases: ["..."], en: "a Dutch municipality", nl: "een gemeente"}
+# While names are hidden and that file is missing, nothing is published.
+show_client_names: false
+clients_file: "~/.config/ratatoskr/status-clients.yml"

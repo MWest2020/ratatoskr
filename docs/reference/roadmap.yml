@@ -4,8 +4,12 @@
 # only with evidence (a PR, issue or doc); everything else is "open".
 # Schema: project, goal, current (a phase id), phases [id, name, summary], and
 # done_means for the current phase [item, status done|open, evidence].
+# Optional, for the public page (written in the first person, so no "Mark"):
+# `next` (2-4 plain lines, no issue numbers) and
+# `nl` (goal, phase, next in Dutch for westerweel.work/nu/). Without `nl` the NL
+# page shows only the phase number and the count of open items.
 project: ratatoskr
-goal: "The coordination layer of Mark's agent ecosystem: channels where people and agents work together, and the factory that turns a decision in chat into a deployed change."
+goal: "The coordination layer of my agent ecosystem: channels where people and agents work together, and the factory that turns a decision in chat into a deployed change."
 current: factory
 phases:
   - {id: chat, name: "Phases 0-3: relay and chat agents", summary: "self-hosted relay, notifications, chat agents from one source, chat to habitat"}
@@ -21,3 +25,12 @@ done_means:
   - {item: "Agents post images to the chat (agent-image-to-chat, proposed #239): the build (#243) stopped at gate 1.1, one real image post, which waits on Mark's step", status: open, evidence: "https://github.com/MWest2020/ratatoskr/issues/243"}
   - {item: "A public overview of phase and gap per project: live at westerweel.work/nu/ (#212), refreshed by the status-site service", status: done, evidence: "https://github.com/MWest2020/ratatoskr/pull/212"}
   - {item: "A daily digest mail of decisions and impediments for Mark: the digest file is built every two hours (#212); the daily mail from the coding session is not yet shown by a mail record", status: open, evidence: "https://github.com/MWest2020/ratatoskr/blob/main/docs/how-to/status-site.md"}
+next:
+  - "Agents post images to the chat"
+  - "A daily mail with the open decisions and impediments"
+nl:
+  goal: "De communicatielaag van mijn agent-ecosysteem: kanalen waar mensen en agents samenwerken, en de fabriek die een besluit in de chat omzet in een uitgerolde wijziging."
+  phase: "De fabriek draait zelf"
+  next:
+    - "Agents plaatsen afbeeldingen in de chat"
+    - "Een dagelijkse mail met de open besluiten en de knelpunten"
