@@ -10,7 +10,7 @@ mail to Mark alone.
 
     to = [mark@westerweel.work]; no cc, no bcc; no draft, no attachment.
 
-Threading goes through `replyThreadId` / `replyToMessageId` on that same send.
+Threading goes through `replyThreadId` on that same send.
 The connector's `reply` is denied like every other Gmail tool: it may copy a
 thread's default cc recipients, which the call does not show. Fail-closed:
 input it cannot read is a denial; a hook that cannot run (no interpreter, a
@@ -29,8 +29,10 @@ TOOLS = (SEND,)
 # Input fields a mail to Mark may carry. Anything else (draftId, attachments,
 # whatever a new connector version adds) is a denial: a field nobody decided
 # about could change where the mail goes or what leaves the host.
+# Threading is `replyThreadId` only: `replyToMessageId` needs the connector's
+# read access, and what the server does with it cannot be checked without sending.
 FIELDS = {SEND: {"to", "cc", "bcc", "subject", "body", "htmlBody", "includeSignature",
-                 "replyThreadId", "replyToMessageId"}}
+                 "replyThreadId"}}
 # What the hook matches: every connector tool. The guard itself picks out the
 # Gmail ones, also under another connector name (`mcp__claude_ai_Gmail_2__`).
 MATCHER = "mcp__.*"
@@ -39,6 +41,8 @@ MATCHER = "mcp__.*"
 # exits 124, and `|| exit 2` turns that into a block.
 LIMIT_S = 8
 HOOK_TIMEOUT_S = 10
+# By absolute path: a project's `env.PATH` must not pick the `timeout` that runs.
+TIMEOUT = "/usr/bin/timeout"
 # Words in a connector tool's name that mean it sends something on its own.
 SENDING = ("send", "reply", "forward", "draft", "mail")
 
@@ -91,23 +95,28 @@ def decision(payload):
                                     f"Mail goes to {MARK} only (agents/mail_guard.py)."}}
 
 
-def command(python=None, script=None, limit=LIMIT_S):
+def command(python=None, script=None, limit=LIMIT_S, timeout=TIMEOUT):
     """The hook's shell command. Every way it can fail to judge (interpreter
     or file missing, a crash, a hang) ends in exit 2, which Claude Code treats
     as a block; any other failure would be a non-blocking error, and the call
-    would run."""
+    would run. Every program by absolute path, and Python isolated (`-I`: no
+    PYTHON* variables, no user site, not the script's directory on the path)."""
     python = python or sys.executable
     script = script or os.path.abspath(__file__)
-    return f"timeout {limit} {shlex.quote(python)} {shlex.quote(script)} || exit 2"
+    words = [timeout, str(limit), python, "-I", script]
+    return " ".join(shlex.quote(w) for w in words) + " || exit 2"
 
 
 def settings():
     """The `--settings` JSON that wires this hook into a turn. Settings given
-    on the command line win over the user's and the project's, so a
-    `disableAllHooks: true` in `.claude/settings.json` cannot switch it off."""
-    return json.dumps({"disableAllHooks": False, "hooks": {"PreToolUse": [
-        {"matcher": MATCHER, "hooks": [
-            {"type": "command", "command": command(), "timeout": HOOK_TIMEOUT_S}]}]}})
+    on the command line win over the user's and the project's: a
+    `disableAllHooks: true` in `.claude/settings.json` cannot switch the hook
+    off, and a `CLAUDE_CODE_SHELL_PREFIX` there cannot wrap it. The rest of a
+    project's `env` is refused before the turn starts (turn_settings.py)."""
+    return json.dumps({"disableAllHooks": False, "env": {"CLAUDE_CODE_SHELL_PREFIX": ""},
+                       "hooks": {"PreToolUse": [{"matcher": MATCHER, "hooks": [
+                           {"type": "command", "command": command(),
+                            "timeout": HOOK_TIMEOUT_S}]}]}})
 
 
 def stray(tools):
@@ -133,8 +142,8 @@ def clause(cfg):
         return ""
     return ("\n\nYou can MAIL MARK, and only him: call "
             f"`{SEND}` with to = [\"{MARK}\"], a subject and an `htmlBody`. To "
-            "answer in a thread of his, add `replyThreadId` (or `replyToMessageId`) "
-            "to that same call. No cc, no bcc, no attachments, no drafts, no reply "
+            "answer in a thread of his, add `replyThreadId` (the thread id) to that "
+            "same call. No cc, no bcc, no attachments, no drafts, no reply "
             "or forward tool; anything else is refused by a hook. Load the tool's "
             f"schema first with ToolSearch (`select:{SEND}`) when it is only listed "
             "by name. Use it when Mark asks for a mail; say in the channel that you "

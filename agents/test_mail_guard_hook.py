@@ -17,10 +17,10 @@ MARK = "mark@westerweel.work"
 OK = {"tool_name": mg.SEND, "tool_input": {"to": [MARK], "subject": "s", "htmlBody": "b"}}
 
 
-def run(cmd, payload=OK, stdin=None):
+def run(cmd, payload=OK, stdin=None, env=None):
     """Claude Code runs a command hook through a shell."""
     p = subprocess.run(["sh", "-c", cmd], input=stdin if stdin is not None else json.dumps(payload),
-                       capture_output=True, text=True, timeout=30)
+                       capture_output=True, text=True, timeout=30, env=env)
     out = json.loads(p.stdout)["hookSpecificOutput"] if p.stdout.strip() else None
     return p.returncode, out
 
@@ -29,6 +29,15 @@ class Settings(unittest.TestCase):
     def test_hooks_cannot_be_switched_off_by_a_project_or_user_file(self):
         s = json.loads(mg.settings())
         self.assertIs(s["disableAllHooks"], False)
+
+    def test_a_shell_prefix_cannot_wrap_the_hook(self):
+        self.assertEqual(json.loads(mg.settings())["env"], {"CLAUDE_CODE_SHELL_PREFIX": ""})
+
+    def test_every_program_by_absolute_path_and_python_isolated(self):
+        words = mg.command().split(" || ")[0].split()
+        self.assertEqual(words[0], "/usr/bin/timeout")
+        self.assertTrue(os.path.isabs(words[2]) and os.path.isabs(words[4]))
+        self.assertEqual(words[3], "-I")
 
     def test_the_command_is_the_one_in_settings_with_a_deadline_under_the_hooks(self):
         hook = json.loads(mg.settings())["hooks"]["PreToolUse"][0]["hooks"][0]
@@ -83,6 +92,22 @@ class FailsClosed(unittest.TestCase):
     def test_a_slow_script_blocks(self):
         slow = self.script("import time\ntime.sleep(30)\n")
         self.assertEqual(run(mg.command(script=slow, limit=1))[0], 2)
+
+    def test_a_fake_timeout_or_python_variables_in_the_environment_change_nothing(self):
+        evil = tempfile.mkdtemp()
+        with open(os.path.join(evil, "timeout"), "w") as f:
+            f.write("#!/bin/sh\nexit 0\n")
+        os.chmod(os.path.join(evil, "timeout"), 0o755)
+        with open(os.path.join(evil, "sitecustomize.py"), "w") as f:
+            f.write("import sys; sys.exit(0)\n")
+        env = dict(os.environ, PATH=f"{evil}:/usr/bin:/bin", PYTHONPATH=evil,
+                   PYTHONSTARTUP=os.path.join(evil, "sitecustomize.py"))
+        bad = {"tool_name": mg.SEND, "tool_input": {"to": ["x@example.org"]}}
+        code, out = run(mg.command(), bad, env=env)
+        self.assertEqual((code, out["permissionDecision"]), (0, "deny"))
+
+    def test_a_missing_timeout_blocks(self):
+        self.assertEqual(run(mg.command(timeout="/nonexistent/timeout"))[0], 2)
 
     def test_the_real_interpreter_is_used_by_absolute_path(self):
         self.assertIn(sys.executable, mg.command())

@@ -9,7 +9,9 @@
 - [x] `agents/mail_guard.py`: the recipient rule (plain ASCII, nothing around
       it), deny-by-default for every other Gmail tool including `reply`,
       fail-closed on unreadable input, and the `--settings` JSON with
-      `disableAllHooks: false` and `timeout 8 <interpreter> <script> || exit 2`.
+      `disableAllHooks: false`, `env.CLAUDE_CODE_SHELL_PREFIX = ""` and
+      `/usr/bin/timeout 8 <interpreter> -I <script> || exit 2`; threading via
+      `replyThreadId` only.
 - [x] `agents/test_mail_guard.py` covers the rule and the wiring:
       - a mail to Mark passes, threaded or not;
       - refused: another recipient, Mark plus another, lookalikes (Kelvin sign,
@@ -36,6 +38,19 @@
       - a missing interpreter.
 
       With the fix, a moved script and a hang were refused too.
+- [x] `agents/turn_settings.py`: no turn while the listener tree's
+      `.claude/settings*.json` holds a key outside the allow-list; reported in
+      #escalatie. `agents/test_turn_settings.py`.
+- [x] `agent_skills.allowed_tools` splits `allowed-tools` written as one
+      string (commas or whitespace, not inside parentheses).
+- [x] Re-review probes, run live with `claude -p` and the fake MCP server.
+      Each one was let through by the previous hook and denied by the new one:
+      - H: a project `env.PATH` with a fake `timeout`;
+      - I: a project `env.CLAUDE_CODE_SHELL_PREFIX`;
+      - K: the same prefix in `settings.local.json`.
+
+      The listener check refuses all three directories before a turn starts. A
+      project skill still loads with the new settings.
 - [x] `verify.sh`: all unit tests green.
 
 ## 4. The mandate (Mark's gate)

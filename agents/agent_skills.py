@@ -64,6 +64,24 @@ def install(agents, root, source=SOURCE, log=print):
     return result
 
 
+def split_tools(text):
+    """`allowed-tools` written as one string: names separated by commas or
+    whitespace, except inside a rule's parentheses (`Bash(git log:*)`)."""
+    out, word, depth = [], "", 0
+    for ch in text:
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth = max(0, depth - 1)
+        if depth == 0 and (ch == "," or ch.isspace()):
+            if word:
+                out.append(word)
+            word = ""
+        else:
+            word += ch
+    return out + ([word] if word else [])
+
+
 def allowed_tools(path):
     """A SKILL.md's `allowed-tools`, or ["<unreadable>"] when the front matter
     cannot be read: an unreadable skill is not installed (fail-closed)."""
@@ -71,7 +89,9 @@ def allowed_tools(path):
         text = open(path, encoding="utf-8").read()
         meta = yaml.safe_load(text.split("---", 2)[1]) if text.startswith("---") else {}
         tools = (meta or {}).get("allowed-tools") or []
-        return [tools] if isinstance(tools, str) else [str(t) for t in tools]
+        if isinstance(tools, str):
+            return split_tools(tools)
+        return [t for item in tools for t in split_tools(str(item))]
     except Exception:
         return ["mcp__gmail__unreadable"]
 

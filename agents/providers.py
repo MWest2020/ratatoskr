@@ -12,6 +12,7 @@ import subprocess
 import time
 
 import mail_guard
+import turn_settings
 
 CLAUDE = os.environ.get("CLAUDE_BIN", "claude")
 # Three minutes. Mark, 2026-09-18: "in 3 minuten moet er gereviewed kunnen
@@ -111,6 +112,10 @@ def run(provider, system, prompt, model=None, allow=None, deny=None, progress=No
         return {"answer": f"(provider '{provider}' nog niet ondersteund door deze listener)",
                 "model": "", "cost": 0.0, "turns": 0, "denials": [], "error": "provider"}
 
+    unsafe = turn_settings.problem(os.getcwd())
+    if unsafe:  # a project settings file could route around the mail guard
+        return {"answer": f"(refused: {unsafe})", "model": model or "", "cost": 0.0,
+                "turns": 0, "denials": [], "error": f"unsafe settings: {unsafe}"}
     # dontAsk = deny by default: anything outside --allowedTools is refused
     # instead of offered. Without this flag the agent kept tools like Agent,
     # WebFetch and SendMessage — the allowlist only decided what was allowed

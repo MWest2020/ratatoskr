@@ -31,9 +31,10 @@ class Refusal(unittest.TestCase):
         self.assertTrue(ok(mg.SEND, to=["Mark@Westerweel.Work"], subject="s", body="b"))
         self.assertTrue(ok(mg.SEND, to=MARK, subject="s", body="b", cc=[], bcc=[]))
 
-    def test_threading_goes_through_send(self):
+    def test_threading_goes_through_send_with_the_thread_id_only(self):
         self.assertTrue(ok(mg.SEND, to=[MARK], body="b", replyThreadId="t1"))
-        self.assertTrue(ok(mg.SEND, to=[MARK], body="b", replyToMessageId="m1"))
+        # It needs read access, and the server's handling cannot be checked unsent.
+        self.assertFalse(ok(mg.SEND, to=[MARK], body="b", replyToMessageId="m1"))
 
     def test_anyone_else_is_refused(self):
         for to in (["someone@example.org"], [MARK, "someone@example.org"], [],
@@ -133,18 +134,31 @@ class Skills(unittest.TestCase):
     would hand out a sending connector tool is not installed."""
 
     def install(self, tools):
+        return self.install_raw("allowed-tools:\n" + "".join(f"- {t}\n" for t in tools))
+
+    def install_raw(self, front):
         import tempfile
         src, root = tempfile.mkdtemp(), tempfile.mkdtemp()
         os.makedirs(os.path.join(src, "s1"))
         with open(os.path.join(src, "s1", "SKILL.md"), "w") as f:
-            f.write("---\nname: s1\nallowed-tools:\n" + "".join(f"- {t}\n" for t in tools)
-                    + "---\n\n# s1\n")
+            f.write("---\nname: s1\n" + front + "---\n\n# s1\n")
         got = agent_skills.install({"odin": {"skills": ["s1"]}}, root, source=src,
                                    log=lambda *a, **k: None)
         return got["s1"], os.path.isdir(os.path.join(root, ".claude", "skills", "s1"))
 
     def test_mail_mark_tools_are_installed(self):
         self.assertEqual(self.install([mg.SEND]), ("", True))
+
+    def test_allowed_tools_written_as_one_string_are_split(self):
+        import agent_skills as a
+        self.assertEqual(a.split_tools(f"Read, {G}forward"), ["Read", G + "forward"])
+        self.assertEqual(a.split_tools("Read  Bash(git log:*)\tmcp__x__send"),
+                         ["Read", "Bash(git log:*)", "mcp__x__send"])
+        for text in (f"Read, {G}forward", f"Read {G}forward", f"Read,{G}forward"):
+            reason, installed = self.install_raw(f"allowed-tools: {text}\n")
+            self.assertIn("not installed", reason, text)
+            self.assertFalse(installed, text)
+        self.assertEqual(self.install_raw(f"allowed-tools: Read, {mg.SEND}\n"), ("", True))
 
     def test_a_skill_with_reply_or_forward_is_not_installed(self):
         for tool in (G + "reply", G + "forward", "mcp__slack__send_message"):
