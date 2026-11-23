@@ -144,9 +144,10 @@ def build_agents(cfg, base, npubs):
             continue
         gmail = mail_guard.stray(d.get("allow"))
         if gmail:
-            # Mail to Mark is send and reply (change odin-mails-mark); a forward,
-            # a trash or a draft tool in a definition is refused outright.
-            print(f"[listener] {handle}: Gmail tools other than send/reply ({gmail}) "
+            # Mail to Mark is Gmail send_message only (change odin-mails-mark); any
+            # other connector tool that sends, forwards or drafts is refused outright.
+            print(f"[listener] {handle}: sending connector tools other than Gmail "
+                  f"send_message ({gmail}) "
                   "— NOT spawned", flush=True)
             continue
         if readshell.RULE in d.get("allow", []) and "Bash" in d.get("deny", []):

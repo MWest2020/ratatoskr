@@ -20,6 +20,10 @@ import os
 import re
 import shutil
 
+import yaml
+
+import mail_guard
+
 SLUG = re.compile(r"^[a-z0-9][a-z0-9-]{0,63}$")
 SOURCE = os.path.expanduser("~/skill-forge/skills")
 
@@ -43,6 +47,13 @@ def install(agents, root, source=SOURCE, log=print):
             result[slug] = f"no {slug}/SKILL.md in {source}"
             log(f"[listener] skill {slug}: {result[slug]}", flush=True)
             continue
+        risky = mail_guard.stray(allowed_tools(os.path.join(src, "SKILL.md")))
+        if risky:
+            # A skill's allowed-tools are pre-approved while it runs: a sending
+            # connector tool there would sidestep the definition (odin-mails-mark).
+            result[slug] = f"allowed-tools that send ({risky}): not installed"
+            log(f"[listener] skill {slug}: {result[slug]}", flush=True)
+            continue
         target = os.path.join(dest, slug)
         if os.path.isdir(target):
             shutil.rmtree(target)
@@ -51,6 +62,18 @@ def install(agents, root, source=SOURCE, log=print):
     for stale in set(os.listdir(dest)) - set(wanted):   # no longer declared by anyone
         shutil.rmtree(os.path.join(dest, stale), ignore_errors=True)
     return result
+
+
+def allowed_tools(path):
+    """A SKILL.md's `allowed-tools`, or ["<unreadable>"] when the front matter
+    cannot be read: an unreadable skill is not installed (fail-closed)."""
+    try:
+        text = open(path, encoding="utf-8").read()
+        meta = yaml.safe_load(text.split("---", 2)[1]) if text.startswith("---") else {}
+        tools = (meta or {}).get("allowed-tools") or []
+        return [tools] if isinstance(tools, str) else [str(t) for t in tools]
+    except Exception:
+        return ["mcp__gmail__unreadable"]
 
 
 def clause(skills):

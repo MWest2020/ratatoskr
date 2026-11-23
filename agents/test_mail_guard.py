@@ -7,12 +7,11 @@ the claude command line is captured before anything starts.
 import io
 import json
 import os
-import shlex
-import subprocess
 import unittest
 from contextlib import redirect_stdout
 from unittest import mock
 
+import agent_skills
 import agent_turn  # noqa: F401  (the turn imports the guard; it must import cleanly)
 import bootstrap
 import mail_guard as mg
@@ -29,24 +28,28 @@ def ok(tool, **inp):
 class Refusal(unittest.TestCase):
     def test_a_mail_to_mark_passes(self):
         self.assertTrue(ok(mg.SEND, to=[MARK], subject="Open proposals", htmlBody="<p>x</p>"))
-        self.assertTrue(ok(mg.SEND, to=["Mark@Westerweel.Work "], subject="s", body="b"))
+        self.assertTrue(ok(mg.SEND, to=["Mark@Westerweel.Work"], subject="s", body="b"))
         self.assertTrue(ok(mg.SEND, to=MARK, subject="s", body="b", cc=[], bcc=[]))
-        self.assertTrue(ok(mg.SEND, to=[MARK], body="b", replyThreadId="t1"))
 
-    def test_a_reply_to_mark_passes(self):
-        self.assertTrue(ok(mg.REPLY, messageId="m1", to=[MARK], body="b"))
-        self.assertTrue(ok(mg.REPLY, messageId="m1", to=[MARK], body="b", replyAll=False))
+    def test_threading_goes_through_send(self):
+        self.assertTrue(ok(mg.SEND, to=[MARK], body="b", replyThreadId="t1"))
+        self.assertTrue(ok(mg.SEND, to=[MARK], body="b", replyToMessageId="m1"))
 
     def test_anyone_else_is_refused(self):
         for to in (["someone@example.org"], [MARK, "someone@example.org"], [],
                    ["Mark <mark@westerweel.work>"], ["mark@westerweel.work.evil.org"], None, [5]):
             self.assertFalse(ok(mg.SEND, to=to, subject="s", body="b"), to)
 
+    def test_lookalikes_and_surrounding_space_are_refused(self):
+        for to in ("mar\u212a@westerweel.work",      # KELVIN SIGN lowers to "k"
+                   "mark@westerweel.work\u00a0", "\u2003mark@westerweel.work",
+                   " mark@westerweel.work", "mark@westerweel.work\n", "mark@westerweel.work\t"):
+            self.assertFalse(ok(mg.SEND, to=[to], body="b"), repr(to))
+
     def test_cc_and_bcc_are_refused_even_to_mark(self):
         self.assertFalse(ok(mg.SEND, to=[MARK], cc=["x@example.org"], body="b"))
         self.assertFalse(ok(mg.SEND, to=[MARK], bcc=["x@example.org"], body="b"))
         self.assertFalse(ok(mg.SEND, to=[MARK], bcc=[MARK], body="b"))
-        self.assertFalse(ok(mg.REPLY, messageId="m", to=[MARK], cc=["x@example.org"], body="b"))
 
     def test_a_draft_or_an_attachment_is_refused(self):
         self.assertFalse(ok(mg.SEND, draftId="d1"))
@@ -54,10 +57,9 @@ class Refusal(unittest.TestCase):
         self.assertFalse(ok(mg.SEND, to=[MARK], body="b", attachments=[{"content": "eA=="}]))
         self.assertFalse(ok(mg.SEND, to=[MARK], body="b", somethingNew=1))
 
-    def test_a_reply_must_name_mark_and_never_reply_all(self):
-        self.assertFalse(ok(mg.REPLY, messageId="m1", body="b"))   # default: the sender
-        self.assertFalse(ok(mg.REPLY, messageId="m1", to=["x@example.org"], body="b"))
-        self.assertFalse(ok(mg.REPLY, messageId="m1", to=[MARK], replyAll=True, body="b"))
+    def test_the_reply_tool_is_refused_even_to_mark(self):
+        # It may copy the thread's default cc recipients, which the call does not show.
+        self.assertFalse(ok(G + "reply", messageId="m1", to=[MARK], body="b"))
 
     def test_forward_trash_label_and_drafts_are_refused(self):
         for name in ("forward", "trash_message", "trash_thread", "label_thread",
@@ -72,39 +74,6 @@ class Refusal(unittest.TestCase):
 
     def test_input_that_is_not_an_object_is_refused(self):
         self.assertNotEqual(mg.refusal(mg.SEND, ["to", MARK]), "")
-
-
-class Hook(unittest.TestCase):
-    """The command `providers.run` wires in, run as Claude Code runs it."""
-
-    def run_hook(self, stdin):
-        cmd = json.loads(mg.settings())["hooks"]["PreToolUse"][0]["hooks"][0]["command"]
-        p = subprocess.run(shlex.split(cmd), input=stdin, capture_output=True, text=True,
-                           timeout=20)
-        self.assertEqual(p.returncode, 0, p.stderr)
-        return json.loads(p.stdout)["hookSpecificOutput"] if p.stdout.strip() else None
-
-    def call(self, tool, **inp):
-        return self.run_hook(json.dumps({"tool_name": tool, "tool_input": inp}))
-
-    def test_a_mail_to_mark_is_left_alone(self):
-        self.assertIsNone(self.call(mg.SEND, to=[MARK], subject="s", htmlBody="<p>b</p>"))
-
-    def test_anything_else_is_denied_with_a_reason(self):
-        for tool, inp in ((mg.SEND, {"to": ["x@example.org"]}),
-                          (mg.SEND, {"to": [MARK], "bcc": ["x@example.org"]}),
-                          (G + "forward", {"messageId": "m", "to": [MARK]})):
-            out = self.call(tool, **inp)
-            self.assertEqual(out["permissionDecision"], "deny", tool)
-            self.assertIn("mail guard", out["permissionDecisionReason"])
-
-    def test_unreadable_input_is_denied(self):
-        self.assertEqual(self.run_hook("not json")["permissionDecision"], "deny")
-
-    def test_the_matcher_covers_every_gmail_tool(self):
-        import re
-        self.assertTrue(re.fullmatch(mg.MATCHER, mg.SEND))
-        self.assertTrue(re.fullmatch(mg.MATCHER, G + "forward"))
 
 
 class Wiring(unittest.TestCase):
@@ -129,30 +98,59 @@ class Wiring(unittest.TestCase):
             providers.run("claude-p", "s", "p", allow=allow)
         return seen["cmd"]
 
-    def test_send_and_reply_reach_allowed_tools_and_the_hook_is_on(self):
-        agents, _ = self.agents(["Read", mg.SEND, mg.REPLY])
+    def test_send_reaches_allowed_tools_and_the_hook_is_on(self):
+        agents, _ = self.agents(["Read", mg.SEND])
         cmd = self.cmd(agents["odin"]["allow"])
         allowed = cmd[cmd.index("--allowedTools") + 1].split(",")
         self.assertIn(mg.SEND, allowed)
-        self.assertIn(mg.REPLY, allowed)
         self.assertEqual(cmd[cmd.index("--settings") + 1], mg.settings())
 
     def test_the_hook_is_on_for_a_turn_without_mail_too(self):
         self.assertIn("--settings", self.cmd(["Read"]))
 
-    def test_a_definition_with_forward_or_trash_does_not_run(self):
-        for tool in (G + "forward", G + "trash_message", G + "create_draft"):
+    def test_a_definition_with_another_sending_tool_does_not_run(self):
+        for tool in (G + "reply", G + "forward", G + "trash_message", G + "create_draft",
+                     "mcp__slack__send_message", "mcp__outlook__mail_create",
+                     "mcp__x__forward_thing", "mcp__x__save_draft"):
             agents, log = self.agents(["Read", mg.SEND, tool])
             self.assertEqual(agents, {}, tool)
-            self.assertIn("Gmail tools other than send/reply", log)
+            self.assertIn("sending connector tools other than Gmail send_message", log)
+
+    def test_a_definition_with_a_harmless_connector_tool_still_runs(self):
+        agents, _ = self.agents(["Read", mg.SEND, "mcp__handbook__read_doc"])
+        self.assertIn("odin", agents)
 
     def test_the_prompt_mentions_mail_only_when_allowed(self):
         self.assertEqual(mg.clause({"allow": ["Read"]}), "")
-        text = mg.clause({"allow": ["Read", mg.SEND, mg.REPLY]})
+        text = mg.clause({"allow": ["Read", mg.SEND]})
         self.assertIn(MARK, text)
         self.assertIn(mg.SEND, text)
-        self.assertIn(mg.REPLY, text)
-        self.assertNotIn(mg.REPLY, mg.clause({"allow": [mg.SEND]}))
+        self.assertIn("replyThreadId", text)
+
+
+class Skills(unittest.TestCase):
+    """A skill's allowed-tools are pre-approved while it runs: a skill that
+    would hand out a sending connector tool is not installed."""
+
+    def install(self, tools):
+        import tempfile
+        src, root = tempfile.mkdtemp(), tempfile.mkdtemp()
+        os.makedirs(os.path.join(src, "s1"))
+        with open(os.path.join(src, "s1", "SKILL.md"), "w") as f:
+            f.write("---\nname: s1\nallowed-tools:\n" + "".join(f"- {t}\n" for t in tools)
+                    + "---\n\n# s1\n")
+        got = agent_skills.install({"odin": {"skills": ["s1"]}}, root, source=src,
+                                   log=lambda *a, **k: None)
+        return got["s1"], os.path.isdir(os.path.join(root, ".claude", "skills", "s1"))
+
+    def test_mail_mark_tools_are_installed(self):
+        self.assertEqual(self.install([mg.SEND]), ("", True))
+
+    def test_a_skill_with_reply_or_forward_is_not_installed(self):
+        for tool in (G + "reply", G + "forward", "mcp__slack__send_message"):
+            reason, installed = self.install([mg.SEND, tool])
+            self.assertIn("not installed", reason)
+            self.assertFalse(installed, tool)
 
 
 if __name__ == "__main__":

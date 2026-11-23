@@ -12,13 +12,28 @@ every Claude process on the host sees. It can mail **Mark and nobody else**
 - **The mail guard** (`agents/mail_guard.py`) is a PreToolUse hook that
   `providers.run` passes to every chat turn with `--settings`, whatever the
   agent's allowlist. It lets a Gmail call through only when it is
-  `mcp__claude_ai_Gmail__send_message` or `mcp__claude_ai_Gmail__reply` with
-  `to = ["mark@westerweel.work"]` alone. It denies a cc or bcc, a draft
-  (`draftId`), an attachment, reply-all, a reply without an explicit `to`, any
-  input field it does not know, and every other Gmail tool (forward, trash,
-  label, draft, delete, read). Input it cannot read is a denial.
-- **The listener** refuses to start an agent whose definition allows any Gmail
-  tool other than those two, and logs `Gmail tools other than send/reply`.
+  `mcp__claude_ai_Gmail__send_message` with `to = ["mark@westerweel.work"]`
+  alone, in plain ASCII with nothing around it. Threading goes through
+  `replyThreadId` or `replyToMessageId` on that same send. It denies:
+  - a cc or bcc;
+  - a draft (`draftId`);
+  - an attachment;
+  - any input field it does not know;
+  - every other Gmail tool, `reply` included. The connector's reply may copy
+    a thread's default cc recipients, which the call does not show. Forward,
+    trash, label, draft, delete and read are denied too.
+
+  Input it cannot read is a denial.
+- **The hook cannot be switched off or fail open.** Its settings carry
+  `"disableAllHooks": false`, and command-line settings beat a project's or
+  the user's `.claude/settings.json`. The command is
+  `timeout 8 <interpreter> mail_guard.py || exit 2`: a missing interpreter, a
+  moved file, a crash or a hang all exit 2, which blocks the call.
+- **The listener** refuses to start an agent whose definition allows a sending
+  connector tool other than Gmail `send_message`, and logs `sending connector
+  tools other than Gmail send_message`. That covers any other Gmail tool and
+  any `mcp__` tool whose name says send, reply, forward, draft or mail. It does
+  not install a skill whose `allowed-tools` holds one either.
 
 A denial comes back to the agent with the reason, and shows up in #escalatie
 like every permission denial.
@@ -26,14 +41,14 @@ like every permission denial.
 ## Giving it to an agent
 
 A role's tools follow from its skills. The skill `mail-mark` (skill-forge)
-declares the two tools and tells the agent how to use them. Both the skill and
+declares the tool and tells the agent how to use it. Both the skill and
 its tools go in the chat facet of the agent's handbook definition
 (`docs/agents/`, which the owner merges):
 
 ```yaml
 chat:
-  tools: { allow: [Read, Grep, Glob, mcp__claude_ai_Gmail__send_message,
-                   mcp__claude_ai_Gmail__reply], deny: [Write, Edit] }
+  tools: { allow: [Read, Grep, Glob, mcp__claude_ai_Gmail__send_message],
+           deny: [Write, Edit] }
   skills: [mail-mark]
 ``` When the
 definition allows `send_message`, the system prompt gets a paragraph saying how
@@ -67,6 +82,5 @@ Mark alone prints nothing.
   `send_message`, or the listener was not restarted after the handbook merge.
 - **A refusal from "the mail guard".** The call had another recipient, a cc,
   a bcc, a draft or an attachment. That is the boundary working.
-- **A reply is refused with "must name its recipient".** The agent left `to`
-  out; a reply defaults to the sender, which the guard cannot see. It must set
-  `to = ["mark@westerweel.work"]`.
+- **A reply is refused.** The `reply` tool is never allowed. The agent sends a
+  new mail to Mark with `replyThreadId` (or `replyToMessageId`) to thread it.
