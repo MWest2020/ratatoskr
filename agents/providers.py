@@ -11,6 +11,8 @@ import os
 import subprocess
 import time
 
+import mail_guard
+
 CLAUDE = os.environ.get("CLAUDE_BIN", "claude")
 # Three minutes. Mark, 2026-09-18: "in 3 minuten moet er gereviewed kunnen
 # worden [...] als dat niet werkt, de timeout limits ophogen (of beide,
@@ -116,7 +118,9 @@ def run(provider, system, prompt, model=None, allow=None, deny=None, progress=No
     # back as a permission_denial, so #escalatie gets a machine signal and not
     # only self-reporting.
     cmd = [CLAUDE, "-p", "--output-format", "json", "--permission-mode", "dontAsk",
-           "--append-system-prompt", system]
+           "--append-system-prompt", system,
+           # Every turn, whatever its allowlist: Gmail to Mark alone (mail_guard.py).
+           "--settings", mail_guard.settings()]
     if model:
         cmd += ["--model", model]
     if allow:
