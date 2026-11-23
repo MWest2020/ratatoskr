@@ -25,16 +25,17 @@ like every permission denial.
 
 ## Giving it to an agent
 
-It goes in the chat facet of the agent's handbook definition (`docs/agents/`,
-the owner's to merge):
+A role's tools follow from its skills. The skill `mail-mark` (skill-forge)
+declares the two tools and tells the agent how to use them. Both the skill and
+its tools go in the chat facet of the agent's handbook definition
+(`docs/agents/`, which the owner merges):
 
 ```yaml
 chat:
   tools: { allow: [Read, Grep, Glob, mcp__claude_ai_Gmail__send_message,
                    mcp__claude_ai_Gmail__reply], deny: [Write, Edit] }
-```
-
-`reply` is optional; without it the agent can only send new mail. When the
+  skills: [mail-mark]
+``` When the
 definition allows `send_message`, the system prompt gets a paragraph saying how
 to mail Mark and that nobody else can be mailed. Without it, nothing.
 

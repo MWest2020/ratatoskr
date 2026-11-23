@@ -27,8 +27,9 @@ the approval point.
 - **The agent is told**: when its definition allows `send_message`, its system
   prompt says how to mail Mark and that nobody else can be mailed, generated
   from the definition (the read-shell pattern).
-- **The mandate is Mark's**: odin gets the two tools through its handbook
-  definition (`docs/agents/odin.md`), a handbook PR that Mark merges. Until
+- **The mandate is Mark's**: odin gets the two tools through the skill
+  `mail-mark` (skill-forge), which declares them, and through its handbook
+  definition (`docs/agents/odin.md`), in a handbook PR that Mark merges. Until
   then this change is inert, apart from the hook, which only refuses.
 
 ## Out of scope

@@ -27,10 +27,14 @@
 - [x] `verify.sh`: all unit tests green (agents 515).
 
 ## 4. The mandate (Mark's gate)
-- [ ] Handbook PR for `docs/agents/odin.md`: `send_message` and `reply` in
-      `allow`, a `mail_mark` capability, one line in the chat facet. **Mark
-      merges, after this change is deployed** (the other order gives odin the
-      tools without the hook).
+- [x] A skill that declares the two tools, because a role's tools follow from
+      its skills: `mail-mark` in skill-forge, judged 0.92 and promoted, with the
+      register regenerated (MWest2020/skill-forge#16).
+- [ ] Handbook PR for `docs/agents/odin.md`: skill `mail-mark`, its two tools
+      in `allow`, a `mail_mark` capability, one line in the chat facet, and the
+      register mirror (MWest2020/handbook#47). **Mark merges it after this change
+      is deployed and skill-forge#16 is merged.** In the other order, odin gets the
+      tools without the hook.
 
 ## 5. Proven live (after deploy, the handbook merge and a listener restart)
 - [ ] "@odin mail me the open proposals" in #general: a mail arrives at
