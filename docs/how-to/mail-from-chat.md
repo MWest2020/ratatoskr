@@ -41,9 +41,17 @@ every Claude process on the host sees. It can mail **Mark and nobody else**
   `.claude/settings.json` or `settings.local.json`:
   - holds a key outside a small allow-list (`$schema`, `model`,
     `includeCoAuthoredBy`, `cleanupPeriodDays`, `outputStyle`, `permissions`
-    with only `deny`, `ask` and `allow`);
+    with only `deny` and `ask`);
   - is a symlink;
-  - cannot be read as a JSON object.
+  - cannot be read as a JSON object;
+
+  or while a project `.mcp.json` exists there, in any form. `claude -p` starts a
+  project's MCP servers without asking, and their command runs at turn start,
+  beside the hook. `--strict-mcp-config` is no way out, because it also drops the
+  claude.ai Gmail connector.
+
+  The check runs again after the turn, and a file that appeared during the turn
+  is reported in #escalatie as `unsafe settings after the turn`.
 
   That covers `env` (`PATH`, `LD_PRELOAD`, `BASH_ENV`, a shell prefix), `hooks`,
   helpers and MCP servers. The refusal goes to #escalatie with the file and the

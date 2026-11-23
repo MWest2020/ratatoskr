@@ -11,10 +11,13 @@ or route around the mail guard (change odin-mails-mark, security review of
 
 So the rule is an allow-list, after jarvis' `checkout_settings`: a settings
 file is safe only when every top-level key is one that cannot run anything or
-widen anything (`SAFE_KEYS`), and `permissions` only with `deny`, `ask` and
-`allow`. A file that is there and is not a regular JSON object is unsafe (a
+widen anything (`SAFE_KEYS`), and `permissions` only with `deny` and `ask`.
+A project `.mcp.json` is refused outright: `claude -p` starts its servers
+without asking (`--strict-mcp-config` is no way out: it also drops the
+claude.ai Gmail connector). A file that is there and is not a regular JSON object is unsafe (a
 symlink, a FIFO, unreadable, too large, not JSON). A missing file is safe.
-The listener refuses the turn and reports it in #escalatie.
+The listener refuses the turn and reports it in #escalatie, and checks
+again after the turn: a file that appeared during it is reported too.
 
 Not `--setting-sources user`: that would also stop Claude Code from loading
 the listener's `.claude/skills`, where the agents' skills are installed.
@@ -26,7 +29,9 @@ import stat
 SETTINGS_FILES = ("settings.json", "settings.local.json")
 SAFE_KEYS = frozenset({"$schema", "model", "includeCoAuthoredBy", "cleanupPeriodDays",
                        "outputStyle", "permissions"})
-SAFE_PERMISSION_KEYS = frozenset({"deny", "ask", "allow"})
+# Only rules that take away: an `allow` is harmless only while the listener
+# directory is untrusted, and that is not this module's to rely on.
+SAFE_PERMISSION_KEYS = frozenset({"deny", "ask"})
 MAX_BYTES = 64 * 1024
 
 
@@ -71,15 +76,21 @@ def file_problem(path):
 
 
 def problem(directory, user_dir=None):
-    """The first problem in `<directory>/.claude/settings*.json`, or None.
-    `user_dir` is the user's own `~/.claude`: when the directory is the home
-    directory, those are the user's settings, not a project's."""
-    claude_dir = os.path.join(os.path.realpath(directory), ".claude")
+    """The first problem in `<directory>/.mcp.json` or
+    `<directory>/.claude/settings*.json`, or None. `user_dir` is the user's
+    own `~/.claude`: when the directory is the home directory, those are the
+    user's settings, not a project's."""
+    root = os.path.realpath(directory)
+    if os.path.lexists(os.path.join(root, ".mcp.json")):
+        # `claude -p` starts a project's MCP servers without asking: their
+        # command runs at turn start, beside the hook rather than under it.
+        return f"{root}/.mcp.json exists (a project MCP server)"
+    claude_dir = os.path.join(root, ".claude")
+    if os.path.islink(claude_dir):
+        return ".claude is a symlink"
     user_dir = user_dir if user_dir is not None else os.path.expanduser("~/.claude")
     if os.path.realpath(claude_dir) == os.path.realpath(user_dir):
         return None
-    if os.path.islink(claude_dir):
-        return ".claude is a symlink"
     for name in SETTINGS_FILES:
         found = file_problem(os.path.join(claude_dir, name))
         if found:

@@ -38,10 +38,14 @@ the approval point.
 - **The listener tree's settings are checked before every turn**
   (`agents/turn_settings.py`). A project `settings.json` or
   `settings.local.json` in the listener's working directory can carry `env`
-  (`PATH`, `LD_PRELOAD`, `BASH_ENV`), hooks, helpers or MCP servers. A
+  (`PATH`, `LD_PRELOAD`, `BASH_ENV`), hooks, helpers or MCP servers, and a
+  project `.mcp.json` has its server commands started by `claude -p` without
+  asking. A
   `git pull` brings such a file without anyone editing it. So the listener runs
   no turn while either file holds a key outside a small allow-list (after
-  jarvis' `checkout_settings`), and it reports that in #escalatie. Not
+  jarvis' `checkout_settings`; `permissions` with `deny` and `ask` only), or
+  while a `.mcp.json` exists, and it reports that in #escalatie. It checks
+  again after the turn and reports a file that appeared during it. Not
   `--setting-sources user`: that would also stop the listener's `.claude/skills`
   from loading.
 - **One sending tool at most, in a definition and in a skill**: the listener

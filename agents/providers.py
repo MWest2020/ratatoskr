@@ -112,10 +112,19 @@ def run(provider, system, prompt, model=None, allow=None, deny=None, progress=No
         return {"answer": f"(provider '{provider}' nog niet ondersteund door deze listener)",
                 "model": "", "cost": 0.0, "turns": 0, "denials": [], "error": "provider"}
 
-    unsafe = turn_settings.problem(os.getcwd())
+    cwd = os.getcwd()
+    unsafe = turn_settings.problem(cwd)
     if unsafe:  # a project settings file could route around the mail guard
         return {"answer": f"(refused: {unsafe})", "model": model or "", "cost": 0.0,
                 "turns": 0, "denials": [], "error": f"unsafe settings: {unsafe}"}
+    r = _turn(system, prompt, model, allow, deny, progress, no_tools, env)
+    after = turn_settings.problem(cwd)   # appeared during the turn: say so
+    if after:
+        r["error"] = f"unsafe settings after the turn: {after}"
+    return r
+
+
+def _turn(system, prompt, model, allow, deny, progress, no_tools, env):
     # dontAsk = deny by default: anything outside --allowedTools is refused
     # instead of offered. Without this flag the agent kept tools like Agent,
     # WebFetch and SendMessage — the allowlist only decided what was allowed

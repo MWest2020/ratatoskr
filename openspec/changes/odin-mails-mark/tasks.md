@@ -51,6 +51,17 @@
 
       The listener check refuses all three directories before a turn starts. A
       project skill still loads with the new settings.
+- [x] Final review:
+      - a project `.mcp.json` is refused;
+      - `permissions` allows `deny` and `ask` only;
+      - the check runs again after the turn;
+      - a symlinked `.claude` is refused before the home exemption.
+
+      Probe P3: `claude -p` alone in a tree with `.mcp.json` started its server
+      (the control). Through `providers.run`, the turn was refused and the
+      server did not start. The reviewer's e2e probe with a fake `claude`
+      started it only in the clean tree; the `LD_PRELOAD`, `.mcp.json` and
+      `PYTHONPATH` trees were refused.
 - [x] `verify.sh`: all unit tests green.
 
 ## 4. The mandate (Mark's gate)

@@ -15,8 +15,9 @@ The hook SHALL NOT be switched off or wrapped by a project's or the user's
 settings, it SHALL run its programs by absolute path, and every failure to run
 it (a missing interpreter or file, a crash, a timeout) SHALL block the call.
 The listener SHALL NOT start a turn while its working directory's project
-settings hold a key outside a fixed allow-list, and SHALL report that refusal
-like any other.
+settings hold a key outside a fixed allow-list or a project `.mcp.json` exists,
+SHALL report that refusal like any other, and SHALL check again after the turn
+and report a file that appeared during it.
 
 The listener SHALL NOT spawn a chat agent whose definition allows a sending
 connector tool other than Gmail `send_message`, and SHALL NOT install a skill
@@ -56,6 +57,11 @@ does not allow it.
   `settings.local.json` with `env` (such as `PATH` or
   `CLAUDE_CODE_SHELL_PREFIX`), `hooks` or another key outside the allow-list
 - **THEN** no turn starts, and #escalatie names the file and the key
+
+#### Scenario: A project MCP server in the listener tree
+
+- **WHEN** the listener's working directory has a `.mcp.json`
+- **THEN** no turn starts, and no server command from it runs
 
 #### Scenario: The hook cannot run
 
