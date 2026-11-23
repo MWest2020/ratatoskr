@@ -9,6 +9,7 @@ import urllib.request
 
 import yaml
 
+import mail_guard
 import readshell
 from defparse import parse_def  # re-exported: tests and callers use bootstrap.parse_def
 
@@ -140,6 +141,14 @@ def build_agents(cfg, base, npubs):
             # read shell, and a one-word edit to a definition must not change that.
             print(f"[listener] {handle}: Bash other than the read shell ({stray}) — NOT spawned",
                   flush=True)
+            continue
+        gmail = mail_guard.stray(d.get("allow"))
+        if gmail:
+            # Mail to Mark is Gmail send_message only (change odin-mails-mark); any
+            # other connector tool that sends, forwards or drafts is refused outright.
+            print(f"[listener] {handle}: sending connector tools other than Gmail "
+                  f"send_message ({gmail}) "
+                  "— NOT spawned", flush=True)
             continue
         if readshell.RULE in d.get("allow", []) and "Bash" in d.get("deny", []):
             print(f"[listener] {handle}: read shell allowed but Bash denied — deny wins, "

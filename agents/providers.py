@@ -11,6 +11,9 @@ import os
 import subprocess
 import time
 
+import mail_guard
+import turn_settings
+
 CLAUDE = os.environ.get("CLAUDE_BIN", "claude")
 # Three minutes. Mark, 2026-09-18: "in 3 minuten moet er gereviewed kunnen
 # worden [...] als dat niet werkt, de timeout limits ophogen (of beide,
@@ -109,6 +112,19 @@ def run(provider, system, prompt, model=None, allow=None, deny=None, progress=No
         return {"answer": f"(provider '{provider}' nog niet ondersteund door deze listener)",
                 "model": "", "cost": 0.0, "turns": 0, "denials": [], "error": "provider"}
 
+    cwd = os.getcwd()
+    unsafe = turn_settings.problem(cwd)
+    if unsafe:  # a project settings file could route around the mail guard
+        return {"answer": f"(refused: {unsafe})", "model": model or "", "cost": 0.0,
+                "turns": 0, "denials": [], "error": f"unsafe settings: {unsafe}"}
+    r = _turn(system, prompt, model, allow, deny, progress, no_tools, env)
+    after = turn_settings.problem(cwd)   # appeared during the turn: say so
+    if after:
+        r["error"] = f"unsafe settings after the turn: {after}"
+    return r
+
+
+def _turn(system, prompt, model, allow, deny, progress, no_tools, env):
     # dontAsk = deny by default: anything outside --allowedTools is refused
     # instead of offered. Without this flag the agent kept tools like Agent,
     # WebFetch and SendMessage — the allowlist only decided what was allowed
@@ -116,7 +132,9 @@ def run(provider, system, prompt, model=None, allow=None, deny=None, progress=No
     # back as a permission_denial, so #escalatie gets a machine signal and not
     # only self-reporting.
     cmd = [CLAUDE, "-p", "--output-format", "json", "--permission-mode", "dontAsk",
-           "--append-system-prompt", system]
+           "--append-system-prompt", system,
+           # Every turn, whatever its allowlist: Gmail to Mark alone (mail_guard.py).
+           "--settings", mail_guard.settings()]
     if model:
         cmd += ["--model", model]
     if allow:

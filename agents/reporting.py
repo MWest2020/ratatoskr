@@ -90,6 +90,9 @@ def report_run(send, channels, handle, cname, cfg, r):
                       f"({providers.MAX_TURN_S}s). Split it up, or if this keeps "
                       f"happening do the heavy work as a habitat run instead — that has "
                       f"30 minutes.")
+        elif err.startswith("unsafe settings"):
+            advice = ("decide: remove that key from the listener tree's .claude settings; "
+                      "no turn runs beside it (agents/turn_settings.py).")
         else:
             advice = "decide: check the listener log; not a role issue."
         msg = (f"limitation · {handle} in #{cname} · model {r.get('model') or '?'}\n"

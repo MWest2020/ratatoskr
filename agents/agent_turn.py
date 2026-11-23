@@ -13,6 +13,7 @@ import agent_skills
 import build
 import consult
 import credits
+import mail_guard
 import repo_read
 import propose
 import factory_wiring
@@ -82,6 +83,7 @@ def build_turn(agents, hub, reg, send, channels, pub2name, root, try_session, lo
                               + prompts.session_clause(reg.cfg, handle, writer)
                               + prompts.route_clause(cfg)
                               + readshell.clause(cfg)
+                              + mail_guard.clause(cfg)
                               + session_inbox.clause(handle, hub)
                               + build.clause(handle, hub, factory or {})
                               + factory_wiring.clause(handle, hub)
