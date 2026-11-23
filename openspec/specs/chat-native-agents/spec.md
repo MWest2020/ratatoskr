@@ -327,3 +327,219 @@ room, a reply SHALL continue the issue referenced by the parent message.
 - **WHEN** Mark replies to architect's message ending `· ratatoskr#57` in
   #werkplaats while #58 is the room's latest issue
 - **THEN** the message is recorded on ratatoskr#57 and architect answers
+
+### Requirement: A chat agent can read the state of the work through a bounded read shell
+
+A chat agent whose handbook definition allows exactly
+`Bash(python3 agents/readshell.py:*)` SHALL be able to run the read shell. The
+read shell answers six read-only questions about a repository of `MWest2020`:
+recent commits, branches, open OpenSpec changes, open PRs, open issues and the
+checks of a PR.
+
+The read shell SHALL:
+
+- fix the owner;
+- validate the repository name, numbers and labels before running anything;
+- run each question as one fixed argument list without a shell;
+- report a failure with its reason instead of empty output.
+
+The listener SHALL tell the agent about the read shell in its system prompt,
+generated from the definition, and say nothing when the definition does not
+allow it.
+
+#### Scenario: Odin reads the open PRs of a repository
+
+- **WHEN** a definition allows the read-shell rule and the agent runs
+  `python3 agents/readshell.py prs wordsworth`
+- **THEN** it gets the open PRs of `MWest2020/wordsworth`, at most 40 lines
+
+#### Scenario: Another owner or a crafted name is refused
+
+- **WHEN** the agent passes `other/repo`, `../x` or `-x` as the repository
+- **THEN** the read shell refuses it with a reason and runs no command
+
+#### Scenario: The agent is not told about a shell it does not have
+
+- **WHEN** a definition does not allow the read-shell rule
+- **THEN** its system prompt does not mention the read shell
+
+### Requirement: A chat turn gets no Bash other than the read shell
+
+The listener SHALL NOT spawn a chat agent whose definition allows any Bash
+entry other than the exact read-shell rule. It SHALL log the offending entry,
+like a definition without a model.
+
+#### Scenario: A free shell in a chat facet is refused
+
+- **WHEN** a chat facet declares `allow: [Read, Bash]`
+- **THEN** that agent is not spawned and the listener log names `Bash` as the
+  reason
+
+### Requirement: Odin starts a build, and the listener decides whether it runs
+
+The hub MAY end an answer with `!build <repo> <change>`. The listener SHALL run
+habitat's chain (architect, builder, reviewer, security) only when four
+conditions hold:
+
+- the repository is on the factory's list of Mark's repositories;
+- the OpenSpec change exists on that repository's main;
+- the work has an issue;
+- the daily build budget is not used up.
+
+It SHALL record each role's verdict and branch as a comment on that issue. A
+build that does not meet a condition SHALL NOT start, and the listener SHALL
+say which condition failed.
+
+#### Scenario: A build without an issue does not start
+
+- **WHEN** odin writes `!build wordsworth some-change` for work that has no
+  issue
+- **THEN** no Job runs, and the room says the build needs an issue first
+
+#### Scenario: Every verdict is on the issue
+
+- **WHEN** the chain runs for an issue
+- **THEN** the issue gets one comment per role with its verdict and branch
+
+### Requirement: A build that passes the cage and CI is merged without Mark
+
+When all four roles pass, the listener SHALL open a pull request from the
+builder branch, merge it once every check passes, and close the issue with a
+link to the merge. alma SHALL never be a deploy target.
+
+#### Scenario: A red check stops the merge
+
+- **WHEN** one check on the pull request fails
+- **THEN** nothing is merged, and the issue says which check failed
+
+### Requirement: Closing is Mark's
+
+Odin MAY create roles and channels. Closing a role or channel, or changing an
+existing role's mandate or tools, SHALL only happen after Mark answers the
+proposal with `!yes`, from his current pubkey.
+
+#### Scenario: Odin proposes to close a channel
+
+- **WHEN** odin proposes to archive a channel
+- **THEN** nothing is archived until Mark answers `!yes`
+
+### Requirement: The hub consults other agents itself
+
+The hub MAY put `!consult <agent>[,<agent>] <question>` on the first line of
+its answer. The listener SHALL then give each named agent (at most two;
+existing, not the hub, and allowed to speak in that channel) one turn in the
+same channel. That turn gets Mark's message and the hub's question, and the
+agent answers under its own name. A consulted agent's answer SHALL NOT be read
+for `!consult`, so consulting never chains. An agent that is refused SHALL be
+named in the channel with the reason.
+
+Added on Mark's decision of 2026-10-23 ("ja, bouw !consult"). Until then odin
+had to ask Mark to post its questions to other agents: a `!route`d message is
+posted under odin's key, and the loop guard skips agent messages, so nobody
+answered it.
+
+#### Scenario: Odin asks architect and reviewer
+
+- **WHEN** odin answers with `!consult architect,reviewer Is this an MVP?`
+- **THEN** after odin's answer, architect and then reviewer answer in the same
+  channel, each with Mark's message and odin's question
+
+#### Scenario: No chains
+
+- **WHEN** a consulted agent writes `!consult bouwer …` itself
+- **THEN** bouwer gets no turn
+
+### Requirement: A decided change gets written without the coding session
+
+The hub MAY put `!propose <repo> <change-id> <summary>` on the first line of
+its answer, for a repository on the factory's list. The listener SHALL open an
+issue for it, and SHALL start a writing session in a fresh worktree that may
+write only under `openspec/changes/<change-id>/`, with `openspec validate` as
+its only command. When the session ends, the listener SHALL check that every
+changed path is under that directory and that
+`openspec validate <change-id> --strict` exits zero. Only then SHALL it commit,
+push the session branch and open a pull request. The PR SHALL be merged once
+every check passes and SHALL NOT be deployed. After the merge, the hub SHALL
+get one follow-up turn to build the change.
+
+#### Scenario: A stray file stops the proposal
+
+- **WHEN** the session also writes a file outside `openspec/changes/<id>/`
+- **THEN** no PR is opened, and the issue and the channel say which file
+
+### Requirement: A chat agent runs only with the system prompt from its definition
+
+The listener SHALL take a chat agent's system prompt from the blockquote under
+the `## Chat facet` heading of its handbook definition. The heading may be
+written with a hyphen or a space, in any case. The listener SHALL NOT spawn an
+agent whose prompt comes out empty, and SHALL log the reason, as it does for a
+definition without a model.
+
+#### Scenario: The translated heading is found
+
+- **WHEN** a definition has `## Chat facet (ratatoskr · #bouw)` followed by a
+  prose line and a blockquote
+- **THEN** the system prompt is the blockquote, without the prose line and
+  without the next section
+
+#### Scenario: An empty prompt does not run
+
+- **WHEN** a definition has no blockquote under its chat facet
+- **THEN** that agent is not spawned and the listener log says
+  `no system prompt`
+
+### Requirement: The role contract reaches the model
+
+When a definition has a `## Contract` section, the listener SHALL append that
+section to the agent's system prompt, after one instruction line. The line
+says: answer only what the contract says you take, and for anything under "Not
+mine", name whose it is and stop. A definition without a contract SHALL keep
+its prompt unchanged, and a contract SHALL NOT count as a prompt when the chat
+facet has none.
+
+#### Scenario: The contract follows the prompt
+
+- **WHEN** a definition has a chat facet with a blockquote and a `## Contract`
+  section
+- **THEN** the system prompt is the blockquote, then the instruction line, then
+  the contract
+
+#### Scenario: No contract, no change
+
+- **WHEN** a definition has no `## Contract` section
+- **THEN** its system prompt is exactly the blockquote
+
+### Requirement: In a shared room the role contracts decide who answers
+
+In a channel marked as a shared room, a human message without an @mention SHALL
+go to one triage step. The triage step reads the "Takes" and "Not mine" lines
+of each room member's contract and names one or more owners with a reason. The
+listener SHALL post the outcome as a visible claim line, and only the named
+owners SHALL answer. When triage fails or names nobody, the listener SHALL say
+so in the room instead of staying silent. An @mention SHALL take precedence
+over triage.
+
+#### Scenario: A design question goes to architect
+
+- **WHEN** Mark writes a design question in the shared room without naming an
+  agent
+- **THEN** the room shows a claim line naming architect and the reason, and
+  only architect answers
+
+#### Scenario: Nobody takes it
+
+- **WHEN** triage names no owner
+- **THEN** the room shows "nobody took this" with the reason
+
+### Requirement: A hand-off between agents is visible and bounded
+
+An agent in a shared room MAY end its answer with `!handoff <agent> <line>`.
+The listener SHALL give the target one turn only when two conditions hold: the
+target is a room member, and the target appears in the source agent's contract
+under "Hands off to". A human message SHALL cause at most three hand-offs.
+
+#### Scenario: The hop limit holds
+
+- **WHEN** a third hand-off has run for one human message and an agent writes
+  a fourth
+- **THEN** no turn starts, and the room says the limit was reached
