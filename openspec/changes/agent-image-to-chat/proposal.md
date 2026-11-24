@@ -14,6 +14,27 @@ the same relay with `buzz messages get` and renders text through
 (`agents/notify.py`). A chart or a screenshot of a failing page cannot reach
 Mark except as a description.
 
+## Split after the second architect FAIL (ratatoskr#260)
+
+The second architect FAIL on this change (ratatoskr#260) had four findings. The
+decision is to cut the change in two:
+
+- **This change, `agent-image-to-chat`,** covers objective A (the sender: `ping.sh
+  --image`, `image_prep.py`) and objective C (the notification and the
+  retention).
+- **Follow-up `agent-image-to-chat-read`** covers objective B: the
+  `GET /api/media/<sha256>` read path, `chat/media.py`, the `images` field of
+  `/api/messages`, the inline image and full-screen view in the chat, and the
+  `webchat-pwa` requirement for the response headers. It is **built only after
+  Gate 0 is recorded in its design.md**. Everything about it that was in this
+  change (the route, its status codes, the UI, the 0.19.0 / `v33` triple, the
+  seam test, `chat/e2e/image.js`) leaves this change and is handed over in
+  design.md, "Handed to `agent-image-to-chat-read`".
+
+Until the follow-up is built, an agent can send an image and Mark gets the
+`🖼 caption` push, but the thread does not show the picture. This change does
+not make it visible.
+
 ## The other direction stays parked
 
 #223 (`chat-image-attachments`) is the reverse: Mark pastes an image, agents
@@ -24,11 +45,11 @@ architect named:
 | #223 trap | Here |
 |---|---|
 | The listener has to fetch the file from the chat host, and the listener does not run there. | Nothing fetches from the listener, and the listener fetches nothing. The bytes go up the path agents already use (`ping.sh` → buzz → relay, signed with the identity's key). They come down the path the chat already uses (chat → relay over the internal `buzz-net`). |
-| An unauthenticated read route would be the cheapest transport. | The only new route, `GET /api/media/<sha256>`, sits behind the existing session gate. The relay's own media URL answers 401 without Blossom auth (measured, see design). |
+| An unauthenticated read route would be the cheapest transport. | This change adds no route. The only new route, `GET /api/media/<sha256>`, belongs to the follow-up `agent-image-to-chat-read` and sits behind the existing session gate. The relay's own media URL answers 401 without Blossom auth (measured, see design). |
 | Whether agent-lxc reaches the chat on the tailnet (:8090) was never recorded. | No new network path. agent-lxc → relay at `192.168.178.60:3000` (what `ping.sh` already uses), chat → relay over `buzz-net`, phone → chat over `tailscale serve`. |
 | Retention was unanswered. | Images are kept 30 days. A daily job deletes older ones, and the job fails loudly when the bucket stays over 2 GiB. |
 | EXIF stripping had no route in a stdlib-only chat image. | Images are stripped on agent-lxc, where `uv` scripts with dependencies are normal (`push-notify.py`). The relay also refuses media that carries metadata (measured). The chat image stays stdlib-only. |
-| `chat/app.js` is at 200 lines. | One existing hook line is changed and no lines are added. The image code lives in a new file. |
+| `chat/app.js` is at 200 lines. | `chat/app.js` is not touched here. The follow-up changes one existing hook line, adds no lines, and keeps the image code in a new file. |
 
 ## What changes
 
@@ -41,16 +62,6 @@ architect named:
   `buzz messages send --file` uploads the image to the relay's Blossom store
   and attaches it to the signed message. One image per message, and the caption
   is required.
-- **Chat server.** `/api/messages` gains an `images` field for each message,
-  read from the `imeta` tags of the event. The new `GET /api/media/<sha256>`,
-  behind the session gate, fetches the blob with `buzz media get` under the
-  chat's own key. It serves the blob only when its magic bytes say PNG, JPEG or
-  WebP, with a fixed Content-Type, `nosniff` and `no-store`. A missing blob
-  returns 410 "expired", and any other failure returns 502 with the reason.
-- **Chat UI.** A new `chat/app-image.js` shows the image inline under the
-  caption. Tapping it opens a full-screen view, and tapping again or Back
-  closes it. A failure is shown as text that names the reason: expired, offline
-  or relay error.
 - **Notification.** For an image message the push reads `🖼 <caption>`, and a
   tap opens the channel. The image itself is not in the notification (see the
   gates).
@@ -61,33 +72,50 @@ architect named:
 
 ## Gates
 
-Gate 0 comes before the build: `media get` and a cross-identity blob read,
-measured on the chat container's CLI (`BUZZ_REF=4baccd53`), not on agent-lxc's
-`~/.local/bin/buzz`. A `BUZZ_REF` bump would force a relay image bump
+**Gate 0 is no longer a gate of this change.** It measures `buzz media get` and
+a cross-identity blob read on the chat container's CLI (`BUZZ_REF=4baccd53`),
+which only the read path needs. It moves to `agent-image-to-chat-read`, which is
+built only after Gate 0 is recorded in its design.md. The exact `buzz media get`
+invocation, including the stdout flag, is part of what Gate 0 records; `-o -` is
+unverified and is not assumed. A `BUZZ_REF` bump would force a relay image bump
 (`relay-deployment/spec.md:38`) and goes in its own change.
 
 Three were measured on 2026-11-13 and are recorded in design.md. An agent key
 can upload. The relay refuses metadata. Read-back with `media get` is
-byte-identical. Those, too, were measured on agent-lxc's CLI. Three remain
-(gate 1 was recorded on 2026-11-24, see design.md):
+byte-identical. Those, too, were measured on agent-lxc's CLI. Gate 1 (the
+`imeta` shape) was recorded on 2026-11-24, see design.md, and is the only one
+the build waits on. Three remain for this change:
 
-1. The `imeta` tag that `buzz messages send --file` actually writes. Sending a
-   probe message from this proposal session was refused by the auto-mode
-   classifier, so this gate is still open.
-2. The bucket key layout and what else lives in `buzz-media`, before the prune
+1. The bucket key layout and what else lives in `buzz-media`, before the prune
    is enabled.
-3. On Mark's phone: the image renders in the installed PWA and opens full size.
-   Rich notifications with the picture in them are **not** in this change. This
-   gate records whether Chrome on Android could show one, for a later decision.
+2. A real `ping.sh --image` with a prepared PNG, JPEG and WebP, accepted by the
+   relay.
+3. On Mark's phone: the `🖼 caption` notification and its tap. Rich
+   notifications with the picture in them are **not** in this change. This gate
+   records whether Chrome on Android could show one, for a later decision.
 
 ## Out of scope
 
+- The read path and everything the chat shows: `agent-image-to-chat-read`.
 - #223, Mark → agents. Agents do not get images in their prompts.
 - Chat-native agents (odin and the listener turns) attaching images from a turn.
   The listener's answer path stays text. See the decisions.
 - The image inside the push notification.
 - More than one image per message, and video, GIF, SVG or PDF.
 - An image as a thread reply (`--reply-to`).
+
+## Open questions
+
+- The decision names three things as objective B (the route, `chat/media.py`,
+  the headers requirement). The `images` field, the inline image and the
+  full-screen view cannot work without the route, so they are placed in the
+  follow-up too. If they should stay here, say so.
+- Whether Pillow can be resolved by `uv` in the build cage is unknown. The
+  Pillow test fails rather than skips when it cannot (design.md, "Tests"). If
+  the cage cannot resolve it, the choice is to vendor the wheels or to accept
+  that the metadata-strip test only runs on the host. Not decided.
+- The follow-up change `agent-image-to-chat-read` does not exist yet. It is
+  proposed separately, with the handover in this change's design.md.
 
 ## Decisions (Mark, 2026-11-14 by mail: "defaults ok")
 
