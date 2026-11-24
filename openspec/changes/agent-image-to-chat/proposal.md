@@ -61,9 +61,15 @@ architect named:
 
 ## Gates
 
+Gate 0 comes before the build: `media get` and a cross-identity blob read,
+measured on the chat container's CLI (`BUZZ_REF=4baccd53`), not on agent-lxc's
+`~/.local/bin/buzz`. A `BUZZ_REF` bump would force a relay image bump
+(`relay-deployment/spec.md:38`) and goes in its own change.
+
 Three were measured on 2026-11-13 and are recorded in design.md. An agent key
 can upload. The relay refuses metadata. Read-back with `media get` is
-byte-identical. Three remain:
+byte-identical. Those, too, were measured on agent-lxc's CLI. Three remain
+(gate 1 was recorded on 2026-11-24, see design.md):
 
 1. The `imeta` tag that `buzz messages send --file` actually writes. Sending a
    probe message from this proposal session was refused by the auto-mode

@@ -211,7 +211,10 @@ IDENT=architect CHAN=architectuur orchestrator/ping.sh --image chart.png 'p95 la
 the notification and the `alt` text need one. Everything else in `ping.sh`
 stays as it is: IDENT lookup, the human identity refused, inactive identities
 refused, `#general` hub-only for sessions, and the nsec from SOPS. The only
-other difference is `--file "$OUT"` on the `buzz messages send` line. Exit
+other difference is on the `buzz messages send` line: the image branch sends
+`--content "$MSG" --file "$OUT"`, exactly the form gate 1.1 measured. It does
+not keep the text path's `--content -` (stdin): stdin together with `--file`
+was never measured, so it is not used. The text-only branch is unchanged. Exit
 codes are new for an image refusal (10) and a missing caption (9), and the
 reason is on stderr.
 
@@ -249,7 +252,10 @@ The line count stays the same and nothing in app-reply.js changes. The new
 Styles go in a new `chat/image.css`. `app.css` is at 174 lines, and the next
 change should not have to make room. Both new files are registered in all four
 places: `chat/statics.py` FILES, `chat/sw.js` SHELL and FRESH_ASSETS, and
-`chat/index.html`. `CACHE` in `sw.js` goes to `v32` with a note.
+`chat/index.html`. `CACHE` in `sw.js` goes to `v33` with a note: `v32` and the
+chat pin `0.18.0` (tag `chat-v0.18.0`) are already shipped by aa71478, and an
+immutable tag or cache name is never reused. This change ships as
+**0.19.0 / `chat-v0.19.0` / `v33`**.
 
 The offline snapshot stores `images` along with the rest of each message.
 Offline, `fetch` fails and the placeholder says "image not available offline".
@@ -311,6 +317,19 @@ Rejected:
 
 ## Gates (before or during the build)
 
+0. **The chat container's CLI (host, before the build).** Gates 1.1 and the
+   2026-11-13 table were measured on agent-lxc's `~/.local/bin/buzz`. The chat
+   runs a different binary, built from `BUZZ_REF=4baccd53…`
+   (`chat/Dockerfile:12`). `/api/media/` depends on `media get` there, and on
+   reading a blob that another identity uploaded, so both are measured on that
+   CLI: the chat image's `buzz`, via `docker run --entrypoint buzz` or
+   `docker compose exec chat`. Record the CLI version and the outcome of
+   (a) `media get <sha> -o -` as `mark` on the 1.1 blob, (b) the same on a blob
+   uploaded by `odin`, (c) an unknown hash giving 404, under "Measured (gate
+   0)". If a `BUZZ_REF` bump is needed, `relay-deployment/spec.md:38` makes the
+   chat build the CLI from the same upstream commit as the relay image, so the
+   bump forces a relay image bump. That is its own change, and this one waits
+   for it. Not decided here: which upstream commit.
 1. **imeta shape (host, before the build). Done 2026-11-24**, see "Measured on
    2026-11-24". The coordinating session on
    agent-lxc sends one image message with `buzz messages send --file` into
@@ -330,7 +349,8 @@ Rejected:
    not a 500 from a dangling row in the relay database. Otherwise the chat maps
    the error to "relay error", and the UI shows that text instead of "expired".
 4. **JPEG and WebP through the relay (live).** Upload one helper-prepared file
-   of each format. The relay's metadata check must accept Pillow's JFIF APP0
+   of each format, through the real `ping.sh --image`, which also proves that
+   `--content '<caption>' --file <path>` is accepted by the real CLI. The relay's metadata check must accept Pillow's JFIF APP0
    and a plain `VP8 `/`VP8L` RIFF. If it refuses one, change the save options
    for that format.
 5. **On the phone (live).** In the installed PWA over `tailscale serve`, the
@@ -361,7 +381,9 @@ Rejected:
   and the cooldown behaviour is unchanged for image messages.
 - **The seam** (`chat/test_media_seam.py`): the bytes `image_prep.py` writes
   for the PNG fixture go into a fake `buzz` binary (`BUZZ_BIN` pointing at a
-  script that prints them for `media get`). The real route serves them with
+  script that prints them for `media get`; it proves the two sides of the
+  format, not the real CLI, and not the stdin-plus-file combination, which is
+  not used). The real route serves them with
   `image/png`, and `from_tags` on the recorded event yields that sha. Break one
   side (the magic sniff, or the `x` field name) and the test fails. Check that
   by breaking it once.
