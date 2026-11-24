@@ -1,6 +1,6 @@
 ---
 status: current
-last_reviewed: 2026-11-14
+last_reviewed: 2026-11-24
 ---
 
 # Build from the chat
@@ -14,26 +14,27 @@ phase 1). You can also start one yourself with the same line.
 
 The starters are listed in `agents/factory.yml`, so Mark controls the list:
 
-    build_starters: [mark, odin, claude, jarvis]
+    build_starters: [mark, odin, claude, jarvis, heimdall]
 
 Mark, 2026-11-14: *"Dat moet wel kunnen. claude, odin, or jarvis mogen dit."*
 A name is an `identities.yml` handle; the listener matches the message's
 pubkey, never a name typed in the text, and only while that identity is
 `actief`: a revoked key starts nothing, even when its name is still on the list.
-Without the key only odin and Mark may start a build (the rule before
-2026-11-14).
+`heimdall` joined on 2026-11-24: it is the coding session on agent-lxc, which
+pinged as `odin` until then. Without the key only odin and Mark may start a
+build (the rule before 2026-11-14).
 
 | who | where the line counts |
 |---|---|
 | odin, its own answer | only the **first** line (a quote further down never starts a build) |
-| an agent identity on the list (`claude`, `jarvis`, or a session pinging as `odin`) | only the **first** line of its message |
+| an agent identity on the list (`heimdall`, `claude`, `jarvis`, or a session still pinging as `odin`) | only the **first** line of its message |
 | Mark | anywhere in his own message |
 
 An agent identity's message is **never answered as chat**: the listener acts on
 its `!build` and nothing else, so two agents cannot talk each other into a loop.
 An agent identity that is not on the list is ignored, as before; the answer of
 a chat agent that is not on it (architect, bouwer, …) is refused aloud (`⛔
-build not started: only mark, odin, claude or jarvis start builds`). What the listener posts itself in
+build not started: only mark, odin, claude, jarvis or heimdall start builds`). What the listener posts itself in
 odin's voice (answers, session reports, build lines) is never read back as a
 `!build` (`agents/build_starters.py`, `OwnPosts`): a session report that happens
 to start with the marker starts nothing. The listener remembers a post (channel,

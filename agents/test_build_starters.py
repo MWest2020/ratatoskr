@@ -19,7 +19,7 @@ import build_wiring
 from test_build import CHAIN_LOG, FakeProc, cfg
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-STARTERS = ["mark", "odin", "claude", "jarvis"]
+STARTERS = ["mark", "odin", "claude", "jarvis", "heimdall"]  # heimdall: 2026-11-24
 
 
 class RoadFixture:
@@ -93,7 +93,7 @@ class Road(RoadFixture, unittest.TestCase):
     def test_off_the_list_through_try_build_is_refused_aloud(self):
         self.try_build("!build ratatoskr x", "architect", "general", "cid", own=True)
         self.assertEqual(self.argv, [])
-        self.assertIn("⛔ build not started: only mark, odin, claude or jarvis", self.said[-1])
+        self.assertIn("⛔ build not started: only mark, odin, claude, jarvis or heimdall", self.said[-1])
 
     def test_marks_message_keeps_its_own_road(self):
         self.assertFalse(self.take("mark", "!build ratatoskr x"))   # the listener's path
@@ -136,8 +136,8 @@ class TheList(unittest.TestCase):
         ids = {n: dict(v) for n, v in build_starters.identities().items()}
         ids["jarvis"]["status"] = "ingetrokken"
         c = {"build_starters": STARTERS}
-        self.assertEqual(build_starters.allowed(c, "odin", "mark", ids), ["mark", "odin", "claude"])
-        self.assertEqual(build_starters.who(c, "odin", "mark", ids), "mark, odin or claude")
+        self.assertEqual(build_starters.allowed(c, "odin", "mark", ids), ["mark", "odin", "claude", "heimdall"])
+        self.assertEqual(build_starters.who(c, "odin", "mark", ids), "mark, odin, claude or heimdall")
         seen = []
         self.assertFalse(build_starters.take({"content": "!build ratatoskr x"}, "jarvis", "c",
                                              "cid", lambda *a, **k: seen.append(a), c,

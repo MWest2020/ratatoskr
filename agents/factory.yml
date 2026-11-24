@@ -10,7 +10,9 @@ repos: [ratatoskr, handbook, wordsworth, habitat, skill-forge, Wanderer, zettelk
 # identities.yml handles, matched by the message's pubkey. Mark's marker counts anywhere in
 # his message; an agent's on its first line only, and an agent's message is never chat.
 # Every other gate (repos, change on main, slots, budget, breaker, issue) still applies.
-build_starters: [mark, odin, claude, jarvis]
+# heimdall (2026-11-24): the coding session on agent-lxc, which pinged as odin until
+# then; Mark named it "Heimdall". odin stays: it is still the chat agent (the hub).
+build_starters: [mark, odin, claude, jarvis, heimdall]
 # Readable by every chat agent as .repos/<name>/ (agents/repo_read.py). Its own
 # list: a private repository is never readable by accident.
 readable: [ratatoskr, handbook, wordsworth, habitat, convergence, bubbels2]

@@ -1,6 +1,6 @@
 ---
 status: actief
-last_reviewed: 2026-11-14
+last_reviewed: 2026-11-24
 ---
 
 # Ping the owner from a working session
@@ -8,7 +8,27 @@ last_reviewed: 2026-11-14
 Mark talks to one coordinating session directly. Every other Claude session
 reaches him through the relay, at a milestone or when blocked:
 
-    IDENT=<your-ident> ~/ratatoskr/orchestrator/ping.sh '[<session>] message'
+    IDENT=<your-ident> CHAN=<channel> ~/ratatoskr/orchestrator/ping.sh '[<session>] message'
+
+## The coding session is heimdall
+
+The coding session on agent-lxc (the desk Jarvis hands work to; it decides and
+builds) pings as **`heimdall`**, display name *Heimdall* (Mark, 2026-11-24:
+"ok, Heimdall is goed"):
+
+    IDENT=heimdall CHAN=escalatie ~/ratatoskr/orchestrator/ping.sh 'message'
+
+Until 2026-11-24 it pinged as `odin`. That was confusing: `@odin` is also the
+chat agent, the hub that answers Mark in #general, and a ping signed with odin's
+key cannot be told apart from odin's own answer. `odin` is the chat agent only
+from now on; a session no longer borrows its key.
+
+heimdall is a session identity (`rol: sessie`), so it follows the session rules
+below: it is a member of #escalatie, #statistics and #review (once the owner
+has run the relay phase below), and **not** of #general. #general is the hub channel, where Mark talks to odin alone (spec
+`identity-registry`, "one hub agent in the human channel"), and `ping.sh`
+refuses a session there. A ping to Mark goes to #escalatie; his answer still
+comes back through odin and the session inbox (below).
 
 `ping.sh` reads the identity's nsec from SOPS, signs with buzz-cli and posts to
 the self-hosted relay. No extra credentials on the agent host. Pinging from the
@@ -19,8 +39,22 @@ its own worktree (see the handbook's operating agreements).
 
 - **Never borrow an IDENT.** Identity = key pair = provenance. Posting under
   another session's key makes the audit trail untrue. `ping.sh` with an IDENT
-  that is not in `identities.yml` fails with "unknown IDENT"; create one with
-  `orchestrator/create-session-identity.py --name <name>`.
+  that is not in `identities.yml` fails with "unknown IDENT".
+- **A new session identity** is made in two phases. In a worktree, on a branch:
+
+      uv run orchestrator/create-session-identity.py --name <name> \
+        --display <Name> --about '<one line: what it is>' \
+        [--chan <channel> ...] --phase registry
+
+  This writes the key pair, the key into `secrets/identities.yaml` (SOPS,
+  fail-closed) and the entry into `identities.yml`; commit both in a PR. Then
+  the owner, after the merge, gives it relay and channel membership:
+
+      uv run orchestrator/create-session-identity.py --name <name> --phase relay [--chan <channel> ...]
+
+  #escalatie is always included and #general is refused. Channel changes are
+  signed by the orchestrator (the channel owner), never by Mark. Without
+  `--phase` the script does both in one go.
 - `IDENT=bouwer` to #general works for sessions without their own key.
 - **Membership is per channel.** A key that is a member of #general is not
   automatically a member of a project channel; the relay then answers
@@ -37,18 +71,18 @@ A session starts a habitat build with the same line as Mark and odin, on the
 **first** line of its ping (Mark, 2026-11-14: *"claude, odin, or jarvis mogen
 dit."*):
 
-    IDENT=claude CHAN=escalatie ~/ratatoskr/orchestrator/ping.sh \
+    IDENT=heimdall CHAN=escalatie ~/ratatoskr/orchestrator/ping.sh \
       $'!build wordsworth some-change 123\nwhy: the change is merged, the issue is open'
 
-- **Which IDENT.** A coding session uses `claude`; the voice bridge uses
-  `jarvis`. Both are session identities (created 2026-11-14). The
-  coordinating session that already pings as `odin` may keep doing so: odin is
-  on the list too. What counts is the signing key, matched against
+- **Which IDENT.** The coding session on agent-lxc uses `heimdall` (since
+  2026-11-24); another coding session uses `claude`; the voice bridge uses
+  `jarvis`. All three are session identities. `odin` is on the list as the
+  chat agent, not for a session to borrow. What counts is the signing key, matched against
   `build_starters` in `agents/factory.yml`; an IDENT that is not on that list
   (`hubby`, `bouwer`, …) starts nothing, silently.
 - **Which channel.** One where your identity and odin are both members: odin
   says `🔨 build started`, every verdict and every refusal in the channel the
-  build came from. `claude` and `jarvis` are members of #escalatie. A session
+  build came from. `heimdall`, `claude` and `jarvis` are members of #escalatie. A session
   identity may not post in #general (`ping.sh` refuses it). For another
   channel, ask Mark to run `orchestrator/add-member.py --chan <channel> --name
   <ident>`.
