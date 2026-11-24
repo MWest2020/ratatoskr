@@ -64,3 +64,50 @@ that calls both sides, plus an e2e in `chat/e2e`.
 2. **Vision through Read.** Check that `claude -p` under `dontAsk` gives the
    model the actual image through `Read`, and that the model in `agents.yml`
    for the agent supports vision. If not, amend this design first.
+
+### Gate results (2026-11-24, host session on agent-lxc)
+
+**1. buzz media: passes. The relay carries media natively.** Measured for the
+sister change `agent-image-to-chat` (#243); see its design.md, "Measured on
+2026-11-13" and "Measured on 2026-11-24":
+
+- `buzz upload file` puts a PNG in the relay's Blossom store (`buzz-media`) and
+  returns `url`, `sha256`, `size`, `type`, `dim`, `blurhash`, `thumb`; the relay
+  refuses media with metadata (422); `buzz media get <sha>` returns it
+  byte-identical; the media URL is 401 without Blossom auth.
+- `buzz messages send --file probe.png` (as `odin`, to `#statistics`) was
+  accepted. The event carries
+  `["imeta","url http://192.168.178.60:3000/media/<sha>.png","m image/png","x <sha>","size 463","dim 16x16","blurhash …","thumb …/<sha>.thumb.jpg"]`
+  and buzz appends `\n![image](<url>)` to `content`. The recorded event is
+  `chat/testdata/imeta-event.json`. The message was deleted afterwards; the
+  blob stays until a prune.
+
+Consequence, per gate 1 above: the decision "the image does not go through the
+relay" (proposal, "What changes") has to be revisited before this change is
+built. The reference form is now answered by the relay itself (an `imeta` tag
+on the signed event), and the content-hash store on the chat host and the
+listener's fetch from the chat host may no longer be needed. Not decided here.
+
+**2. Vision through Read: passes for every model the chat agents use.** The
+chat-facet models in the handbook (`docs/agents/*.md`): `sonnet` for odin,
+bouwer, marketing, ontwerper, reviewer, roodteam and pilotleider; `haiku` for
+assistent; `opus` for architect. Probe: a generated 96×48 PNG with a red disc
+on the left and a blue square on the right, in a scratch directory `<dir>`. Run
+with the listener's reduced environment (`env -i` with `PATH`, `HOME`, `LANG`,
+`TERM`, as `agent_env()`) and the absolute scope `scoped()` produces:
+
+```
+claude -p --output-format json --permission-mode dontAsk --model <m> \
+  --allowedTools "Read(/<dir>/**)" \
+  <<<"Read the image file <dir>/probe.png with the Read tool and describe in one sentence what shapes and colours it contains. Do not guess from the filename."
+```
+
+| `--model` | ran as | turns | denials | answer |
+|---|---|---|---|---|
+| `sonnet` | `claude-sonnet-5-5` | 2 | none | "The image contains a red circle on the left and a blue square on the right, side by side on a white background." |
+| `haiku` | `claude-haiku-5-5` | 2 | none | "The image shows two solid shapes on a plain background: a red circle on the left and a blue square on the right." |
+| `opus` | `claude-opus-5-5` | 2 | none | "The image shows a red filled circle on the left and a blue filled square on the right, both on a white background." |
+
+Claude Code 2.1.322. The `Read` tool hands the model the image itself, not a
+text rendering of the bytes, so the delivery-through-scratch-dir part of the
+design holds.

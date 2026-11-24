@@ -1,0 +1,24 @@
+{
+  "content": "gate 1.1 imeta probe (#243) — 16x16 test image, deleted right after\n![image](http://192.168.178.60:3000/media/bc9854f99dbe38c18f0ae3d55ad8fc7583c03b645fdc7be1ee68524a2888871e.png)",
+  "created_at": 1795513550,
+  "id": "4464f0650e0d9446e99862835b1748d28d3ff1a2eca9f57ba8b50f8773b6b4d0",
+  "kind": 9,
+  "pubkey": "b0e20b3080ca3a7d922800deb43c90b48ee0bd1f16cd546b87ccea7473b93ece",
+  "sig": "519a77c8e208c11a428e429ab2d1dedfb5c7ac0ab80cac418056ebd330875cd377ce823195f2478e5c6c20283e321a6ee1697a2d887daa9907d1234950364434",
+  "tags": [
+    [
+      "h",
+      "4deb736b-a36c-44c0-a966-ee930ffe802b"
+    ],
+    [
+      "imeta",
+      "url http://192.168.178.60:3000/media/bc9854f99dbe38c18f0ae3d55ad8fc7583c03b645fdc7be1ee68524a2888871e.png",
+      "m image/png",
+      "x bc9854f99dbe38c18f0ae3d55ad8fc7583c03b645fdc7be1ee68524a2888871e",
+      "size 463",
+      "dim 16x16",
+      "blurhash L$HV9a2Y$5SghpazfQf7gcfQfQfQ",
+      "thumb http://192.168.178.60:3000/media/bc9854f99dbe38c18f0ae3d55ad8fc7583c03b645fdc7be1ee68524a2888871e.thumb.jpg"
+    ]
+  ]
+}

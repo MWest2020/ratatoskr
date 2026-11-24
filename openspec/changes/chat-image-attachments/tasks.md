@@ -3,10 +3,12 @@
 Queued behind the other open work (Mark, 2026-11-02); see the proposal.
 
 ## 1. Gates (before anything else)
-- [ ] **buzz media.** Check whether the buzz CLI or relay accepts media.
+- [x] **buzz media.** Check whether the buzz CLI or relay accepts media.
       Proof: a recorded command or request and its output, written into
       design.md under Gates. If it fails, amend design.md first.
-- [ ] **Vision through Read.** Run `claude -p` under `--permission-mode dontAsk`
+      Passed 2026-11-24 (design.md, "Gate results"); the relay carries media,
+      so the "not through the relay" decision is up for revision.
+- [x] **Vision through Read.** Passed 2026-11-24 for sonnet, haiku and opus. Run `claude -p` under `--permission-mode dontAsk`
       with `Read(<dir>/**)` on a PNG and ask what is in it, with the model
       configured for the agent. Proof: the model describes the image; the run is
       recorded in design.md. If it fails, amend design.md first.

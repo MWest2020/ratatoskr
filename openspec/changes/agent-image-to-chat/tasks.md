@@ -8,7 +8,9 @@ The build may start once 1.1 is recorded. 1.2 only blocks 3.3.
 - [x] **Measured 2026-11-13.** An agent key can upload, the relay refuses
       metadata (422), `media get` is byte-identical, the media URL is 401
       without auth, and 5 MiB is accepted. Recorded in design.md, "Measured".
-- [ ] 1.1 **imeta shape.** Send one image message with
+- [x] 1.1 **imeta shape.** Recorded 2026-11-24 (design.md, "Measured on
+      2026-11-24"): `imeta` has `url`, `m`, `x`, `size`, `dim`, `blurhash`,
+      `thumb`; `content` gains a `![image](<url>)` line. Send one image message with
       `buzz messages send --file` to `#statistics` as an identity that is a
       member there. Read it back with `messages get`, then delete it. Commit
       the event as `chat/testdata/imeta-event.json`. Note in design.md whether

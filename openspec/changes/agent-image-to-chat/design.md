@@ -42,9 +42,56 @@ does), against `ws://192.168.178.60:3000`:
 Two blobs from these probes sit in `buzz-media`: the 4×4 PNG `2439351e…` and
 the 5 MiB random PNG `db8b9613…`. The first prune run deletes both.
 
-**Not measured:** sending a message with `--file`. The auto-mode classifier
-refused that probe because it writes to a channel, so the shape of the `imeta`
-tag on the event is gate 1 below.
+Sending a message with `--file` was not measured that day (the auto-mode
+classifier refused the probe because it writes to a channel). It is gate 1,
+recorded below.
+
+## Measured on 2026-11-24 (gate 1, imeta shape)
+
+Run from agent-lxc by the coding session as identity `odin` (a member of
+`#statistics`, pubkey `b0e20b30…`), key from SOPS as `ping.sh` does, against
+`ws://192.168.178.60:3000`. The image was a generated 16×16 RGB PNG with only
+`IHDR/IDAT/IEND` (463 bytes, sha256 `bc9854f9…871e`).
+
+| Step | Result |
+|---|---|
+| `buzz messages send --channel <#statistics> --content '<caption>' --file probe.png` | rc 0, `{"accepted":true,"event_id":"4464f065…"}` |
+| `buzz messages get --channel <#statistics> --since <t0-60>` | the event, kind 9, committed verbatim as `chat/testdata/imeta-event.json` |
+| `buzz messages delete --event 4464f065…` | rc 0, `accepted` (tombstone `6759d873…`) |
+| `messages get --since <t0-60>` again | 0 events: the message is gone |
+| `buzz media get bc9854f9…` after the delete | rc 0, byte-identical: **deleting the message does not delete the blob** |
+
+The `imeta` tag, in this order:
+
+```
+["imeta",
+ "url http://192.168.178.60:3000/media/<sha256>.png",
+ "m image/png",
+ "x <sha256>",
+ "size 463",
+ "dim 16x16",
+ "blurhash <string>",
+ "thumb http://192.168.178.60:3000/media/<sha256>.thumb.jpg"]
+```
+
+Both `x` and `url` are present, and `x` equals the sha256 of the uploaded
+bytes, so `from_tags` works as designed. The only other tag is
+`["h", "<channel uuid>"]`.
+
+**`content` gains the URL.** buzz appends a Markdown image line to the text:
+
+```
+<caption>\n![image](http://192.168.178.60:3000/media/<sha256>.png)
+```
+
+So the cleaning in "`/api/messages` carries `images`" below removes the whole
+`![image](…/media/<hash>.<ext>)` (with its leading newline), not just the URL;
+removing only the URL would leave `![image]()` in the thread. The same applies
+to the caption in `notify._body`. The parser test uses this recorded content.
+
+The probe blob `bc9854f9…` now sits in `buzz-media` next to the two from
+2026-11-13; the first prune deletes it. Because a message delete leaves the
+blob in place, the prune is the only thing that ever removes an image.
 
 ## Decisions
 
@@ -113,9 +160,9 @@ tags (`["imeta", "url …", "m …", "x …", "dim …", …]`). It uses `x` for
 hash, or the 64-hex basename of `url` when `x` is missing. It keeps only
 `image/png`, `image/jpeg` and `image/webp`, and at most four entries. Anything
 that does not parse is dropped and the message still renders. `content` is
-cleaned of any URL that ends in `/media/<that hash>.<ext>`, in case buzz writes
-the URL into the text as well (gate 1 decides whether it does). The phone could
-not open that LAN URL anyway.
+cleaned of the Markdown image buzz appends, `\n![image](<url>)` where the URL
+ends in `/media/<that hash>.<ext>` (gate 1 measured that buzz does write it),
+and of any bare URL of that form. The phone could not open that LAN URL anyway.
 
 The exact tag shape comes from gate 1. The recorded event is committed as
 `chat/testdata/imeta-event.json` and drives the parser test, so the format that
@@ -264,7 +311,8 @@ Rejected:
 
 ## Gates (before or during the build)
 
-1. **imeta shape (host, before the build).** The coordinating session on
+1. **imeta shape (host, before the build). Done 2026-11-24**, see "Measured on
+   2026-11-24". The coordinating session on
    agent-lxc sends one image message with `buzz messages send --file` into
    `#statistics`, which never pushes (`notify.SILENT`), and reads it back with
    `messages get`. It records whether the content gains the URL, commits the
