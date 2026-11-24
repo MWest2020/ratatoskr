@@ -24,11 +24,16 @@ key cannot be told apart from odin's own answer. `odin` is the chat agent only
 from now on; a session no longer borrows its key.
 
 heimdall is a session identity (`rol: sessie`), so it follows the session rules
-below: it is a member of #escalatie, #statistics and #review (once the owner
-has run the relay phase below), and **not** of #general. #general is the hub channel, where Mark talks to odin alone (spec
-`identity-registry`, "one hub agent in the human channel"), and `ping.sh`
-refuses a session there. A ping to Mark goes to #escalatie; his answer still
-comes back through odin and the session inbox (below).
+below. Its channels are #escalatie, where it pings Mark and starts builds, and
+#statistics, for test pings (odin is a bot there). It becomes a member only
+when Mark has run the relay phase below; until then the relay refuses its
+posts. It is **not** in #general: that is the hub channel, where Mark talks to
+odin alone (spec `identity-registry`, "one hub agent in the human channel"),
+and `ping.sh` refuses a session there. Mark's answer still comes back through
+odin and the session inbox (below).
+
+heimdall's `!build` counts only after a listener restart: the listener reads
+`identities.yml` and `build_starters` once, at startup.
 
 `ping.sh` reads the identity's nsec from SOPS, signs with buzz-cli and posts to
 the self-hosted relay. No extra credentials on the agent host. Pinging from the
@@ -40,22 +45,28 @@ its own worktree (see the handbook's operating agreements).
 - **Never borrow an IDENT.** Identity = key pair = provenance. Posting under
   another session's key makes the audit trail untrue. `ping.sh` with an IDENT
   that is not in `identities.yml` fails with "unknown IDENT".
-- **A new session identity** is made in two phases. In a worktree, on a branch:
+- **A new session identity** is made in two phases. First a session, in a
+  worktree, on a branch (`--phase registry` is the default):
 
       uv run orchestrator/create-session-identity.py --name <name> \
-        --display <Name> --about '<one line: what it is>' \
-        [--chan <channel> ...] --phase registry
+        --display <Name> --about '<one line: what it is>' [--chan <channel> ...]
 
   This writes the key pair, the key into `secrets/identities.yaml` (SOPS,
-  fail-closed) and the entry into `identities.yml`; commit both in a PR. Then
-  the owner, after the merge, gives it relay and channel membership:
+  fail-closed) and the entry into `identities.yml`; commit both in a PR. A
+  session identity's key and build rights are part of that session's mandate,
+  so **Mark merges this PR himself.** Then the relay phase: **Mark runs it; the
+  orchestrator key signs** the channel changes, never Mark's key:
 
-      uv run orchestrator/create-session-identity.py --name <name> --phase relay [--chan <channel> ...]
+      uv run orchestrator/create-session-identity.py --name <name> [--chan <channel> ...] \
+        --phase relay --owner-step
 
-  #escalatie is always included and #general is refused. Channel changes are
-  signed by the orchestrator (the channel owner), never by Mark. Without
-  `--phase` the script does both in one go.
-- `IDENT=bouwer` to #general works for sessions without their own key.
+  #escalatie is always included; #general and archived channels are refused.
+  The relay phase refuses anything that is not an active `sessie` identity, a
+  name outside `^[a-z][a-z0-9-]{1,30}$`, and a `pubkey_hex` that is not 64
+  hex characters or does not match the key in SOPS (it ends up in an ssh
+  command). Those checks stop mistakes; they are **not the gate**. The gate is
+  the permission layer and Mark choosing to run the step: `--owner-step` only
+  says that this is his step.
 - **Membership is per channel.** A key that is a member of #general is not
   automatically a member of a project channel; the relay then answers
   "mentioned pubkeys are not channel members". `buzz channels members` needs
@@ -82,7 +93,8 @@ dit."*):
   (`hubby`, `bouwer`, …) starts nothing, silently.
 - **Which channel.** One where your identity and odin are both members: odin
   says `🔨 build started`, every verdict and every refusal in the channel the
-  build came from. `heimdall`, `claude` and `jarvis` are members of #escalatie. A session
+  build came from. `claude` and `jarvis` are members of #escalatie; `heimdall` is once Mark has
+  run its relay phase. A session
   identity may not post in #general (`ping.sh` refuses it). For another
   channel, ask Mark to run `orchestrator/add-member.py --chan <channel> --name
   <ident>`.

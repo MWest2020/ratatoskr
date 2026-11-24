@@ -21,7 +21,11 @@ A name is an `identities.yml` handle; the listener matches the message's
 pubkey, never a name typed in the text, and only while that identity is
 `actief`: a revoked key starts nothing, even when its name is still on the list.
 `heimdall` joined on 2026-11-24: it is the coding session on agent-lxc, which
-pinged as `odin` until then. Without the key only odin and Mark may start a
+pinged as `odin` until then. Its `!build` counts once Mark has run the relay
+phase that makes it a member of #escalatie
+([ping from a session](ping-from-a-session.md#identity-rules)), and after a
+listener restart: the listener reads `identities.yml` and `build_starters` only
+at startup. Without the key only odin and Mark may start a
 build (the rule before 2026-11-14).
 
 | who | where the line counts |
