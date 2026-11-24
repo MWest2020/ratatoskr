@@ -1,26 +1,28 @@
-# Design: agent → chat → phone, one image per message
+# Design: agent → relay → push, one image per message
+
+Scope after the split (ratatoskr#260): this change is the **sender** (A) and the
+**notification and retention** (C). The read path (B) is the follow-up
+`agent-image-to-chat-read`; what it inherits is in "Handed to
+`agent-image-to-chat-read`" below.
 
 ## The path
 
 ```
-agent-lxc                              relay VM (buzz-relay)                    phone
-─────────                              ─────────────────────                    ─────
+agent-lxc                              relay VM (buzz-relay)
+─────────                              ─────────────────────
 IDENT=x CHAN=y ping.sh --image p 'c'
   ├─ image_prep.py  (uv, Pillow)
   │    magic bytes → decode → re-encode from raw pixels → ≤5 MiB
   └─ buzz messages send --file  ──LAN──▶ relay :3000
                                           ├─ Blossom store (SeaweedFS, buzz-media)
                                           └─ signed event + imeta tag
-                                                 ▲
-                                    chat ──buzz-net──┘  messages get / media get
-                                    (session-gated)
-                                    GET /api/messages  → images[]       ◀──tailscale serve── PWA
-                                    GET /api/media/<sha256> → bytes      ◀──────────────────  <img>
 listener (agent-lxc) sees the event ─▶ notify.py "🖼 caption" ─▶ push-notify.py ─▶ FCM ─▶ notification
 ```
 
 Every hop in this picture already exists and already carries traffic today.
-Only `--file`, the `/api/media/` route and the `🖼` prefix are new.
+Only `--file`, the `🖼` prefix and the prune are new. Showing the image in the
+chat (`chat → relay over buzz-net`, `GET /api/media/<sha256>`, the PWA) is the
+follow-up.
 
 ## Measured on 2026-11-13 (gate evidence)
 
@@ -42,9 +44,9 @@ does), against `ws://192.168.178.60:3000`:
 Two blobs from these probes sit in `buzz-media`: the 4×4 PNG `2439351e…` and
 the 5 MiB random PNG `db8b9613…`. The first prune run deletes both.
 
-Sending a message with `--file` was not measured that day (the auto-mode
-classifier refused the probe because it writes to a channel). It is gate 1,
-recorded below.
+These were measured on agent-lxc's CLI, not on the chat container's. What was
+**not** measured is how `media get` writes to stdout: none of the probes used
+`-o -`. See the handover below.
 
 ## Measured on 2026-11-24 (gate 1, imeta shape)
 
@@ -75,8 +77,7 @@ The `imeta` tag, in this order:
 ```
 
 Both `x` and `url` are present, and `x` equals the sha256 of the uploaded
-bytes, so `from_tags` works as designed. The only other tag is
-`["h", "<channel uuid>"]`.
+bytes. The only other tag is `["h", "<channel uuid>"]`.
 
 **`content` gains the URL.** buzz appends a Markdown image line to the text:
 
@@ -84,10 +85,10 @@ bytes, so `from_tags` works as designed. The only other tag is
 <caption>\n![image](http://192.168.178.60:3000/media/<sha256>.png)
 ```
 
-So the cleaning in "`/api/messages` carries `images`" below removes the whole
-`![image](…/media/<hash>.<ext>)` (with its leading newline), not just the URL;
-removing only the URL would leave `![image]()` in the thread. The same applies
-to the caption in `notify._body`. The parser test uses this recorded content.
+So the caption shown in a notification is `content` with the whole
+`![image](…/media/<hash>.<ext>)` line (with its leading newline) removed, not
+just the URL; removing only the URL would leave `![image]()`. The notify test
+uses this recorded content.
 
 The probe blob `bc9854f9…` now sits in `buzz-media` next to the two from
 2026-11-13; the first prune deletes it. Because a message delete leaves the
@@ -114,59 +115,23 @@ Rejected:
   needs a credential for agent-lxc on a session-gated app, plus tailnet
   reachability of :8090 that nobody has recorded.
 
-### The chat proxies, behind the session
+### The change is split: sender and notification now, read path later
 
-The relay's media URL answers 401 without Blossom auth, and the phone cannot
-sign Blossom requests. So the chat serves the image itself:
-`GET /api/media/<sha256>` passes `auth_routes.gate(..., writes=False)` like
-every other `/api/` read. It then runs `buzz media get <sha256> -o -` under the
-chat's own key (the process identity, `mark`; `rotate-mark-identity` already
-verified that `media get` works with it). The response:
+The second architect FAIL (ratatoskr#260) found that the read path was the part
+the build could not prove from inside the cage: it rests on a CLI invocation
+nobody measured on the chat's own binary, and on a response-headers design
+that the chat server cannot yet emit (see the handover). Keeping it in this
+change would block the sender and the retention on it.
 
-- 400 unless the path is exactly 64 lowercase hex characters.
-- 410 `{"error":"image expired (kept 30 days)"}` when buzz reports 404.
-- 502 `{"error":"<buzz message, 200 chars>"}` on any other buzz failure or a
-  timeout (25 s).
-- 502 when the blob is over 5 MiB. It is read with a ceiling and is never
-  buffered past it.
-- 415 unless the first bytes are PNG (`89 50 4E 47 0D 0A 1A 0A`), JPEG
-  (`FF D8 FF`) or WebP (`RIFF....WEBP`). Any blob can be fetched by hash, so
-  this is what keeps an HTML or SVG blob, uploaded with raw `buzz` by anyone in
-  the community, from being served as a document on the chat's origin.
-- 200 with `Content-Type` taken from the magic bytes (never from the event or
-  the extension), `X-Content-Type-Options: nosniff`,
-  `Content-Security-Policy: default-src 'none'; sandbox`, `Cache-Control:
-  no-store` and `Content-Disposition: inline`.
+Rejected:
+- **Keep one change and gate the whole build on Gate 0.** The sender and the
+  retention do not depend on the chat's CLI; a negative Gate 0 (a `BUZZ_REF`
+  bump, its own change) would hold them for nothing.
+- **Build the read path with its open points and fix it in review.** The
+  architect failed it twice on exactly these points.
 
-`no-store` is deliberate even though the content is addressed by hash. A 401
-clears what the app keeps locally (webchat-pwa: "Een 401 wist de lokaal
-bewaarde berichten"), and an HTTP cache would quietly keep the pictures after a
-logout. The UI keeps its own in-memory cache instead, described below.
-
-`buzzcli.buzz()` uses `text=True`, so the new `chat/media.py` calls
-`subprocess.run` with bytes itself, with the same `BUZZ_BIN` and environment.
-
-Rejected: **an unauthenticated route keyed by hash** (the hash as a
-capability). It would be the first session-less read on an app whose docs call
-the tailnet the door, not a second lock (`docs/naar-een-product.md`). Also
-rejected: **having the browser talk to the relay**. The relay is not on the
-phone's path, and the phone cannot do Blossom auth.
-
-### `/api/messages` carries `images`, parsed from `imeta`
-
-`read_routes.py` adds `"images": media.from_tags(m.get("tags"))` for each
-message: a list of `{"sha256", "type", "dim"}`. The parser takes NIP-92 `imeta`
-tags (`["imeta", "url …", "m …", "x …", "dim …", …]`). It uses `x` for the
-hash, or the 64-hex basename of `url` when `x` is missing. It keeps only
-`image/png`, `image/jpeg` and `image/webp`, and at most four entries. Anything
-that does not parse is dropped and the message still renders. `content` is
-cleaned of the Markdown image buzz appends, `\n![image](<url>)` where the URL
-ends in `/media/<that hash>.<ext>` (gate 1 measured that buzz does write it),
-and of any bare URL of that form. The phone could not open that LAN URL anyway.
-
-The exact tag shape comes from gate 1. The recorded event is committed as
-`chat/testdata/imeta-event.json` and drives the parser test, so the format that
-both sides share is pinned by one real sample rather than by two assumptions.
+Until the follow-up is built the thread shows the caption only. That is
+accepted, and it is stated in the proposal.
 
 ### Preparing the image happens on agent-lxc, with Pillow
 
@@ -222,52 +187,14 @@ Rejected: **a separate `ratatoskr-send` CLI**. It would be a second post path,
 and the identity rules would have to be kept equal in two places. That is how
 an impersonation guard ends up missing from one of them.
 
-### UI: one hook line, one new file
-
-`chat/app.js` is at exactly 200 lines. Line 148 becomes
-
-```js
-for(const f of [window.decorateRow, window.decorateImage]) if(typeof f==="function") f(row, m, msgs);
-```
-
-The line count stays the same and nothing in app-reply.js changes. The new
-`chat/app-image.js` defines `decorateImage(row, m)`:
-
-- For each `m.images[i]` whose `sha256` matches `/^[0-9a-f]{64}$/`, it appends
-  a `<button class="msgimg">` holding an `<img alt=caption>` under the bubble.
-- The bytes come from `fetch("/api/media/"+sha)`, then a blob, then
-  `URL.createObjectURL`. That is not the same as `<img src>`: `fetch` sees the
-  status, so the UI can say *why* an image is missing ("image expired",
-  "offline", "relay: …"). Status 401 goes to the existing logged-out flow.
-- An in-memory `Map` (sha → object URL, LRU of 30, `revokeObjectURL` on
-  eviction) stops `renderMessages`, which rebuilds the thread on every new
-  message, from fetching every image again. The map dies with the page, and
-  with it everything a 401 should clear.
-- A tap opens a full-screen overlay (`.imgview`) with the same object URL,
-  `touch-action: pinch-zoom`. A tap, Escape or Back closes it; the view pushes
-  a history entry so Back on Android closes the view and not the app.
-- Everything from a message enters the DOM through `el`/`add` (textContent),
-  never `innerHTML`. `chat/e2e/xss.js` keeps guarding that.
-
-Styles go in a new `chat/image.css`. `app.css` is at 174 lines, and the next
-change should not have to make room. Both new files are registered in all four
-places: `chat/statics.py` FILES, `chat/sw.js` SHELL and FRESH_ASSETS, and
-`chat/index.html`. `CACHE` in `sw.js` goes to `v33` with a note: `v32` and the
-chat pin `0.18.0` (tag `chat-v0.18.0`) are already shipped by aa71478, and an
-immutable tag or cache name is never reused. This change ships as
-**0.19.0 / `chat-v0.19.0` / `v33`**.
-
-The offline snapshot stores `images` along with the rest of each message.
-Offline, `fetch` fails and the placeholder says "image not available offline".
-
 ### Notification: text, with a marker
 
 `agents/listener.py` is at 200 lines. Line 164 passes `m.get("tags")` as a
 fourth argument to `notify.push` (same line count), and `notify._body` gets
 the tags. When an image `imeta` tag is present, the body becomes `🖼 <caption>`,
-with any media URL removed from the caption. Cooldown, held-back messages and
-`+n` stay as they are. The push payload stays text (Web Push payloads are about
-4 KiB), and a tap opens `/#<channel>`, where the image is inline.
+with the Markdown image line removed from the caption (see gate 1). Cooldown,
+held-back messages and `+n` stay as they are. The push payload stays text (Web
+Push payloads are about 4 KiB), and a tap opens `/#<channel>`.
 
 A picture *inside* the notification needs the `image` option of
 `showNotification`, and that image has to come from a session-gated URL. Chrome
@@ -302,8 +229,8 @@ gate to measure and a decision for Mark, not part of this build.
 - **Expected volume:** 5 MiB is the ceiling and a screenshot after the 2560 px
   fit is typically 0.3–1.5 MiB. Twenty images a day for 30 days is about
   0.6 GiB, so 2 GiB means something is wrong, not that things are busy.
-- **After the prune:** the message text stays. The chat answers 410, and the
-  thread shows "image expired (kept 30 days)".
+- **After the prune:** the message text stays. What the chat shows for a pruned
+  image is the follow-up's (410, "image expired (kept 30 days)").
 
 Rejected:
 - **Never prune.** #223's trap: the store is append-only by construction.
@@ -315,29 +242,52 @@ Rejected:
   an ordering, which is more code for the same outcome. An age is easier to
   state to Mark ("a picture lives 30 days").
 
+## Handed to `agent-image-to-chat-read`
+
+Not requirements of this change. This is what the follow-up's design.md starts
+from; it is built only after its Gate 0 is recorded there.
+
+- **Gate 0 (host, first).** Measure on the chat container's CLI
+  (`BUZZ_REF=4baccd53…`, `chat/Dockerfile:12`), via `docker run --entrypoint
+  buzz` or `docker compose exec chat`, not on agent-lxc's
+  `~/.local/bin/buzz`. Record the CLI version and **the exact `buzz media get`
+  invocation, including the flag that sends the bytes to stdout.** `-o -` is
+  unverified: do not assume it; if the CLI has no stdout form, the design
+  changes (for example a temp file). Then record (a) that invocation as `mark`
+  on the blob from gate 1, byte-identical; (b) the same on a blob uploaded by
+  `odin`; (c) an unknown hash giving 404. If a `BUZZ_REF` bump is needed,
+  `relay-deployment/spec.md:38` forces a relay image bump, which is its own
+  change.
+- **Route `GET /api/media/<sha256>`**, behind `auth_routes.gate(...,
+  writes=False)`: 400 unless 64 lowercase hex; 410 `image expired (kept 30
+  days)` on buzz 404; 502 with the reason (200 chars) on any other failure,
+  timeout (25 s) or a blob over 5 MiB (read with a ceiling); 415 unless the
+  magic bytes are PNG, JPEG or WebP; 200 with `Content-Type` from the magic
+  bytes, `X-Content-Type-Options: nosniff`, `Content-Security-Policy:
+  default-src 'none'; sandbox`, `Cache-Control: no-store`, `Content-Disposition:
+  inline`. `chat/media.py` runs the CLI with bytes output itself, because
+  `buzzcli.buzz()` uses `text=True`.
+- **The headers sender must be designed, not assumed.** `chat/server.py:28-42`
+  `_send` cannot emit `Cache-Control`, `X-Content-Type-Options`,
+  `Content-Security-Policy` or `Content-Disposition`. The follow-up adds an
+  extension of `_send` that takes extra headers, with a pinned test that calls
+  both sides: the route producing the headers and `_send` writing them to the
+  socket, asserting all four on the wire.
+- **`/api/messages` `images`**, parsed from `imeta` (`from_tags`,
+  `clean_content`), driven by `chat/testdata/imeta-event.json`; the UI
+  (`chat/app-image.js`, `chat/image.css`, the hook line 148 of `chat/app.js`,
+  `sw.js` `v33`, chat pin `0.19.0` / `chat-v0.19.0`); `chat/test_media_seam.py`;
+  `chat/e2e/image.js`; the troubleshooting section on 410 versus 502; and the
+  `webchat-pwa` requirements for the image view and the response headers.
+- **After a prune** (needs the prune timer live): `buzz media get` on a deleted
+  hash returns 404, not a 500 from a dangling row. Otherwise the chat maps it
+  to "relay error".
+
 ## Gates (before or during the build)
 
-0. **The chat container's CLI (host, before the build).** Gates 1.1 and the
-   2026-11-13 table were measured on agent-lxc's `~/.local/bin/buzz`. The chat
-   runs a different binary, built from `BUZZ_REF=4baccd53…`
-   (`chat/Dockerfile:12`). `/api/media/` depends on `media get` there, and on
-   reading a blob that another identity uploaded, so both are measured on that
-   CLI: the chat image's `buzz`, via `docker run --entrypoint buzz` or
-   `docker compose exec chat`. Record the CLI version and the outcome of
-   (a) `media get <sha> -o -` as `mark` on the 1.1 blob, (b) the same on a blob
-   uploaded by `odin`, (c) an unknown hash giving 404, under "Measured (gate
-   0)". If a `BUZZ_REF` bump is needed, `relay-deployment/spec.md:38` makes the
-   chat build the CLI from the same upstream commit as the relay image, so the
-   bump forces a relay image bump. That is its own change, and this one waits
-   for it. Not decided here: which upstream commit.
-1. **imeta shape (host, before the build). Done 2026-11-24**, see "Measured on
-   2026-11-24". The coordinating session on
-   agent-lxc sends one image message with `buzz messages send --file` into
-   `#statistics`, which never pushes (`notify.SILENT`), and reads it back with
-   `messages get`. It records whether the content gains the URL, commits the
-   event as `chat/testdata/imeta-event.json`, and then deletes the message. If
-   there is no `imeta` tag, or no `x` or `url` in it, amend this design before
-   building.
+1. **imeta shape (host). Done 2026-11-24**, see "Measured on 2026-11-24". It
+   is the only gate the build waits on. The recorded event is committed as
+   `chat/testdata/imeta-event.json`.
 2. **Bucket inventory (host, before enabling the timer).** Run `docker compose
    run --rm media-prune lsf dst:buzz-media` and record the key layout and every
    key that is not an image. If keys have no extension, or something other than
@@ -345,66 +295,48 @@ Rejected:
    `--include` filter is not safe. The timer then stays disabled and a
    `waiting-on-mark` issue says so. Default in that case: prune by a list of
    hashes collected from the `imeta` tags of messages older than 30 days.
-3. **After a prune (live).** `buzz media get` on a deleted hash returns 404,
-   not a 500 from a dangling row in the relay database. Otherwise the chat maps
-   the error to "relay error", and the UI shows that text instead of "expired".
-4. **JPEG and WebP through the relay (live).** Upload one helper-prepared file
+3. **JPEG and WebP through the relay (live).** Upload one helper-prepared file
    of each format, through the real `ping.sh --image`, which also proves that
-   `--content '<caption>' --file <path>` is accepted by the real CLI. The relay's metadata check must accept Pillow's JFIF APP0
-   and a plain `VP8 `/`VP8L` RIFF. If it refuses one, change the save options
-   for that format.
-5. **On the phone (live).** In the installed PWA over `tailscale serve`, the
-   image shows inline and opens full size, and Back closes the view without
-   leaving the app. Separately, record whether a `showNotification` with an
-   `image` (a `data:` URL built by the SW) shows on Mark's Android. Record only;
-   do not build it.
+   `--content '<caption>' --file <path>` is accepted by the real CLI. The
+   relay's metadata check must accept Pillow's JFIF APP0 and a plain
+   `VP8 `/`VP8L` RIFF. If it refuses one, change the save options for that
+   format.
+4. **On the phone (live).** The `🖼 caption` notification shows and a tap opens
+   the channel. Separately, record whether a `showNotification` with an `image`
+   (a `data:` URL built by the SW) shows on Mark's Android. Record only; do not
+   build it.
 
 ## Tests
 
-- `orchestrator/test_image_prep.py` runs the real script through `uv run`
-  (skipped, with a stated reason, when `uv` cannot resolve Pillow offline).
-  Small committed fixtures are in `orchestrator/testdata/`: a PNG with
-  `tEXt`+`eXIf`+`iCCP`, a JPEG with an Exif APP1 holding GPS and an
-  orientation of 6, a WebP with an `EXIF` chunk, an SVG renamed to `.png`, a
-  PNG header that claims 20000×20000, a truncated PNG, and a 21 MiB file. The
-  assertions are on the **output bytes**: only `IHDR/PLTE/tRNS/IDAT/IEND` in
-  the PNG, no APP1/APP2/COM in the JPEG, no `EXIF`/`XMP `/`ICCP` in the WebP,
-  the rotation applied, each refusal with its reason, and the output ≤ 5 MiB
-  and ≤ 2560 px.
-- `chat/test_media.py`: no session → 401; a bad hash → 400; buzz 404 → 410; a
-  buzz error → 502 with the reason; a blob over 5 MiB → 502; HTML or SVG bytes
-  → 415; PNG, JPEG and WebP → 200 with the right type and all four headers; a
-  HEAD request → headers only. `from_tags` against
-  `chat/testdata/imeta-event.json`, against a tag without `x`, and against
-  junk. Content cleaning.
-- `agents/test_notify.py`: an image message gives `🖼 caption` without the URL,
-  and the cooldown behaviour is unchanged for image messages.
-- **The seam** (`chat/test_media_seam.py`): the bytes `image_prep.py` writes
-  for the PNG fixture go into a fake `buzz` binary (`BUZZ_BIN` pointing at a
-  script that prints them for `media get`; it proves the two sides of the
-  format, not the real CLI, and not the stdin-plus-file combination, which is
-  not used). The real route serves them with
-  `image/png`, and `from_tags` on the recorded event yields that sha. Break one
-  side (the magic sniff, or the `x` field name) and the test fails. Check that
-  by breaking it once.
-- `chat/e2e/image.js` (deploy layer, Playwright): open `#statistics` with the
-  gate-1 message, the `<img>` has a `naturalWidth` above 0, a tap opens
-  `.imgview`, Escape closes it, and a forced 410 shows "image expired".
-  `xss.js` and `smoke.js` still pass.
+- `orchestrator/test_image_prep.py` runs the real script through `uv run`.
+  **It never skips.** If `uv` cannot resolve Pillow (offline cage), the test
+  fails with the reason; a skipped layer does not count (AGENTS.md). A
+  `conftest` guard or an explicit first test asserts that Pillow resolves, so
+  a missing Pillow is one red test and not a green run of nothing. The host
+  runs it in a verify step (task 1.3), where Pillow resolves, so the
+  metadata-strip check has run at least once before deploy. Small committed
+  fixtures are in `orchestrator/testdata/`: a PNG with `tEXt`+`eXIf`+`iCCP`, a
+  JPEG with an Exif APP1 holding GPS and an orientation of 6, a WebP with an
+  `EXIF` chunk, an SVG renamed to `.png`, a PNG header that claims 20000×20000,
+  a truncated PNG, and a 21 MiB file. The assertions are on the **output
+  bytes**: only `IHDR/PLTE/tRNS/IDAT/IEND` in the PNG, no APP1/APP2/COM in the
+  JPEG, no `EXIF`/`XMP `/`ICCP` in the WebP, the rotation applied, each refusal
+  with its reason, and the output ≤ 5 MiB and ≤ 2560 px.
+- `orchestrator/test_ping_image.py`: fake `buzz`, `sops` and `uv` on `PATH`; it
+  pins the argv `ping.sh` builds. It does not prove the real CLI (gate 3).
+- `agents/test_notify.py`: an image message, built from
+  `chat/testdata/imeta-event.json`, gives `🖼 caption` without the Markdown
+  image line, and the cooldown behaviour is unchanged for image messages.
+- `jobs/test_prune_media.py`: a fake `ssh`, prune then size under and over
+  `MEDIA_MAX_BYTES`.
 
 ## Risks
 
-- **Any community member can upload any blob, and the route serves by hash.**
-  Mitigated by the magic-byte allowlist, a fixed Content-Type, `nosniff`, and a
-  sandbox CSP on the response. The route does not check that the hash appears
-  in a message. Every session holder is Mark, and the relay already decides who
-  may upload.
 - **Dedup and age.** If the relay skips re-storing a blob it already has, an
-  image re-sent on day 29 can be pruned a day later. Accepted: the thread says
-  "expired", which is true and visible.
-- **`renderMessages` rebuilds on each new message.** Without the in-memory map,
-  every image would be fetched again each time. The map is the mitigation, and
-  the e2e counts `/api/media/` requests on a re-render.
-- **Two images on one hook line.** If a third decorator turns up, the array on
-  line 148 grows. That is fine up to the 200-line limit, and after that a
-  registry is the honest fix.
+  image re-sent on day 29 can be pruned a day later. Accepted: the follow-up
+  shows "expired", which is true and visible.
+- **Images are unseen until the follow-up.** The push says `🖼 caption` and the
+  tap opens a thread without the picture. Accepted for the gap between the two
+  changes.
+- **Pillow in the cage.** If `uv` cannot resolve it there, the build is red on
+  the Pillow test, by design. Open question in the proposal.
