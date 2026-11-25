@@ -76,6 +76,17 @@ change.
       exit codes 9 and 10, and the prune timer). Proof: the three files
       contain `--image`, and `bash verify.sh` is green.
 
+- [ ] 2.6 English interface text. Every new or changed line of this change that
+      prints text (stderr, log and failure messages in `orchestrator/ping.sh`
+      and `jobs/prune-media.sh`) is English. The size-alarm message in
+      `prune-media.sh` keeps its meaning: over the limit of `MEDIA_MAX_BYTES`,
+      busier than expected, not deliberate growth. Pre-existing Dutch text is
+      left alone. Proof: `jobs/test_prune_media.py` and
+      `orchestrator/test_ping_image.py` assert the English reason text on
+      stderr (exit 10, exit 9, rc 1 over the limit), and a review check of
+      `git diff main` over both scripts finds no Dutch string in the added
+      lines.
+
 ## 3. Live (host session, after merge)
 - [ ] 3.1 Gate 3: one prepared PNG, JPEG and WebP each through `ping.sh
       --image` to `#statistics`. Record in design.md. This is the live check
