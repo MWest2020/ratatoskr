@@ -195,11 +195,52 @@ Rejected: **a separate `ratatoskr-send` CLI**. It would be a second post path,
 and the identity rules would have to be kept equal in two places. That is how
 an impersonation guard ends up missing from one of them.
 
+### Settled by the architect's findings (ratatoskr#260, third FAIL)
+
+1. **The tags travel through the cooldown.** `notify._last` stores
+   `(author, content)` for the held-back message and `flush` rebuilds the push
+   from that pair, so tags passed only to `push` are gone for any message the
+   cooldown held. `_last` now stores the tags with the message, and `flush`
+   hands them to the same body builder `push` uses. A seam test calls both
+   sides: `push` inside the cooldown, then `flush` after it, asserting the
+   delivered body is `🖼 <caption>`.
+   Rejected: *tags on the `push` path only* (a held-back image would notify as
+   its Markdown line, which is the silent kind of wrong AGENTS.md names);
+   *computing the body at `push` time and storing the string* (the "+n eerder"
+   suffix is only known at flush, so the body must be built there).
+2. **Pillow offline fails red, and says why.** If `uv` cannot resolve Pillow,
+   `test_image_prep.py` fails, never skips. A guard test classifies the
+   failure in its message: the resolve step failed (index unreachable, offline
+   cache empty: "no network") versus Pillow resolved and the script or its
+   assertions failed ("broken code"). Both are red; the message tells the
+   reader which one to fix. The change proves it on agent-lxc and in CI.
+   Rejected: *vendoring the wheels* (a binary blob in git for a dependency uv
+   resolves anyway); *running the strip test on the host only* (that is a
+   skipped layer, and a skip does not count); *a skip with a warning*.
+3. **One parser, one fixture.** Caption and `imeta` parsing exists once, as a
+   shared stdlib-only helper, tested against `chat/testdata/imeta-event.json`.
+   The notification uses it here, and `agent-image-to-chat-read` reuses it for
+   `images` and the cleaned content instead of writing a second parser. Its
+   location is an open question in the proposal.
+   Rejected: *a parser in `notify.py` and another in `chat/`* (two readers of
+   one tag format drift apart, and only one fixture would pin them);
+   *a second fixture for the chat* (the same event, copied).
+4. **Blob dedup versus age is accepted.** If the relay does not store a blob it
+   already has, an image re-sent on day 29 is pruned a day later and its new
+   message shows "expired". Rejected: *tracking last-referenced time per blob*
+   (an inventory and an ordering for a rare case, the same cost that rules out
+   oldest-first eviction below); *a longer retention* (changes Mark's decided
+   30 days). Mark's rule is "a picture lives 30 days"; the text stays.
+
+The split stays: this build is A plus C. The read path remains
+`agent-image-to-chat-read`, behind Gate 0.
+
 ### Notification: text, with a marker
 
-`agents/listener.py` is at 200 lines. Line 164 passes `m.get("tags")` as a
-fourth argument to `notify.push` (same line count), and `notify._body` gets
-the tags. When an image `imeta` tag is present, the body becomes `🖼 <caption>`,
+`agents/listener.py` is at 200 lines. The `notify.push` call in the listener
+(line 162) passes `m.get("tags")` as a fourth argument (same line count), and
+`notify._body` gets the tags through `_last` and `flush` (see above). When an
+image `imeta` tag is present, the body becomes `🖼 <caption>`,
 with the Markdown image line removed from the caption (see gate 1). Cooldown,
 held-back messages and `+n` stay as they are. The push payload stays text (Web
 Push payloads are about 4 KiB), and a tap opens `/#<channel>`.
@@ -334,17 +375,24 @@ from; it is built only after its Gate 0 is recorded there.
   pins the argv `ping.sh` builds. It does not prove the real CLI (gate 3).
 - `agents/test_notify.py`: an image message, built from
   `chat/testdata/imeta-event.json`, gives `🖼 caption` without the Markdown
-  image line, and the cooldown behaviour is unchanged for image messages.
+  image line, and the cooldown behaviour is unchanged for image messages. The
+  seam test calls `push` (held by the cooldown) and then `flush`, and asserts
+  the delivered body is `🖼 caption`; a second case does the same for a plain
+  text message to pin that nothing else changed.
+- A test of the shared imeta/caption helper against the same fixture.
+- The Pillow guard test (above) in `orchestrator/test_image_prep.py`, run on
+  agent-lxc and in CI.
 - `jobs/test_prune_media.py`: a fake `ssh`, prune then size under and over
   `MEDIA_MAX_BYTES`.
 
 ## Risks
 
 - **Dedup and age.** If the relay skips re-storing a blob it already has, an
-  image re-sent on day 29 can be pruned a day later. Accepted: the follow-up
-  shows "expired", which is true and visible.
+  image re-sent on day 29 can be pruned a day later. Accepted (decision 4
+  above): the follow-up shows "expired", which is true and visible.
 - **Images are unseen until the follow-up.** The push says `🖼 caption` and the
   tap opens a thread without the picture. Accepted for the gap between the two
   changes.
 - **Pillow in the cage.** If `uv` cannot resolve it there, the build is red on
-  the Pillow test, by design. Open question in the proposal.
+  the Pillow test, by design (decision 2 above), and the guard test says
+  whether the cause is the network or the code.
