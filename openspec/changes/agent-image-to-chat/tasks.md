@@ -39,6 +39,13 @@ change.
       resolves, a deliberately unresolvable Pillow (for example `UV_OFFLINE=1`
       with an empty cache) turns it red, not skipped, and its assertions are on
       the output bytes. Say in the PR that the red case was checked.
+      The guard test's failure message names the cause: resolve failed ("no
+      network", index unreachable or empty offline cache) versus Pillow
+      resolved but the script failed ("broken code"). Proof: two cases in the
+      test file, one with `UV_OFFLINE=1` and an empty `UV_CACHE_DIR`
+      asserting the "no network" text, one with a deliberately broken script
+      path asserting the "broken code" text; both red as designed, never
+      skipped.
 - [ ] 2.2 `orchestrator/ping.sh --image <path> 'caption'`: prep into a
       `mktemp -d` with a `trap` cleanup, then `--file` on the send. The image
       branch passes the caption as `--content "$MSG" --file "$OUT"`, the form
@@ -54,17 +61,30 @@ change.
       does not prove that the real CLI accepts the combination**: it only
       pins which argv `ping.sh` builds. The real CLI is proved by the live
       check in 3.2.
-- [ ] 2.3 `agents/notify.py` `🖼` body, with `listener.py` line 164 passing
-      the tags (still 200 lines). The caption has the whole
-      `\n![image](…/media/<hash>.<ext>)` line removed. Proof: new cases in
-      `agents/test_notify.py` built from `chat/testdata/imeta-event.json`, and
-      cooldown cases for image messages unchanged.
+- [ ] 2.3 `agents/notify.py` `🖼` body, with the `notify.push` call in
+      `listener.py` (line 162) passing the tags (still 200 lines). The tags
+      are carried through `notify._last` and `flush`, so `notify.push`
+      receives them on every path, including a message the cooldown held
+      back. The caption has the whole `\n![image](…/media/<hash>.<ext>)` line
+      removed. Proof: new cases in `agents/test_notify.py` built from
+      `chat/testdata/imeta-event.json`, cooldown cases for image messages
+      unchanged, and a seam test that calls both sides: `push` inside the
+      cooldown, then `flush` after it, asserting the delivered body is
+      `🖼 caption` (it fails when `_last` or `flush` drops the tags).
 - [ ] 2.4 Retention: the `media-prune` service (profile `maintenance`, rclone
       1.71) in `deploy/docker-compose.yml`, `jobs/prune-media.sh`, and
       `jobs/systemd/ratatoskr-media-prune.{service,timer}`. Proof: `bash -n`
       on the script, `pin_check.py` green, and `jobs/test_prune_media.py` with
       a fake `ssh` covering a prune followed by a size under and over
       `MEDIA_MAX_BYTES` (rc 0 and rc 1, the reason printed).
+- [ ] 2.4a Shared caption/imeta helper (design.md, decision 3): one stdlib-only
+      module that reads the image `imeta` tag and strips the Markdown image
+      line from `content`, used by `agents/notify.py`; its location is
+      recorded in design.md (open question in the proposal). Proof:
+      a unit test of the helper driven by `chat/testdata/imeta-event.json`
+      (the one fixture; no second copy), and `agents/test_notify.py` using the
+      same fixture through the helper. `agent-image-to-chat-read` reuses this
+      helper; its proposal (4.1) says so.
 - [ ] 2.5 Docs, since CI fails on code without docs. Grep under `docs/` found
       these that describe this behaviour:
       `docs/how-to/send-an-image.md` (new: the command, limits, types,
@@ -95,8 +115,9 @@ change.
       `messages get` must show the `imeta` tag and the caption, then delete
       the messages. It is the only proof that the real CLI takes this
       combination; 2.2's fake `buzz` does not.
-- [ ] 3.2 Run the 1.3 host verify step once more on the merged tree. Proof:
-      0 skipped.
+- [ ] 3.2 Run the 1.3 host verify step once more on the merged tree, on
+      agent-lxc, and check the same test in CI. Proof: 0 skipped on both; the
+      Pillow guard test is green where Pillow resolves.
 - [ ] 3.3 Install and enable the prune units (`check_units.py` and
       `check_timers.py` green) once 1.2 is recorded, and run the job once.
       Proof: the timer's journal shows the prune and a size under
@@ -112,4 +133,6 @@ change.
       `agent-image-to-chat-read`": Gate 0 first, with the exact `buzz media
       get` invocation and stdout flag; the `_send` headers extension with its
       two-sided test. Proof: the change exists on main and its design.md
-      records Gate 0 before any task of its build.
+      records Gate 0 before any task of its build, and it reuses the shared
+      imeta/caption helper (2.4a) and `chat/testdata/imeta-event.json`
+      instead of a second parser.

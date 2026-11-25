@@ -104,18 +104,32 @@ the build waits on. Three remain for this change:
 - More than one image per message, and video, GIF, SVG or PDF.
 - An image as a thread reply (`--reply-to`).
 
+## Amended after the third architect FAIL (ratatoskr#260)
+
+The architect's findings are folded in, and the split stays: this build is A
+plus C, and the read path stays in `agent-image-to-chat-read` behind Gate 0.
+
+- **The imeta tags must reach `notify.push` on every path.** `notify._last`
+  holds `(author, content)` for a message the cooldown holds back, and `flush`
+  rebuilds the push from it, so the tags would be lost and a held-back image
+  would read as plain text. The tags are carried through `_last` and `flush`,
+  with a seam test that calls both sides.
+- **Pillow offline.** If `uv` cannot resolve Pillow offline,
+  `test_image_prep.py` fails red by design, and a guard test tells "no network"
+  from "broken code". The change proves it on agent-lxc and in CI.
+- **One caption/imeta parser.** One shared fixture,
+  `chat/testdata/imeta-event.json`, and `agent-image-to-chat-read` reuses a
+  shared helper instead of writing a second parser.
+- **Dedup versus age** is accepted and recorded in design.md.
+
 ## Open questions
 
-- The decision names three things as objective B (the route, `chat/media.py`,
-  the headers requirement). The `images` field, the inline image and the
-  full-screen view cannot work without the route, so they are placed in the
-  follow-up too. If they should stay here, say so.
-- Whether Pillow can be resolved by `uv` in the build cage is unknown. The
-  Pillow test fails rather than skips when it cannot (design.md, "Tests"). If
-  the cage cannot resolve it, the choice is to vendor the wheels or to accept
-  that the metadata-strip test only runs on the host. Not decided.
+- Where the shared imeta/caption helper lives. The listener (`agents/`) and the
+  chat container (stdlib-only, its own image) must both import it, and the
+  chat image does not contain `agents/`. Not decided; the build records the
+  choice in design.md and the follow-up must reuse it.
 - The follow-up change `agent-image-to-chat-read` does not exist yet. It is
-  proposed separately, with the handover in this change's design.md.
+  proposed separately (tasks 4.1), with the handover in this change's design.md.
 
 ## Decisions (Mark, 2026-11-14 by mail: "defaults ok")
 

@@ -11,3 +11,10 @@ SHALL carry no image bytes.
 - **WHEN** an agent sends an image with the caption "login page after deploy"
 - **THEN** the phone shows a notification `🖼 login page after deploy`, and a
   tap opens that channel
+
+#### Scenario: An image message held back by the cooldown
+
+- **WHEN** an image message arrives inside a channel's push cooldown and is
+  delivered later, when the cooldown has expired
+- **THEN** the delivered notification still reads `🖼 <caption>`, as it would
+  have without the cooldown
