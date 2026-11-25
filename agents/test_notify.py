@@ -6,10 +6,15 @@ apart gave exactly one push, and the second surfaced only as "(+1 eerder)" on
 the next message in that channel — four days later. These tests pin the rule
 that came out of it: what the cooldown holds back, `flush` delivers.
 """
+import json
+import os
 import unittest
 from unittest import mock
 
 import notify
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+IMETA_EVENT = json.load(open(os.path.join(HERE, "..", "chat", "testdata", "imeta-event.json")))
 
 
 class TestShouldNotify(unittest.TestCase):
@@ -85,6 +90,44 @@ class TestSendNamesItsFailure(unittest.TestCase):
              mock.patch("builtins.print") as pr:
             self.assertFalse(notify._send("bouw", "bouwer", "een"))
         self.assertIn("rc=3", pr.call_args.args[0])
+
+
+class TestImageMessage(unittest.TestCase):
+    """Built from chat/testdata/imeta-event.json (gate 1, 2026-11-24): the real
+    shape buzz gives an image message, content and imeta tag both."""
+
+    def setUp(self):
+        notify._last.clear()
+        self.addCleanup(notify._last.clear)
+        p = mock.patch.object(notify, "_send", return_value=True)
+        self.send = p.start()
+        self.addCleanup(p.stop)
+
+    def bodies(self):
+        return [c.args[2] for c in self.send.call_args_list]
+
+    def test_the_picture_marker_replaces_the_markdown_image_line(self):
+        notify.push("bouw", "odin", IMETA_EVENT["content"], IMETA_EVENT["tags"])
+        (body,) = self.bodies()
+        self.assertTrue(body.startswith("🖼 "))
+        self.assertNotIn("![image]", body)
+        self.assertIn("gate 1.1 imeta probe", body)
+
+    def test_a_text_message_keeps_no_marker(self):
+        notify.push("bouw", "odin", "gewoon tekst", tags=[["h", "x"]])
+        (body,) = self.bodies()
+        self.assertFalse(body.startswith("🖼"))
+
+    def test_the_cooldown_still_holds_back_image_messages(self):
+        notify.push("bouw", "odin", IMETA_EVENT["content"], IMETA_EVENT["tags"])
+        for _ in range(2):
+            held = notify.push("bouw", "odin", IMETA_EVENT["content"], IMETA_EVENT["tags"])
+            self.assertFalse(held)
+        self.assertEqual(len(self.bodies()), 1)
+        later = notify._last["bouw"][0] + notify.COOLDOWN + 1
+        self.assertEqual(notify.flush(now=later), ["bouw"])
+        self.assertTrue(self.bodies()[1].startswith("🖼 "))
+        self.assertIn("(+1 eerder)", self.bodies()[1])
 
 
 if __name__ == "__main__":

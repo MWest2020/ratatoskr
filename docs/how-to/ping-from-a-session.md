@@ -1,6 +1,6 @@
 ---
 status: actief
-last_reviewed: 2026-11-14
+last_reviewed: 2026-11-25
 ---
 
 # Ping the owner from a working session
@@ -14,6 +14,11 @@ reaches him through the relay, at a milestone or when blocked:
 the self-hosted relay. No extra credentials on the agent host. Pinging from the
 shared checkout is fine because it commits nothing; development work goes in
 its own worktree (see the handbook's operating agreements).
+
+A ping can carry one picture instead of (or alongside) prose — a screenshot or
+a chart — with `--image <path> '<caption>'` as the first argument. See
+[send-an-image.md](send-an-image.md) for the limits, the exit codes and what
+Mark's phone shows.
 
 ## Identity rules
 

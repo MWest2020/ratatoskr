@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: MIT
+[Unit]
+Description=Ratatoskr media-prune — images in buzz-media older than 30 days
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/agent/ratatoskr-listener
+ExecStart=/usr/bin/bash jobs/prune-media.sh

@@ -31,7 +31,7 @@ change.
       count as passing).
 
 ## 2. Build (one run)
-- [ ] 2.1 `orchestrator/image_prep.py` (uv script, Pillow) as in design.md,
+- [x] 2.1 `orchestrator/image_prep.py` (uv script, Pillow) as in design.md,
       plus fixtures in `orchestrator/testdata/` and
       `orchestrator/test_image_prep.py`. The test **never skips**: when `uv`
       cannot resolve Pillow it fails with the reason, through a guard test
@@ -39,7 +39,7 @@ change.
       resolves, a deliberately unresolvable Pillow (for example `UV_OFFLINE=1`
       with an empty cache) turns it red, not skipped, and its assertions are on
       the output bytes. Say in the PR that the red case was checked.
-- [ ] 2.2 `orchestrator/ping.sh --image <path> 'caption'`: prep into a
+- [x] 2.2 `orchestrator/ping.sh --image <path> 'caption'`: prep into a
       `mktemp -d` with a `trap` cleanup, then `--file` on the send. The image
       branch passes the caption as `--content "$MSG" --file "$OUT"`, the form
       gate 1.1 measured. It must **not** use `--content -` (stdin) together
@@ -54,18 +54,18 @@ change.
       does not prove that the real CLI accepts the combination**: it only
       pins which argv `ping.sh` builds. The real CLI is proved by the live
       check in 3.2.
-- [ ] 2.3 `agents/notify.py` `🖼` body, with `listener.py` line 164 passing
+- [x] 2.3 `agents/notify.py` `🖼` body, with `listener.py` line 164 passing
       the tags (still 200 lines). The caption has the whole
       `\n![image](…/media/<hash>.<ext>)` line removed. Proof: new cases in
       `agents/test_notify.py` built from `chat/testdata/imeta-event.json`, and
       cooldown cases for image messages unchanged.
-- [ ] 2.4 Retention: the `media-prune` service (profile `maintenance`, rclone
+- [x] 2.4 Retention: the `media-prune` service (profile `maintenance`, rclone
       1.71) in `deploy/docker-compose.yml`, `jobs/prune-media.sh`, and
       `jobs/systemd/ratatoskr-media-prune.{service,timer}`. Proof: `bash -n`
       on the script, `pin_check.py` green, and `jobs/test_prune_media.py` with
       a fake `ssh` covering a prune followed by a size under and over
       `MEDIA_MAX_BYTES` (rc 0 and rc 1, the reason printed).
-- [ ] 2.5 Docs, since CI fails on code without docs. Grep under `docs/` found
+- [x] 2.5 Docs, since CI fails on code without docs. Grep under `docs/` found
       these that describe this behaviour:
       `docs/how-to/send-an-image.md` (new: the command, limits, types,
       caption, exit codes, the 30-day retention, the `🖼 caption` push, that

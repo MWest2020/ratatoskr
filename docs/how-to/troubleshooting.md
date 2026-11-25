@@ -1,6 +1,6 @@
 ---
 status: actief
-last_reviewed: 2026-10-22
+last_reviewed: 2026-11-25
 ---
 
 # Troubleshooting
@@ -57,6 +57,24 @@ Three silent breaks, all found the hard way:
 Every layer failed silently, which is what made this expensive. Every
 permission state now shows something (`push-states.js` tests it), and a failed
 subscription names its error.
+
+## No image
+
+`ping.sh --image` ([send-an-image.md](send-an-image.md)) exits with a reason
+on stderr:
+
+- **exit 9** — no caption was given. `--image <path>` always needs a third
+  argument.
+- **exit 10** — `orchestrator/image_prep.py` refused the file: not PNG/JPEG/
+  WebP by magic bytes, over 20 MiB or 40 megapixels on input, or over 5 MiB
+  after re-encoding. The reason is printed alongside the exit code.
+
+Nothing is sent on either exit — the relay never sees a partial upload.
+
+If the picture sent fine but vanished later: the daily prune timer
+(`ratatoskr-media-prune.timer`) deletes images older than 30 days — the
+message text stays. A failing timer shows in `scripts/check_timers.py` the
+same way every other recurring job does.
 
 ## An agent answers as if it does not know its role
 

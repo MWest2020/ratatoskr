@@ -14,6 +14,7 @@ is counted and rides along on the next one ("+2 more"). Otherwise the phone
 buzzes on every line of an agent that happens to answer three times.
 """
 import os
+import re
 import subprocess
 import time
 
@@ -22,6 +23,10 @@ SENDER = os.path.join(ROOT, "orchestrator", "push-notify.py")
 COOLDOWN = int(os.environ.get("PUSH_COOLDOWN_SECONDS", "45"))
 SILENT = ("statistics",)          # channels that never push
 PROGRESS_PREFIX = "⋯"
+# buzz appends this line to `content` on an image upload (design.md, gate 1,
+# "content gains the URL"); the notification caption drops the whole line,
+# not just the URL — that is what distinguishes it from a plain text message.
+IMAGE_LINE = re.compile(r"\n!\[image\]\([^)]*\)")
 
 _last: dict = {}   # channel -> (timestamp, suppressed count, held-back message)
 
@@ -37,9 +42,22 @@ def should_notify(cname, author, content, me):
     return bool((content or "").strip())
 
 
-def _body(content, missed):
-    """One notification line: the message, shortened, plus what rode along."""
-    body = (content or "").strip().replace("\n", " ")
+def _has_imeta(tags):
+    """Is this message an image upload (an `imeta` tag present)?"""
+    return any(isinstance(t, list) and t and t[0] == "imeta" for t in (tags or []))
+
+
+def _body(content, missed, tags=None):
+    """One notification line: the message, shortened, plus what rode along.
+
+    An image message drops the Markdown image line buzz appends to `content`
+    (design.md, gate 1: removing only the URL would leave `![image]()`) and
+    gets the 🖼 prefix instead of the picture itself — the picture is not in
+    the notification (see the gates)."""
+    content = content or ""
+    if _has_imeta(tags):
+        content = "🖼 " + IMAGE_LINE.sub("", content).strip()
+    body = content.strip().replace("\n", " ")
     if len(body) > 140:
         body = body[:137] + "…"
     if missed:
@@ -68,7 +86,7 @@ def _send(cname, author, body):
         return False
 
 
-def push(cname, author, content):
+def push(cname, author, content, tags=None):
     """Send one notification; fails silently (it must never get in the way)."""
     now = time.time()
     t, missed, _held = _last.get(cname, (0.0, 0, None))
@@ -78,10 +96,10 @@ def push(cname, author, content):
         # message evaporated and only a counter rode along on the NEXT push in
         # that channel — measured 2026-09-18: a "(+1 eerder)" from four days
         # earlier. A notification that late is the same as no notification.
-        _last[cname] = (t, missed + 1, (author, content))
+        _last[cname] = (t, missed + 1, (author, content, tags))
         return False
     _last[cname] = (now, 0, None)
-    return _send(cname, author, _body(content, missed))
+    return _send(cname, author, _body(content, missed, tags))
 
 
 def flush(now=None):
@@ -93,10 +111,10 @@ def flush(now=None):
     for cname, (t, missed, held) in list(_last.items()):
         if not held or now - t < COOLDOWN:
             continue
-        author, content = held
+        author, content, tags = held
         _last[cname] = (now, 0, None)
         # missed counts the held-back messages INCLUDING this one; the "+n"
         # names only the ones that do not get their own line.
-        if _send(cname, author, _body(content, missed - 1)):
+        if _send(cname, author, _body(content, missed - 1, tags)):
             sent.append(cname)
     return sent

@@ -4,6 +4,10 @@
 # are refused). CHAN = target channel name from channels.yml (default 'general'),
 # e.g. CHAN=review or CHAN=runs. The message comes from an arg or from stdin.
 #   IDENT=reviewer CHAN=review ~/boomhuis/orchestrator/ping.sh 'verdict: ...'
+# --image <path> 'caption' has to be the first argument; the caption is
+# required (docs/how-to/send-an-image.md):
+#   IDENT=architect CHAN=architectuur ~/boomhuis/orchestrator/ping.sh \
+#     --image chart.png 'p95 latency, last 7 days'
 # No secret in this file: the nsec comes from SOPS. The IDENT filter refuses the
 # human identity (role mens) and inactive identities, so nobody can pose as the
 # human (or as a revoked identity).
@@ -11,9 +15,17 @@
 set -euo pipefail
 IDENT="${IDENT:-bouwer}"
 CHAN="${CHAN:-general}"   # target channel (name from channels.yml), default #general
-MSG="${1:-$(cat)}"
 export SOPS_AGE_KEY_FILE="${SOPS_AGE_KEY_FILE:-$HOME/.config/sops/age/keys.txt}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+IMAGE=""
+if [ "${1:-}" = "--image" ]; then
+  IMAGE="${2:-}"
+  MSG="${3:-}"
+  [ -n "$MSG" ] || { echo "[ping] --image heeft een caption nodig" >&2; exit 9; }
+else
+  MSG="${1:-$(cat)}"
+fi
 
 # python3 -c: the program is in the arg (fixed, no shell interpolation), IDENT
 # and ROOT go through env (no injection), and stdin stays free for the sops pipe.
@@ -50,6 +62,22 @@ NSEC=$(sops -d "$ROOT/secrets/identities.yaml" | IDENT="$IDENT" python3 -c 'impo
 # on THIS host; the tailnet IP gives "no community configured for this host").
 # From a tailnet node this works through the subnet router; override with env
 # BUZZ_RELAY_URL. Own npub as --mention: allows free @words (presentation-only).
-BUZZ_PRIVATE_KEY="$NSEC" BUZZ_RELAY_URL="${BUZZ_RELAY_URL:-ws://192.168.178.60:3000}" \
-  ~/.local/bin/buzz messages send --channel "$CID" --content - --mention "$NPUB" <<<"$MSG" >/dev/null
+if [ -n "$IMAGE" ]; then
+  OUTDIR=$(mktemp -d)
+  trap 'rm -rf "$OUTDIR"' EXIT
+  # uv resolves Pillow for image_prep.py; its own exit 2 (a refused image)
+  # becomes ping.sh's exit 10, and nothing is sent.
+  if ! OUT=$(uv run "$ROOT/orchestrator/image_prep.py" "$IMAGE" "$OUTDIR"); then
+    echo "[ping] afbeelding geweigerd (image_prep.py)" >&2
+    exit 10
+  fi
+  # --content as the caption VALUE, never stdin ('-'): stdin together with
+  # --file was never measured (design.md, gate 1.1 measured exactly this form).
+  BUZZ_PRIVATE_KEY="$NSEC" BUZZ_RELAY_URL="${BUZZ_RELAY_URL:-ws://192.168.178.60:3000}" \
+    ~/.local/bin/buzz messages send --channel "$CID" --content "$MSG" --file "$OUT" \
+      --mention "$NPUB" >/dev/null
+else
+  BUZZ_PRIVATE_KEY="$NSEC" BUZZ_RELAY_URL="${BUZZ_RELAY_URL:-ws://192.168.178.60:3000}" \
+    ~/.local/bin/buzz messages send --channel "$CID" --content - --mention "$NPUB" <<<"$MSG" >/dev/null
+fi
 echo "[ping] verstuurd naar #$CHAN (als $IDENT)"

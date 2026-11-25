@@ -159,6 +159,36 @@ services:
     networks:
       - buzz-net
 
+  # Retention (openspec agent-image-to-chat): een blob in buzz-media verdwijnt
+  # alleen hier — een berichtverwijdering laat de blob staan (design.md,
+  # "Measured on 2026-11-24"). profiles: [maintenance] houdt dit buiten
+  # `docker compose up`; jobs/prune-media.sh draait 'm op agent-lxc, dagelijks
+  # via de timer.
+  media-prune:
+    image: rclone/rclone:1.71
+    profiles: ["maintenance"]
+    environment:
+      RCLONE_CONFIG_DST_TYPE: s3
+      RCLONE_CONFIG_DST_PROVIDER: Other
+      RCLONE_CONFIG_DST_ENDPOINT: http://seaweedfs:8333
+      RCLONE_CONFIG_DST_FORCE_PATH_STYLE: "true"
+      RCLONE_CONFIG_DST_ACCESS_KEY_ID: ${BUZZ_S3_ACCESS_KEY:?set BUZZ_S3_ACCESS_KEY}
+      RCLONE_CONFIG_DST_SECRET_ACCESS_KEY: ${BUZZ_S3_SECRET_KEY:?set BUZZ_S3_SECRET_KEY}
+    command:
+      - delete
+      - "dst:${BUZZ_S3_BUCKET:-buzz-media}"
+      - --min-age
+      - 30d
+      - --include
+      - "*.{png,jpg,jpeg,webp}"
+      - -v
+    depends_on:
+      seaweedfs:
+        condition: service_healthy
+    restart: "no"
+    networks:
+      - buzz-net
+
   # De chat: PWA + API. Praat met de relay over het interne netwerk (buzz-net),
   # dus hij heeft de gepubliceerde relay-poort niet nodig.
   chat:
