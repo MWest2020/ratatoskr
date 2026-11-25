@@ -14,8 +14,11 @@ break across lines in a terminal, and then the command fails silently wrong).
 
 --role defaults to 'member' (a session is a participant, not a listener bot).
 --owner defaults to 'orchestrator': channel management signs as an agent, not as
-the human (see change reown-channels-to-orchestrator). For a channel that is
-still human-owned: IDENT=mark in front, until reown-channels.py has run.
+the human (see change reown-channels-to-orchestrator). The owner is only ever
+--owner, never $IDENT: IDENT is what ping.sh signs with, and a session that has
+IDENT set in its environment must not sign channel changes with it by accident
+(until 2026-11-24 the default was $IDENT). For a channel that is still
+human-owned: --owner mark, explicitly.
 """
 import argparse
 import json
@@ -56,7 +59,7 @@ def main():
     ap.add_argument("--pubkey", help="pubkey_hex (or use --name <identity>)")
     ap.add_argument("--name", help="identity name from identities.yml (short)")
     ap.add_argument("--role", default="member", choices=["member", "bot"])
-    ap.add_argument("--owner", default=os.environ.get("IDENT", "orchestrator"),
+    ap.add_argument("--owner", default="orchestrator",
                     help="identity that owns the channel (default orchestrator)")
     a = ap.parse_args()
     a.pubkey = a.pubkey or (_resolve_pubkey(a.name) if a.name else None)

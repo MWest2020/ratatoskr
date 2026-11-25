@@ -115,3 +115,11 @@ identities:
     pubkey_hex: b26e4fe20a4b6db22e1e26d7575770ae57a55c2bf03f71867a7ed9c62879a573
     npub: npub1kfhylcs2fdkmyts7ymt4w4ms4et62hpt7qlhrpn60mvuv2re54esc6ywzl
     aangemaakt: '2026-11-14'
+  heimdall:
+    rol: sessie
+    status: actief
+    pubkey_hex: 9f2f90d5bd56ed54d212e593cd7a0c213a378c9bc7d5aef61e03befa73b22621
+    npub: npub1nuhep4da2mk4f5sjukfu67svyyar0rymcl26aas7qwl05uajycssxyzxf9
+    aangemaakt: '2026-11-24'
+    display_name: Heimdall
+    about: 'the coding session on agent-lxc: the desk Jarvis hands work to; decides and builds'
