@@ -183,6 +183,14 @@ was never measured, so it is not used. The text-only branch is unchanged. Exit
 codes are new for an image refusal (10) and a missing caption (9), and the
 reason is on stderr.
 
+All new interface text is English (AGENTS.md "Nieuw werk meteen Engels",
+ADR-0001): the stderr messages for exits 9 and 10 in `ping.sh`, and the log and
+failure messages of `jobs/prune-media.sh`. The loud failure of the size check
+keeps its meaning: the total is over the limit of `MEDIA_MAX_BYTES`, busier
+than expected, and that is not deliberate growth. Pre-existing Dutch text in
+these files is not translated here; that stays in the separate translation
+change.
+
 Rejected: **a separate `ratatoskr-send` CLI**. It would be a second post path,
 and the identity rules would have to be kept equal in two places. That is how
 an impersonation guard ends up missing from one of them.
