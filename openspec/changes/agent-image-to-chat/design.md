@@ -242,12 +242,13 @@ fixed in advance, so no file has to be split during the build:
 | `orchestrator/image_strip.py` | the three walkers, keep-lists and exact-length checks | ≤ 200 |
 | `orchestrator/image_exif.py` | the Exif/TIFF reader: IFD0 tag `0x0112` | ≤ 80 |
 | `orchestrator/image_prep.py` | `prepare(data) -> (bytes, ext)` raising `Refused(reason)`, magic bytes, limits, the catch-all, and the CLI | ≤ 120 |
+| `orchestrator/image_selfcheck.py` | the self-check of step 7: its own part walker, its own keep-list and JFIF APP0 literals (split out of `image_prep.py` in the second follow-up to #270) | ≤ 60 |
 | `orchestrator/image_testwalk.py` | the tests' own independent walkers (not `test_*`, so discovery does not run it as a test) | ≤ 150 |
 | `orchestrator/test_image_strip.py` | per-fixture keep paths, refusal paths | ≤ 200 |
 | `orchestrator/test_image_prep.py` | the CLI, limits, orientation, the agent-facing messages | ≤ 200 |
 | `orchestrator/test_image_robust.py` | truncation and byte-flip sweep | ≤ 120 |
 | `orchestrator/test_image_fixtures.py` | the sha256 check of `orchestrator/testdata/SHA256SUMS` | ≤ 40 |
-| `orchestrator/test_image_guards.py` | the CLI's guards in-process: the self-check against a leaking stripper, the capped read, an unreadable source (added in the follow-up to #270) | ≤ 100 |
+| `orchestrator/test_image_guards.py` | the CLI's guards in-process: the self-check against a leaking stripper, the capped read, an unreadable source, a JPEG stripper leaking an APP0, wrong entries in `image_strip`'s constants (added in the follow-ups to #270) | ≤ 130 |
 
 The CLI is `python3 orchestrator/image_prep.py <src> <outdir>`. Every refusal
 prints `image_prep: <reason>` on stderr, exits 2 and writes nothing.
@@ -282,10 +283,14 @@ Steps, in this order:
 7. Self-check: the output is walked again, and every part must be on the
    keep-list. Otherwise: "strip self-check failed: <part>". That would be a bug,
    not an input problem. The parts are listed by a small walker in
-   `image_prep.py` that has no keep logic of its own, so a stripper that keeps
-   the wrong part every time is still caught; re-running the stripper alone
-   would only prove that it gives the same answer twice (found in the
-   follow-up to #270, pinned by `test_image_guards.py`).
+   `image_selfcheck.py` that has no keep logic of its own, so a stripper that
+   keeps the wrong part every time is still caught; re-running the stripper
+   alone would only prove that it gives the same answer twice (found in the
+   follow-up to #270, pinned by `test_image_guards.py`). The self-check has
+   its own keep-list literals and its own canonical JFIF APP0, not
+   `image_strip`'s `PNG_KEEP` and `JFIF_APP0`, so a wrong entry in those
+   constants is caught too. For JPEG it requires exactly one APP0, and that
+   APP0 must be the canonical one.
 8. The helper writes `<outdir>/image.<png|jpg|webp>` (the extension comes from
    the magic bytes), prints that path and exits 0.
 
@@ -455,14 +460,17 @@ nsec from SOPS. In order:
    reason is already on stderr. This happens **before** the
    `sops -d` on line 47, so a refused image never decrypts a key.
 4. The send. The image branch runs `buzz messages send --channel "$CID"
-   --content="$MSG" --file "$OUT" --mention "$NPUB" <<<"$MSG"`. That is the
+   --content="$MSG" --file "$OUT" --mention "$NPUB" < <(printf '%s' "$MSG")`.
+   That is the
    form gate 1.1 measured, plus the `--mention` that every `ping.sh` message
    carries. The caption is one argv word (`--content=…`), so a caption that
    starts with `-` is not parsed as a flag (clap refuses `--content -5%`,
    measured 2026-11-26). buzz reads a content of exactly `-` from stdin
    (measured: `--content=-` waits for stdin, `--content=-x` does not), so the
-   caption is also on stdin and a caption of `-` arrives as `-`. Every other
-   caption leaves stdin unread. **`--mention` stays**, since the
+   caption is also on stdin and a caption of `-` arrives as `-`. It goes
+   through `printf '%s'`, not a here-string: `<<<"$MSG"` adds a newline,
+   buzz keeps it, and a `-` caption then arrived as `-\n` (measured live in
+   gate 3.1). Every other caption leaves stdin unread. **`--mention` stays**, since the
    identity-registry delta says every existing behaviour applies unchanged.
    Gate 3.1 is the live proof of the three flags together. If the real CLI
    refuses them there, the fallback is fixed: drop `--mention` on the image
@@ -914,6 +922,12 @@ case asserts its outcome, and each refusal names its reason:
     file`;
   - a stripper patched to keep a `tEXt` on every call, refused by the
     self-check;
+  - a JPEG stripper patched to write a JFIF APP0 with a thumbnail, and
+    separately a second APP0, on every call, both refused by the
+    canonical-APP0 check (the re-strip comparison alone passes them);
+  - `image_strip.PNG_KEEP` with `tEXt` added, and `image_strip.JFIF_APP0`
+    with a different version byte (same length), both refused because the
+    self-check uses its own literals;
   - SVG text in `shot.png`;
   - `GIF89a` bytes in `x.png`;
   - an empty file.

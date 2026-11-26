@@ -85,6 +85,10 @@ is uploaded, and says why:
 
   Crop or shrink and send again, or send a text ping that describes the image.
   `strip self-check failed` is a bug in the helper, not in the file: report it.
+  The part it names (for example `b'tEXt'` or `APP0 other than the canonical
+  JFIF`) is one that `orchestrator/image_strip.py` kept but the self-check's
+  own keep-list in `orchestrator/image_selfcheck.py` does not allow, so one of
+  those two lists is wrong.
 - **The relay refuses the upload** (`relay error 422: media contains
   metadata`): something the helper keeps is still metadata to the relay. That
   is the fixed fallback of design.md gate 3 in openspec
