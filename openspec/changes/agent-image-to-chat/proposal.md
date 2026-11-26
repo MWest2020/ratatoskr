@@ -157,8 +157,28 @@ exit codes and gates.
   fixture, `SHA256SUMS`, and a refusal message that tells agents how to stay
   under 2560 px. See design.md, "Review of #267".
 
+## Amended after the builder FAIL (2026-11-26)
+
+The single build run (ratatoskr#243) hit 161 turns and $14.17 and stopped after
+tasks 2.1 and 2.2. Decision: section 2 of tasks.md is split into three
+separately buildable runs, each with its own `done_when` and tests, and a run
+builds only its own tasks. Scope, files, limits and gates do not change.
+
+- **Run A:** the stripper helper (`image_prep`, `image_strip`, `image_exif`,
+  `image_testwalk`) and `ping.sh --image`. The builder already did this on
+  branch `habitat/builder/agent-image-to-chat-20261126-091423-30416`, so this
+  run reuses it.
+- **Run B:** the notify and listener image-push wiring plus `chat/imeta.py`,
+  including the listener split so `agents/listener.py` stays at or under 200
+  lines.
+- **Run C:** `media-prune` retention, the docs, and the English-text and
+  line-limit verification.
+
 ## Open questions
 
+- Docs land in run C, after A and B. Whether CI's code-without-docs check
+  accepts runs A and B merging on their own is not known. If it does not, the
+  sender docs (`send-an-image.md`, `ping-from-a-session.md`) move into run A.
 - The follow-up change `agent-image-to-chat-read` does not exist yet. It is
   proposed separately (tasks 4.1), with the handover in this change's design.md.
 
