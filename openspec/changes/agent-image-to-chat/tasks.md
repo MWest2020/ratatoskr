@@ -2,15 +2,18 @@
 
 Scope after the split (ratatoskr#260): sender (A), notification and retention
 (C). The read path is the follow-up `agent-image-to-chat-read` and is not built
-here. One build: section 2. Sections 1 and 3 need the relay, SOPS, systemd on
+here. The build is three separate runs, A, B and C (section 2), because the
+single run hit 161 turns and $14.17 and stopped after 2.1 and 2.2
+(ratatoskr#243, builder FAIL of 2026-11-26). A run builds only its own tasks
+and nothing of the others. Sections 1 and 3 need the relay, SOPS, systemd on
 agent-lxc or the phone, which the build cage does not have, so a host session
 on agent-lxc runs them. The build may start once 1.1 and 1.3 are recorded
 (both are). Gate 0 is not a gate of this change.
 
-**Exit condition of the build:** `uv run --with pyyaml bash verify.sh` (the CI
+**Exit condition of every run:** `uv run --with pyyaml bash verify.sh` (the CI
 command) is green, all of it, in the cage and in CI, with no exception and no
-skip. Nothing the build adds needs the network, Pillow, `uv` or the host
-(design.md, fourth FAIL, gap 4).
+skip, plus the run's own `done_when` below. Nothing a run adds needs the
+network, Pillow, `uv` or the host (design.md, fourth FAIL, gap 4).
 
 ## 1. Gates on the host (not in the cage)
 - [x] **Measured 2026-11-13.** An agent key can upload, the relay refuses
@@ -39,7 +42,17 @@ skip. Nothing the build adds needs the network, Pillow, `uv` or the host
       identical to the inputs, `dirty-restart.jpg` included. The build does
       not run the generator and does not need Pillow.
 
-## 2. Build (one run)
+## 2. Build (three runs: A, B, C)
+
+### Run A: the stripper helper and `ping.sh --image` (tasks 2.1, 2.2)
+Run A **reuses** branch
+`habitat/builder/agent-image-to-chat-20261126-091423-30416`, where the failed
+run already built 2.1 and 2.2. It starts from that branch, checks the work
+against the tasks below, and does not rebuild what already passes.
+**done_when:** both commands of 2.1's proof and the test of 2.2 pass, every new
+file is within its line budget, and `verify.sh` is green. Run A does not touch
+`agents/`, `chat/`, `jobs/`, `deploy/` or `docs/`.
+
 - [ ] 2.1 The helper, stdlib only, SPDX headers, in the files and line budgets
       of design.md "Files and line budget": `orchestrator/image_strip.py`,
       `orchestrator/image_exif.py`, `orchestrator/image_prep.py` (with
@@ -79,6 +92,16 @@ skip. Nothing the build adds needs the network, Pillow, `uv` or the host
       the helper refuses, exit 9, a human IDENT still refused before the helper
       runs, and English stderr for exits 9 and 10. **The fake does not prove
       the real CLI**; 3.1 does.
+### Run B: image push wiring and `chat/imeta.py` (tasks 2.4a, 2.3)
+Run B builds on main with run A merged. It includes the listener split, so
+that `agents/listener.py` stays at or under 200 lines. Build 2.4a first: 2.3
+loads it. **done_when:** `chat/test_imeta.py` and `agents/test_notify.py` pass,
+`orchestrator/test_push_chain.py` and `orchestrator/test_push_send.py` are
+unchanged and green, `wc -l agents/listener.py` is at most 200 (199 as
+designed), and `verify.sh` is green. Run B does not touch the helper,
+`ping.sh`, `jobs/`, `deploy/` or `docs/`. (2.4a is listed after 2.3 below for
+numbering; it is built first.)
+
 - [ ] 2.3 Notification, without growing `agents/listener.py`: lines 161-162
       become the single line `notify.on_message(cname, writer, m, ME_NAME)`
       (the file goes to 199 lines). In `agents/notify.py`:
@@ -101,12 +124,6 @@ skip. Nothing the build adds needs the network, Pillow, `uv` or the host
       raising.
       `orchestrator/test_push_chain.py` and `orchestrator/test_push_send.py`
       are unchanged and green, and `wc -l agents/listener.py` gives 199.
-- [ ] 2.4 Retention: the `media-prune` service (profile `maintenance`, rclone
-      1.71) in `deploy/docker-compose.yml`, `jobs/prune-media.sh`, and
-      `jobs/systemd/ratatoskr-media-prune.{service,timer}`. Proof: `bash -n`
-      on the script, `pin_check.py` green, and `jobs/test_prune_media.py` with
-      a fake `ssh` covering a prune followed by a size under and over
-      `MEDIA_MAX_BYTES` (rc 0 and rc 1, the reason printed).
 - [ ] 2.4a `chat/imeta.py` (design.md, fourth FAIL, gap 7): stdlib-only,
       `from_tags(tags)` and `clean_content(content, tags)`, which **never
       raise** on malformed tags (they return `[]` and the unchanged content).
@@ -118,6 +135,20 @@ skip. Nothing the build adds needs the network, Pillow, `uv` or the host
       `agents/test_notify.py` using the same fixture through the helper.
       `agent-image-to-chat-read` reuses this helper; its proposal (4.1) says
       so.
+### Run C: retention, docs, English text and line limit (tasks 2.4, 2.5, 2.6)
+Run C builds on main with runs A and B merged. **done_when:**
+`jobs/test_prune_media.py` passes, `bash -n jobs/prune-media.sh` and
+`pin_check.py` are green, the three docs contain `--image`, the English-text
+check of 2.6 holds, `python3 scripts/line_limit.py` is green over the whole
+repo (every file of A, B and C within its budget, no new baseline entry), and
+`verify.sh` is green.
+
+- [ ] 2.4 Retention: the `media-prune` service (profile `maintenance`, rclone
+      1.71) in `deploy/docker-compose.yml`, `jobs/prune-media.sh`, and
+      `jobs/systemd/ratatoskr-media-prune.{service,timer}`. Proof: `bash -n`
+      on the script, `pin_check.py` green, and `jobs/test_prune_media.py` with
+      a fake `ssh` covering a prune followed by a size under and over
+      `MEDIA_MAX_BYTES` (rc 0 and rc 1, the reason printed).
 - [ ] 2.5 Docs, since CI fails on code without docs. Grep under `docs/` found
       these that describe this behaviour:
       `docs/how-to/send-an-image.md` (new: the command; PNG, JPEG or WebP; at
