@@ -50,6 +50,8 @@ def strip_png(data):
             ok = ((ct == 0 and length == 2) or (ct == 2 and length == 6)
                   or (ct == 3 and 0 < length <= plte_n))
             if not ok: raise Refused("tRNS has a bad length for its colour type")
+        elif ctype == b"IEND":
+            if length: raise Refused("IEND must be 0 bytes")
         seen.add(ctype)
         kept.append(data[pos:crc_end])
         pos = crc_end
@@ -75,7 +77,6 @@ def _tables(payload, size_of):   # DQT/DHT: a segment is one or more tables
         size = size_of(payload, p)
         if size is None or p + size > len(payload): raise Refused("a table runs past the segment")
         p += size
-    if p != len(payload): raise Refused("table length does not match its tables")
 
 def _dqt(payload):
     _tables(payload, lambda d, p: 1 + 64 * (1 + (d[p] >> 4)))
@@ -184,7 +185,6 @@ def strip_webp(data):   # simple form (RIFF/WEBP/VP8 or VP8L), or +VP8X+ALPH
         pos += 8 + size + (size % 2)
     if vp8 is None and vp8l is None: raise Refused("no image chunk")
     if alph is not None and vp8l is not None: raise Refused("ALPH next to VP8L")
-    if alph is not None and vp8 is None: raise Refused("ALPH without VP8")
     frame = _vp8_dims(vp8) if vp8 is not None else _vp8l_dims(vp8l)
     if canvas is not None and canvas != frame: raise Refused("VP8X canvas does not match the frame size")
     if alph is not None:

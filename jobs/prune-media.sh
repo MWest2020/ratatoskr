@@ -11,20 +11,26 @@
 # the failing timer shows up in check_timers.py and in Mark's digest. A log line
 # alone would be the silent failure AGENTS.md forbids.
 #
+# The bucket is named once, in compose: the service's rclone remote `media:` is
+# an alias for the relay's own BUZZ_S3_BUCKET, so this script never names it.
+#
 #   bash jobs/prune-media.sh
 #   MEDIA_SSH=buzz-relay MEDIA_MAX_BYTES=2147483648 bash jobs/prune-media.sh
 set -euo pipefail
 HOST="${MEDIA_SSH:-buzz-relay}"
 DIR="${MEDIA_DIR:-/opt/buzz-relay}"
-BUCKET="${MEDIA_BUCKET:-buzz-media}"
 MAX="${MEDIA_MAX_BYTES:-2147483648}"   # 2 GiB; 20 images a day for 30 days is ~0.6 GiB
 RUN="cd $DIR && sudo docker compose --profile maintenance run --rm media-prune"
+# A limit that is not a number would make the size test below error out and
+# read as "under the limit": refuse it before anything runs.
+[[ "$MAX" =~ ^[0-9]+$ ]] \
+  || { echo "[media-prune] MEDIA_MAX_BYTES must be a whole number of bytes, got '$MAX'" >&2; exit 2; }
 
-echo "[media-prune] deleting images older than 30 days from $BUCKET on $HOST"
+echo "[media-prune] deleting images older than 30 days from the media store on $HOST"
 ssh -o BatchMode=yes "$HOST" "$RUN" \
   || { rc=$?; echo "[media-prune] prune failed on $HOST (rc=$rc)" >&2; exit 1; }
 
-OUT=$(ssh -o BatchMode=yes "$HOST" "$RUN size dst:$BUCKET --json") \
+OUT=$(ssh -o BatchMode=yes "$HOST" "$RUN size media: --json") \
   || { rc=$?; echo "[media-prune] size check failed on $HOST (rc=$rc)" >&2; exit 1; }
 # rclone prints one JSON line, {"count":…,"bytes":…}; take the last line in case
 # compose printed anything before it.

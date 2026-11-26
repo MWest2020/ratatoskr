@@ -76,6 +76,8 @@ is uploaded, and says why:
   - `APP14 …`, `RGB-coded JPEG …` or `component count 4 …`: re-save as PNG;
   - `GIF/SVG/HEIC/AVIF/PDF is not a supported image type`, `unknown file
     type`, or `not a regular file`;
+  - `cannot read the file: <reason>` (for example `Permission denied`): the
+    session cannot open the file; check its mode and owner;
   - `input exceeds …` (over 20 MiB) or `output is … over the … byte limit`
     (over 5 MiB after stripping);
   - `cannot parse <fmt>: …`, `bad CRC …` or another structural reason: the
@@ -93,20 +95,28 @@ is uploaded, and says why:
   listener logs `[listener] notify: image tags unreadable (…)` when it could
   not read the `imeta` tag; it then falls back to the plain text.
 
-**The prune timer.** `ratatoskr-media-prune.timer` (daily 04:30) runs
-`jobs/prune-media.sh`, which deletes image blobs older than 30 days on the
-relay VM (`media-prune`, compose profile `maintenance`) and then checks the
-store's size. It exits 1, and `scripts/check_timers.py` turns red, when:
+**The prune timer.** Once it is enabled (task 3.3 of openspec
+`agent-image-to-chat`; `systemctl --user is-enabled
+ratatoskr-media-prune.timer` tells you), `ratatoskr-media-prune.timer` (daily
+04:30) runs `jobs/prune-media.sh`, which deletes image blobs older than 30
+days on the relay VM (`media-prune`, compose profile `maintenance`) and then
+checks the store's size. Before that, nothing is deleted. It exits 1, and
+`scripts/check_timers.py` turns red, when:
 
 - `[media-prune] prune failed on <host> (rc=…)` or `size check failed`: ssh to
   the relay VM or `sudo docker compose` failed. Try
-  `ssh buzz-relay 'cd /opt/buzz-relay && sudo docker compose --profile maintenance run --rm media-prune size dst:buzz-media --json'`;
+  `ssh buzz-relay 'cd /opt/buzz-relay && sudo docker compose --profile maintenance run --rm media-prune size media: --json'`;
 - `media store is <n> bytes after the prune, over the MEDIA_MAX_BYTES limit of
   <max>`: more images than expected, not deliberate growth. Twenty images a
   day for 30 days is about 0.6 GiB, so look for what is uploading.
 
-`journalctl --user -u ratatoskr-media-prune.service` shows the last run. An
-image that is older than 30 days is gone on purpose; its message text stays.
+It exits 2 with `MEDIA_MAX_BYTES must be a whole number of bytes` when the
+limit in the unit or the environment is not a plain number (`2G` is not); it
+then runs nothing.
+
+`journalctl --user -u ratatoskr-media-prune.service` shows the last run. With
+the timer enabled, an image that is older than 30 days is gone on purpose; its
+message text stays.
 
 ## An agent answers as if it does not know its role
 

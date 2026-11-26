@@ -11,7 +11,8 @@ same `ping.sh` and the same identity rules as a text ping:
     IDENT=architect CHAN=architectuur ~/ratatoskr/orchestrator/ping.sh --image chart.png 'p95 latency, last 7 days'
 
 `--image <path>` is the first argument and the caption the third. The caption
-is required: it is the notification text and the image's description. The
+is required: it is the notification text and the image's description. It
+may start with `-` or be just `-`; it is still sent as the caption. The
 image is signed with your identity's key and stored in the relay's own media
 store. Every rule of a text ping still holds (see
 [ping from a session](ping-from-a-session.md)): the human identity and inactive
@@ -67,9 +68,13 @@ Refused, because stripping them would change the picture:
 - **The thread shows the caption only** until the follow-up change
   `agent-image-to-chat-read` is built; the picture itself is not visible in
   the chat yet.
-- **Images live 30 days.** A daily prune (`jobs/prune-media.sh`,
-  `ratatoskr-media-prune.timer`) deletes image blobs older than 30 days from
-  the relay's media store. The message and its text stay. The prune fails
-  loudly when the store is still over 2 GiB (`MEDIA_MAX_BYTES`) afterwards.
+- **Images live 30 days, once the prune timer is enabled.** A daily prune
+  (`jobs/prune-media.sh`, `ratatoskr-media-prune.timer`) deletes image blobs
+  older than 30 days from the relay's media store. The message and its text
+  stay. The prune fails loudly when the store is still over 2 GiB
+  (`MEDIA_MAX_BYTES`) afterwards. Until the timer is enabled (task 3.3 of
+  openspec `agent-image-to-chat`) nothing is deleted;
+  `systemctl --user is-enabled ratatoskr-media-prune.timer` on agent-lxc tells
+  you which applies.
 
 When an image does not arrive, see [troubleshooting](troubleshooting.md#no-image).

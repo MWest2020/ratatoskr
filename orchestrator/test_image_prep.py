@@ -64,6 +64,15 @@ def _sos_too_long():
     return b"\xff\xd8" + built._jseg(0xC0, built.SOF3) + built._jseg(0xDA, sos) + b"\x00\xff\xd9"
 
 
+TIFF_ROT6 = b"MM\x00\x2a" + struct.pack(">IHHHIHHI", 8, 1, 0x0112, 3, 1, 6, 0, 0)   # IFD0: Orientation 6
+PALETTE = struct.pack(">IIBBBBB", 2, 2, 8, 3, 0, 0, 0)
+
+
+def _with_iend(body):
+    ihdr = struct.pack(">IIBBBBB", 2, 2, 8, 0, 0, 0, 0)
+    return b"\x89PNG\r\n\x1a\n" + _chunk(b"IHDR", ihdr) + _chunk(b"IDAT", b"x") + _chunk(b"IEND", body)
+
+
 def _built_refusals():
     """(name, file name, bytes, reason or None) for every built refusal."""
     for cls in (built.PngBuiltCases, built.JpegBuiltCases, built.WebpBuiltCases):
@@ -77,6 +86,14 @@ def _built_refusals():
     yield "empty file", "shot.png", b"", "unknown file type"
     yield "duplicate VP8X", "shot.webp", _dup_vp8x(), "duplicate VP8X"
     yield "SOS header one byte too long", "shot.jpg", _sos_too_long(), "SOS header length"
+    yield "rotated WebP (bare TIFF)", "s.webp", built._webp([(b"VP8 ", built.VP8), (b"EXIF", TIFF_ROT6)]), "orientation 6"
+    yield "rotated WebP (Exif prefix)", "s.webp", built._webp([(b"EXIF", b"Exif\0\0" + TIFF_ROT6), (b"VP8 ", built.VP8)]), \
+        "orientation 6"
+    for name, sof in (("SOF one byte long", built.SOF3 + b"\x00"), ("SOF one byte short", built.SOF3[:-1])):
+        yield name, "s.jpg", built._jpeg([(0xC0, sof)]), "SOF length does not match"
+    yield "DRI of 3 bytes", "s.jpg", built._jpeg([(0xDD, b"\x00\x01\x02"), (0xC0, built.SOF3)]), "DRI is not 2 bytes"
+    yield "tRNS over the palette", "s.png", built._png(extra=[(b"PLTE", bytes(6)), (b"tRNS", bytes(3))], ihdr=PALETTE), "tRNS"
+    yield "IEND of 1 byte", "s.png", _with_iend(b"x"), "IEND must be 0 bytes"
 
 
 class TheCli(unittest.TestCase):

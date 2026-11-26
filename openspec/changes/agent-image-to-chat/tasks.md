@@ -24,7 +24,11 @@ network, Pillow, `uv` or the host (design.md, fourth FAIL, gap 4).
       `thumb`; `content` gains a `![image](<url>)` line. The event is committed
       as `chat/testdata/imeta-event.json`. Proof: the file is committed and
       design.md states the tag fields.
-- [ ] 1.2 **Bucket inventory.** Run
+- [x] 1.2 **Bucket inventory.** Done 2026-11-26 (design.md, "Bucket
+      inventory"): 20 image blobs and thumbnails match the filter, 160 relay
+      objects do not; the first run would delete three 384×384 PNGs of
+      unknown origin from 2026-08-27, so the filter is not limited to agent
+      media and ratatoskr#272 (`waiting-on-mark`) is open. Original task: Run
       `ssh buzz-relay 'cd /opt/buzz-relay && sudo docker compose run --rm seaweedfs-init lsf dst:buzz-media'`
       (or `media-prune` once it is deployed). Record the key layout and any
       key that is not an image in design.md. Proof: the listing summary is in
@@ -194,7 +198,10 @@ repo (every file of A, B and C within its budget, no new baseline entry), and
       scripts finds no Dutch string in the added lines.
 
 ## 3. Live (host session, after merge)
-- [ ] 3.1 Gate 3: the stripped `dirty.png`, `dirty.jpg`,
+- [x] 3.1 **Done 2026-11-26** (design.md, "Measured on 2026-11-26"): all
+      four accepted with the `imeta` tag and the caption, the four refused
+      fixtures exit 10 with nothing sent, messages deleted. Run as `odin`,
+      because `claude` is not a member of `#statistics`. Original task: Gate 3: the stripped `dirty.png`, `dirty.jpg`,
       `dirty-lossless.webp` and `dirty-lossy-alpha.webp`, each through the real `ping.sh --image` to
       `#statistics`. Each send must return `accepted`, and `messages get` must
       show the `imeta` tag and the caption. Then delete the messages and
@@ -207,12 +214,15 @@ repo (every file of A, B and C within its budget, no new baseline entry), and
       APP0; WebP `ALPH` refused, or WebP refused; `--mention` dropped on the
       image branch),
       with its test, in a follow-up PR.
-- [ ] 3.2 Right after the merge, install the prune unit **files** with
+- [x] 3.2 **Done 2026-11-26:** installed, not enabled; `uv run --offline
+      --with pyyaml bash verify.sh` on agent-lxc is green including `units`
+      and `timers` (11 green). Original task: Right after the merge, install the prune unit **files** with
       `python3 scripts/check_units.py --install`. This copies them and runs
       `daemon-reload`, and enables nothing. Proof: `bash verify.sh` on
       agent-lxc is green, including `units` and `timers` (a disabled timer
       is not in `list-timers --all`, measured 2026-11-26).
-- [ ] 3.3 Once 1.2 records the filter as safe:
+- [ ] 3.3 **Blocked on ratatoskr#272** (the filter is not limited to agent
+      media). Once 1.2 records the filter as safe:
       `systemctl --user enable --now ratatoskr-media-prune.timer`, and one run
       with `systemctl --user start ratatoskr-media-prune.service`. Proof: the
       journal shows the prune and a size under `MEDIA_MAX_BYTES`, and
