@@ -17,6 +17,9 @@ import image_strip
 from test_image_prep import TESTDATA, _run
 
 DIRTY_PNG = os.path.join(TESTDATA, "dirty.png")
+DIRTY_JPG = os.path.join(TESTDATA, "dirty.jpg")
+CANON = b"\xff\xe0\x00\x10JFIF\x00\x01\x01\x00\x00\x01\x00\x01\x00\x00"
+THUMB = b"\xff\xe0\x00\x13JFIF\x00\x01\x01\x00\x00\x01\x00\x01\x01\x01" + b"fx-"   # a 1x1 thumbnail
 
 
 def _chunk(ctype, body):
@@ -82,6 +85,35 @@ class GuardsOfTheCli(unittest.TestCase):
         want = "image_prep: cannot read the file: Permission denied\n" if os.geteuid() else "image_prep: unknown file type\n"
         self.assertEqual(r.stderr, want)   # root reads a mode-000 file; the any-OSError case covers it there
 
+
+
+class TheSelfCheckHasItsOwnKeepLists(unittest.TestCase):
+    """Only the canonical-APP0 check and the self-check's own literals catch
+    these; the re-strip comparison alone passes every one of them."""
+    APP0_LEAKS = (("a JFIF APP0 with a thumbnail", lambda out: out[:2] + THUMB + out[20:]),
+                  ("a second APP0", lambda out: out[:20] + CANON + out[20:]))
+
+    def test_a_leaking_jpeg_stripper_is_refused(self):
+        real = image_strip.strip_jpeg
+        for name, leak in self.APP0_LEAKS:
+            with self.subTest(name):
+                def leaky(data):   # the same leak on every call
+                    out, w, h = real(data)
+                    return leak(out), w, h
+                rc, err, files = _main(DIRTY_JPG, strip_jpeg=leaky)
+                self.assertEqual((rc, files), (2, []))
+                self.assertEqual(err, "image_prep: strip self-check failed: 'APP0 other than the canonical JFIF' "
+                                      "is not on the keep-list\n")
+
+    def test_a_wrong_entry_in_image_strip_constants_is_caught(self):
+        cases = (("PNG_KEEP with tEXt", DIRTY_PNG, "PNG_KEEP", image_strip.PNG_KEEP + (b"tEXt",), "b'tEXt'"),
+                 ("JFIF_APP0 of version 1.2", DIRTY_JPG, "JFIF_APP0", CANON.replace(b"JFIF\x00\x01\x01", b"JFIF\x00\x01\x02"),
+                  "'APP0 other than the canonical JFIF'"))   # same length, so only the own literal sees it
+        for name, src, const, wrong, part in cases:
+            with self.subTest(name):
+                rc, err, files = _main(src, **{const: wrong})
+                self.assertEqual((rc, files), (2, []))
+                self.assertEqual(err, f"image_prep: strip self-check failed: {part} is not on the keep-list\n")
 
 
 if __name__ == "__main__":
