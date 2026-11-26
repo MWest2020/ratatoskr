@@ -595,8 +595,10 @@ chains (notify → `orchestrator/push-notify.py` → VAPID → phone). Its tests
   `agents/test_build_starters.py:119-127` already pins `build_starters.take`:
   a test reads `agents/listener.py` and asserts that it contains
   `notify.on_message(cname, writer, m, ME_NAME)` once, and no `notify.push(`
-  or `notify.should_notify(`. A later edit that goes back to passing
-  `content` alone fails there.
+  or `notify.should_notify(`, and also not the stale comment name
+  `notify.should_notify` (the comment at `agents/listener.py:159` is rewritten
+  to `notify.on_message` in the same edit). A later edit that goes back to
+  passing `content` alone fails there.
 - `chat/test_imeta.py`: `from_tags` and `clean_content` against the same
   fixture, plus the same malformed shapes (each gives `[]` and an unchanged
   content, without raising).

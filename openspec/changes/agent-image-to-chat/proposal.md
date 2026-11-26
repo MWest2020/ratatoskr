@@ -165,14 +165,22 @@ separately buildable runs, each with its own `done_when` and tests, and a run
 builds only its own tasks. Scope, files, limits and gates do not change.
 
 - **Run A:** the stripper helper (`image_prep`, `image_strip`, `image_exif`,
-  `image_testwalk`) and `ping.sh --image`. The builder already did this on
-  branch `habitat/builder/agent-image-to-chat-20261126-091423-30416`, so this
-  run reuses it.
+  `image_testwalk`) and `ping.sh --image`. Amended after the fifth architect
+  FAIL (ratatoskr#260): run A starts from main and builds to the #267 design.
+  It reuses the earlier builder branch only if its SHA is pinned and the
+  passing tests are named; otherwise nothing is taken over.
 - **Run B:** the notify and listener image-push wiring plus `chat/imeta.py`,
   including the listener split so `agents/listener.py` stays at or under 200
   lines.
 - **Run C:** `media-prune` retention, the docs, and the English-text and
   line-limit verification.
+
+Also from the fifth architect FAIL: the comment at `agents/listener.py:159`
+names `notify.on_message` instead of `notify.should_notify`, rewritten in the
+same edit that lands the file at 199 lines; the source pin greps for both
+`notify.should_notify(` and the stale comment name. `--content --file
+--mention` together stays unproven until gate 3.1, with the fallback of
+dropping `--mention` on the image branch.
 
 ## Open questions
 
