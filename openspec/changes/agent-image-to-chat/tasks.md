@@ -28,30 +28,44 @@ skip. Nothing the build adds needs the network, Pillow, `uv` or the host
       design.md. If the `--include` filter is unsafe, open a `waiting-on-mark`
       issue with the hash-list default from design.md. Only blocks 3.3.
 - [x] 1.3 **Image fixtures.** Committed 2026-11-26 in the amend after the
-      fourth architect FAIL: ten files in `orchestrator/testdata/` plus their
-      host-only generator `orchestrator/testdata/make_image_fixtures.py`
-      (design.md, "Tests", fixture table). Proof: the files are committed;
-      Pillow 13 on agent-lxc reads the Exif (with GPS), XMP and ICC data of
-      every dirty fixture, and a throwaway keep-list prototype gave outputs
-      with pixels identical to the inputs. The build does not run the
-      generator and does not need Pillow.
+      fourth architect FAIL and extended after the review of #267: eleven
+      files in `orchestrator/testdata/` (seven dirty, two rotated, one CMYK,
+      one animated), `SHA256SUMS`, and their host-only generator
+      `orchestrator/testdata/make_image_fixtures.py`, pinned to
+      `pillow==13.0.0` (design.md, "Tests", fixture table). Proof: the files
+      are committed and `sha256sum -c SHA256SUMS` passes; Pillow 13 on
+      agent-lxc reads the Exif (with GPS), XMP and ICC data of every dirty
+      fixture; a throwaway keep-list prototype gave outputs with pixels
+      identical to the inputs, `dirty-restart.jpg` included. The build does
+      not run the generator and does not need Pillow.
 
 ## 2. Build (one run)
-- [ ] 2.1 `orchestrator/image_strip.py` and `orchestrator/image_prep.py`,
-      stdlib only, each ≤ 200 lines with an SPDX header, exactly as design.md
-      "Preparing the image" says: the eight steps in order, the three
-      keep-lists, the orientation refusal, the self-check, and every refusal
-      as `image_prep: <reason>` on stderr with exit 2 and nothing written.
-      Tests: `orchestrator/test_image_strip.py` and
-      `orchestrator/test_image_prep.py`, `unittest.TestCase` only (no pytest,
-      no conftest, no bare `def test_*`, no `skipTest`), driven by the
-      committed fixtures and the cases built in the tests (design.md
-      "Tests"). For every dirty fixture the test first proves the **input**
-      dirty with its own walker and the `fixture-` sentinel, then the
-      **output** clean, then the image data byte-identical. Proof: `cd
-      orchestrator && python3 -m unittest discover -p 'test_image_*.py' -v`
-      lists every case as `ok`; `grep -n skip orchestrator/test_image_*.py`
-      finds nothing; `python3 scripts/line_limit.py` is green.
+- [ ] 2.1 The helper, stdlib only, SPDX headers, in the files and line budgets
+      of design.md "Files and line budget": `orchestrator/image_strip.py`,
+      `orchestrator/image_exif.py`, `orchestrator/image_prep.py` (with
+      `prepare(data)` and `Refused`), and the test walker
+      `orchestrator/image_testwalk.py`. Build it exactly as design.md
+      "Preparing the image" says: the eight steps in order, the input read as
+      `read(LIMIT + 1)`, the bounded-parsing rules (forward progress, JPEG
+      length < 2 and non-`FF` refused, fill bytes skipped, the `cannot parse
+      <fmt>` catch-all), the dimension rules, duplicates refused, exact
+      lengths of kept parts, the three keep-lists with their refusals (APNG,
+      animated WebP, APP14, RGB-coded JPEG, other SOFn), the orientation rule,
+      the self-check, and every refusal as `image_prep: <reason>` on stderr
+      with exit 2 and nothing written. The 2560 px message names the traps
+      and fixes. Tests: `test_image_strip.py`, `test_image_prep.py`,
+      `test_image_robust.py` and `test_image_fixtures.py`, as design.md
+      "Tests" lists them. They are `unittest.TestCase` only (no pytest, no
+      conftest, no bare `def test_*`, no `skipTest`), driven by the committed
+      fixtures and the cases built in the tests. For every dirty fixture the
+      test first proves the **input** dirty with `image_testwalk` and the
+      `fixture-` sentinel, then the **output** clean, then the image data
+      byte-identical. Proof: `cd orchestrator && python3 -m unittest discover
+      -p 'test_image_*.py' -v` lists every case as `ok`, including every
+      built refusal design.md names and the truncation and flip sweep (no
+      traceback, no alarm); `grep -n skip orchestrator/test_image_*.py` finds
+      nothing; `python3 scripts/line_limit.py` is green, with every new file
+      within its budget.
 - [ ] 2.2 `orchestrator/ping.sh --image <path> 'caption'`, in the order
       design.md gives: argument branch (exit 9 without a caption), the
       unchanged IDENT and channel checks, then the helper into a `mktemp -d`
@@ -81,6 +95,10 @@ skip. Nothing the build adds needs the network, Pillow, `uv` or the host
       `should_notify` filters are still pinned, and a source test of
       `agents/listener.py` finds `notify.on_message(cname, writer, m,
       ME_NAME)` once and no `notify.push(` or `notify.should_notify(`.
+      `on_message` builds the push in `try`/`except`, logs `[listener]
+      notify: image tags unreadable (…)` and falls back to plain text; the
+      malformed-tag cases of design.md give the plain-text body without
+      raising.
       `orchestrator/test_push_chain.py` and `orchestrator/test_push_send.py`
       are unchanged and green, and `wc -l agents/listener.py` gives 199.
 - [ ] 2.4 Retention: the `media-prune` service (profile `maintenance`, rclone
@@ -90,10 +108,13 @@ skip. Nothing the build adds needs the network, Pillow, `uv` or the host
       a fake `ssh` covering a prune followed by a size under and over
       `MEDIA_MAX_BYTES` (rc 0 and rc 1, the reason printed).
 - [ ] 2.4a `chat/imeta.py` (design.md, fourth FAIL, gap 7): stdlib-only,
-      `from_tags(tags)` and `clean_content(content, tags)`. `agents/notify.py`
+      `from_tags(tags)` and `clean_content(content, tags)`, which **never
+      raise** on malformed tags (they return `[]` and the unchanged content).
+      `agents/notify.py`
       loads it by file path with `importlib.util.spec_from_file_location`,
       not through `sys.path`. Proof: `chat/test_imeta.py` driven by
-      `chat/testdata/imeta-event.json` (the one fixture; no second copy), and
+      `chat/testdata/imeta-event.json` (the one fixture; no second copy) plus the malformed shapes
+      (`["imeta"]`, non-string fields, tags that are not a list), and
       `agents/test_notify.py` using the same fixture through the helper.
       `agent-image-to-chat-read` reuses this helper; its proposal (4.1) says
       so.
@@ -101,8 +122,13 @@ skip. Nothing the build adds needs the network, Pillow, `uv` or the host
       these that describe this behaviour:
       `docs/how-to/send-an-image.md` (new: the command; PNG, JPEG or WebP; at
       most 20 MiB in, 5 MiB out and 2560 px per side, refused rather than
-      resized; metadata stripped with the pixels untouched; refused: animated
-      WebP, CMYK or Adobe JPEG, a rotated EXIF orientation; the required
+      resized, with the traps (Playwright `fullPage`, `deviceScaleFactor: 2`)
+      and the fixes (clip or viewport ≤ 2560, `scale: "css"`, matplotlib
+      `figsize × dpi` ≤ 2560); metadata stripped with the pixels untouched;
+      what is stripped is accidental metadata, not data hidden on purpose;
+      refused: animated PNG or WebP, a rotated EXIF orientation, and Adobe
+      APP14, CMYK or RGB-coded JPEG ("re-save as PNG"); on exit 10, crop or
+      send a text ping instead; the required
       caption, exit codes 9 and 10, the 30-day retention, the `🖼 caption`
       push, that the thread does not show the picture until
       `agent-image-to-chat-read` is built, and failures);

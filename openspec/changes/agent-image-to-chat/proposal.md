@@ -60,8 +60,10 @@ architect named:
   2560 px on a side. It keeps the pixel data byte for byte and drops
   everything else in the file, so no EXIF, XMP, text, comment or ICC data
   survives. It refuses what it cannot strip without changing the picture
-  (a rotated EXIF orientation, animated WebP, CMYK or Adobe JPEG) and output
-  over 5 MiB. Then
+  (a rotated EXIF orientation, an animated PNG or WebP, a CMYK, Adobe or
+  RGB-coded JPEG), refuses malformed files cleanly, and refuses output over
+  5 MiB. It removes accidental metadata; data hidden in the pixels on purpose
+  is out of scope. Then
   `buzz messages send --file` uploads the image to the relay's Blossom store
   and attaches it to the signed message. One image per message, and the caption
   is required.
@@ -149,6 +151,11 @@ exit codes and gates.
   in gate 3. **The prune unit files** are installed at merge and enabled after
   gate 1.2, so the local gate stays green.
 - **Dedup versus age** stays accepted.
+- **After the review of #267:** bounded parsing with a truncation and
+  byte-flip sweep, stricter dimension checks, `imeta` never raises, APNG and
+  RGB-coded JPEG refused, exact lengths of kept parts, a restart-marker
+  fixture, `SHA256SUMS`, and a refusal message that tells agents how to stay
+  under 2560 px. See design.md, "Review of #267".
 
 ## Open questions
 

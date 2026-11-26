@@ -9,8 +9,8 @@ human identity, an inactive identity, a session in the hub channel) SHALL
 apply unchanged. Before upload the helper SHALL accept only PNG, JPEG and WebP
 as decided by magic bytes. It SHALL remove every EXIF, XMP, ICC, comment and
 text block while leaving the image data unchanged. It SHALL refuse an image
-over 2560 pixels on either side, an image whose EXIF orientation is not the
-default, and a result over 5 MiB. A refusal SHALL name the reason and SHALL
+over 2560 pixels on either side, an animated image, an image whose EXIF
+orientation is not the default, and a result over 5 MiB. A refusal SHALL name the reason and SHALL
 post nothing. A caption SHALL be required.
 
 #### Scenario: A session sends a chart
@@ -36,6 +36,24 @@ post nothing. A caption SHALL be required.
 
 - **WHEN** the file is called `shot.png` but holds SVG text
 - **THEN** the helper refuses it, names the type problem, and posts nothing
+
+#### Scenario: A screenshot larger than 2560 pixels
+
+- **WHEN** an agent passes a 2880×1800 screenshot (for example a Playwright
+  capture at `deviceScaleFactor: 2`)
+- **THEN** the helper refuses it, states the size and the 2560-pixel limit,
+  names how to make it smaller at the source, and posts nothing
+
+#### Scenario: An animated image is refused
+
+- **WHEN** the input is an animated PNG or an animated WebP
+- **THEN** the helper refuses it as animated and posts nothing
+
+#### Scenario: A malformed file fails cleanly
+
+- **WHEN** the input is truncated or corrupt at any byte
+- **THEN** the helper either produces a well-formed stripped image or refuses
+  with a reason, and never crashes or hangs
 
 #### Scenario: Too large after preparation
 

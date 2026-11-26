@@ -154,37 +154,56 @@ So Pillow would arrive over the network, on every build, in every CI run and
 in every pre-push `verify.sh`. `verify.sh` says it must stay green offline
 (line 4). The strip test would have been the only test in it that needs PyPI.
 
+**Threat model.** The helper removes *accidental* metadata, the kind a camera,
+an editor or an encoder writes. A sender who hides data on purpose is out of
+scope, because pixels can carry anything.
+
 **What the helper does instead.** It keeps the pixel data byte for byte and
 throws away every container part that is not on a short keep-list. Nothing is
-decoded and nothing is re-encoded. Two stdlib-only files, each ≤ 200 lines with
-an SPDX header:
+decoded and nothing is re-encoded.
 
-- `orchestrator/image_strip.py`: one walker per format with its keep-list.
-- `orchestrator/image_prep.py`: the CLI, `python3 orchestrator/image_prep.py
-  <src> <outdir>`. Every refusal prints `image_prep: <reason>` on stderr,
-  exits 2 and writes nothing.
+**Files and line budget.** All files are stdlib-only, have an SPDX header and
+stay at 200 lines or fewer (`scripts/line_limit.py`). Where the lines go is
+fixed in advance, so no file has to be split during the build:
+
+| File | Holds | Budget |
+|---|---|---|
+| `orchestrator/image_strip.py` | the three walkers, keep-lists and exact-length checks | ≤ 200 |
+| `orchestrator/image_exif.py` | the Exif/TIFF reader: IFD0 tag `0x0112` | ≤ 80 |
+| `orchestrator/image_prep.py` | `prepare(data) -> (bytes, ext)` raising `Refused(reason)`, magic bytes, limits, the catch-all, and the CLI | ≤ 120 |
+| `orchestrator/image_testwalk.py` | the tests' own independent walkers (not `test_*`, so discovery does not run it as a test) | ≤ 150 |
+| `orchestrator/test_image_strip.py` | per-fixture keep paths, refusal paths | ≤ 200 |
+| `orchestrator/test_image_prep.py` | the CLI, limits, orientation, the agent-facing messages | ≤ 200 |
+| `orchestrator/test_image_robust.py` | truncation and byte-flip sweep | ≤ 120 |
+| `orchestrator/test_image_fixtures.py` | the sha256 check of `orchestrator/testdata/SHA256SUMS` | ≤ 40 |
+
+The CLI is `python3 orchestrator/image_prep.py <src> <outdir>`. Every refusal
+prints `image_prep: <reason>` on stderr, exits 2 and writes nothing.
 
 Steps, in this order:
 
-1. `src` is a regular file of ≤ 20 MiB (checked with `stat` before reading).
+1. `src` must be a regular file. It is read with a cap,
+   `f.read(LIMIT + 1)` with `LIMIT = 20 MiB`, and more than `LIMIT` bytes is
+   refused. There is no stat-then-read.
 2. Magic bytes: PNG `89 50 4E 47 0D 0A 1A 0A`, JPEG `FF D8 FF`, WebP
    `RIFF????WEBP`. The extension is never consulted. GIF (`GIF8`), SVG or XML
    (`<svg`/`<?xml` after leading whitespace), HEIC/AVIF (`ftyp` at offset 4)
    and PDF (`%PDF`) are refused by name. Anything else is refused as
    "unknown file type".
-3. Walk the container (keep-lists below). A structural fault refuses with its
-   reason: truncated data, a chunk or segment length past the end, a bad PNG
-   CRC, a missing IHDR/IDAT/IEND, a missing SOF or EOI, or a RIFF size that
-   does not match.
-4. Width and height come from the header: PNG IHDR, JPEG SOF, WebP VP8X canvas,
-   or the VP8 or VP8L frame header. Either side over 2560 px is refused with
-   the size and the limit: "resize at the source".
-5. **Orientation.** Every Exif block the walk drops (JPEG APP1 `Exif\0\0`, PNG
-   `eXIf`, WebP `EXIF` with or without the `Exif\0\0` prefix) is read for IFD0
-   tag `0x0112`. A value other than 1 is refused with "EXIF orientation <n>:
-   rotate the pixels before sending". Dropping the block without that check
-   would show the picture sideways, which is a silent failure. An Exif block
-   that cannot be read is refused too. A missing Orientation tag is fine.
+3. Walk the container under the parsing rules and keep-lists below.
+4. Dimensions (rules below). Either side over 2560 px is refused with a
+   message for agents:
+   `image_prep: 2880x1800 exceeds 2560 px per side; make it smaller at the
+   source (Playwright: no fullPage, viewport or clip <= 2560, scale: "css";
+   matplotlib: figsize x dpi <= 2560)`.
+5. **Orientation.** `image_exif.py` reads every Exif block the walk drops
+   (JPEG APP1 `Exif\0\0`, PNG `eXIf`, WebP `EXIF` with or without the
+   `Exif\0\0` prefix) for IFD0 tag `0x0112`. A value other than 1 is refused
+   with "EXIF orientation <n>: rotate the pixels before sending", because
+   dropping the block without that check would show the picture sideways (a
+   silent failure). An unreadable Exif block (a bad byte order, an offset past
+   the end, a truncated IFD) is refused. An Exif block without an Orientation
+   tag is accepted.
 6. The output is ≤ 5 MiB. If not, it is refused with the size and the limit.
 7. Self-check: the output is walked again, and every part must be on the
    keep-list. Otherwise: "strip self-check failed: <part>". That would be a bug,
@@ -192,50 +211,106 @@ Steps, in this order:
 8. The helper writes `<outdir>/image.<png|jpg|webp>` (the extension comes from
    the magic bytes), prints that path and exits 0.
 
+**Bounded parsing and clean failure.**
+
+- **Every walker step moves forward.** Each loop iteration checks that the new
+  position is greater than the old one, and refuses otherwise. Every length is
+  checked against the end of the data before it is used.
+- **The catch-all.** `prepare` wraps the walk: any `struct.error`,
+  `IndexError` or `ValueError` becomes `Refused("cannot parse <fmt>: <exception
+  text>")`, so the CLI prints `image_prep: cannot parse <fmt>: …` and exits 2.
+  The CLI never shows a traceback. Anything else is a bug and stays loud.
+- **Duplicates are refused:** a second IHDR, PLTE, tRNS or IEND; a second SOF,
+  SOI or EOI before the end; a second VP8X, ALPH or image chunk.
+- **Exact lengths (hardening).** A kept part must be exactly as long as its
+  contents say:
+  - DQT: the sum over its tables of `1 + 64 × (1 + Pq)`.
+  - DHT: the sum over its tables of `1 + 16 + Σ counts`.
+  - SOF: `6 + 3 × Nf`.
+  - The SOS header: `4 + 2 × Ns`.
+  - DRI: 2 bytes.
+  - IHDR: 13 bytes.
+  - PLTE: a multiple of 3, at most 256 entries.
+  - tRNS: 2 bytes for colour type 0, 6 for type 2, at most the PLTE entry
+    count for type 3, and refused for types 4 and 6.
+
+  A mismatch is refused, so nothing can ride inside a kept part's slack.
+
+**Dimensions.**
+
+- **PNG:** IHDR is the first chunk, exactly once, with 13 bytes. Width and
+  height are both non-zero.
+- **JPEG:** exactly one SOF. Width and height are non-zero; a height of 0
+  means a DNL marker, which is not supported.
+- **WebP:** the VP8 frame header (after the start code `9D 01 2A`, 14-bit
+  width and height) or the VP8L header (signature `0x2F`, 14-bit width−1 and
+  height−1) is **always** read. When a VP8X is present, its canvas must equal
+  the frame size, or the image is refused.
+
 Keep-lists. Everything not listed is dropped, apart from the refusals named
 here:
 
 - **PNG.** Keep `IHDR`, `PLTE`, `tRNS`, `IDAT` and `IEND` byte for byte
-  (length, type, data, CRC), in their order. Drop every other ancillary chunk:
-  `tEXt`, `zTXt`, `iTXt`, `eXIf`, `iCCP`, `gAMA`, `cHRM`, `sRGB`, `pHYs`,
-  `tIME`, `bKGD`, `sBIT`, `hIST`, `sPLT`, APNG `acTL`/`fcTL`/`fdAT` (the default
-  image is what stays) and private chunks. An unknown *critical* chunk (one
-  whose first letter is upper case) is refused. Bytes after `IEND` are dropped.
+  (length, type, data, CRC), in their order. The CRC is verified on every
+  chunk. Drop every other ancillary chunk: `tEXt`, `zTXt`, `iTXt`, `eXIf`,
+  `iCCP`, `gAMA`, `cHRM`, `sRGB`, `pHYs`, `tIME`, `bKGD`, `sBIT`, `hIST`,
+  `sPLT` and private chunks. **APNG is refused**: any `acTL`, `fcTL` or `fdAT`
+  gives "animated PNG", as animated WebP does. An unknown *critical* chunk
+  (first letter upper case) is refused. Bytes after `IEND` are dropped.
 - **JPEG.** The output is `SOI`, then one canonical JFIF APP0 (`FF E0 00 10
   4A 46 49 46 00 01 01 00 00 01 00 01 00 00`: no thumbnail), then the kept
-  segments in their original order, then `EOI`. Keep `DQT`, `DHT`, `DRI`,
-  `SOF0`/`SOF1`/`SOF2`, and `SOS` with its entropy-coded data. The scan runs
-  until an `FF` that is followed by neither `00` nor `D0`–`D7`, and the walk
-  then goes on, because a progressive file has many scans. Drop
-  `APP0`–`APP13`, `APP15` and `COM` wherever they are, including between
-  scans. Refuse `APP14` (an Adobe colour transform: dropping it would change
-  the colours), every other `SOFn` (arithmetic, lossless, hierarchical: no
-  browser shows them), a SOF with a component count other than 1 or 3, and any
-  marker not named here. Bytes after `EOI` are dropped.
+  segments in their original order, then `EOI`.
+  - **Markers.** Between segments, `FF` fill bytes are skipped. A byte other
+    than `FF` where a marker is expected is refused, never copied. A segment
+    length below 2 is refused.
+  - **Kept:** `DQT`, `DHT`, `DRI`, `SOF0`/`SOF1`/`SOF2`, and `SOS` with its
+    entropy-coded data. The scan runs until an `FF` that is followed by
+    neither `00` nor `D0`–`D7`, so the RST markers stay inside the scan. The
+    walk then goes on, because a progressive file has many scans.
+  - **Dropped:** `APP0`–`APP13`, `APP15` and `COM`, wherever they are,
+    including between scans. Bytes after `EOI` are dropped too.
+  - **Refused:**
+    - `APP14`. It is an Adobe colour transform, so dropping it would change
+      the colours. The message tells the agent to re-save as PNG.
+    - A 3-component SOF whose component IDs are `R`, `G`, `B` (`0x52 0x47
+      0x42`). Without APP14 it is coded as RGB, and inserting JFIF would
+      relabel it as YCbCr and change its colours.
+    - A component count other than 1 or 3, with or without APP14.
+    - Every other `SOFn`, such as `SOF3` (lossless) or `SOF9` (arithmetic).
+      No browser shows them.
+    - Any marker not named here.
 - **WebP.** Walk the RIFF chunks (little-endian sizes, padded to an even
-  length). Refuse `ANIM`, `ANMF` or the VP8X animation flag ("animated WebP"),
-  `ALPH` next to `VP8L`, and more than one image chunk. Without `ALPH`, the
-  output is the simple format: `RIFF`, the new size, `WEBP`, and the single
-  `VP8 ` or `VP8L` chunk byte for byte. With `ALPH` (lossy with alpha), it is
-  a `VP8X` with flags `0x10` (alpha only) and the canvas size copied from the
-  input, then `ALPH` and `VP8 ` byte for byte. `ICCP`, `EXIF`, `XMP ` and
-  unknown chunks are dropped.
+  length).
+  - **Refused:** a RIFF size other than the file length minus 8, a chunk past
+    the end, `ANIM`, `ANMF` or the VP8X animation flag even without `ANIM`
+    ("animated WebP"), `ALPH` next to `VP8L`, and more than one image chunk.
+  - **Without `ALPH`:** the output is the simple format, `RIFF`, the new
+    size, `WEBP`, and the single `VP8 ` or `VP8L` chunk byte for byte.
+  - **With `ALPH`** (lossy with alpha): a `VP8X` with flags `0x10` (alpha
+    only) and the canvas size (equal to the frame), then `ALPH` and `VP8 `
+    byte for byte.
+  - **Dropped:** `ICCP`, `EXIF`, `XMP ` and unknown chunks.
 
-This approach was prototyped on 2026-11-26 against the committed fixtures. A
-throwaway script of about 60 lines, not committed, ran the keep-lists above,
-and Pillow 13 decoded every output to pixels identical to the input, with no
-Exif, XMP, ICC, comment or Photoshop data left. The builder writes the real
-code; the prototype only shows that the keep-lists lose no pixels.
+This approach was prototyped on 2026-11-26 against the committed fixtures,
+including `dirty-restart.jpg`. A throwaway script of about 60 lines, not
+committed, ran the keep-lists above, and Pillow 13 decoded every output to
+pixels identical to the input, with no Exif, XMP, ICC, comment or Photoshop
+data left. The builder writes the real code; the prototype only shows that
+the keep-lists lose no pixels.
 
 The relay refuses metadata on its own (422, measured), so a file that slips
 past the helper is stopped there too. That is defence in depth, not the plan.
 
 The earlier rejection of stdlib stripping was that hand parsing "looks right
-while it keeps an APP1" (#223). Four things answer it. The parser uses a
-keep-list, so an unknown segment is dropped and never kept by mistake. The
-output is walked again by the helper itself. The tests walk it with their own
-independent parser, after first proving that every input is dirty. And the
-image data is compared byte for byte.
+while it keeps an APP1" (#223). Five things answer it:
+
+- The parser uses a keep-list, so an unknown part is dropped or refused, never
+  kept by mistake.
+- Kept parts must have their exact lengths.
+- The output is walked again by the helper itself.
+- The tests walk the output with their own independent parser, after first
+  proving that every input is dirty, and compare the image data byte for byte.
+- A truncation and byte-flip sweep shows that the walk fails cleanly.
 
 Rejected:
 - **Pillow through `uv` at run time** (the earlier design). It is not in the
@@ -298,6 +373,10 @@ nsec from SOPS. In order:
    refuses them there, the fallback is fixed: drop `--mention` on the image
    branch only, and record that in design.md. The text-only branch does not
    change.
+
+**On exit 10 the agent has two ways on, and the docs name both:** crop or
+shrink the image at its source and send again, or send a text ping that
+describes it. A refused image never blocks the report itself.
 
 `ping.sh` calls `~/.local/bin/buzz` by a fixed path, not through `PATH`. Its
 test therefore gives it a fake `HOME` that holds `.local/bin/buzz`, and a fake
@@ -407,7 +486,11 @@ the builder does not have to resolve any of them on its own.
    per `imeta` tag whose `m` starts with `image/`, with keys `url`, `m`, `x`,
    `size`, `dim`) and `clean_content(content, tags) -> str` (removes, for each
    image URL, the whole `![image](<url>)` line with its leading newline, then
-   strips). `agents/notify.py` loads it **by file path** with
+   strips). **Neither function ever raises.** Tags that are not a list, an
+   entry that is not a list, an `imeta` entry with no fields, non-string
+   fields, or a field without a space are skipped. `from_tags` then returns
+   `[]`, `clean_content` returns the content unchanged, and the push falls
+   back to plain text. `agents/notify.py` loads it **by file path** with
    `importlib.util.spec_from_file_location("imeta", <ROOT>/chat/imeta.py)`,
    not by putting `chat/` on `sys.path`. Both `chat/board.py` and
    `orchestrator/board.py` exist, and `agents/factory_wiring.py:28` already
@@ -430,6 +513,32 @@ Risks from the same run:
   to Mark at merge (task 3.5).
 - **Probe blobs**: the three probe blobs are deleted by the first prune, which
   is intended.
+
+### Review of #267 (2026-11-26)
+
+The review of this amend asked for more before the build. Each point is now in
+this design:
+
+- **Bounded parsing:** see "Bounded parsing and clean failure" (forward
+  progress, JPEG lengths below 2 and non-`FF` bytes refused, fill bytes
+  skipped, the `cannot parse` catch-all). Tests: `test_image_robust.py` and
+  the refusal list under "Tests".
+- **Dimensions** (always from the frame, VP8X equal to it, one SOF with a
+  non-zero height, IHDR first, once and 13 bytes, duplicates refused): see
+  "Dimensions".
+- **Malformed imeta tags:** `from_tags` never raises (gap 7), and
+  `on_message` has a second layer (see "Notification").
+- **Threat model and exact lengths:** at the top of "What the helper does".
+- **APNG refused**, and **RGB-coded JPEG refused**, with APP14 telling the
+  agent to re-save as PNG: see the keep-lists.
+- **Untested keep paths:** a palette PNG (built in the test) and
+  `dirty-restart.jpg` (DRI with RST markers).
+- **Line budget:** the file table under "Files and line budget".
+- **Small points:** the generator is pinned to `pillow==13.0.0` and writes
+  `SHA256SUMS`, which `test_image_fixtures.py` checks; the input is read with
+  `read(LIMIT + 1)`.
+- **The 2560 px refusal for agents:** the message in step 4, a spec scenario,
+  and the exit-10 fallback under "The helper is `ping.sh`".
 
 ### Notification: text, with a marker
 
@@ -458,6 +567,12 @@ listener:
   `🖼 ` plus `imeta.clean_content(content, tags)`, or `🖼 image` when that is
   empty. Then the existing 140-character cut and the `+n eerder` suffix
   apply. Nothing changes for a message without an image `imeta` tag.
+- **A second layer for malformed tags.** `imeta` never raises (gap 7). On top
+  of that, `on_message` builds the push inside `try`/`except Exception`. On an
+  exception it prints `[listener] notify: image tags unreadable (<reason>)`
+  and pushes the plain-text body, so a bad event never costs the
+  notification and never stops the listener loop. This fits the budget:
+  `notify.py` is at 102 lines.
 
 This touches the **Web Push** chain, the first of AGENTS.md's four silent
 chains (notify → `orchestrator/push-notify.py` → VAPID → phone). Its tests:
@@ -473,6 +588,9 @@ chains (notify → `orchestrator/push-notify.py` → VAPID → phone). Its tests
   `(author, content)`, and says so in the PR. A plain-text twin pins that the
   body of a message without an image is unchanged. Another case pins that
   `should_notify` still filters (`#statistics`, own message, `⋯`).
+  Malformed tags are covered too: `["imeta"]`, `["imeta", 7]`,
+  `[["imeta", None]]`, tags as a string, tags as a dict, and `tags` missing.
+  Each gives the plain-text body, and none raises.
 - **The listener side of the seam**, pinned the way
   `agents/test_build_starters.py:119-127` already pins `build_starters.take`:
   a test reads `agents/listener.py` and asserts that it contains
@@ -480,7 +598,8 @@ chains (notify → `orchestrator/push-notify.py` → VAPID → phone). Its tests
   or `notify.should_notify(`. A later edit that goes back to passing
   `content` alone fails there.
 - `chat/test_imeta.py`: `from_tags` and `clean_content` against the same
-  fixture.
+  fixture, plus the same malformed shapes (each gives `[]` and an unchanged
+  content, without raising).
 - Unchanged, and still green: `orchestrator/test_push_chain.py` and
   `orchestrator/test_push_send.py`. `push-notify.py` is not touched, and the
   body still travels as `--body`. `chat/e2e/push-states.js` is not affected
@@ -619,15 +738,16 @@ from; it is built only after its Gate 0 is recorded there.
 ## Tests
 
 All tests are `unittest.TestCase` classes, discovered by `verify.sh` and CI
-as they are today. None needs the network, Pillow, the relay or SOPS. The two
-image test files are stdlib-only and contain no `skipTest`.
-`test_ping_image.py` runs `ping.sh`, which reads `identities.yml` with
-`pyyaml`, as it does today.
+as they are today. None needs the network, Pillow, the relay or SOPS. The image
+test files are stdlib-only and contain no `skipTest`. `test_ping_image.py`
+runs `ping.sh`, which reads `identities.yml` with `pyyaml`, as it does today.
 
-**Committed fixtures** (`orchestrator/testdata/`, 24×16, written by
-`make_image_fixtures.py`, each under 1.3 KiB). Every dirty fixture contains
-the sentinel `fixture-` and the GPS IFD (52° 22′ N); Pillow 13 reads their
-Exif, XMP and ICC data, which is how they were checked on 2026-11-26.
+**Committed fixtures** (`orchestrator/testdata/`, 24×16, each under 1.3 KiB).
+They are written by `make_image_fixtures.py`, pinned to `pillow==13.0.0`,
+which also writes `SHA256SUMS`. There are seven dirty fixtures, two rotated,
+one CMYK and one animated. Every dirty fixture contains the sentinel
+`fixture-` and the GPS IFD (52° 22′ N). Pillow 13 reads their Exif, XMP and
+ICC data, which is how they were checked on 2026-11-26.
 
 | File | Carries | Expected |
 |---|---|---|
@@ -635,53 +755,114 @@ Exif, XMP and ICC data, which is how they were checked on 2026-11-26.
 | `rotated.png` | as `dirty.png`, Orientation 6 | refused: `orientation 6` |
 | `dirty.jpg` | JFIF APP0 with a thumbnail, APP1 Exif (Orientation 1 + GPS), APP1 XMP, APP2 ICC, APP13 Photoshop/IPTC, COM, bytes after EOI | SOI, canonical JFIF, then DQT/SOF0/DHT/SOS+scan byte-identical, EOI |
 | `dirty-progressive.jpg` | as `dirty.jpg`, progressive (SOF2, ten scans), a COM **between** two scans | as above, all scans kept, both COMs gone |
+| `dirty-restart.jpg` | as `dirty.jpg`, 4:4:4 with `restart_marker_blocks=1`: a DRI and RST0–RST4 inside the scan | DRI kept, the scan with its five RST markers byte-identical |
 | `rotated.jpg` | as `dirty.jpg`, Orientation 6 | refused: `orientation 6` |
-| `cmyk.jpg` | four components, Adobe APP14 | refused: `APP14` |
+| `cmyk.jpg` | four components, Adobe APP14 | refused: `APP14`, with "re-save as PNG" |
 | `dirty-lossy.webp` | VP8X (ICC/EXIF/XMP flags), `ICCP`, `VP8 `, `EXIF`, `XMP `, unknown `fxTR` | simple `RIFF/WEBP/VP8 `, chunk byte-identical |
 | `dirty-lossless.webp` | the same around `VP8L` | simple `RIFF/WEBP/VP8L` |
 | `dirty-lossy-alpha.webp` | the same with `ALPH` + `VP8 ` | `VP8X` flags `0x10`, `ALPH`, `VP8 ` byte-identical |
 | `animated.webp` | `ANIM` + two `ANMF` | refused: `animated` |
 
-**Built inside the tests** (stdlib): a PNG with one flipped CRC byte, the
-first 40 bytes of `dirty.png`, `dirty.jpg` cut before EOI, a PNG with an
-unknown critical chunk `ZZZZ`, an IHDR claiming 20000×20000, a PNG whose IDAT
-is 5.5 MiB (valid CRC), a sparse 21 MiB file (`truncate`), SVG text in
-`shot.png`, `GIF89a` bytes in `x.png`, and an empty file.
+**Built inside the tests** (stdlib, from the fixtures or from scratch). Each
+case asserts its outcome, and each refusal names its reason:
 
-- `orchestrator/test_image_strip.py`, per dirty fixture and in this order:
-  (a) the **input** carries every part listed in the table, found by the
-  test's own walker (not `image_strip`'s), and contains `fixture-`;
-  (b) the **output** has only keep-list parts, and contains none of
-  `fixture-`, `Exif`, `<x:xmpmeta`, `ICC_PROFILE`, `Photoshop` or `TRAILER`;
-  (c) the image data (PNG `IHDR`/`PLTE`/`tRNS`/`IDAT`, JPEG DQT/SOF/DHT/SOS
-  and scan data, WebP `VP8 `/`VP8L`/`ALPH`) is byte-identical between input
-  and output; (d) the structure is sound: PNG CRCs valid, RIFF size equal to
-  the length minus 8, JPEG begins with SOI plus the canonical JFIF and ends
-  with EOI, WebP output in the form the table gives; (e) the dimensions
-  returned are 24×16. Plus the structural refusals (`animated.webp`,
-  `cmyk.jpg`, bad CRC, truncated, no EOI, unknown critical chunk), each naming
-  its reason.
-- `orchestrator/test_image_prep.py` runs the CLI as `[sys.executable,
-  image_prep.py, src, outdir]`: `dirty.jpg` exits 0, prints
-  `<outdir>/image.jpg`, and that file passes (b). `rotated.jpg` and
-  `rotated.png` exit 2 with `orientation 6`. Every built refusal exits 2 with
-  `image_prep:` and its reason on stderr (the type by name; the size and
-  20 MiB; `20000x20000` and 2560; the size and 5 MiB), and `outdir` stays
-  empty.
-- `orchestrator/test_ping_image.py`: a fake `HOME` with `.local/bin/buzz`
-  (`ping.sh` calls it by path) and a fake `sops` on `PATH`; the real
-  `image_prep.py` with `dirty.png`. It pins the argv: `--channel <cid>
-  --content <caption> --file <path> --mention <npub>`, with no `-` after
-  `--content`. It also checks that the temp directory is gone after the send,
-  that nothing is sent and `sops` is never called when the helper refuses
-  (`rotated.png`, exit 10), that a missing caption gives exit 9, that a human
-  IDENT is still refused with `--image` before the helper runs, and that the
-  stderr for exits 9 and 10 is English. It does not prove the real CLI
-  (gate 3).
-- `agents/test_notify.py`, `chat/test_imeta.py` and the listener source pin:
-  see "Notification".
-- `jobs/test_prune_media.py`: a fake `ssh`, the prune followed by a size under
-  (rc 0) and over (rc 1, size and limit printed, in English)
+- **PNG:**
+  - a **palette PNG** with `PLTE` and `tRNS` plus a `tEXt`, which is kept
+    with PLTE and tRNS byte-identical and the tEXt gone;
+  - one flipped CRC byte;
+  - the first 40 bytes of `dirty.png`;
+  - an unknown critical chunk `ZZZZ`;
+  - IHDR not first;
+  - a second IHDR;
+  - IHDR of 12 bytes;
+  - PLTE of 10 bytes;
+  - an `acTL` chunk, refused as "animated PNG";
+  - an IHDR claiming 20000×20000;
+  - an IDAT of 5.5 MiB with a valid CRC, refused over 5 MiB;
+  - an `eXIf` that is unreadable (garbage), which is refused;
+  - an `eXIf` without an Orientation tag, which is accepted.
+- **JPEG:**
+  - `dirty.jpg` cut before EOI;
+  - an unknown marker (`FF C8`);
+  - SOF0 patched to `SOF3`, and separately to `SOF9`;
+  - `cmyk.jpg` with its APP14 removed (4 components without APP14);
+  - `dirty.jpg` with component IDs patched to `R`/`G`/`B`;
+  - a second SOF;
+  - a SOF height of 0;
+  - a segment length of 1;
+  - a non-`FF` byte where a marker is expected;
+  - `FF FF` fill bytes before a marker, which are accepted and not copied;
+  - a DQT whose length is one byte too long.
+- **WebP:**
+  - a RIFF size one too large;
+  - a chunk size past the end;
+  - `ALPH` next to `VP8L`;
+  - two `VP8 ` chunks;
+  - a VP8X with the animation flag and no `ANIM`;
+  - a VP8X canvas that differs from the frame.
+- **Other files:**
+  - a sparse 21 MiB file (`truncate`);
+  - SVG text in `shot.png`;
+  - `GIF89a` bytes in `x.png`;
+  - an empty file.
+
+The test files:
+
+- **`orchestrator/test_image_strip.py`**, per dirty fixture and in this order:
+  - (a) the **input** carries every part listed in the table, found by
+    `image_testwalk` (not `image_strip`), and contains `fixture-`;
+  - (b) the **output** has only keep-list parts, and contains none of
+    `fixture-`, `Exif`, `<x:xmpmeta`, `ICC_PROFILE`, `Photoshop` or
+    `TRAILER`;
+  - (c) the image data (PNG `IHDR`/`PLTE`/`tRNS`/`IDAT`; JPEG
+    DQT/SOF/DHT/DRI/SOS and scan data; WebP `VP8 `/`VP8L`/`ALPH`) is
+    byte-identical between input and output;
+  - (d) the structure is sound: PNG CRCs valid, RIFF size equal to the length
+    minus 8, JPEG begins with SOI plus the canonical JFIF and ends with EOI,
+    WebP output in the form the table gives;
+  - (e) the dimensions are 24×16.
+
+  It also holds the refusal and keep paths of the built cases above.
+- **`orchestrator/test_image_robust.py`** has two cases, both calling
+  `prepare` in-process under a `signal.alarm(120)` guard, so a hang fails the
+  test instead of stalling the run (all three places are Linux):
+  - every fixture cut at every length from 0 to its full size;
+  - for every fixture, 200 single-byte flips at positions and values drawn
+    from `random.Random(243)`.
+
+  Every result must be either output that `image_testwalk` accepts as clean
+  and well-formed, or a `Refused`. Any other exception fails the test and
+  names the fixture, the length or the flip. One CLI case runs a truncated
+  file through `image_prep.py` and asserts exit 2, stderr starting with
+  `image_prep:`, and no `Traceback` in it.
+- **`orchestrator/test_image_fixtures.py`**: the sha256 of every fixture
+  matches `orchestrator/testdata/SHA256SUMS`, and every image file in that
+  directory is listed.
+- **`orchestrator/test_image_prep.py`** runs the CLI as `[sys.executable,
+  image_prep.py, src, outdir]`:
+  - `dirty.jpg` exits 0, prints `<outdir>/image.jpg`, and that file passes
+    (b).
+  - `rotated.jpg` and `rotated.png` exit 2 with `orientation 6`.
+  - The 2560 px refusal names the size, `2560`, `fullPage`, `scale: "css"`
+    and `figsize`.
+  - Every other built refusal exits 2 with `image_prep:` and its reason on
+    stderr, and `outdir` stays empty.
+- **`orchestrator/test_ping_image.py`** uses a fake `HOME` with
+  `.local/bin/buzz` (`ping.sh` calls it by path), a fake `sops` on `PATH`,
+  and the real `image_prep.py` with `dirty.png`. It does not prove the real
+  CLI (gate 3). It pins:
+  - the argv: `--channel <cid> --content <caption> --file <path> --mention
+    <npub>`, with no `-` after `--content`;
+  - that the temp directory is gone after the send;
+  - that nothing is sent and `sops` is never called when the helper refuses
+    (`rotated.png`, exit 10);
+  - that a missing caption gives exit 9;
+  - that a human IDENT is still refused with `--image` before the helper runs;
+  - that the stderr for exits 9 and 10 is English.
+- **`agents/test_notify.py`, `chat/test_imeta.py` and the listener source
+  pin:** see "Notification".
+- **`jobs/test_prune_media.py`:** a fake `ssh`, the prune followed by a size
+  under (rc 0) and over (rc 1, size and limit printed, in English)
   `MEDIA_MAX_BYTES`.
 
 ## Risks
@@ -696,7 +877,14 @@ is 5.5 MiB (valid CRC), a sparse 21 MiB file (`truncate`), SVG text in
   keep-lists keep. Gate 3 has a fixed fallback per format, so the host session
   does not have to make a design decision there.
 - **No resize.** An image over 2560 px is refused, not shrunk. Agents make
-  their own screenshots and charts, so the doc tells them to produce them at
-  that size or smaller. A camera photo from elsewhere has to be resized first.
+  their own screenshots and charts, so the refusal message and the doc name
+  the common traps (a Playwright `fullPage` screenshot, `deviceScaleFactor: 2`)
+  and the fixes (clip or viewport ≤ 2560, `scale: "css"`, matplotlib
+  `figsize × dpi` ≤ 2560). On exit 10 the agent crops, or sends a text ping
+  instead.
+- **Colour edge cases are refused, not guessed.** Adobe APP14, CMYK and
+  RGB-coded JPEGs (component IDs `R`/`G`/`B`) are refused with "re-save as
+  PNG", because dropping or inserting a colour marker would silently change
+  the colours.
 - **Colour profiles are dropped.** `iCCP`/APP2 ICC/`ICCP` go, so a wide-gamut
   image is shown as sRGB. For screenshots and charts that is no difference.
