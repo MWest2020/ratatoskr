@@ -45,10 +45,14 @@ network, Pillow, `uv` or the host (design.md, fourth FAIL, gap 4).
 ## 2. Build (three runs: A, B, C)
 
 ### Run A: the stripper helper and `ping.sh --image` (tasks 2.1, 2.2)
-Run A **reuses** branch
-`habitat/builder/agent-image-to-chat-20261126-091423-30416`, where the failed
-run already built 2.1 and 2.2. It starts from that branch, checks the work
-against the tasks below, and does not rebuild what already passes.
+Run A **starts from main** and builds to the #267 design (bounded parsing,
+exact lengths, APNG and RGB-coded JPEG refusals, the restart-marker fixture,
+the truncation and flip sweep), as the tasks below say. It reuses no earlier
+branch, including
+`habitat/builder/agent-image-to-chat-20261126-091423-30416`, unless the task
+description names that branch's **commit SHA** (pinned) **and** the passing
+tests it brings (by name, run in the cage). Without both, nothing of it is
+taken over (architect FAIL 5, finding 1).
 **done_when:** both commands of 2.1's proof and the test of 2.2 pass, every new
 file is within its line budget, and `verify.sh` is green. Run A does not touch
 `agents/`, `chat/`, `jobs/`, `deploy/` or `docs/`.
@@ -104,7 +108,10 @@ numbering; it is built first.)
 
 - [ ] 2.3 Notification, without growing `agents/listener.py`: lines 161-162
       become the single line `notify.on_message(cname, writer, m, ME_NAME)`
-      (the file goes to 199 lines). In `agents/notify.py`:
+      (the file goes to 199 lines). **In the same edit**, the comment at
+      `agents/listener.py:159` is rewritten to name `notify.on_message`
+      instead of `notify.should_notify` (`(what does not notify:
+      notify.on_message)`), so no stale name stays behind. In `agents/notify.py`:
       `on_message(cname, author, event, me)`, `push(cname, author, content,
       tags=None)`, `held = (author, content, tags)` inside the unchanged
       `(t, missed, held)`, `flush` unpacking the triple, and `_body(content,
@@ -117,7 +124,9 @@ numbering; it is built first.)
       say in the PR that this was checked. There is a plain-text twin, the
       `should_notify` filters are still pinned, and a source test of
       `agents/listener.py` finds `notify.on_message(cname, writer, m,
-      ME_NAME)` once and no `notify.push(` or `notify.should_notify(`.
+      ME_NAME)` once and neither `notify.push(`, `notify.should_notify(` nor
+      the stale comment name `notify.should_notify` (the source pin greps for
+      both strings; the call form with `(` and the bare name in the comment).
       `on_message` builds the push in `try`/`except`, logs `[listener]
       notify: image tags unreadable (…)` and falls back to plain text; the
       malformed-tag cases of design.md give the plain-text body without
@@ -186,7 +195,9 @@ repo (every file of A, B and C within its budget, no new baseline entry), and
       `#statistics`. Each send must return `accepted`, and `messages get` must
       show the `imeta` tag and the caption. Then delete the messages and
       record the result in design.md. This is the only proof that the real CLI
-      takes `--content '<caption>' --file <path> --mention <npub>` and that
+      takes `--content '<caption>' --file <path> --mention <npub>` together
+      (**unproven until this gate**; the fallback is to drop `--mention` on
+      the image branch) and that
       the relay accepts the helper's output. If the relay refuses something,
       apply the fixed fallback from design.md gate 3 (JPEG without the JFIF
       APP0; WebP `ALPH` refused, or WebP refused; `--mention` dropped on the
