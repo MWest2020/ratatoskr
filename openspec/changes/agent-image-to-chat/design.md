@@ -176,6 +176,7 @@ fixed in advance, so no file has to be split during the build:
 | `orchestrator/test_image_prep.py` | the CLI, limits, orientation, the agent-facing messages | ≤ 200 |
 | `orchestrator/test_image_robust.py` | truncation and byte-flip sweep | ≤ 120 |
 | `orchestrator/test_image_fixtures.py` | the sha256 check of `orchestrator/testdata/SHA256SUMS` | ≤ 40 |
+| `orchestrator/test_image_guards.py` | the CLI's guards in-process: the self-check against a leaking stripper, the capped read, an unreadable source (added in the follow-up to #270) | ≤ 100 |
 
 The CLI is `python3 orchestrator/image_prep.py <src> <outdir>`. Every refusal
 prints `image_prep: <reason>` on stderr, exits 2 and writes nothing.
@@ -184,7 +185,9 @@ Steps, in this order:
 
 1. `src` must be a regular file. It is read with a cap,
    `f.read(LIMIT + 1)` with `LIMIT = 20 MiB`, and more than `LIMIT` bytes is
-   refused. There is no stat-then-read.
+   refused. There is no stat-then-read. Any `OSError` on opening or reading
+   it (mode 000, an I/O error) is refused as `cannot read the file: <reason>`,
+   exit 2, never a traceback.
 2. Magic bytes: PNG `89 50 4E 47 0D 0A 1A 0A`, JPEG `FF D8 FF`, WebP
    `RIFF????WEBP`. The extension is never consulted. GIF (`GIF8`), SVG or XML
    (`<svg`/`<?xml` after leading whitespace), HEIC/AVIF (`ftyp` at offset 4)
@@ -207,15 +210,31 @@ Steps, in this order:
 6. The output is ≤ 5 MiB. If not, it is refused with the size and the limit.
 7. Self-check: the output is walked again, and every part must be on the
    keep-list. Otherwise: "strip self-check failed: <part>". That would be a bug,
-   not an input problem.
+   not an input problem. The parts are listed by a small walker in
+   `image_prep.py` that has no keep logic of its own, so a stripper that keeps
+   the wrong part every time is still caught; re-running the stripper alone
+   would only prove that it gives the same answer twice (found in the
+   follow-up to #270, pinned by `test_image_guards.py`).
 8. The helper writes `<outdir>/image.<png|jpg|webp>` (the extension comes from
    the magic bytes), prints that path and exits 0.
 
 **Bounded parsing and clean failure.**
 
-- **Every walker step moves forward.** Each loop iteration checks that the new
-  position is greater than the old one, and refuses otherwise. Every length is
-  checked against the end of the data before it is used.
+- **Every walker step moves forward, by construction.** There is no explicit
+  `new > old` check; each loop has a minimum step that no input can make zero
+  or negative (all lengths are unsigned):
+  - the PNG chunk loop: `pos += 12 + length`, at least 12 bytes;
+  - the JPEG segment loop: the marker is at least 2 bytes (`FF` and the code),
+    and a length below 2 is refused, so a segment moves at least 4 bytes; EOI
+    ends the loop; after an SOS the scan resumes at or past the segment end;
+  - the JPEG fill-byte loop and the scan loop: 1 byte per step, up to the end;
+  - the DQT and DHT table loops: at least 65 and 17 bytes per table;
+  - the WebP chunk loop: `pos += 8 + size + pad`, at least 8 bytes;
+  - the Exif IFD0 loop: a `for` over a count checked against the data;
+  - the self-check's part lister: at least 12 (PNG), 8 (WebP), 2 (JPEG marker)
+    or 1 (JPEG scan) bytes.
+
+  Every length is checked against the end of the data before it is used.
 - **The catch-all.** `prepare` wraps the walk: any `struct.error`,
   `IndexError` or `ValueError` becomes `Refused("cannot parse <fmt>: <exception
   text>")`, so the CLI prints `image_prep: cannot parse <fmt>: …` and exits 2.
@@ -230,6 +249,7 @@ Steps, in this order:
   - The SOS header: `4 + 2 × Ns`.
   - DRI: 2 bytes.
   - IHDR: 13 bytes.
+  - IEND: 0 bytes.
   - PLTE: a multiple of 3, at most 256 entries.
   - tRNS: 2 bytes for colour type 0, 6 for type 2, at most the PLTE entry
     count for type 3, and refused for types 4 and 6.
@@ -364,10 +384,14 @@ nsec from SOPS. In order:
    reason is already on stderr. This happens **before** the
    `sops -d` on line 47, so a refused image never decrypts a key.
 4. The send. The image branch runs `buzz messages send --channel "$CID"
-   --content "$MSG" --file "$OUT" --mention "$NPUB"`. That is the form gate 1.1
-   measured, plus the `--mention` that every `ping.sh` message carries. It
-   does not keep the text path's `--content -` (stdin), because stdin together
-   with `--file` was never measured. **`--mention` stays**, since the
+   --content="$MSG" --file "$OUT" --mention "$NPUB" <<<"$MSG"`. That is the
+   form gate 1.1 measured, plus the `--mention` that every `ping.sh` message
+   carries. The caption is one argv word (`--content=…`), so a caption that
+   starts with `-` is not parsed as a flag (clap refuses `--content -5%`,
+   measured 2026-11-26). buzz reads a content of exactly `-` from stdin
+   (measured: `--content=-` waits for stdin, `--content=-x` does not), so the
+   caption is also on stdin and a caption of `-` arrives as `-`. Every other
+   caption leaves stdin unread. **`--mention` stays**, since the
    identity-registry delta says every existing behaviour applies unchanged.
    Gate 3.1 is the live proof of the three flags together. If the real CLI
    refuses them there, the fallback is fixed: drop `--mention` on the image
@@ -633,14 +657,17 @@ gate to measure and a decision for Mark, not part of this build.
 - **How:** a new compose service `media-prune` under `profiles:
   ["maintenance"]`, so `docker compose up` never starts it. It uses the
   `rclone/rclone:1.71` image already pinned for `seaweedfs-init`, with the same
-  `RCLONE_CONFIG_DST_*` environment. Its command is
-  `delete dst:${BUZZ_S3_BUCKET:-buzz-media} --min-age 30d --include
-  "*.{png,jpg,jpeg,webp}" -v`. `jobs/prune-media.sh` on agent-lxc runs it over
+  `RCLONE_CONFIG_DST_*` environment plus an alias remote `media:` for
+  `dst:${BUZZ_S3_BUCKET:-buzz-media}`, the relay's own bucket setting, so the
+  bucket is named once. Its command is `delete media: --min-age 30d --include
+  "*.{png,jpg,jpeg,webp}" -v`, pinned by `jobs/test_prune_media.py`. `jobs/prune-media.sh` on agent-lxc runs it over
   ssh: `ssh buzz-relay 'cd /opt/buzz-relay && sudo docker compose --profile
   maintenance run --rm media-prune'`, the same ssh+sudo route
   `publish-board.sh` takes. It then runs `… run --rm media-prune size
-  dst:buzz-media --json` and exits 1 when the total is above `MEDIA_MAX_BYTES`
-  (default 2 GiB).
+  media: --json` and exits 1 when the total is above `MEDIA_MAX_BYTES`
+  (default 2 GiB). A `MEDIA_MAX_BYTES` that is not a whole number exits 2
+  before anything runs, since the shell test would otherwise error out and
+  read as "under the limit".
 - **When:** `jobs/systemd/ratatoskr-media-prune.{service,timer}`, daily at
   04:30, `Persistent=true` (a missed day should still run). The files are
   installed right after the merge and enabled only after gate 1.2 (fourth
@@ -782,7 +809,9 @@ case asserts its outcome, and each refusal names its reason:
   - an IHDR claiming 20000×20000;
   - an IDAT of 5.5 MiB with a valid CRC, refused over 5 MiB;
   - an `eXIf` that is unreadable (garbage), which is refused;
-  - an `eXIf` without an Orientation tag, which is accepted.
+  - an `eXIf` without an Orientation tag, which is accepted;
+  - a `tRNS` with more entries than the palette;
+  - an IEND of 1 byte.
 - **JPEG:**
   - `dirty.jpg` cut before EOI;
   - an unknown marker (`FF C8`);
@@ -794,16 +823,26 @@ case asserts its outcome, and each refusal names its reason:
   - a segment length of 1;
   - a non-`FF` byte where a marker is expected;
   - `FF FF` fill bytes before a marker, which are accepted and not copied;
-  - a DQT whose length is one byte too long.
+  - a DQT whose length is one byte too long;
+  - a SOF one byte longer and one byte shorter than `6 + 3 × Nf`;
+  - a DRI of 3 bytes.
 - **WebP:**
   - a RIFF size one too large;
   - a chunk size past the end;
   - `ALPH` next to `VP8L`;
   - two `VP8 ` chunks;
   - a VP8X with the animation flag and no `ANIM`;
-  - a VP8X canvas that differs from the frame.
+  - a VP8X canvas that differs from the frame;
+  - an `EXIF` chunk with Orientation 6, with and without the `Exif\0\0`
+    prefix (a rotated WebP).
 - **Other files:**
   - a sparse 21 MiB file (`truncate`);
+  - an endless source: `read()` without a size fails the test, so only the
+    capped `read(LIMIT + 1)` passes (`test_image_guards.py`);
+  - a mode-000 file and an `OSError` on open, refused as `cannot read the
+    file`;
+  - a stripper patched to keep a `tEXt` on every call, refused by the
+    self-check;
   - SVG text in `shot.png`;
   - `GIF89a` bytes in `x.png`;
   - an empty file.
@@ -853,8 +892,9 @@ The test files:
   `.local/bin/buzz` (`ping.sh` calls it by path), a fake `sops` on `PATH`,
   and the real `image_prep.py` with `dirty.png`. It does not prove the real
   CLI (gate 3). It pins:
-  - the argv: `--channel <cid> --content <caption> --file <path> --mention
-    <npub>`, with no `-` after `--content`;
+  - the argv: `--channel <cid> --content=<caption> --file <path> --mention
+    <npub>`, the caption in one word, also for `-5% …`, `--help` and `-`
+    (with the caption on stdin);
   - that the temp directory is gone after the send;
   - that nothing is sent and `sops` is never called when the helper refuses
     (`rotated.png`, exit 10);
@@ -865,7 +905,11 @@ The test files:
   pin:** see "Notification".
 - **`jobs/test_prune_media.py`:** a fake `ssh`, the prune followed by a size
   under (rc 0) and over (rc 1, size and limit printed, in English)
-  `MEDIA_MAX_BYTES`.
+  `MEDIA_MAX_BYTES`; a `MEDIA_MAX_BYTES` that is not a whole number (exit 2,
+  nothing run); and the compose service parsed from
+  `deploy/docker-compose.yml`: the exact `delete media: --min-age 30d
+  --include "*.{png,jpg,jpeg,webp}" -v`, `profiles: ["maintenance"]`, and the
+  `media:` alias pointing at the relay's `BUZZ_S3_BUCKET`.
 
 ## Risks
 

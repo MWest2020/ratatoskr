@@ -165,7 +165,10 @@ services:
   # blobs older than 30 days. Profile `maintenance`, so `docker compose up` never
   # starts it; agent-lxc runs it daily over ssh (jobs/prune-media.sh,
   # ratatoskr-media-prune.timer). Same image and S3 settings as seaweedfs-init.
-  # Deleting a blob leaves the message and its text in place.
+  # Deleting a blob leaves the message and its text in place. `media:` is an
+  # alias for the relay's bucket, so the bucket is named here only, from the
+  # same BUZZ_S3_BUCKET the relay uses; jobs/prune-media.sh runs `size media:`.
+  # jobs/test_prune_media.py pins this command.
   media-prune:
     image: rclone/rclone:1.71
     profiles: ["maintenance"]
@@ -179,7 +182,9 @@ services:
       RCLONE_CONFIG_DST_FORCE_PATH_STYLE: "true"
       RCLONE_CONFIG_DST_ACCESS_KEY_ID: ${BUZZ_S3_ACCESS_KEY:?set BUZZ_S3_ACCESS_KEY}
       RCLONE_CONFIG_DST_SECRET_ACCESS_KEY: ${BUZZ_S3_SECRET_KEY:?set BUZZ_S3_SECRET_KEY}
-    command: ["delete", "dst:${BUZZ_S3_BUCKET:-buzz-media}", "--min-age", "30d",
+      RCLONE_CONFIG_MEDIA_TYPE: alias
+      RCLONE_CONFIG_MEDIA_REMOTE: dst:${BUZZ_S3_BUCKET:-buzz-media}
+    command: ["delete", "media:", "--min-age", "30d",
               "--include", "*.{png,jpg,jpeg,webp}", "-v"]
     restart: "no"
     networks:

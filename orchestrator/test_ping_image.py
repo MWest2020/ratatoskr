@@ -17,7 +17,8 @@ PING = os.path.join(HERE, "ping.sh")
 DIRTY_PNG = os.path.join(HERE, "testdata", "dirty.png")
 ROTATED_PNG = os.path.join(HERE, "testdata", "rotated.png")
 
-BUZZ_SH = '#!/usr/bin/env bash\nprintf "%s\\n" "$@" > "$ARGV_LOG"\necho \'{"accepted":true}\'\n'   # one arg per line
+BUZZ_SH = ('#!/usr/bin/env bash\nprintf "%s\\n" "$@" > "$ARGV_LOG"\ncat > "$ARGV_LOG.stdin"\n'
+           'echo \'{"accepted":true}\'\n')   # one arg per line; stdin kept beside it
 SOPS_SH = ('#!/usr/bin/env bash\necho called >> "$SOPS_LOG"\n'
            'printf \'identities:\\n  bouwer: {nsec: nsec1fake}\\n  mark: {nsec: nsec1fake}\\n\'\n')
 
@@ -62,11 +63,21 @@ class PingImage(unittest.TestCase):
             npub = yaml.safe_load(f)["identities"]["bouwer"]["npub"]
         with open(os.path.join(ROOT, "channels.yml")) as f:
             cid = yaml.safe_load(f)["channels"]["general"]["id"]
-        out_path = argv[7] if len(argv) > 7 else ""
-        self.assertEqual(argv, ["messages", "send", "--channel", cid, "--content", caption,
+        out_path = argv[6] if len(argv) > 6 else ""
+        self.assertEqual(argv, ["messages", "send", "--channel", cid, "--content=" + caption,
                                 "--file", out_path, "--mention", npub])
         self.assertEqual(os.path.basename(out_path), "image.png")
         self.assertFalse(os.path.exists(os.path.dirname(out_path)), "temp dir survived the send")
+
+    def test_a_caption_starting_with_a_dash_stays_one_content_word(self):
+        for caption in ("-5% p95 latency", "--help", "-"):
+            with self.subTest(caption):
+                r = self._run("--image", DIRTY_PNG, caption)
+                self.assertEqual(r.returncode, 0, r.stderr)
+                argv = self._logged(self.argv_log).splitlines()
+                self.assertEqual(argv[4:6], ["--content=" + caption, "--file"])
+                # buzz reads a content of exactly '-' from stdin; the caption is there too
+                self.assertEqual(self._logged(self.argv_log + ".stdin"), caption + "\n")
 
     def test_an_empty_image_path_is_refused_not_sent_as_text(self):
         r = self._run("--image", "", "caption")

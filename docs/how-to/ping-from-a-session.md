@@ -26,8 +26,8 @@ One image per message, with a required caption, through the same script:
 pixels are left untouched. Exit 9 means the caption is missing, exit 10 that
 the image was refused (the reason is on stderr, nothing was sent): crop it at
 the source, or send a text ping instead. Mark's notification reads
-`🖼 <caption>`. Details, limits and the 30-day retention:
-[send an image](send-an-image.md).
+`🖼 <caption>`. Details, limits and the 30-day retention (once the prune timer
+is enabled): [send an image](send-an-image.md).
 
 ## Identity rules
 

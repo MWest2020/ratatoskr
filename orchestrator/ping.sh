@@ -65,9 +65,12 @@ NSEC=$(sops -d "$ROOT/secrets/identities.yaml" | IDENT="$IDENT" python3 -c 'impo
 # on THIS host; the tailnet IP gives "no community configured for this host").
 # From a tailnet node this works through the subnet router; override with env
 # BUZZ_RELAY_URL. Own npub as --mention: allows free @words (presentation-only).
+# Image branch: --content=<caption> in one argv word, so a caption that starts
+# with '-' is not read as a flag. buzz reads '-' itself from stdin, so the
+# caption is on stdin too and a caption of exactly '-' arrives as '-'.
 if [ "${1:-}" = "--image" ]; then
   BUZZ_PRIVATE_KEY="$NSEC" BUZZ_RELAY_URL="${BUZZ_RELAY_URL:-ws://192.168.178.60:3000}" \
-    ~/.local/bin/buzz messages send --channel "$CID" --content "$MSG" --file "$OUT" --mention "$NPUB" >/dev/null
+    ~/.local/bin/buzz messages send --channel "$CID" --content="$MSG" --file "$OUT" --mention "$NPUB" <<<"$MSG" >/dev/null
 else
   BUZZ_PRIVATE_KEY="$NSEC" BUZZ_RELAY_URL="${BUZZ_RELAY_URL:-ws://192.168.178.60:3000}" \
     ~/.local/bin/buzz messages send --channel "$CID" --content - --mention "$NPUB" <<<"$MSG" >/dev/null
