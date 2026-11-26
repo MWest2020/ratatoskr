@@ -9,13 +9,15 @@ import subprocess
 import tempfile
 import unittest
 
+import yaml
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 PING = os.path.join(HERE, "ping.sh")
 DIRTY_PNG = os.path.join(HERE, "testdata", "dirty.png")
 ROTATED_PNG = os.path.join(HERE, "testdata", "rotated.png")
 
-BUZZ_SH = '#!/usr/bin/env bash\necho "$@" >> "$ARGV_LOG"\necho \'{"accepted":true}\'\n'
+BUZZ_SH = '#!/usr/bin/env bash\nprintf "%s\\n" "$@" > "$ARGV_LOG"\necho \'{"accepted":true}\'\n'   # one arg per line
 SOPS_SH = ('#!/usr/bin/env bash\necho called >> "$SOPS_LOG"\n'
            'printf \'identities:\\n  bouwer: {nsec: nsec1fake}\\n  mark: {nsec: nsec1fake}\\n\'\n')
 
@@ -52,14 +54,25 @@ class PingImage(unittest.TestCase):
             return f.read()
 
     def test_argv_file_mention_and_temp_cleanup(self):
-        r = self._run("--image", DIRTY_PNG, "hello")
+        caption = "p95 latency, last 7 days"
+        r = self._run("--image", DIRTY_PNG, caption)
         self.assertEqual(r.returncode, 0, r.stderr)
-        argv = self._logged(self.argv_log)
-        self.assertIn("--content hello --file ", argv)
-        self.assertIn("--mention npub", argv)
-        self.assertNotIn("--content -", argv)
-        out_path = argv.split("--file ", 1)[1].split(" ", 1)[0]
+        argv = self._logged(self.argv_log).splitlines()
+        with open(os.path.join(ROOT, "identities.yml")) as f:
+            npub = yaml.safe_load(f)["identities"]["bouwer"]["npub"]
+        with open(os.path.join(ROOT, "channels.yml")) as f:
+            cid = yaml.safe_load(f)["channels"]["general"]["id"]
+        out_path = argv[7] if len(argv) > 7 else ""
+        self.assertEqual(argv, ["messages", "send", "--channel", cid, "--content", caption,
+                                "--file", out_path, "--mention", npub])
+        self.assertEqual(os.path.basename(out_path), "image.png")
         self.assertFalse(os.path.exists(os.path.dirname(out_path)), "temp dir survived the send")
+
+    def test_an_empty_image_path_is_refused_not_sent_as_text(self):
+        r = self._run("--image", "", "caption")
+        self.assertEqual(r.returncode, 10)
+        self.assertIn("image_prep: not a regular file", r.stderr)
+        self.assertEqual(self._logged(self.argv_log), "")
 
     def test_a_refused_image_sends_nothing_and_never_calls_sops(self):
         r = self._run("--image", ROTATED_PNG, "caption")
@@ -75,15 +88,19 @@ class PingImage(unittest.TestCase):
         self.assertEqual(self._logged(self.sops_log), "")
 
     def test_a_human_ident_is_refused_before_the_helper_runs(self):
-        r = self._run("--image", DIRTY_PNG, "caption", ident="mark")
+        # rotated.png would make the helper exit 10; exit 4 shows the IDENT check came first.
+        r = self._run("--image", ROTATED_PNG, "caption", ident="mark")
         self.assertEqual(r.returncode, 4)
+        self.assertNotIn("image_prep", r.stderr)
         self.assertEqual(self._logged(self.sops_log), "")
+        self.assertEqual(self._logged(self.argv_log), "")
 
     def test_exit_9_and_10_stderr_are_english(self):
         r9 = self._run("--image", DIRTY_PNG)
         r10 = self._run("--image", ROTATED_PNG, "caption")
-        for r in (r9, r10):
-            self.assertNotRegex(r.stderr, "[^\\x00-\\x7f]")
+        self.assertEqual(r9.stderr, "[ping] an image needs a caption\n")
+        self.assertEqual(r10.stderr, "image_prep: orientation 6: rotate the pixels before sending\n"
+                                     "[ping] image refused (image_prep.py)\n")
 
 
 if __name__ == "__main__":

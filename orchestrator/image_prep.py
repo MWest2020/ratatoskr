@@ -62,7 +62,7 @@ def prepare(data):
 
 def main():
     if len(sys.argv) != 3:
-        print("usage: image_prep.py <src> <outdir>", file=sys.stderr)
+        print("image_prep: usage: image_prep.py <src> <outdir>", file=sys.stderr)
         return 2
     src, outdir = sys.argv[1], sys.argv[2]
     if not os.path.isfile(src):

@@ -53,7 +53,7 @@ cid = c.get("id")
 if not cid:
     sys.stderr.write("kanaal %r heeft geen id in channels.yml\n" % os.environ["CHAN"]); sys.exit(7)
 print(cid)')
-if [ -n "${IMG:-}" ]; then
+if [ "${1:-}" = "--image" ]; then
   TMP=$(mktemp -d)
   trap 'rm -rf "$TMP"' EXIT
   OUT=$(python3 "$ROOT/orchestrator/image_prep.py" "$IMG" "$TMP") \
@@ -65,7 +65,7 @@ NSEC=$(sops -d "$ROOT/secrets/identities.yaml" | IDENT="$IDENT" python3 -c 'impo
 # on THIS host; the tailnet IP gives "no community configured for this host").
 # From a tailnet node this works through the subnet router; override with env
 # BUZZ_RELAY_URL. Own npub as --mention: allows free @words (presentation-only).
-if [ -n "${IMG:-}" ]; then
+if [ "${1:-}" = "--image" ]; then
   BUZZ_PRIVATE_KEY="$NSEC" BUZZ_RELAY_URL="${BUZZ_RELAY_URL:-ws://192.168.178.60:3000}" \
     ~/.local/bin/buzz messages send --channel "$CID" --content "$MSG" --file "$OUT" --mention "$NPUB" >/dev/null
 else

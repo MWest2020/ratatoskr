@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: MIT
+[Unit]
+Description=Ratatoskr media prune: delete chat images older than 30 days, fail above MEDIA_MAX_BYTES
+
+[Service]
+Type=oneshot
+Environment=PATH=/home/agent/.local/bin:/usr/local/bin:/usr/bin:/bin
+Environment=MEDIA_SSH=buzz-relay
+WorkingDirectory=/home/agent/ratatoskr-listener
+ExecStart=/usr/bin/bash /home/agent/ratatoskr-listener/jobs/prune-media.sh

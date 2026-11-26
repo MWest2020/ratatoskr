@@ -1,6 +1,6 @@
 ---
 status: actief
-last_reviewed: 2026-10-22
+last_reviewed: 2026-11-26
 ---
 
 # Troubleshooting
@@ -57,6 +57,56 @@ Three silent breaks, all found the hard way:
 Every layer failed silently, which is what made this expensive. Every
 permission state now shows something (`push-states.js` tests it), and a failed
 subscription names its error.
+
+## No image
+
+`ping.sh --image` ([send an image](send-an-image.md)) fails before anything
+is uploaded, and says why:
+
+- **Exit 9**, `[ping] an image needs a caption`: the caption (third argument)
+  is missing.
+- **Exit 10**, `image_prep: <reason>` followed by `[ping] image refused
+  (image_prep.py)`: the helper refused the file, nothing was sent and no key
+  was decrypted. The reasons:
+  - `<w>x<h> exceeds 2560 px per side`: make it smaller at the source (no
+    Playwright `fullPage`, viewport or clip at most 2560, `scale: "css"`;
+    matplotlib `figsize × dpi` at most 2560);
+  - `orientation <n>: rotate the pixels before sending`;
+  - `animated PNG` or `animated WebP`;
+  - `APP14 …`, `RGB-coded JPEG …` or `component count 4 …`: re-save as PNG;
+  - `GIF/SVG/HEIC/AVIF/PDF is not a supported image type`, `unknown file
+    type`, or `not a regular file`;
+  - `input exceeds …` (over 20 MiB) or `output is … over the … byte limit`
+    (over 5 MiB after stripping);
+  - `cannot parse <fmt>: …`, `bad CRC …` or another structural reason: the
+    file is truncated or corrupt. Write it again.
+
+  Crop or shrink and send again, or send a text ping that describes the image.
+  `strip self-check failed` is a bug in the helper, not in the file: report it.
+- **The relay refuses the upload** (`relay error 422: media contains
+  metadata`): something the helper keeps is still metadata to the relay. That
+  is the fixed fallback of design.md gate 3 in openspec
+  `agent-image-to-chat`; send a text ping meanwhile.
+- **Sent, but no picture in the thread**: expected until
+  `agent-image-to-chat-read` is built. The thread shows the caption only.
+- **The notification shows a Markdown line instead of `🖼 caption`**: the
+  listener logs `[listener] notify: image tags unreadable (…)` when it could
+  not read the `imeta` tag; it then falls back to the plain text.
+
+**The prune timer.** `ratatoskr-media-prune.timer` (daily 04:30) runs
+`jobs/prune-media.sh`, which deletes image blobs older than 30 days on the
+relay VM (`media-prune`, compose profile `maintenance`) and then checks the
+store's size. It exits 1, and `scripts/check_timers.py` turns red, when:
+
+- `[media-prune] prune failed on <host> (rc=…)` or `size check failed`: ssh to
+  the relay VM or `sudo docker compose` failed. Try
+  `ssh buzz-relay 'cd /opt/buzz-relay && sudo docker compose --profile maintenance run --rm media-prune size dst:buzz-media --json'`;
+- `media store is <n> bytes after the prune, over the MEDIA_MAX_BYTES limit of
+  <max>`: more images than expected, not deliberate growth. Twenty images a
+  day for 30 days is about 0.6 GiB, so look for what is uploading.
+
+`journalctl --user -u ratatoskr-media-prune.service` shows the last run. An
+image that is older than 30 days is gone on purpose; its message text stays.
 
 ## An agent answers as if it does not know its role
 

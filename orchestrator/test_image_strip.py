@@ -31,14 +31,14 @@ DIRTY = (("dirty.png", "png"), ("dirty.jpg", "jpg"), ("dirty-progressive.jpg", "
          ("dirty-lossy-alpha.webp", "webp"))
 CLEAN_EXC = (image_strip.Refused, ValueError, IndexError, struct.error)
 VP8 = b"\x00\x00\x00\x9d\x01\x2a\x02\x00\x02\x00"   # a 2x2 VP8 key frame
-
+FORM = {"dirty.png": ["IHDR", "IDAT", "IDAT", "IEND"], "dirty-lossy.webp": ["VP8 "], "dirty-lossless.webp": ["VP8L"],
+        "dirty-lossy-alpha.webp": ["VP8X", "ALPH", "VP8 "]}   # design.md fixture table, "Expected"
 
 def _read(name):
     with open(os.path.join(TESTDATA, name), "rb") as f:
         return f.read()
-
 def _image_bytes(fmt, parts):
-    if fmt == "png": return b"".join(b for t, b in parts if t == "IDAT")
+    if fmt == "png": return b"".join(b for t, b in parts if t in ("IHDR", "PLTE", "tRNS", "IDAT"))
     if fmt == "jpg": return b"".join(p for m, p in parts if m in (0xDB, 0xC4, 0xDD, 0xC0, 0xC1, 0xC2, 0xDA))
     return b"".join(b for t, b in parts if t in ("VP8 ", "VP8L", "ALPH"))
 
@@ -56,16 +56,13 @@ def _jseg(marker, payload):
 
 def _jpeg(segments, prefix=b"\xff\xd8"):
     return prefix + b"".join(_jseg(m, p) for m, p in segments) + b"\xff\xd9"
-
 SOF3 = struct.pack(">BHHB", 8, 2, 2, 3) + b"\x01\x11\x00\x02\x11\x00\x03\x11\x00"
-
 def _wchunk(ctype, body):
     return ctype + struct.pack("<I", len(body)) + body + (b"\x00" if len(body) % 2 else b"")
 
 def _webp(chunks, size=None):
     body = b"WEBP" + b"".join(_wchunk(t, b) for t, b in chunks)
     return b"RIFF" + struct.pack("<I", size if size is not None else len(body)) + body
-
 class DirtyFixturesAreStrippedClean(unittest.TestCase):
     def test_each_dirty_fixture(self):
         for name, fmt in DIRTY:
@@ -82,6 +79,9 @@ class DirtyFixturesAreStrippedClean(unittest.TestCase):
                 kept = {p[0] for p in PARTS[fmt](out)}
                 self.assertTrue(kept <= ALLOW[fmt], kept - ALLOW[fmt])
                 self.assertEqual(_image_bytes(fmt, PARTS[fmt](data)), _image_bytes(fmt, PARTS[fmt](out)))
+                if name in FORM:
+                    self.assertEqual([p[0] for p in PARTS[fmt](out)], FORM[name])
+                if name == "dirty-lossy-alpha.webp": self.assertEqual(PARTS[fmt](out)[0][1][0], 0x10)
 
 class RefusedFixtures(unittest.TestCase):
     CASES = (("rotated.png", "png", "orientation 6"), ("rotated.jpg", "jpg", "orientation 6"),

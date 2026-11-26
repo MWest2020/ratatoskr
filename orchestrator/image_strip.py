@@ -22,7 +22,6 @@ def _check_exif(raw):
 PNG_SIG = b"\x89PNG\r\n\x1a\n"
 PNG_KEEP = (b"IHDR", b"PLTE", b"tRNS", b"IDAT", b"IEND")
 
-
 def strip_png(data):
     if data[:8] != PNG_SIG: raise ValueError("bad PNG signature")
     pos, kept, seen, ihdr, plte_n = 8, [PNG_SIG], set(), None, 0
@@ -66,8 +65,7 @@ _SOF_OTHER = (0xC3, 0xC5, 0xC6, 0xC7, 0xC9, 0xCA, 0xCB, 0xCD, 0xCE, 0xCF)
 def _marker(data, pos):   # fill bytes (extra 0xFF) are skipped, never copied
     if pos >= len(data) or data[pos] != 0xFF: raise Refused("expected a marker")
     pos += 1
-    while pos < len(data) and data[pos] == 0xFF:
-        pos += 1
+    while pos < len(data) and data[pos] == 0xFF: pos += 1
     if pos >= len(data): raise ValueError("marker truncated at end of file")
     return data[pos], pos + 1
 
@@ -112,6 +110,7 @@ def strip_jpeg(data):
         payload = data[pos + 2:end]
         seg = bytes((0xFF, marker)) + data[pos:end]
         if marker == 0xDA:                               # SOS: header + the entropy scan
+            if not payload or len(payload) != 4 + 2 * payload[0]: raise Refused("SOS header length does not match its component count")
             i = end
             while i < len(data) and not (
                     data[i] == 0xFF and i + 1 < len(data)
@@ -171,6 +170,7 @@ def strip_webp(data):   # simple form (RIFF/WEBP/VP8 or VP8L), or +VP8X+ALPH
         body = data[pos + 8:pos + 8 + size]
         if ctype in (b"ANIM", b"ANMF"): raise Refused("animated WebP")
         if ctype == b"VP8X":
+            if canvas is not None: raise Refused("duplicate VP8X")
             if body[0] & 0x02: raise Refused("animated WebP")
             canvas = (int.from_bytes(body[4:7], "little") + 1, int.from_bytes(body[7:10], "little") + 1)
         elif ctype in (b"VP8 ", b"VP8L"):

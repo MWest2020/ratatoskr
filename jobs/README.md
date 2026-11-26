@@ -57,6 +57,13 @@ goed gaat. Installeren:
 | proposals | maandag 09:15 | proposals |
 | techdepth | vrijdag 16:00 | technical_debt |
 
+`ratatoskr-media-prune.timer` (daily 04:30) is not a `claude -p` job: it runs
+`jobs/prune-media.sh`, which deletes chat images older than 30 days from the
+relay's media store and exits 1 above `MEDIA_MAX_BYTES` (2 GiB). It is not in
+the loop above: install the files with `python3 scripts/check_units.py
+--install` and enable the timer only after the bucket inventory (openspec
+`agent-image-to-chat`, gate 1.2). See `docs/how-to/send-an-image.md`.
+
 ## Een stille job bestaat niet
 
 Levert een job geen digest op, dan post hij **in zijn eigen kanaal** waaróm
