@@ -115,6 +115,13 @@ class TheSelfCheckHasItsOwnKeepLists(unittest.TestCase):
                 self.assertEqual((rc, files), (2, []))
                 self.assertEqual(err, f"image_prep: strip self-check failed: {part} is not on the keep-list\n")
 
+    def test_the_self_check_does_not_read_image_strip_constants(self):
+        # The PNG case above cannot see a set built at import time; this pins the independence.
+        src = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "image_selfcheck.py")).read()
+        for ref in ("image_strip.PNG_KEEP", "image_strip.JFIF_APP0", "import image_strip"):
+            self.assertNotIn(ref, src)
+        imports = [ln for ln in src.splitlines() if ln.startswith(("import ", "from ")) and "image_strip" in ln]
+        self.assertEqual(imports, ["from image_strip import Refused"])
 
 if __name__ == "__main__":
     unittest.main()
