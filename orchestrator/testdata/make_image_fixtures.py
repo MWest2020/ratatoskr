@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: MIT
 # /// script
-# dependencies = ["pillow>=12"]
+# dependencies = ["pillow==13.0.0"]
 # ///
 """Write the committed image fixtures for orchestrator/test_image_*.py.
 
@@ -11,7 +11,11 @@ metadata is then added with struct/zlib byte surgery, so what each fixture
 carries is visible below and not left to an encoder's defaults.
 
     uv run --offline orchestrator/testdata/make_image_fixtures.py
+
+It also writes SHA256SUMS, which test_image_fixtures.py checks, so a fixture
+cannot change without that file changing in the same commit.
 """
+import hashlib
 import io
 import os
 import struct
@@ -93,8 +97,10 @@ def jpeg_split(data):
     return data[:2], data[pos:]
 
 
-def jpeg_dirty(orientation, progressive=False):
-    soi, rest = jpeg_split(encode(base_rgb(), "JPEG", quality=85, progressive=progressive))
+def jpeg_dirty(orientation, progressive=False, restart=False):
+    opts = {"restart_marker_blocks": 1, "subsampling": 0} if restart else {}
+    soi, rest = jpeg_split(encode(base_rgb(), "JPEG", quality=85,
+                                  progressive=progressive, **opts))
     jfif_thumb = b"JFIF\x00\x01\x02\x01\x00H\x00H\x02\x01" + b"\xff\x00\x00\x00\xff\x00"
     meta = (jseg(0xE0, jfif_thumb)
             + jseg(0xE1, b"Exif\x00\x00" + tiff(orientation))
@@ -157,6 +163,7 @@ FIXTURES = {
     "rotated.png": lambda: png(6),
     "dirty.jpg": lambda: jpeg_dirty(1),
     "dirty-progressive.jpg": lambda: jpeg_dirty(1, progressive=True),
+    "dirty-restart.jpg": lambda: jpeg_dirty(1, restart=True),   # DRI + RST0..RST4
     "rotated.jpg": lambda: jpeg_dirty(6),
     "cmyk.jpg": lambda: encode(Image.new("CMYK", (W, H), (0, 128, 255, 0)), "JPEG"),
     "dirty-lossy.webp": lambda: webp_dirty(),
@@ -166,7 +173,12 @@ FIXTURES = {
 }
 
 if __name__ == "__main__":
+    sums = []
     for name, make in FIXTURES.items():
+        data = make()
         with open(os.path.join(HERE, name), "wb") as f:
-            f.write(make())
-        print(f"{name}: {os.path.getsize(os.path.join(HERE, name))} bytes")
+            f.write(data)
+        sums.append(f"{hashlib.sha256(data).hexdigest()}  {name}\n")
+        print(f"{name}: {len(data)} bytes")
+    with open(os.path.join(HERE, "SHA256SUMS"), "w") as f:
+        f.writelines(sorted(sums, key=lambda ln: ln.split()[1]))
