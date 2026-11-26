@@ -48,17 +48,22 @@ architect named:
 | An unauthenticated read route would be the cheapest transport. | This change adds no route. The only new route, `GET /api/media/<sha256>`, belongs to the follow-up `agent-image-to-chat-read` and sits behind the existing session gate. The relay's own media URL answers 401 without Blossom auth (measured, see design). |
 | Whether agent-lxc reaches the chat on the tailnet (:8090) was never recorded. | No new network path. agent-lxc → relay at `192.168.178.60:3000` (what `ping.sh` already uses), chat → relay over `buzz-net`, phone → chat over `tailscale serve`. |
 | Retention was unanswered. | Images are kept 30 days. A daily job deletes older ones, and the job fails loudly when the bucket stays over 2 GiB. |
-| EXIF stripping had no route in a stdlib-only chat image. | Images are stripped on agent-lxc, where `uv` scripts with dependencies are normal (`push-notify.py`). The relay also refuses media that carries metadata (measured). The chat image stays stdlib-only. |
+| EXIF stripping had no route in a stdlib-only chat image. | Images are stripped on agent-lxc by a stdlib-only helper that keeps the pixel data byte for byte and drops every container part not on a short keep-list. It needs no Pillow, no `uv` and no network. The relay also refuses media that carries metadata (measured). The chat image stays stdlib-only. |
 | `chat/app.js` is at 200 lines. | `chat/app.js` is not touched here. The follow-up changes one existing hook line, adds no lines, and keeps the image code in a new file. |
 
 ## What changes
 
 - **Sender: `ping.sh --image <path> 'caption'`.** This is the existing helper
-  with the same IDENT and channel rules. A new uv script
-  (`orchestrator/image_prep.py`) checks the magic bytes (PNG, JPEG or WebP
-  only). It refuses files over 20 MiB and images over 40 megapixels. It
-  re-encodes from raw pixels, so no EXIF, XMP, text or ICC data survives. It
-  fits the image inside 2560×2560 px and refuses output over 5 MiB. Then
+  with the same IDENT and channel rules. A new stdlib-only helper
+  (`orchestrator/image_prep.py` with `image_strip.py`) checks the magic bytes
+  (PNG, JPEG or WebP only). It refuses files over 20 MiB and images over
+  2560 px on a side. It keeps the pixel data byte for byte and drops
+  everything else in the file, so no EXIF, XMP, text, comment or ICC data
+  survives. It refuses what it cannot strip without changing the picture
+  (a rotated EXIF orientation, an animated PNG or WebP, a CMYK, Adobe or
+  RGB-coded JPEG), refuses malformed files cleanly, and refuses output over
+  5 MiB. It removes accidental metadata; data hidden in the pixels on purpose
+  is out of scope. Then
   `buzz messages send --file` uploads the image to the relay's Blossom store
   and attaches it to the signed message. One image per message, and the caption
   is required.
@@ -114,20 +119,46 @@ plus C, and the read path stays in `agent-image-to-chat-read` behind Gate 0.
   rebuilds the push from it, so the tags would be lost and a held-back image
   would read as plain text. The tags are carried through `_last` and `flush`,
   with a seam test that calls both sides.
-- **Pillow offline.** If `uv` cannot resolve Pillow offline,
-  `test_image_prep.py` fails red by design, and a guard test tells "no network"
-  from "broken code". The change proves it on agent-lxc and in CI.
+- **Pillow offline.** Settled at the time with a guard test. Superseded by
+  the fourth FAIL amendment below: there is no Pillow any more.
 - **One caption/imeta parser.** One shared fixture,
   `chat/testdata/imeta-event.json`, and `agent-image-to-chat-read` reuses a
   shared helper instead of writing a second parser.
 - **Dedup versus age** is accepted and recorded in design.md.
 
+## Amended after the fourth architect FAIL (2026-11-26)
+
+The architect called this "the best-prepared version so far" and failed it on
+the evidence for the metadata strip. Its seven gaps and six risks are settled
+in design.md, "Settled by the architect's findings (2026-11-26, fourth FAIL)".
+The shape does not change. It is still A plus C, with the same files, limits,
+exit codes and gates.
+
+- **No Pillow.** Pillow is not in the factory's worker image
+  (`habitat-worker:1840e163`). It would arrive from PyPI on every build, CI
+  run and pre-push `verify.sh`, and agent-lxc cannot resolve the old pin
+  offline. The helper is now a stdlib keep-list strip, and its tests run under
+  `python3 -m unittest` like every other test in the repo. The 2560 px fit
+  becomes a refusal, because resizing needs a decoder.
+- **Fixtures are committed now**, with their host-only generator, so the build
+  never has to author a JPEG or WebP. Every test proves its input dirty
+  before it calls the output clean.
+- **The listener gets shorter.** The should-notify test and the reading of
+  `content` and `tags` move into `notify.on_message`, so `agents/listener.py`
+  goes from 200 to 199 lines. The Web Push chain is pinned on both sides.
+- **The helper lives in `chat/imeta.py`** and `agents/notify.py` loads it by
+  file path. **`--mention` stays** on the image branch, with a fixed fallback
+  in gate 3. **The prune unit files** are installed at merge and enabled after
+  gate 1.2, so the local gate stays green.
+- **Dedup versus age** stays accepted.
+- **After the review of #267:** bounded parsing with a truncation and
+  byte-flip sweep, stricter dimension checks, `imeta` never raises, APNG and
+  RGB-coded JPEG refused, exact lengths of kept parts, a restart-marker
+  fixture, `SHA256SUMS`, and a refusal message that tells agents how to stay
+  under 2560 px. See design.md, "Review of #267".
+
 ## Open questions
 
-- Where the shared imeta/caption helper lives. The listener (`agents/`) and the
-  chat container (stdlib-only, its own image) must both import it, and the
-  chat image does not contain `agents/`. Not decided; the build records the
-  choice in design.md and the follow-up must reuse it.
 - The follow-up change `agent-image-to-chat-read` does not exist yet. It is
   proposed separately (tasks 4.1), with the handover in this change's design.md.
 
