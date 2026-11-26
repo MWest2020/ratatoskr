@@ -7,10 +7,11 @@ post the image and the caption as one message, signed with the key of the
 calling `IDENT`. Every existing refusal of the helper (unknown identity, the
 human identity, an inactive identity, a session in the hub channel) SHALL
 apply unchanged. Before upload the helper SHALL accept only PNG, JPEG and WebP
-as decided by magic bytes. It SHALL re-encode the image from its pixels so that
-no EXIF, XMP, ICC or text metadata remains, fit it inside 2560×2560 pixels,
-and refuse a result over 5 MiB. A refusal SHALL name the reason and SHALL post
-nothing. A caption SHALL be required.
+as decided by magic bytes. It SHALL remove every EXIF, XMP, ICC, comment and
+text block while leaving the image data unchanged. It SHALL refuse an image
+over 2560 pixels on either side, an image whose EXIF orientation is not the
+default, and a result over 5 MiB. A refusal SHALL name the reason and SHALL
+post nothing. A caption SHALL be required.
 
 #### Scenario: A session sends a chart
 
@@ -21,9 +22,15 @@ nothing. A caption SHALL be required.
 
 #### Scenario: Metadata does not leave the host
 
-- **WHEN** the input is a JPEG with GPS coordinates in its EXIF
-- **THEN** the uploaded bytes contain no EXIF segment, and the image keeps its
-  visual orientation
+- **WHEN** the input is a JPEG with GPS coordinates in its EXIF and the
+  default orientation
+- **THEN** the uploaded bytes contain no EXIF segment, and the image data is
+  byte-identical to the input's
+
+#### Scenario: A rotated photo is refused, not shown sideways
+
+- **WHEN** the input's EXIF orientation is anything other than the default
+- **THEN** the helper refuses it, names the orientation, and posts nothing
 
 #### Scenario: Wrong type behind a right name
 
