@@ -94,6 +94,77 @@ The probe blob `bc9854f9…` now sits in `buzz-media` next to the two from
 2026-11-13; the first prune deletes it. Because a message delete leaves the
 blob in place, the prune is the only thing that ever removes an image.
 
+## Measured on 2026-11-26 (gate 3, live, task 3.1)
+
+Run from agent-lxc by the coding session with the real
+`~/ratatoskr/orchestrator/ping.sh --image` at `cfe1ae1` (main), against
+`ws://192.168.178.60:3000`, to `#statistics`. **Identity `odin`, not
+`claude`:** `claude` is not a member of `#statistics`, and every `ping.sh`
+message mentions its own sender, so the relay refused all four sends as
+`claude` with `mentioned pubkeys are not channel members` (rc 1, nothing
+posted). That refusal holds for a text ping too, so it is a membership
+matter, not an image one. Gate 1.1 used `odin` for the same reason.
+
+| Input (through the helper) | `ping.sh` | `messages get` |
+|---|---|---|
+| `dirty.png` | rc 0 | caption + `imeta` (`m image/png`, `size 740`, `dim 24x16`, `thumb`), tags `h`, `p`, `imeta` |
+| `dirty.jpg` | rc 0 | caption + `imeta` (`m image/jpeg`, `size 707`, `dim 24x16`, `thumb`) |
+| `dirty-lossless.webp` | rc 0 | caption + `imeta` (`m image/webp`, `size 54`, `dim 24x16`, `thumb`) |
+| `dirty-lossy-alpha.webp` | rc 0 | caption + `imeta` (`m image/webp`, `size 210`, `dim 24x16`, `thumb`) |
+| `rotated.png`, `rotated.jpg` | rc 10, `image_prep: orientation 6: …` | nothing sent |
+| `cmyk.jpg` | rc 10, `image_prep: APP14 (Adobe colour transform): re-save as PNG` | nothing sent |
+| `animated.webp` | rc 10, `image_prep: animated WebP` | nothing sent |
+
+So the real CLI takes `--content '<caption>' --file <path> --mention <npub>`
+together, and the relay's metadata check accepts the helper's output for all
+four forms: PNG, JPEG with the canonical JFIF APP0, simple `VP8L`, and
+`VP8X` + `ALPH` + `VP8 `. No fallback is needed. `messages get --since <t0-60>`
+showed exactly the four accepted events, none for the four refusals. All
+messages were deleted afterwards (each `accepted`; a final `get` returned 0
+events). The blobs stay in the store until the prune (see gate 1.1).
+
+The `--content="$MSG"` form of #271 was checked the same way, from that
+branch: captions `-5% …` and `-` were accepted with the `imeta` tag. With
+the caption on stdin as a here-string, `-` arrived as `-\n`: buzz keeps the
+newline. #271 therefore feeds it with `printf '%s'`, and the retest gave the
+content `-\n![image](…)`, the normal `<caption>\n![image](…)` form. Those
+messages were deleted as well.
+
+## Bucket inventory (gate 1.2, 2026-11-26, read-only)
+
+`rclone lsf -R` and `size` via the `seaweedfs-init` service on the relay VM,
+with the `media:` alias of #271 passed as `-e` (which also proves the alias
+works). Nothing was deleted, and the relay's compose was not changed.
+
+| Prefix | Objects | Bytes | Matched by `--include` |
+|---|---|---|---|
+| `<sha256>.png` / `.jpg` / `.webp` (top level) | 10 | 5,639,719 | yes |
+| `<sha256>.thumb.jpg` (top level) | 10 | 121,368 | yes |
+| `_meta/<community uuid>/<sha256>.json` (blob descriptors) | 10 | 2,534 | no |
+| `packs/<hash>` (relay probe objects) | 75 | 4,125 | no |
+| `probe/inm-race/<hash>` (relay probe objects) | 75 | 3,975 | no |
+
+Keys are content hashes with an extension; no image key lacks one. The filter
+touches only the top-level blobs and thumbnails. With `--min-age 30d` it
+matches 6 objects today (460,675 bytes): three 384×384 PNGs and their
+thumbnails, all uploaded on 2026-08-27. Those are not agent media. No
+identity's profile picture, no custom emoji and no message found by search
+refers to them, and their origin is unknown. The others are the probes of
+2026-11-13 and 2026-11-24 and the four blobs of gate 3.
+
+So the filter is **not** limited to agent media: it goes by extension, so it
+would delete the three unknown images on the first run, and in future any
+image older than 30 days whoever posted it. That is
+[ratatoskr#272](https://github.com/MWest2020/ratatoskr/issues/272)
+(`waiting-on-mark`). Default: the timer stays disabled and the prune moves to
+a hash list from the `imeta` tags of agent-authored messages older than 30
+days.
+
+Also seen: the relay keeps a `_meta/…/<sha256>.json` descriptor per blob.
+`delete --include` leaves it behind when it deletes the blob. That costs
+little (about 250 bytes each), but the read path has to treat "descriptor,
+no blob" as expired, not as an error.
+
 ## Decisions
 
 ### The image goes through the relay's own media store

@@ -67,10 +67,12 @@ NSEC=$(sops -d "$ROOT/secrets/identities.yaml" | IDENT="$IDENT" python3 -c 'impo
 # BUZZ_RELAY_URL. Own npub as --mention: allows free @words (presentation-only).
 # Image branch: --content=<caption> in one argv word, so a caption that starts
 # with '-' is not read as a flag. buzz reads '-' itself from stdin, so the
-# caption is on stdin too and a caption of exactly '-' arrives as '-'.
+# caption is on stdin too, without a newline (buzz keeps it: a here-string
+# gave "-\n", measured in gate 3.1), and a caption of '-' arrives as '-'.
 if [ "${1:-}" = "--image" ]; then
   BUZZ_PRIVATE_KEY="$NSEC" BUZZ_RELAY_URL="${BUZZ_RELAY_URL:-ws://192.168.178.60:3000}" \
-    ~/.local/bin/buzz messages send --channel "$CID" --content="$MSG" --file "$OUT" --mention "$NPUB" <<<"$MSG" >/dev/null
+    ~/.local/bin/buzz messages send --channel "$CID" --content="$MSG" --file "$OUT" --mention "$NPUB" \
+    < <(printf '%s' "$MSG") >/dev/null
 else
   BUZZ_PRIVATE_KEY="$NSEC" BUZZ_RELAY_URL="${BUZZ_RELAY_URL:-ws://192.168.178.60:3000}" \
     ~/.local/bin/buzz messages send --channel "$CID" --content - --mention "$NPUB" <<<"$MSG" >/dev/null

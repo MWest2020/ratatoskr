@@ -77,7 +77,7 @@ class PingImage(unittest.TestCase):
                 argv = self._logged(self.argv_log).splitlines()
                 self.assertEqual(argv[4:6], ["--content=" + caption, "--file"])
                 # buzz reads a content of exactly '-' from stdin; the caption is there too
-                self.assertEqual(self._logged(self.argv_log + ".stdin"), caption + "\n")
+                self.assertEqual(self._logged(self.argv_log + ".stdin"), caption)   # no newline: buzz keeps it
 
     def test_an_empty_image_path_is_refused_not_sent_as_text(self):
         r = self._run("--image", "", "caption")
