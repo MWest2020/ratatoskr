@@ -44,6 +44,10 @@ network, Pillow, `uv` or the host (design.md, fourth FAIL, gap 4).
 
 ## 2. Build (three runs: A, B, C)
 
+Built 2026-11-26 as one PR, `build/agent-image-to-chat`, on top of the builder
+branch below: run A checked and tightened, runs B and C added. Each run's
+`done_when` holds; the boxes below are ticked on that evidence.
+
 ### Run A: the stripper helper and `ping.sh --image` (tasks 2.1, 2.2)
 Run A **starts from main** and builds to the #267 design (bounded parsing,
 exact lengths, APNG and RGB-coded JPEG refusals, the restart-marker fixture,
@@ -57,7 +61,7 @@ taken over (architect FAIL 5, finding 1).
 file is within its line budget, and `verify.sh` is green. Run A does not touch
 `agents/`, `chat/`, `jobs/`, `deploy/` or `docs/`.
 
-- [ ] 2.1 The helper, stdlib only, SPDX headers, in the files and line budgets
+- [x] 2.1 The helper, stdlib only, SPDX headers, in the files and line budgets
       of design.md "Files and line budget": `orchestrator/image_strip.py`,
       `orchestrator/image_exif.py`, `orchestrator/image_prep.py` (with
       `prepare(data)` and `Refused`), and the test walker
@@ -83,7 +87,7 @@ file is within its line budget, and `verify.sh` is green. Run A does not touch
       traceback, no alarm); `grep -n skip orchestrator/test_image_*.py` finds
       nothing; `python3 scripts/line_limit.py` is green, with every new file
       within its budget.
-- [ ] 2.2 `orchestrator/ping.sh --image <path> 'caption'`, in the order
+- [x] 2.2 `orchestrator/ping.sh --image <path> 'caption'`, in the order
       design.md gives: argument branch (exit 9 without a caption), the
       unchanged IDENT and channel checks, then the helper into a `mktemp -d`
       with a `trap` cleanup **before** `sops -d` (exit 10 on refusal, through
@@ -106,7 +110,7 @@ designed), and `verify.sh` is green. Run B does not touch the helper,
 `ping.sh`, `jobs/`, `deploy/` or `docs/`. (2.4a is listed after 2.3 below for
 numbering; it is built first.)
 
-- [ ] 2.3 Notification, without growing `agents/listener.py`: lines 161-162
+- [x] 2.3 Notification, without growing `agents/listener.py`: lines 161-162
       become the single line `notify.on_message(cname, writer, m, ME_NAME)`
       (the file goes to 199 lines). **In the same edit**, the comment at
       `agents/listener.py:159` is rewritten to name `notify.on_message`
@@ -133,7 +137,7 @@ numbering; it is built first.)
       raising.
       `orchestrator/test_push_chain.py` and `orchestrator/test_push_send.py`
       are unchanged and green, and `wc -l agents/listener.py` gives 199.
-- [ ] 2.4a `chat/imeta.py` (design.md, fourth FAIL, gap 7): stdlib-only,
+- [x] 2.4a `chat/imeta.py` (design.md, fourth FAIL, gap 7): stdlib-only,
       `from_tags(tags)` and `clean_content(content, tags)`, which **never
       raise** on malformed tags (they return `[]` and the unchanged content).
       `agents/notify.py`
@@ -152,13 +156,13 @@ check of 2.6 holds, `python3 scripts/line_limit.py` is green over the whole
 repo (every file of A, B and C within its budget, no new baseline entry), and
 `verify.sh` is green.
 
-- [ ] 2.4 Retention: the `media-prune` service (profile `maintenance`, rclone
+- [x] 2.4 Retention: the `media-prune` service (profile `maintenance`, rclone
       1.71) in `deploy/docker-compose.yml`, `jobs/prune-media.sh`, and
       `jobs/systemd/ratatoskr-media-prune.{service,timer}`. Proof: `bash -n`
       on the script, `pin_check.py` green, and `jobs/test_prune_media.py` with
       a fake `ssh` covering a prune followed by a size under and over
       `MEDIA_MAX_BYTES` (rc 0 and rc 1, the reason printed).
-- [ ] 2.5 Docs, since CI fails on code without docs. Grep under `docs/` found
+- [x] 2.5 Docs, since CI fails on code without docs. Grep under `docs/` found
       these that describe this behaviour:
       `docs/how-to/send-an-image.md` (new: the command; PNG, JPEG or WebP; at
       most 20 MiB in, 5 MiB out and 2560 px per side, refused rather than
@@ -177,7 +181,7 @@ repo (every file of A, B and C within its budget, no new baseline entry), and
       reasons, exit codes 9 and 10, and the prune timer). Proof: the three
       files contain `--image`, and the exit condition above holds.
 
-- [ ] 2.6 English interface text. Every new or changed line of this change that
+- [x] 2.6 English interface text. Every new or changed line of this change that
       prints text (stderr, log and failure messages in `orchestrator/ping.sh`,
       `orchestrator/image_prep.py` and `jobs/prune-media.sh`) is English. The
       size-alarm message in

@@ -4,6 +4,9 @@
 # are refused). CHAN = target channel name from channels.yml (default 'general'),
 # e.g. CHAN=review or CHAN=runs. The message comes from an arg or from stdin.
 #   IDENT=reviewer CHAN=review ~/boomhuis/orchestrator/ping.sh 'verdict: ...'
+# --image <path> 'caption': strips metadata (image_prep.py) and attaches the
+# file to the message; the caption is required.
+#   IDENT=architect CHAN=architectuur ~/boomhuis/orchestrator/ping.sh --image chart.png 'p95 latency'
 # No secret in this file: the nsec comes from SOPS. The IDENT filter refuses the
 # human identity (role mens) and inactive identities, so nobody can pose as the
 # human (or as a revoked identity).
@@ -11,7 +14,13 @@
 set -euo pipefail
 IDENT="${IDENT:-bouwer}"
 CHAN="${CHAN:-general}"   # target channel (name from channels.yml), default #general
-MSG="${1:-$(cat)}"
+if [ "${1:-}" = "--image" ]; then
+  IMG="${2:-}"
+  MSG="${3:-}"
+  [ -n "$MSG" ] || { echo "[ping] an image needs a caption" >&2; exit 9; }
+else
+  MSG="${1:-$(cat)}"
+fi
 export SOPS_AGE_KEY_FILE="${SOPS_AGE_KEY_FILE:-$HOME/.config/sops/age/keys.txt}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
@@ -44,12 +53,23 @@ cid = c.get("id")
 if not cid:
     sys.stderr.write("kanaal %r heeft geen id in channels.yml\n" % os.environ["CHAN"]); sys.exit(7)
 print(cid)')
+if [ "${1:-}" = "--image" ]; then
+  TMP=$(mktemp -d)
+  trap 'rm -rf "$TMP"' EXIT
+  OUT=$(python3 "$ROOT/orchestrator/image_prep.py" "$IMG" "$TMP") \
+    || { echo "[ping] image refused (image_prep.py)" >&2; exit 10; }
+fi
 NSEC=$(sops -d "$ROOT/secrets/identities.yaml" | IDENT="$IDENT" python3 -c 'import os,sys,yaml;print(yaml.safe_load(sys.stdin)["identities"][os.environ["IDENT"]]["nsec"])')
 
 # Relay through the community host 192.168.178.60 (the relay is community-scoped
 # on THIS host; the tailnet IP gives "no community configured for this host").
 # From a tailnet node this works through the subnet router; override with env
 # BUZZ_RELAY_URL. Own npub as --mention: allows free @words (presentation-only).
-BUZZ_PRIVATE_KEY="$NSEC" BUZZ_RELAY_URL="${BUZZ_RELAY_URL:-ws://192.168.178.60:3000}" \
-  ~/.local/bin/buzz messages send --channel "$CID" --content - --mention "$NPUB" <<<"$MSG" >/dev/null
+if [ "${1:-}" = "--image" ]; then
+  BUZZ_PRIVATE_KEY="$NSEC" BUZZ_RELAY_URL="${BUZZ_RELAY_URL:-ws://192.168.178.60:3000}" \
+    ~/.local/bin/buzz messages send --channel "$CID" --content "$MSG" --file "$OUT" --mention "$NPUB" >/dev/null
+else
+  BUZZ_PRIVATE_KEY="$NSEC" BUZZ_RELAY_URL="${BUZZ_RELAY_URL:-ws://192.168.178.60:3000}" \
+    ~/.local/bin/buzz messages send --channel "$CID" --content - --mention "$NPUB" <<<"$MSG" >/dev/null
+fi
 echo "[ping] verstuurd naar #$CHAN (als $IDENT)"

@@ -1,6 +1,6 @@
 ---
 status: actief
-last_reviewed: 2026-11-14
+last_reviewed: 2026-11-26
 ---
 
 # Ping the owner from a working session
@@ -14,6 +14,20 @@ reaches him through the relay, at a milestone or when blocked:
 the self-hosted relay. No extra credentials on the agent host. Pinging from the
 shared checkout is fine because it commits nothing; development work goes in
 its own worktree (see the handbook's operating agreements).
+
+## Attach an image
+
+One image per message, with a required caption, through the same script:
+
+    IDENT=<your-ident> CHAN=<channel> ~/ratatoskr/orchestrator/ping.sh --image shot.png 'login page after deploy'
+
+`--image <path>` comes first and the caption third. PNG, JPEG or WebP, at most
+2560 px per side and 5 MiB after preparation; metadata is stripped and the
+pixels are left untouched. Exit 9 means the caption is missing, exit 10 that
+the image was refused (the reason is on stderr, nothing was sent): crop it at
+the source, or send a text ping instead. Mark's notification reads
+`🖼 <caption>`. Details, limits and the 30-day retention:
+[send an image](send-an-image.md).
 
 ## Identity rules
 

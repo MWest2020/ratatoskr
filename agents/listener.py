@@ -158,8 +158,7 @@ def main():
                 # Notify before the agent filter: an agent ANSWER is exactly what a
                 # human waits for (what does not notify: notify.should_notify).
                 writer = PUB2NAME.get(m.get("pubkey"), "?")
-                if notify.should_notify(cname, writer, m.get("content", ""), ME_NAME):
-                    notify.push(cname, writer, m.get("content", ""))
+                notify.on_message(cname, writer, m, ME_NAME)
                 if build_starters.take(m, writer, cname, cid, try_build, factory, HUB, ME_NAME, send):
                     continue   # an allowed agent's message: its !build only, never chat
                 if m.get("pubkey") in AGENT_PUBS:

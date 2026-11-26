@@ -13,6 +13,8 @@
 #      agents en andere machines rechtstreeks mee praten). Openzetten is een
 #      keuze van de beheerder, geen bijwerking van de default.
 # Bij een upstream-upgrade: nieuwe kopie nemen en deze drie opnieuw aanbrengen.
+# Also not upstream: the `media-prune` service (profile `maintenance`, openspec
+# agent-image-to-chat). Carry it over on an upstream upgrade as well.
 #
 # Alles instelbaars staat in .env (zie .env.example) BEHALVE de images: die staan
 # hier letterlijk. Een pin in .env staat op de host en niet in git, en dan lopen
@@ -155,6 +157,30 @@ services:
       RCLONE_CONFIG_DST_ACCESS_KEY_ID: ${BUZZ_S3_ACCESS_KEY:?set BUZZ_S3_ACCESS_KEY}
       RCLONE_CONFIG_DST_SECRET_ACCESS_KEY: ${BUZZ_S3_SECRET_KEY:?set BUZZ_S3_SECRET_KEY}
     command: ["mkdir", "dst:${BUZZ_S3_BUCKET:-buzz-media}"]
+    restart: "no"
+    networks:
+      - buzz-net
+
+  # Retention for message images (openspec agent-image-to-chat): delete image
+  # blobs older than 30 days. Profile `maintenance`, so `docker compose up` never
+  # starts it; agent-lxc runs it daily over ssh (jobs/prune-media.sh,
+  # ratatoskr-media-prune.timer). Same image and S3 settings as seaweedfs-init.
+  # Deleting a blob leaves the message and its text in place.
+  media-prune:
+    image: rclone/rclone:1.71
+    profiles: ["maintenance"]
+    depends_on:
+      seaweedfs:
+        condition: service_healthy
+    environment:
+      RCLONE_CONFIG_DST_TYPE: s3
+      RCLONE_CONFIG_DST_PROVIDER: Other
+      RCLONE_CONFIG_DST_ENDPOINT: http://seaweedfs:8333
+      RCLONE_CONFIG_DST_FORCE_PATH_STYLE: "true"
+      RCLONE_CONFIG_DST_ACCESS_KEY_ID: ${BUZZ_S3_ACCESS_KEY:?set BUZZ_S3_ACCESS_KEY}
+      RCLONE_CONFIG_DST_SECRET_ACCESS_KEY: ${BUZZ_S3_SECRET_KEY:?set BUZZ_S3_SECRET_KEY}
+    command: ["delete", "dst:${BUZZ_S3_BUCKET:-buzz-media}", "--min-age", "30d",
+              "--include", "*.{png,jpg,jpeg,webp}", "-v"]
     restart: "no"
     networks:
       - buzz-net
