@@ -1,69 +1,121 @@
-# Design: images in the chat
+# Design: images in the chat, part 1 (the server)
+
+The split, and why, is in `proposal.md`. This file holds the decisions of
+part 1 and the gate record. `chat-image-attachments-ui` and
+`chat-image-attachments-deliver` have their own design.md.
 
 ## Decisions
 
-### The message carries a reference, not the image
+### The image goes through the relay, signed as the session's identity
 
-The message holds a reference to a content hash. The listener fetches the file
-from the chat host. The audit JSONL, the git mirror and push payloads stay
-small, and the existing text path does not change.
+`POST /api/upload` ends in `buzz messages send --channel <cid> --content -
+--file <tmp>`, run by the chat's own process, so it is signed by mark exactly
+as `/api/send` is (`chat/buzzcli.buzz()` without `key`). The relay stores the
+bytes in its Blossom store and puts an `imeta` tag on the event; buzz appends
+`![image](<url>)` to the content (`chat/testdata/imeta-event.json`).
 
-The form of the reference (a `[img sha256:…]` line in the text, or a tag if the
-buzz CLI allows it) follows from gate 1 and is an open question in the
-proposal.
+Why: gate 1 found the relay carries media natively, and `agent-image-to-chat`
+already relies on it (its design.md, "The image goes through the relay's own
+media store"). One store, one reference format (`imeta`), one parser
+(`chat/imeta.py`), one retention job. The provenance is the signed event.
 
-### Upload is its own route with its own ceiling
+Rejected:
+- **A content-hash store on the chat host** (the 2 Nov design). It needs the
+  listener to reach the chat host, which it cannot (architect, point 1), and a
+  second retention mechanism next to `media-prune`.
+- **An unauthenticated GET keyed by the hash, for the listener.** The chat's
+  first route readable without a session, on an app whose tailnet is the door
+  (`docs/naar-een-product.md`).
+- **ssh plus a sudoers helper into `ratatoskr-chat-data`.** Works, but adds
+  deploy work and a second store; the image would not be part of the signed
+  message.
+- **Base64 in the message.** Bloats the relay, the audit JSONL and the push
+  payload; the 16 KiB text path does not change.
 
-`POST /api/upload` sits behind the same session gate and session token as
-`/api/send`. It is not squeezed into the 16 KiB limit of `/api/send`. Ceilings:
-5 MiB per image, 3 images per message.
+### One image per request, and one per message
 
-### The server decides what a file is
+`buzz messages send --file` attaches one file, and `agent-image-to-chat` is one
+image per message. The upload route takes one image and makes one message.
+The 2 Nov design allowed three per message; that would mean three relay
+messages or a multi-file event nobody has measured.
 
-Only PNG, JPEG and WebP. The type comes from magic bytes, not from the
-Content-Type the browser sends. SVG is refused because it is executable
-content. EXIF is stripped. The file is stored under its content hash.
+Rejected: multipart with up to three files (the stdlib `cgi` module is
+deprecated in 3.12 and gone in 3.13, and hand-parsing multipart is more
+failure surface than the feature needs).
 
-### The listener validates again and delivers through a scratch directory
+### The body is read after the gate, with its own ceiling
 
-The listener, not the model, fetches the file and checks it a second time. It
-writes the file to a per-turn scratch directory and puts the path in the
-prompt. The agent reads it with `Read(<dir>/**)`, the same pattern `scoped()`
-in `agents/providers.py` already applies. No new tool is added. The directory
-is removed after the turn.
+`chat/server.py` `do_POST` reads at most 16 KiB and `json.loads` it before any
+route. `/api/upload` branches off before that: `auth_routes.gate(h, path,
+writes=True)` first (it reads headers only, so session and CSRF are checked
+before a byte of body is read), then the body with a 5 MiB ceiling. Refused
+before reading: a missing or non-integer Content-Length, a length over 5 MiB,
+and `Transfer-Encoding: chunked` (`BaseHTTPRequestHandler` does not decode it).
+The channel and the caption come in the query string (`?channel=<cid>&caption=`),
+since the body is the image; the caption is required and at most 2 000
+characters, as for agents.
+
+The route's body handling lives in a new `chat/upload.py` returning
+`(status, payload)`, the shape `chat/actions.py` uses, so `server.py` grows
+by the branch only and stays under 200 lines.
+
+### One stripper: `orchestrator/image_prep.py`, copied into the chat image
+
+The stdlib keep-list strip of `agent-image-to-chat` (`image_prep.py`,
+`image_strip.py`, `image_exif.py`, `image_selfcheck.py`) is the only stripper.
+`chat/Dockerfile` copies these four files from `orchestrator/` into `/app/`;
+`chat/upload.py` imports them from its own directory in the image and, in the
+repo, loads them by file path from `../orchestrator/`, the way
+`agents/notify.py` loads `chat/imeta.py`. A test pins that the Dockerfile's
+copy list equals the helper's own imports, so a new helper module cannot be
+forgotten in the image.
+
+The upload route uses the helper's refusals and limits unchanged (PNG, JPEG,
+WebP by magic bytes; over 2560 px, a rotated EXIF orientation, animation,
+CMYK or Adobe JPEG refused; output over 5 MiB refused), and passes its
+refusal text through to the client.
+
+Rejected:
+- **A second stripper in `chat/`.** Two strippers drift; #267's sweep was
+  needed to get one right.
+- **Pillow in the chat image.** The chat image is stdlib-only on purpose, and
+  `agent-image-to-chat`'s fourth FAIL removed Pillow for the same reasons.
+- **Moving the helper into `chat/`.** Touches merged code, its tests and
+  `ping.sh` for no gain over a copy line in the Dockerfile.
 
 ### Errors are visible
 
-Over the limit, wrong type, failed fetch: each produces a message that says
-what happened. This follows AGENTS.md, "Stil falen is de fout".
+Every refusal returns 4xx with a reason that names the limit (size, type,
+dimension, metadata that cannot be stripped, missing caption); a relay
+failure returns 502 with the relay's reason, cut to 200 characters. Nothing
+is cut off or sent silently. AGENTS.md: "Stil falen is de fout".
 
-### Tests
+### What is not here
 
-The failure mode here is a seam: the upload route and the listener each pass
-their own tests while the hand-over between them breaks. So there is a test
-that calls both sides, plus an e2e in `chat/e2e`.
+Rendering, the read route and the composer are not in this change. Until
+`chat-image-attachments-ui` is built the route has no button; it is tested
+directly and from `chat/e2e/api.sh`.
 
-## Rejected alternatives
+## Rejected alternatives (from the 2 Nov design, still rejected)
 
-- **Base64 in the Nostr event.** Bloats the relay, the audit JSONL and the push
-  payload, and breaks the existing text path.
-- **A live iframe of a page in the chat.** Rejected; web view is handled, if at
-  all, as a screenshot in a later `werksessies` change.
-- **Giving chat agents `WebFetch`.** `werksessies` limits it to session types,
-  because what is on the web is written by strangers.
+- **A live iframe of a page in the chat.** Web view is handled, if at all, as
+  a screenshot in a later `werksessies` change.
+- **Giving chat agents `WebFetch`.** `werksessies` limits it to session types.
 - **Letting the model fetch the file itself.** The listener validates; the
-  model gets a local path only.
-- **Opening the habitat cage** for media access. Needs an approved amendment on
-  habitat's `worker-execution` spec and is not part of this.
+  model gets a local path only (`chat-image-attachments-deliver`).
+- **Opening the habitat cage** for media access.
 
 ## Gates
 
-1. **buzz media.** Check whether the buzz CLI or relay accepts media. The
-   outcome decides the reference form. If it can carry media natively, revisit
-   the "image does not go through the relay" decision before building.
-2. **Vision through Read.** Check that `claude -p` under `dontAsk` gives the
-   model the actual image through `Read`, and that the model in `agents.yml`
-   for the agent supports vision. If not, amend this design first.
+1. **buzz media.** Passed (below).
+2. **Vision through Read.** Passed (below).
+A. **The chat's CLI sends a file.** On the chat container's CLI
+   (`docker compose exec chat buzz ...` on the relay VM, `BUZZ_REF` of
+   `chat/Dockerfile`), not agent-lxc's: `buzz messages send --channel <test>
+   --content - --file probe.png` as mark is accepted and the event carries an
+   `imeta` tag with `url`, `m`, `x`, `size`, `dim`. Record the CLI version and
+   the command. If the chat's CLI lacks `--file`, a `BUZZ_REF` bump is its own
+   change (`relay-deployment/spec.md`) and this one waits.
 
 ### Gate results (2026-11-24, host session on agent-lxc)
 
@@ -87,6 +139,10 @@ relay" (proposal, "What changes") has to be revisited before this change is
 built. The reference form is now answered by the relay itself (an `imeta` tag
 on the signed event), and the content-hash store on the chat host and the
 listener's fetch from the chat host may no longer be needed. Not decided here.
+
+Decided in the split of 2026-11-27 (proposal, "Split after the architect
+FAIL"): the image goes through the relay, the content-hash store and the fetch
+from the chat host are dropped.
 
 **2. Vision through Read: passes for every model the chat agents use.** The
 chat-facet models in the handbook (`docs/agents/*.md`): `sonnet` for odin,
