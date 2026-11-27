@@ -1,45 +1,58 @@
 # Tasks
 
-Queued behind the other open work (Mark, 2026-11-02); see the proposal.
+Part 1 of three after the split (proposal). Queued behind the other open work
+(Mark, 2026-11-02): not built before `agent-image-to-chat` is archived.
 
-## 1. Gates (before anything else)
-- [x] **buzz media.** Check whether the buzz CLI or relay accepts media.
-      Proof: a recorded command or request and its output, written into
-      design.md under Gates. If it fails, amend design.md first.
-      Passed 2026-11-24 (design.md, "Gate results"); the relay carries media,
-      so the "not through the relay" decision is up for revision.
-- [x] **Vision through Read.** Passed 2026-11-24 for sonnet, haiku and opus. Run `claude -p` under `--permission-mode dontAsk`
-      with `Read(<dir>/**)` on a PNG and ask what is in it, with the model
-      configured for the agent. Proof: the model describes the image; the run is
-      recorded in design.md. If it fails, amend design.md first.
+## 1. Gates
+- [x] **buzz media.** Passed 2026-11-24 (design.md, "Gate results"); the
+      relay carries media, and the split decides the image goes through it.
+- [x] **Vision through Read.** Passed 2026-11-24 for sonnet, haiku and opus.
+- [ ] **Gate A: the chat's CLI sends a file** (host, before the build).
+      Proof: the command, the CLI version and the event's `imeta` tag,
+      recorded in design.md under Gates. If the CLI has no `--file`, stop:
+      a `BUZZ_REF` bump is its own change.
 
 ## 2. Server
-- [ ] `POST /api/upload` in `chat/`: session gate and token, 5 MiB, magic
-      bytes, EXIF strip, content-hash storage. Proof: new `chat/test_upload.py`
-      covers no token, wrong magic behind a right header, SVG, over size, and
-      EXIF removed.
+- [ ] `chat/server.py` branches `/api/upload` off `do_POST` before the 16 KiB
+      read: gate first (session and CSRF), then `chat/upload.py`. Proof:
+      `chat/test_upload.py` shows no body is read without a session, without
+      a CSRF token, without a Content-Length, with a chunked body, and with a
+      length over 5 MiB.
+- [ ] `chat/upload.py`: magic bytes, the shared helper's prepare and strip,
+      the caption required (≤ 2 000 characters), then `buzz messages send
+      --content - --file <tmp>` signed as the chat's identity; the temp file
+      removed on every exit. Proof: `chat/test_upload.py` covers an
+      `image/png` header over JPEG bytes, an SVG, a GIF, a JPEG with EXIF and
+      COM whose stored bytes have neither (asserted on the bytes handed to
+      buzz, against the committed fixtures of `orchestrator/testdata`), a
+      rotated-orientation JPEG refused with the helper's reason, a missing
+      caption, a relay refusal answered 502 with its reason, and the temp file
+      gone after success and after a failure.
+- [ ] The helper is loaded by file path from `../orchestrator/` in the repo
+      and from `/app/` in the image; `chat/Dockerfile` copies `image_prep.py`,
+      `image_strip.py`, `image_exif.py` and `image_selfcheck.py`. Proof: a
+      test that compares the Dockerfile's copy list with the helper modules'
+      own imports, and fails when one is missing.
+- [ ] The chat image pin moves one minor version in
+      `deploy/docker-compose.yml`. Proof: `scripts/pin_check.py` green.
 
-## 3. UI
-- [ ] `chat/app-attach.js`: paste, attach button, 3 per message, visible
-      errors, `<img>` never via innerHTML. Proof: `chat/e2e/attach.js`
-      (paste, refused SVG, fourth image refused); `chat/e2e/xss.js` still
-      passes.
+## 3. Seam
+- [ ] One test runs `chat/upload.py` up to the buzz call and parses the
+      resulting event shape with `chat/imeta.py` against
+      `chat/testdata/imeta-event.json`, so the sender and the one parser
+      agree. Proof: `chat/test_upload_seam.py`, shown to fail when the
+      attached file's type and the tag's `m` disagree.
 
-## 4. Listener
-- [ ] Fetch, re-validate, write to per-turn scratch, pass the path, clean up,
-      report failures. Proof: new `agents/test_attachments.py` covers delivery,
-      cleanup, missing file and bad type.
+## 4. Live
+- [ ] After the deploy: `chat/e2e/api.sh` uploads a prepared PNG to a test
+      channel and finds one message from mark with an `imeta` tag; an SVG is
+      refused with its reason. Proof: the run's output on the issue.
 
-## 5. The seam
-- [ ] One test that runs upload and listener delivery together on the same
-      file. Proof: `agents/test_attachments_chain.py`, checked by breaking the
-      reference format on one side and seeing it fail.
-
-## 6. Docs (CI fails on code without docs)
-- [ ] New `docs/how-to/attach-images.md`: how to paste or attach, limits,
-      accepted types, error messages.
+## 5. Docs (CI fails on code without docs)
 - [ ] `docs/how-to/ping-from-a-session.md`: the chat HTTP API list gains
-      `/api/upload`.
-- [ ] `docs/how-to/pwa-installeren.md`: mention paste and attach.
-- [ ] `chat/e2e/README.md`: the new e2e and what it needs.
-- [ ] `docs/reference/roadmap.yml` if finishing this changes what "done" means.
+      `/api/upload`, with its query parameters, limits and status codes.
+- [ ] `docs/how-to/send-an-image.md`: a section that the chat sends images by
+      the same road, with the same limits and refusals.
+- [ ] `chat/e2e/README.md`: what the upload step in `api.sh` needs.
+- [ ] `docs/reference/roadmap.yml` if finishing this changes what "done"
+      means.
