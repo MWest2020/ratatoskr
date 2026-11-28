@@ -6,6 +6,9 @@ items; status_digest carries the same order to the daily mail. The seam (one
 collect() run feeding both the page and the digest) is tested through
 status_site with the fake GitHub of status_fakes.
 """
+import json
+import os
+import tempfile
 import unittest
 from unittest import mock
 
@@ -74,7 +77,7 @@ class Score(unittest.TestCase):
 
     def test_the_window_edge_is_exact(self):
         act, _ = self.activity(merged=[pr("habitat", 1, "2026-10-21T09:59:00Z"),
-                                       pr("habitat", 2, "2026-10-21T11:00:00Z")])
+                                       pr("habitat", 2, "2026-10-21T10:00:00Z")])
         self.assertEqual(act.of("habitat")["score"], 1)
 
     def test_only_a_public_merged_pr_gives_a_title(self):
@@ -176,12 +179,19 @@ class Collect(unittest.TestCase):
         digest = status_digest.digest(NOW, "MWest2020", status_site.gh, run, [])
         self.assertEqual(digest["impediments"][0]["kind"], "waiting-unreadable")
 
-    def test_no_page_still_writes_the_digest_with_why(self):
-        with mock.patch.object(status_site, "collect", side_effect=sa.Unavailable("gh search merged")), \
+    def test_no_page_still_writes_the_digest_with_why_and_what_is_stuck(self):
+        stuck = {"repo": "wordsworth", "change": "broken"}
+        with tempfile.TemporaryDirectory() as t, mock.patch.object(status_site, "STATE", t), \
+                mock.patch.object(status_site, "collect", side_effect=sa.Unavailable("gh search merged")), \
+                mock.patch.object(status_site, "repos", return_value=["wordsworth"]), \
+                mock.patch.object(status_site, "in_flight", return_value=([], [stuck])), \
                 mock.patch.object(status_digest, "digest", return_value={}) as digest, \
                 mock.patch.object(status_digest, "write") as write, self.assertRaises(SystemExit):
+            os.makedirs(os.path.join(t, "builds"))
+            json.dump({}, open(os.path.join(t, "builds", "state.json"), "w"))
             status_site.main()
         self.assertEqual(digest.call_args.kwargs["broken"], "gh search merged")
+        self.assertEqual(digest.call_args.args[4], [stuck])
         write.assert_called_once()
 
 

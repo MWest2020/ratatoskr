@@ -174,7 +174,9 @@ def main():
         page, digest = collect(now)
     except status_activity.Unavailable as e:
         # No page from half the facts, but Mark still hears it (and his questions).
-        status_digest.write(status_digest.digest(now, OWNER, gh, subprocess.run, [], broken=str(e)), DIGEST)
+        state = json.load(open(os.path.join(STATE, "builds", "state.json")))
+        stuck = [s for r in repos(now) for s in in_flight(r, state)[1]]   # gh issue list, not search
+        status_digest.write(status_digest.digest(now, OWNER, gh, subprocess.run, stuck, broken=str(e)), DIGEST)
         sys.exit(f"[status-site] not published: {e}")
     status_digest.write(digest, DIGEST)
     if "--print" in sys.argv:

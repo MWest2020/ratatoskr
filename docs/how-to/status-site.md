@@ -31,9 +31,9 @@ lives at <https://westerweel.work/nu/> (NL) and <https://westerweel.work/en/now/
   in activity order, each with `repo`, `score`, `last`, `url` and a one-line
   `status` (phase and progress, the first change in flight, the last change),
   and the questions are sorted by that order (none is dropped; when the search
-for them fails, a `waiting-unreadable` impediment says so instead of an empty
-list). The coding
-  session mails it to Mark once a day, in that order and that short.
+  for them fails, a `waiting-unreadable` impediment says so instead of an empty
+  list). The coding session mails it to Mark once a day, in that order and that
+  short.
 
 The projects are `BASE` in `status_site.py` (wordsworth, convergence, ratatoskr,
 habitat, handbook, homelab and, since 2026-11-07, the children's games app,
@@ -83,8 +83,8 @@ for the count of the rest with `roadmap_url` to the whole file (public
 repositories only), and `recent`: the kind and date of the last merged PR, or
 of the last commit when nothing merged. Only a merged PR of a public repository
 carries its `title`: commit messages never reach the page, and a private
-repository shows no title (its change names, as before, do). The goal and the phase strip stay in
-the data; the page folds them behind "more".
+repository shows no title (its change names, as before, do). The goal and the
+phase strip stay in the data; the page folds them behind "more".
 
 ## A roadmap, as data
 
