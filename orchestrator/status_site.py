@@ -122,7 +122,7 @@ def collect(now, run=subprocess.run, state=None, env=None):
         roadmap = status_roadmap.fetch(OWNER, repo, gh, run)
         if not roadmap and not flight:
             continue
-        url, a = f"https://github.com/{OWNER}/{repo}", act.of(repo)
+        url, a = f"https://github.com/{OWNER}/{repo}", act.of(repo, public)
         project = {"name": repo, "public": public, "url": public_url(url, public),
                    "activity": {"score": a["score"], "last": a["last"]}, "recent": a["recent"],
                    "in_flight": [{"change": f["change"], "stage": f["stage"]} for f in flight]}
@@ -170,7 +170,12 @@ def publish(data, site=SITE, run=subprocess.run, now=None, mark=os.path.join(STA
 
 def main():
     now = datetime.datetime.now(TZ)
-    page, digest = collect(now)
+    try:
+        page, digest = collect(now)
+    except status_activity.Unavailable as e:
+        # No page from half the facts, but Mark still hears it (and his questions).
+        status_digest.write(status_digest.digest(now, OWNER, gh, subprocess.run, [], broken=str(e)), DIGEST)
+        sys.exit(f"[status-site] not published: {e}")
     status_digest.write(digest, DIGEST)
     if "--print" in sys.argv:
         print(json.dumps(page, indent=1, ensure_ascii=False))

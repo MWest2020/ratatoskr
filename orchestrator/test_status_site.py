@@ -41,7 +41,7 @@ class Build(unittest.TestCase):
         self.state = {"queued": [{"repo": "wordsworth", "change": "a-change"}]}
 
     def collect(self):
-        return status_site.collect(NOW, run=self.run, state=self.state)
+        return status_site.collect(NOW, run=self.run, state=self.state, env={})
 
     def test_the_page_has_no_questions_and_nothing_stuck(self):
         page = self.collect()[0]

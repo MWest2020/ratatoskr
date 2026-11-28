@@ -35,7 +35,9 @@ def _when(text):
 def waiting(owner, gh, run):
     """Open issues labelled waiting-on-mark: the question, a link, the default."""
     items = gh(["search", "issues", "--owner", owner, "--label", "waiting-on-mark", "--state",
-                "open", "--json", "number,title,url,body,repository,createdAt"], run) or []
+                "open", "--limit", "1000", "--json", "number,title,url,body,repository,createdAt"], run)
+    if items is None:
+        return None   # unreadable, which the digest says; never "no questions"
     out = []
     for i in items:
         default = next((ln.split(":", 1)[1].strip() for ln in (i.get("body") or "").splitlines()
@@ -100,7 +102,7 @@ def one_line(p):
         more = f" +{len(flight) - 1}" if len(flight) > 1 else ""
         parts.append(f"in flight: {flight[0]['change']} ({flight[0]['stage']}){more}")
     if p.get("recent"):
-        parts.append(f"last: {p['recent']['title']} ({p['recent']['date']})")
+        parts.append(f"last: {p['recent'].get('title') or p['recent']['kind']} ({p['recent']['date']})")
     return "; ".join(parts) or "activity without a roadmap"
 
 
@@ -116,10 +118,15 @@ def by_project(asks, order):
     return sorted(asks, key=lambda a: (pos.get(a["repo"], len(pos)), a.get("since") or ""))
 
 
-def digest(now, owner, gh, run, stuck, site_state=None, active_projects=(), order=()):
-    asks = by_project(waiting(owner, gh, run), order)
+def digest(now, owner, gh, run, stuck, site_state=None, active_projects=(), order=(), broken=None):
+    """`broken`: why the page could not be built this run (an impediment of its own)."""
+    asks = waiting(owner, gh, run)
+    unread = [{"kind": "waiting-unreadable", "why": "gh search for waiting-on-mark issues failed"}]
+    unread = unread if asks is None else []
+    asks = by_project(asks or [], order)
     day_ago = (now - datetime.timedelta(hours=24)).strftime("%Y-%m-%d %H:%M:%S")
-    found = impediments(now, stuck, refusals(day_ago, run), asks) + site_stale(now, site_state)
+    found = unread + impediments(now, stuck, refusals(day_ago, run), asks) + site_stale(now, site_state)
+    found += [{"kind": "status-unavailable", "why": broken}] if broken else []
     return clean_tree({"generated": now.isoformat(timespec="seconds"),
                        "projects_active": active(active_projects, owner), "waiting": asks,
                        "impediments": found})

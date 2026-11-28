@@ -28,9 +28,11 @@ class Settings(unittest.TestCase):
         self.assertEqual(sa.settings({"STATUS_TOP": "3", "STATUS_WINDOW_DAYS": "14"}), (3, 14))
 
     def test_a_bad_value_says_which(self):
-        for env in ({"STATUS_TOP": "five"}, {"STATUS_TOP": "0"}, {"STATUS_WINDOW_DAYS": "-1"}):
-            with self.assertRaisesRegex(ValueError, "STATUS_TOP"):
+        for env, name in (({"STATUS_TOP": "five"}, "STATUS_TOP"), ({"STATUS_TOP": "0"}, "STATUS_TOP"),
+                          ({"STATUS_WINDOW_DAYS": "-1"}, "STATUS_WINDOW_DAYS")):
+            with self.assertRaises(ValueError) as e:
                 sa.settings(env)
+            self.assertEqual(str(e.exception).split()[0], name)
 
 
 class Score(unittest.TestCase):
@@ -38,7 +40,7 @@ class Score(unittest.TestCase):
         calls = []
         run = fake_gh(responses(**searches))
         counting = lambda argv, **kw: calls.append(argv) or run(argv, **kw)  # noqa: E731
-        return sa.Activity("MWest2020", status_site.gh, counting, NOW, days, state), calls
+        return sa.Activity("MWest2020", status_site.gh, counting, NOW, days, state, sleep=lambda s: None), calls
 
     def test_merged_prs_commits_and_closed_issues_in_the_window_count(self):
         act, _ = self.activity(closed=[pr("wordsworth", 7, "2026-10-25T08:00:00Z")])
@@ -65,11 +67,27 @@ class Score(unittest.TestCase):
             act.of(repo)
         searches = [c for c in calls if c[1] == "search"]
         self.assertEqual(len(searches), 3)
+        merged = next(c for c in searches if "--merged-at" in c)
+        # since is 2026-10-21 12:00 Amsterdam (summer time: 10:00Z); the search asks a day earlier (GitHub reads UTC)
+        self.assertEqual(merged[merged.index("--merged-at") + 1], ">=2026-10-20")
+        self.assertEqual(merged[merged.index("--owner") + 1], "MWest2020")
+
+    def test_the_window_edge_is_exact(self):
+        act, _ = self.activity(merged=[pr("habitat", 1, "2026-10-21T09:59:00Z"),
+                                       pr("habitat", 2, "2026-10-21T11:00:00Z")])
+        self.assertEqual(act.of("habitat")["score"], 1)
+
+    def test_only_a_public_merged_pr_gives_a_title(self):
+        act, _ = self.activity()
+        self.assertNotIn("title", act.of("wordsworth", public=False)["recent"])
+        self.assertEqual(act.of("convergence")["recent"], {"kind": "commit", "date": "2026-10-26"})
 
     def test_a_failing_search_stops_the_run_rather_than_emptying_the_page(self):
-        act = sa.Activity("MWest2020", lambda argv, run: None, None, NOW, 7, {})
+        pauses = []
+        act = sa.Activity("MWest2020", lambda argv, run: None, None, NOW, 7, {}, sleep=pauses.append)
         with self.assertRaisesRegex(sa.Unavailable, "failed twice"):
             act.of("wordsworth")
+        self.assertEqual(pauses, [sa.RETRY_AFTER_S])
 
 
 def project(name, score, last):
@@ -146,6 +164,25 @@ class Collect(unittest.TestCase):
     def test_questions_follow_the_activity_order(self):
         waiting = [w["repo"] for w in self.collect()[1]["waiting"]]
         self.assertEqual(waiting, ["wordsworth", "convergence"])
+
+    def test_a_private_project_shows_no_title_and_no_roadmap_link(self):
+        merged = [pr("convergence", 9, "2026-10-27T11:00:00Z", "secret plan")]
+        cv = next(p for p in self.collect(merged=merged)[0]["projects"] if p["name"] == "convergence")
+        self.assertEqual(cv["recent"], {"kind": "merged", "date": "2026-10-27"})
+        self.assertIsNone(cv["roadmap_url"])
+
+    def test_unreadable_questions_are_an_impediment_not_an_empty_list(self):
+        run = fake_gh({k: v for k, v in responses().items() if k != "search issues"})
+        digest = status_digest.digest(NOW, "MWest2020", status_site.gh, run, [])
+        self.assertEqual(digest["impediments"][0]["kind"], "waiting-unreadable")
+
+    def test_no_page_still_writes_the_digest_with_why(self):
+        with mock.patch.object(status_site, "collect", side_effect=sa.Unavailable("gh search merged")), \
+                mock.patch.object(status_digest, "digest", return_value={}) as digest, \
+                mock.patch.object(status_digest, "write") as write, self.assertRaises(SystemExit):
+            status_site.main()
+        self.assertEqual(digest.call_args.kwargs["broken"], "gh search merged")
+        write.assert_called_once()
 
 
 if __name__ == "__main__":

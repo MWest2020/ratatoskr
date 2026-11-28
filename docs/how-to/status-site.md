@@ -30,7 +30,9 @@ lives at <https://westerweel.work/nu/> (NL) and <https://westerweel.work/en/now/
   2026-11-28 it also carries `projects_active`: the projects the page shows,
   in activity order, each with `repo`, `score`, `last`, `url` and a one-line
   `status` (phase and progress, the first change in flight, the last change),
-  and the questions are sorted by that order (none is dropped). The coding
+  and the questions are sorted by that order (none is dropped; when the search
+for them fails, a `waiting-unreadable` impediment says so instead of an empty
+list). The coding
   session mails it to Mark once a day, in that order and that short.
 
 The projects are `BASE` in `status_site.py` (wordsworth, convergence, ratatoskr,
@@ -66,15 +68,22 @@ Both numbers are settings, in the unit's environment:
 A bad value (not a whole number, below 1) stops the run with the variable's
 name. The merged-PR, closed-issue and open-PR counts come from three owner-wide
 `gh search` calls, made once per run; the commits are one `gh api` call per
-repository (the last 100 on the default branch). A search that fails twice
-stops the run (`Unavailable`): an empty page would look like a quiet week.
+repository (the last 100 on the default branch); both caps are far above a
+week of work. A squash-merged PR counts twice (the PR and its commit on main),
+which weighs repositories that merge through PRs a little heavier than ones
+pushed to directly; the ranking only compares, so that is accepted. A search
+that fails, and fails again after 5 seconds, stops the run (`Unavailable`): no
+page is published, since an empty one would look like a quiet week, and the
+digest is still written with a `status-unavailable` impediment saying why.
 
 Per project the page is short: the phase and progress, at most three open
 items (in progress first: its evidence is an open PR, the issue or the OpenSpec
 change of a build in flight; then in roadmap order, oldest first), `gap_more`
 for the count of the rest with `roadmap_url` to the whole file (public
-repositories only), and `recent`: the title and date of the last merged PR, or
-of the last commit when nothing merged. The goal and the phase strip stay in
+repositories only), and `recent`: the kind and date of the last merged PR, or
+of the last commit when nothing merged. Only a merged PR of a public repository
+carries its `title`: commit messages never reach the page, and a private
+repository shows no title (its change names, as before, do). The goal and the phase strip stay in
 the data; the page folds them behind "more".
 
 ## A roadmap, as data
