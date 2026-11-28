@@ -1,6 +1,6 @@
 ---
 status: current
-last_reviewed: 2026-11-07
+last_reviewed: 2026-11-28
 ---
 
 # The public overview on westerweel.work/nu/
@@ -26,8 +26,14 @@ lives at <https://westerweel.work/nu/> (NL) and <https://westerweel.work/en/now/
   page (`status_digest.py`): the open `waiting-on-mark` questions with their
   `Default:`, and the impediments: a build whose last verdict is a FAIL that has
   not moved for 12 hours, a build refusal of the last 24 hours (the breaker's
-  "split it" among them), and a question open for more than three days. The
-  coding session mails it to Mark once a day.
+  "split it" among them), and a question open for more than three days. Since
+  2026-11-28 it also carries `projects_active`: the projects the page shows,
+  in activity order, each with `repo`, `score`, `last`, `url` and a one-line
+  `status` (phase and progress, the first change in flight, the last change),
+  and the questions are sorted by that order (none is dropped; when the search
+  for them fails, a `waiting-unreadable` impediment says so instead of an empty
+  list). The coding session mails it to Mark once a day, in that order and that
+  short.
 
 The projects are `BASE` in `status_site.py` (wordsworth, convergence, ratatoskr,
 habitat, handbook, homelab and, since 2026-11-07, the children's games app,
@@ -39,6 +45,46 @@ parses or changes in flight.
 
 Hugo renders the page with the site's `now` layout; Cloudflare Pages deploys on
 every push to `main`.
+
+## Only what we are busy with
+
+Mark, 2026-11-28: *"keep it shorter per project and sort daily by what we are
+working on. Only the top 5 projects; when we have not worked on one for a
+while, it drops out of /nu."* `status_activity.py` scores every project over
+the last 7 days: one point per merged PR, per commit on the default branch and
+per closed issue, plus one for an open PR touched in that window and one for a
+build in the factory right now. The page shows the five with the highest score
+(ties: the most recent activity first); a project with no point drops out even
+when fewer than five remain. The others are listed as `inactive` (name and
+date of the last activity, also from before the window), for a one-line footer.
+
+Both numbers are settings, in the unit's environment:
+
+| variable | default | meaning |
+|---|---|---|
+| `STATUS_TOP` | 5 | how many projects the page shows |
+| `STATUS_WINDOW_DAYS` | 7 | the activity window, in days |
+
+A bad value (not a whole number, below 1) stops the run with the variable's
+name. The merged-PR, closed-issue and open-PR counts come from three owner-wide
+`gh search` calls, made once per run; the commits are one `gh api` call per
+repository (the last 100 on the default branch); both caps are far above a
+week of work. A squash-merged PR counts twice (the PR and its commit on main),
+which weighs repositories that merge through PRs a little heavier than ones
+pushed to directly; the ranking only compares, so that is accepted. A search
+that fails, and fails again after 5 seconds, stops the run (`Unavailable`): no
+page is published, since an empty one would look like a quiet week, and the
+digest is still written with a `status-unavailable` impediment saying why.
+
+Per project the page is short: the phase and progress, at most three open
+items (in progress first: its evidence is an open PR, the issue or the OpenSpec
+change of a build in flight; then in roadmap order, oldest first), `gap_more`
+for the count of the rest with `roadmap_url` to the whole file (public
+repositories only), and `recent`: the kind and date of the last merged PR, or
+of the last commit when nothing merged. Only a merged PR of a public repository
+carries its `title`: commit messages never reach the page, and a private
+repository shows no title (its change names, as before, do). The goal and the
+phase strip stay in the data; the page folds them behind "more".
 
 ## A roadmap, as data
 

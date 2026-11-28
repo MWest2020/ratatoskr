@@ -9,6 +9,7 @@ per-project row. A private repository keeps its names and statuses, never its
 links.
 """
 import base64
+import re
 
 import yaml
 
@@ -16,6 +17,9 @@ from status_scrub import public_url
 
 PATH = "docs/reference/roadmap.yml"
 STATUSES = ("done", "open")
+GAP_SHOWN = 3
+ISSUE = re.compile(r"github\.com/[^/]+/([^/]+)/(?:issues|pull)/(\d+)(?!\d)")
+CHANGE = re.compile(r"/openspec/changes/(?!archive/)([^/#?]+)")
 
 
 class BadRoadmap(ValueError):
@@ -51,9 +55,29 @@ def fetch(owner, repo, gh, run):
         return None
 
 
-def row(doc, public):
+def refs(url):
+    """What an evidence link points at: `repo#n` for an issue or PR, `change:x`
+    for an OpenSpec change that is not archived."""
+    url = str(url)
+    return ({f"{r}#{n}" for r, n in ISSUE.findall(url)}
+            | {f"change:{c}" for c in CHANGE.findall(url)})
+
+
+def gap(items, public, busy=frozenset(), shown=GAP_SHOWN):
+    """(the open items worth showing, how many more): in progress first (its
+    evidence is an open PR, an in-flight build's issue or change), then in
+    roadmap order, which is the order they were added: oldest first."""
+    open_items = [i for i in items if i["status"] == "open"]
+    ranked = sorted(open_items, key=lambda i: not (refs(i["evidence"]) & busy))
+    return ([{"item": i["item"], "url": public_url(i["evidence"], public),
+              "doing": bool(refs(i["evidence"]) & busy)} for i in ranked[:shown]],
+            max(0, len(ranked) - shown))
+
+
+def row(doc, public, busy=frozenset(), url=None):
     """What the page shows for one project: goal, the phase strip, progress
-    toward done for the current phase, and the gap (the open items)."""
+    toward done for the current phase, and the gap (at most GAP_SHOWN open
+    items, the count of the rest and a link to the whole roadmap)."""
     items = doc["done_means"]
     done = sum(1 for i in items if i["status"] == "done")
     phases, seen_current = [], False
@@ -63,8 +87,8 @@ def row(doc, public):
                        "summary": p.get("summary", ""),
                        "state": "current" if current else ("next" if seen_current else "past")})
         seen_current = seen_current or current
+    shown, more = gap(items, public, busy)
     return {"goal": doc["goal"], "phases": phases,
             "phase": next(p["name"] for p in phases if p["state"] == "current"),
             "progress": {"done": done, "total": len(items)},
-            "gap": [{"item": i["item"], "url": public_url(i["evidence"], public)}
-                    for i in items if i["status"] == "open"]}
+            "gap": shown, "gap_more": more, "roadmap_url": public_url(url, public) if url else None}
