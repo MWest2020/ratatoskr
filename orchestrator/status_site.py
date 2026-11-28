@@ -6,7 +6,8 @@ state, run files, GitHub) with every string through status_scrub, written to
 `data/status.json` in a westerweel-work worktree; Cloudflare Pages deploys it.
 2026-10-30: the page shows each project's roadmap (status_roadmap) and the gap
 to done; what waits on Mark and what is stuck go to a local digest for his
-daily mail (status_digest), not on the page.
+daily mail (status_digest), not on the page. 2026-11-28: only the five
+projects we are busiest with, each kept short (status_activity).
 
 It pushes only when the content changed (the generation time aside) and at most
 once every two hours: Cloudflare Pages' free tier has a monthly build budget.
@@ -20,6 +21,7 @@ import sys
 from zoneinfo import ZoneInfo
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import status_activity  # noqa: E402
 import status_digest  # noqa: E402
 import status_roadmap  # noqa: E402
 from status_scrub import clean_tree, public_url  # noqa: E402
@@ -103,10 +105,15 @@ def in_flight(repo, state, run=subprocess.run):
     return flight, stuck
 
 
-def collect(now, run=subprocess.run, state=None):
-    """(page data, digest data): the page is public and high-level, the digest is Mark's."""
+def collect(now, run=subprocess.run, state=None, env=None):
+    """(page data, digest data): the page is public and high-level, the digest is Mark's.
+
+    The page shows the `top` projects with the most activity in the window and
+    names the rest under `inactive` (status_activity, Mark 2026-11-28)."""
     state = state if state is not None else json.load(open(os.path.join(STATE, "builds", "state.json")))
-    projects, stuck_all = [], []
+    top, days = status_activity.settings(env)
+    act = status_activity.Activity(OWNER, gh, run, now, days, state)
+    projects, stuck_all, open_prs = [], [], act.open_prs()
     for repo in repos(now):
         vis = gh(["repo", "view", f"{OWNER}/{repo}", "--json", "visibility"], run) or {}
         public = vis.get("visibility") == "PUBLIC"
@@ -115,18 +122,19 @@ def collect(now, run=subprocess.run, state=None):
         roadmap = status_roadmap.fetch(OWNER, repo, gh, run)
         if not roadmap and not flight:
             continue
-        project = {"name": repo, "public": public,
-                   "url": public_url(f"https://github.com/{OWNER}/{repo}", public),
+        url, a = f"https://github.com/{OWNER}/{repo}", act.of(repo)
+        project = {"name": repo, "public": public, "url": public_url(url, public),
+                   "activity": {"score": a["score"], "last": a["last"]}, "recent": a["recent"],
                    "in_flight": [{"change": f["change"], "stage": f["stage"]} for f in flight]}
         if roadmap:
-            project.update(status_roadmap.row(roadmap, public))
+            busy = open_prs | {f"{repo}#{f['issue']}" for f in flight} | {f"change:{f['change']}" for f in flight}
+            project.update(status_roadmap.row(roadmap, public, busy, f"{url}/blob/main/{status_roadmap.PATH}"))
         projects.append(project)
-    page = clean_tree({"generated": now.isoformat(timespec="seconds"), "projects": projects})
-    return page, status_digest.digest(now, OWNER, gh, run, stuck_all)
-
-
-def build(now, run=subprocess.run, state=None):
-    return collect(now, run, state)[0]
+    shown, inactive = status_activity.rank(projects, top)
+    page = clean_tree({"generated": now.isoformat(timespec="seconds"), "window_days": days,
+                       "projects": shown, "inactive": inactive})
+    order = [p["name"] for p in shown] + [p["name"] for p in inactive]
+    return page, status_digest.digest(now, OWNER, gh, run, stuck_all, active_projects=shown, order=order)
 
 
 def same_content(a, b):
@@ -167,8 +175,8 @@ def main():
     if "--print" in sys.argv:
         print(json.dumps(page, indent=1, ensure_ascii=False))
         return
-    print(f"[status-site] {publish(page)}; digest: {len(digest['waiting'])} waiting, "
-          f"{len(digest['impediments'])} impediments")
+    print(f"[status-site] {publish(page)}; {len(page['projects'])} shown, {len(page['inactive'])} inactive; "
+          f"digest: {len(digest['waiting'])} waiting, {len(digest['impediments'])} impediments")
 
 
 if __name__ == "__main__":
